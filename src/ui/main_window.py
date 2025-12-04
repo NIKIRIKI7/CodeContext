@@ -1,323 +1,415 @@
-"""
-CodeContext AI v3.6 - Main Window UI
-"""
 import threading
 import customtkinter as ctk
 from tkinter import filedialog, messagebox
-from pathlib import Path
-from typing import List
-import pyperclip
+import sys
+import os
 
-from src.services.token_service import TokenService
-from src.services.code_cleaner import CodeCleaner
-from src.services.formatter_service import FormatterService
-from src.services.pdf_service import PdfService
-from src.services.file_scanner import FileScanner
-from src.services.settings_manager import SettingsManager
-from src.config import PRESETS, DEFAULT_SYSTEM_PROMPT, MAX_FILE_SIZE_MB
+from ..store.store import Store
+from ..store.state import ProcessedFile  # Важно: импортируем DTO
+from ..actions.dispatcher import Dispatcher
+from ..actions.action_types import *
+from ..utils.config import PRESETS, DEFAULT_SYSTEM_PROMPT
+
+# Импорт независимых сервисов
+from ..services.file_service import FileService
+from ..services.processing_service import ProcessingService
+from ..services.cleaner_service import CleanerService
+from ..services.token_service import TokenService
+from ..services.formatting_service import FormattingService
+from ..services.output_service import OutputService
+from ..services.integration_service import IntegrationService
+
+# Data Layer
+from ..data.file_system_repository import FileSystemRepository
+from ..data.settings_repository import SettingsRepository
 
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
 
-class ModernApp(ctk.CTk):
-    def __init__(self):
+
+class MainWindow(ctk.CTk):
+    """Главное окно приложения (View & Controller)"""
+
+    def __init__(self, store: Store, dispatcher: Dispatcher):
         super().__init__()
-        self.title("CodeContext AI v3.6 Pro")
+        self.store = store
+        self.dispatcher = dispatcher
+
+        # --- Dependency Injection & Initialization ---
+
+        # 1. Data Layer
+        fs_repo = FileSystemRepository()
+        self.settings_repo = SettingsRepository()
+
+        # 2. Service Layer (Все сервисы независимы!)
+        self.file_service = FileService(fs_repo)
+        self.process_service = ProcessingService(fs_repo)  # Только чтение
+        self.cleaner_service = CleanerService()  # Только очистка
+        self.token_service = TokenService()  # Только подсчет
+        self.format_service = FormattingService()
+        self.output_service = OutputService()
+        self.integration_service = IntegrationService()
+
+        # Настройка окна
+        self.title("CodeContext AI - Clean Architecture")
         self.geometry("1150x850")
 
-        self.token_service = TokenService()
-        self.cleaner_service = CodeCleaner()
-        self.selected_folders: List[str] = []
+        # Подписка на Store
+        self.unsubscribe = self.store.subscribe(self._on_store_changed)
 
         self._init_ui()
+        self._load_initial_settings()
 
     def _init_ui(self):
+        """Создание UI элементов"""
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
-        # --- Sidebar ---
+        # === Sidebar ===
         sidebar = ctk.CTkFrame(self, width=320, corner_radius=0)
         sidebar.grid(row=0, column=0, sticky="nsew")
         sidebar.grid_rowconfigure(2, weight=1)
 
-        ctk.CTkLabel(sidebar, text="CodeContext AI", font=ctk.CTkFont(size=20, weight="bold")).grid(row=0, column=0, padx=20, pady=(20, 10))
+        ctk.CTkLabel(sidebar, text="CodeContext AI", font=ctk.CTkFont(size=20, weight="bold")).grid(row=0, column=0,
+                                                                                                    padx=20, pady=20)
 
         # Tabs
-        self.tab_view = ctk.CTkTabview(sidebar, width=280)
+        self.tab_view = ctk.CTkTabview(sidebar)
         self.tab_view.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
-        self.tab_view.add("Run")
-        self.tab_view.add("Prompt")
-        self.tab_view.add("CLI/Config")
 
-        # === TAB 1: RUN (Текущий запуск) ===
-        tab_run = self.tab_view.tab("Run")
+        self.tab_run = self.tab_view.add("Run")
+        self.tab_prompt = self.tab_view.add("Prompt")
+        self.tab_settings = self.tab_view.add("Settings")
 
-        ctk.CTkLabel(tab_run, text="Пресет:", anchor="w").pack(fill="x", pady=(5, 0))
-        self.cmb_preset = ctk.CTkComboBox(tab_run, values=list(PRESETS.keys()), command=self.apply_preset)
+        # --- Tab: Run Elements ---
+        ctk.CTkLabel(self.tab_run, text="Пресет:").pack(anchor="w", pady=(5, 0))
+        self.cmb_preset = ctk.CTkComboBox(self.tab_run, values=list(PRESETS.keys()), command=self._apply_preset)
         self.cmb_preset.pack(fill="x", pady=(0, 10))
 
-        ctk.CTkLabel(tab_run, text="Расширения:", anchor="w").pack(fill="x")
-        self.entry_ext = ctk.CTkEntry(tab_run)
-        self.entry_ext.insert(0, PRESETS["Default"]["ext"])
+        ctk.CTkLabel(self.tab_run, text="Расширения:").pack(anchor="w")
+        self.entry_ext = ctk.CTkEntry(self.tab_run)
         self.entry_ext.pack(fill="x", pady=(0, 10))
 
-        ctk.CTkLabel(tab_run, text="Игнор папок:", anchor="w").pack(fill="x")
-        self.entry_ign = ctk.CTkEntry(tab_run)
-        self.entry_ign.insert(0, PRESETS["Default"]["ign"])
+        ctk.CTkLabel(self.tab_run, text="Игнор папок:").pack(anchor="w")
+        self.entry_ign = ctk.CTkEntry(self.tab_run)
         self.entry_ign.pack(fill="x", pady=(0, 10))
 
-        self.chk_git = ctk.CTkCheckBox(tab_run, text="Только Git Changes")
+        self.chk_git = ctk.CTkCheckBox(self.tab_run, text="Только Git Changes")
         self.chk_git.pack(anchor="w", pady=5)
 
-        self.chk_tree = ctk.CTkCheckBox(tab_run, text="Дерево файлов")
-        self.chk_tree.select()
+        self.chk_tree = ctk.CTkCheckBox(self.tab_run, text="Дерево файлов")
         self.chk_tree.pack(anchor="w", pady=5)
 
-        ctk.CTkButton(tab_run, text="+ Папка", command=self.add_folder).pack(fill="x", pady=(20, 5))
-        ctk.CTkButton(tab_run, text="Очистить", fg_color="transparent", border_width=1, command=self.clear_folders).pack(fill="x", pady=5)
+        ctk.CTkButton(self.tab_run, text="+ Папка", command=self._add_folder).pack(fill="x", pady=(20, 5))
+        ctk.CTkButton(self.tab_run, text="Очистить", command=self._clear_folders, fg_color="transparent",
+                      border_width=1).pack(fill="x", pady=5)
 
-        # === TAB 2: PROMPT (Для текущего запуска) ===
-        tab_prompt = self.tab_view.tab("Prompt")
-        self.txt_prompt = ctk.CTkTextbox(tab_prompt, height=300)
-        self.txt_prompt.pack(fill="both", expand=True, pady=5)
-        self.txt_prompt.insert("0.0", DEFAULT_SYSTEM_PROMPT)
+        # --- Tab: Prompt Elements ---
+        self.txt_system_prompt = ctk.CTkTextbox(self.tab_prompt)
+        self.txt_system_prompt.pack(fill="both", expand=True, pady=5)
 
-        # === TAB 3: CLI CONFIG (Глобальные настройки для ПКМ) ===
-        tab_cli = self.tab_view.tab("CLI/Config")
+        # --- Tab: Settings Elements ---
+        ctk.CTkLabel(self.tab_settings, text="Интеграция с Windows", font=ctk.CTkFont(size=14, weight="bold")).pack(
+            pady=(10, 5))
+        ctk.CTkLabel(self.tab_settings, text="Добавляет пункт 'Scan with CodeContext AI'\nв контекстное меню папок.",
+                     text_color="gray", font=("Arial", 11)).pack(pady=(0, 10))
 
-        ctk.CTkLabel(tab_cli, text="Настройки для запуска\nчерез правую кнопку мыши:", text_color="gray").pack(pady=(0, 10))
+        btn_install = ctk.CTkButton(self.tab_settings, text="Установить в контекстное меню", fg_color="green",
+                                    command=self._install_context_menu)
+        btn_install.pack(fill="x", pady=5)
 
-        self.chk_cli_minify = ctk.CTkCheckBox(tab_cli, text="Minify (сжать)")
-        self.chk_cli_minify.pack(anchor="w", pady=2)
+        btn_remove = ctk.CTkButton(self.tab_settings, text="Удалить из меню", fg_color="red",
+                                   command=self._remove_context_menu)
+        btn_remove.pack(fill="x", pady=5)
 
-        self.chk_cli_comments = ctk.CTkCheckBox(tab_cli, text="Без комментариев")
-        self.chk_cli_comments.pack(anchor="w", pady=2)
+        ctk.CTkLabel(self.tab_settings, text="Управление", font=ctk.CTkFont(size=14, weight="bold")).pack(pady=(20, 5))
+        btn_reset = ctk.CTkButton(self.tab_settings, text="Сбросить настройки", fg_color="gray",
+                                  command=self._reset_settings)
+        btn_reset.pack(fill="x", pady=5)
 
-        self.chk_cli_secrets = ctk.CTkCheckBox(tab_cli, text="Скрывать секреты")
-        self.chk_cli_secrets.pack(anchor="w", pady=2)
+        ctk.CTkLabel(self.tab_settings, text="v3.6 Clean Arch", text_color="gray").pack(side="bottom", pady=10)
 
-        self.chk_cli_tree = ctk.CTkCheckBox(tab_cli, text="Включать дерево")
-        self.chk_cli_tree.pack(anchor="w", pady=2)
+        # === Main Area ===
+        main_frame = ctk.CTkFrame(self, fg_color="transparent")
+        main_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
+        main_frame.grid_rowconfigure(3, weight=1)
+        main_frame.grid_columnconfigure(0, weight=1)
 
-        ctk.CTkLabel(tab_cli, text="Дефолтный промпт для CLI:", anchor="w").pack(fill="x", pady=(10, 0))
-        self.txt_cli_prompt = ctk.CTkTextbox(tab_cli, height=100)
-        self.txt_cli_prompt.pack(fill="x", pady=5)
-
-        ctk.CTkButton(tab_cli, text="💾 Сохранить настройки CLI", fg_color="green", command=self.save_cli_settings).pack(fill="x", pady=20)
-
-        # Load Defaults into CLI Tab
-        self.load_cli_ui()
-
-        # --- Main Area ---
-        main = ctk.CTkFrame(self, fg_color="transparent")
-        main.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
-        main.grid_rowconfigure(3, weight=1)
-        main.grid_columnconfigure(0, weight=1)
-
-        # Folders List
-        self.scroll_folders = ctk.CTkScrollableFrame(main, height=100, label_text="Выбранные источники")
+        self.scroll_folders = ctk.CTkScrollableFrame(main_frame, height=120, label_text="Источники")
         self.scroll_folders.grid(row=0, column=0, sticky="ew", pady=(0, 10))
 
-        # Current Run Toggles
-        opts_frame = ctk.CTkFrame(main, fg_color="transparent")
-        opts_frame.grid(row=1, column=0, sticky="ew", pady=(0, 10))
+        opts = ctk.CTkFrame(main_frame, fg_color="transparent")
+        opts.grid(row=1, column=0, sticky="ew", pady=(0, 10))
 
-        self.chk_minify = ctk.CTkCheckBox(opts_frame, text="Minify")
+        self.chk_minify = ctk.CTkCheckBox(opts, text="Minify")
         self.chk_minify.pack(side="left", padx=10)
-        self.chk_comments = ctk.CTkCheckBox(opts_frame, text="No Comments")
+        self.chk_comments = ctk.CTkCheckBox(opts, text="No Comments")
         self.chk_comments.pack(side="left", padx=10)
-        self.chk_secrets = ctk.CTkCheckBox(opts_frame, text="No Secrets")
-        self.chk_secrets.select()
+        self.chk_secrets = ctk.CTkCheckBox(opts, text="No Secrets")
         self.chk_secrets.pack(side="left", padx=10)
 
-        ctk.CTkLabel(opts_frame, text="Формат:").pack(side="left", padx=(20, 5))
-        self.format_var = ctk.StringVar(value="Markdown")
-        ctk.CTkSegmentedButton(opts_frame, values=["Markdown", "XML", "Plain"], variable=self.format_var).pack(side="left")
+        self.seg_format = ctk.CTkSegmentedButton(opts, values=["markdown", "xml", "plain"])
+        self.seg_format.pack(side="right")
+        self.seg_format.set("markdown")
 
-        # Buttons
-        btn_frame = ctk.CTkFrame(main)
-        btn_frame.grid(row=2, column=0, sticky="ew", pady=(0, 10))
+        btns = ctk.CTkFrame(main_frame)
+        btns.grid(row=2, column=0, sticky="ew", pady=(0, 10))
 
-        self.btn_clip = ctk.CTkButton(btn_frame, text="📋 В Буфер", height=40, font=ctk.CTkFont(weight="bold"),
-                                      command=lambda: self.run_task('clipboard'))
-        self.btn_clip.pack(side="left", padx=10, pady=10, expand=True, fill="x")
+        ctk.CTkButton(btns, text="В Буфер", command=lambda: self._run_process("clipboard")).pack(side="left",
+                                                                                                 expand=True, fill="x",
+                                                                                                 padx=5, pady=5)
+        ctk.CTkButton(btns, text="В Файл", command=lambda: self._run_process("file")).pack(side="left", expand=True,
+                                                                                           fill="x", padx=5, pady=5)
+        ctk.CTkButton(btns, text="В PDF", command=lambda: self._run_process("pdf")).pack(side="left", expand=True,
+                                                                                         fill="x", padx=5, pady=5)
 
-        self.btn_file = ctk.CTkButton(btn_frame, text="💾 В Файл", height=40, command=lambda: self.run_task('file'))
-        self.btn_file.pack(side="left", padx=10, pady=10, expand=True, fill="x")
+        self.txt_log = ctk.CTkTextbox(main_frame, font=("Consolas", 12))
+        self.txt_log.grid(row=3, column=0, sticky="nsew")
 
-        self.btn_pdf = ctk.CTkButton(btn_frame, text="📄 В PDF", height=40, command=lambda: self.run_task('pdf'))
-        self.btn_pdf.pack(side="left", padx=10, pady=10, expand=True, fill="x")
+        status_frame = ctk.CTkFrame(main_frame, height=30)
+        status_frame.grid(row=4, column=0, sticky="ew", pady=(10, 0))
 
-        # Logs
-        self.log_box = ctk.CTkTextbox(main, font=("Consolas", 12))
-        self.log_box.grid(row=3, column=0, sticky="nsew")
-        self.log_box.insert("0.0", "Готов к работе.\n")
+        self.progress_bar = ctk.CTkProgressBar(status_frame)
+        self.progress_bar.pack(fill="x", side="top")
+        self.progress_bar.set(0)
 
-        # Status
-        self.status_frame = ctk.CTkFrame(main, height=30)
-        self.status_frame.grid(row=4, column=0, sticky="ew", pady=(10, 0))
-        self.progress = ctk.CTkProgressBar(self.status_frame)
-        self.progress.pack(fill="x", side="top")
-        self.progress.set(0)
-        self.lbl_stat = ctk.CTkLabel(self.status_frame, text="Idle", text_color="gray")
-        self.lbl_stat.pack(side="left", padx=5)
-        self.lbl_token = ctk.CTkLabel(self.status_frame, text="Tokens: 0", text_color="gray")
-        self.lbl_token.pack(side="right", padx=5)
+        self.lbl_status = ctk.CTkLabel(status_frame, text="Idle", text_color="gray")
+        self.lbl_status.pack(side="left", padx=5)
+        self.lbl_tokens = ctk.CTkLabel(status_frame, text="Tokens: 0", text_color="gray")
+        self.lbl_tokens.pack(side="right", padx=5)
 
-    def load_cli_ui(self):
-        """Load settings from JSON to CLI Tab widgets."""
-        cfg = SettingsManager.load()
-        if cfg['cli_minify']: self.chk_cli_minify.select()
-        else: self.chk_cli_minify.deselect()
+    def _load_initial_settings(self):
+        data = self.settings_repo.load()
+        if not data:
+            data = {
+                'extensions': PRESETS['Default']['ext'],
+                'ignored_paths': PRESETS['Default']['ign'],
+                'system_prompt': DEFAULT_SYSTEM_PROMPT
+            }
+        self.dispatcher.dispatch(SETTINGS_LOADED, data)
 
-        if cfg['cli_remove_comments']: self.chk_cli_comments.select()
-        else: self.chk_cli_comments.deselect()
-
-        if cfg['cli_remove_secrets']: self.chk_cli_secrets.select()
-        else: self.chk_cli_secrets.deselect()
-
-        if cfg['cli_include_tree']: self.chk_cli_tree.select()
-        else: self.chk_cli_tree.deselect()
-
-        self.txt_cli_prompt.delete("0.0", "end")
-        self.txt_cli_prompt.insert("0.0", cfg['cli_system_prompt'])
-
-    def save_cli_settings(self):
-        """Save UI CLI settings to JSON."""
-        settings = SettingsManager.load() # Get base to keep exts/igns if needed
-        settings.update({
-            "cli_minify": bool(self.chk_cli_minify.get()),
-            "cli_remove_comments": bool(self.chk_cli_comments.get()),
-            "cli_remove_secrets": bool(self.chk_cli_secrets.get()),
-            "cli_include_tree": bool(self.chk_cli_tree.get()),
-            "cli_system_prompt": self.txt_cli_prompt.get("1.0", "end-1c"),
-            # We can also save current extensions as CLI defaults if we want
-            "cli_exts": self.entry_ext.get(),
-            "cli_ign": self.entry_ign.get()
-        })
-        SettingsManager.save(settings)
-        messagebox.showinfo("Настройки", "Настройки для контекстного меню сохранены!")
-
-    def apply_preset(self, choice):
-        data = PRESETS.get(choice)
-        if data:
+    def _on_store_changed(self, state):
+        if self.entry_ext.get() != state.settings.extensions:
             self.entry_ext.delete(0, "end")
-            self.entry_ext.insert(0, data["ext"])
+            self.entry_ext.insert(0, state.settings.extensions)
+
+        if self.entry_ign.get() != state.settings.ignored_paths:
             self.entry_ign.delete(0, "end")
-            self.entry_ign.insert(0, data["ign"])
+            self.entry_ign.insert(0, state.settings.ignored_paths)
 
-    def add_folder(self):
+        current_prompt = self.txt_system_prompt.get("1.0", "end-1c")
+        if current_prompt != state.settings.system_prompt and not self.txt_system_prompt.focus_get():
+            self.txt_system_prompt.delete("1.0", "end")
+            self.txt_system_prompt.insert("1.0", state.settings.system_prompt)
+
+        self._set_check(self.chk_minify, state.settings.minify)
+        self._set_check(self.chk_comments, state.settings.remove_comments)
+        self._set_check(self.chk_secrets, state.settings.remove_secrets)
+        self._set_check(self.chk_tree, state.settings.include_tree)
+        self._set_check(self.chk_git, state.settings.use_git)
+
+        if len(self.scroll_folders.winfo_children()) != len(state.selected_folders):
+            for w in self.scroll_folders.winfo_children():
+                w.destroy()
+            for folder in state.selected_folders:
+                row = ctk.CTkFrame(self.scroll_folders)
+                row.pack(fill="x", pady=2)
+                ctk.CTkLabel(row, text=f"📂 {folder}", anchor="w").pack(side="left", padx=5)
+
+        self.txt_log.configure(state="normal")
+        self.txt_log.delete("1.0", "end")
+        for log in state.logs:
+            self.txt_log.insert("end", f"{log}\n")
+        self.txt_log.see("end")
+        self.txt_log.configure(state="disabled")
+
+        self.lbl_status.configure(text=state.status_message)
+        self.progress_bar.set(state.progress)
+        self.lbl_tokens.configure(text=f"Tokens: {state.total_tokens}")
+
+        state_state = "disabled" if state.is_loading else "normal"
+        self.tab_view.configure(state=state_state)
+
+    def _set_check(self, chk, val):
+        if val:
+            chk.select()
+        else:
+            chk.deselect()
+
+    def _apply_preset(self, choice):
+        preset = PRESETS.get(choice)
+        if preset:
+            self.dispatcher.dispatch(SETTINGS_UPDATE, {
+                'extensions': preset['ext'],
+                'ignored_paths': preset['ign']
+            })
+
+    def _add_folder(self):
         path = filedialog.askdirectory()
-        if path and path not in self.selected_folders:
-            self.selected_folders.append(path)
-            row = ctk.CTkFrame(self.scroll_folders)
-            row.pack(fill="x", pady=2)
-            ctk.CTkLabel(row, text=f"📂 {path}", anchor="w").pack(side="left", padx=5)
+        if path:
+            self.dispatcher.dispatch(FOLDER_ADD, path)
 
-    def clear_folders(self):
-        self.selected_folders.clear()
-        for w in self.scroll_folders.winfo_children():
-            w.destroy()
+    def _clear_folders(self):
+        self.dispatcher.dispatch(FOLDER_CLEAR)
 
-    def log(self, msg):
-        self.log_box.configure(state="normal")
-        self.log_box.insert("end", f"{msg}\n")
-        self.log_box.see("end")
-        self.log_box.configure(state="disabled")
+    def _install_context_menu(self):
+        try:
+            success, msg = self.integration_service.install_context_menu()
+            if success:
+                messagebox.showinfo("Успех", msg)
+                self.dispatcher.dispatch(UI_ADD_LOG, f"System: {msg}")
+            else:
+                messagebox.showerror("Ошибка", msg)
+        except SystemExit:
+            pass
 
-    def update_status(self, msg, progress):
-        self.lbl_stat.configure(text=msg)
-        self.progress.set(progress)
+    def _remove_context_menu(self):
+        try:
+            success, msg = self.integration_service.remove_context_menu()
+            if success:
+                messagebox.showinfo("Успех", msg)
+                self.dispatcher.dispatch(UI_ADD_LOG, f"System: {msg}")
+            else:
+                messagebox.showerror("Ошибка", msg)
+        except SystemExit:
+            pass
 
-    def lock_ui(self, lock):
-        state = "disabled" if lock else "normal"
-        self.btn_clip.configure(state=state)
-        self.btn_file.configure(state=state)
-        self.btn_pdf.configure(state=state)
+    def _reset_settings(self):
+        if messagebox.askyesno("Сброс", "Сбросить настройки к значениям по умолчанию?"):
+            default_data = {
+                'extensions': PRESETS['Default']['ext'],
+                'ignored_paths': PRESETS['Default']['ign'],
+                'system_prompt': DEFAULT_SYSTEM_PROMPT,
+                'minify': True,
+                'remove_comments': True,
+                'remove_secrets': True,
+                'include_tree': True
+            }
+            self.dispatcher.dispatch(SETTINGS_UPDATE, default_data)
+            self.settings_repo.save(default_data)
+            self.dispatcher.dispatch(UI_ADD_LOG, "Настройки сброшены")
 
-    def run_task(self, target):
-        if not self.selected_folders:
-            messagebox.showwarning("Ошибка", "Нет папок для обработки")
-            return
-
-        self.lock_ui(True)
-        self.log_box.configure(state="normal")
-        self.log_box.delete("1.0", "end")
-        self.log_box.configure(state="disabled")
-
-        params = {
-            'exts': self.entry_ext.get().split(),
-            'ign': {x.strip() for x in self.entry_ign.get().split(',')},
+    def _run_process(self, target):
+        self.dispatcher.dispatch(SETTINGS_UPDATE, {
+            'extensions': self.entry_ext.get(),
+            'ignored_paths': self.entry_ign.get(),
             'minify': bool(self.chk_minify.get()),
             'remove_comments': bool(self.chk_comments.get()),
             'remove_secrets': bool(self.chk_secrets.get()),
-            'use_git': bool(self.chk_git.get()),
             'include_tree': bool(self.chk_tree.get()),
-            'system_prompt': self.txt_prompt.get("1.0", "end-1c"),
-            'format': self.format_var.get().lower(),
-            'target': target
-        }
+            'use_git': bool(self.chk_git.get()),
+            'system_prompt': self.txt_system_prompt.get("1.0", "end-1c"),
+            'output_format': self.seg_format.get()
+        })
 
-        threading.Thread(target=self._worker, args=(params,), daemon=True).start()
+        if not self.store.state.selected_folders:
+            messagebox.showwarning("Внимание", "Выберите папки для сканирования")
+            return
 
-    def _worker(self, params):
+        threading.Thread(target=self._worker, args=(target,), daemon=True).start()
+
+    def _worker(self, target):
+        """
+        ОРКЕСТРАЦИЯ ПРОЦЕССА (Controller / Thunk)
+        Здесь происходит вызов сервисов в нужном порядке.
+        """
+        self.dispatcher.dispatch(UI_SET_LOADING, True)
+        self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Сканирование...", 'progress': 0.1})
+        self.dispatcher.dispatch(UI_ADD_LOG, "Начало работы...")
+
+        state = self.store.state
+
         try:
-            self.update_status("Сканирование...", 0.1)
-            scanner = FileScanner(params['exts'], params['ign'])
-            files_to_process = scanner.scan(self.selected_folders, use_git=params['use_git'])
-
-            total = len(files_to_process)
-            if total == 0:
-                self.log("❌ Файлы не найдены.")
-                self.update_status("Нет файлов", 0)
-                return
-
-            self.log(f"🔎 Найдено файлов: {total}")
-            file_entries = []
-
-            for i, path in enumerate(files_to_process):
-                try:
-                    if path.stat().st_size > MAX_FILE_SIZE_MB * 1024 * 1024:
-                        continue
-                    content = path.read_text(encoding='utf-8', errors='replace')
-                    clean_content = self.cleaner_service.process(content, path.suffix, params)
-                    file_entries.append({'path': str(path), 'content': clean_content})
-                except Exception: pass
-
-                if i % 10 == 0:
-                    self.update_status(f"Обработка...", 0.2 + (0.6 * (i / total)))
-
-            self.update_status("Форматирование...", 0.9)
-            result_text = FormatterService.format(
-                file_entries,
-                params['format'],
-                include_tree=params['include_tree'],
-                system_prompt=params['system_prompt']
+            # 1. СКАНИРОВАНИЕ (Получаем список путей)
+            files_paths = self.file_service.scan_folders(
+                state.selected_folders,
+                state.settings.extensions,
+                state.settings.ignored_paths,
+                state.settings.use_git
             )
 
-            tokens = self.token_service.count(result_text)
-            self.lbl_token.configure(text=f"Tokens: ~{tokens}")
+            if not files_paths:
+                self.dispatcher.dispatch(SCAN_FAILURE, "Файлы не найдены")
+                self.dispatcher.dispatch(UI_SET_LOADING, False)
+                return
 
-            target = params['target']
+            self.dispatcher.dispatch(SCAN_SUCCESS, files_paths)
+            self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Чтение файлов...", 'progress': 0.2})
+
+            # 2. ЧТЕНИЕ (ProcessingService только читает, не чистит)
+            raw_files = self.process_service.read_files(files_paths)
+
+            self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Обработка...", 'progress': 0.4})
+
+            # 3. ОБРАБОТКА (Оркестрация Cleaning + Tokenizing в цикле)
+            processed_results = []
+
+            for i, raw_file in enumerate(raw_files):
+                # Обновляем прогресс каждые 10 файлов
+                if i % 10 == 0:
+                    prog = 0.4 + (0.4 * (i / len(raw_files)))
+                    self.dispatcher.dispatch(UI_UPDATE_STATUS,
+                                             {'message': f"Обработка {i}/{len(raw_files)}...", 'progress': prog})
+
+                content = raw_file['content']
+                ext = raw_file['ext']
+
+                # A. Cleaning
+                cleaned_content = self.cleaner_service.clean(content, ext, state.settings)
+
+                # B. Tokenizing
+                tokens = self.token_service.count_tokens(cleaned_content)
+
+                # C. Create DTO
+                processed_results.append(ProcessedFile(
+                    path=raw_file['path'],
+                    content=cleaned_content,
+                    tokens=tokens
+                ))
+
+            self.dispatcher.dispatch(PROCESSING_SUCCESS, processed_results)
+            self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Форматирование...", 'progress': 0.9})
+
+            # 4. ФОРМАТИРОВАНИЕ
+            text_result = self.format_service.format_output(
+                processed_results,
+                state.settings.output_format,
+                state.settings.include_tree,
+                state.settings.system_prompt
+            )
+
+            total_tokens = sum(f.tokens for f in processed_results)
+            self.dispatcher.dispatch(FORMATTING_SUCCESS, {'text': text_result, 'tokens': total_tokens})
+
+            # 5. ВЫВОД (Output)
+            self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Сохранение...", 'progress': 0.95})
+
             if target == 'clipboard':
-                pyperclip.copy(result_text)
-                self.log(f"✅ Успешно! Скопировано.")
+                self.output_service.copy_to_clipboard(text_result)
+                self.dispatcher.dispatch(UI_ADD_LOG, "Скопировано в буфер обмена")
             elif target == 'file':
-                ext = f".{params['format']}" if params['format'] != 'plain' else ".txt"
+                ext = f".{state.settings.output_format}" if state.settings.output_format != 'plain' else ".txt"
                 path = filedialog.asksaveasfilename(defaultextension=ext)
                 if path:
-                    Path(path).write_text(result_text, encoding='utf-8')
-                    self.log(f"✅ Сохранено: {path}")
+                    self.output_service.save_to_file(text_result, path)
+                    self.dispatcher.dispatch(UI_ADD_LOG, f"Сохранено в {path}")
             elif target == 'pdf':
                 path = filedialog.asksaveasfilename(defaultextension=".pdf")
                 if path:
-                    PdfService.create_pdf(result_text, path)
-                    self.log(f"✅ PDF создан: {path}")
+                    self.output_service.save_to_pdf(text_result, path)
+                    self.dispatcher.dispatch(UI_ADD_LOG, f"PDF создан: {path}")
 
-            self.update_status("Готово", 1.0)
+            self.settings_repo.save(state.settings.__dict__)
+
         except Exception as e:
-            self.log(f"🔥 Ошибка: {e}")
+            self.dispatcher.dispatch(UI_ADD_LOG, f"CRITICAL ERROR: {e}")
             import traceback
             traceback.print_exc()
         finally:
-            self.lock_ui(False)
+            self.dispatcher.dispatch(UI_SET_LOADING, False)
+            self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Готово", 'progress': 1.0})
+
+    def on_closing(self):
+        if self.unsubscribe:
+            self.unsubscribe()
+        self.destroy()

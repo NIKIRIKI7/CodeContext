@@ -1,0 +1,9 @@
+{
+  "extensions": ".py .js .ts .vue .jsx .tsx .html .css .json .md .sql .xml .yaml .yml .sh .bat .go .java .cpp",
+  "ignored_paths": ".git, node_modules, .nuxt, __pycache__, dist, build, .idea, .vscode, venv, .venv, coverage, .next, target, bin, obj",
+  "system_prompt": "You are an expert software engineer. Analyze the following codebase structure and file contents. Provide improvements, refactoring suggestions, or answer specific questions based on this context.",
+  "minify": true,
+  "remove_comments": true,
+  "remove_secrets": true,
+  "include_tree": true
+}

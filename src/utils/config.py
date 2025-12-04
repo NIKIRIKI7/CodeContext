@@ -1,11 +1,8 @@
-"""
-Configuration and constants for CodeContext AI.
-"""
 import os
-import platform
 import re
+import platform
 
-# Presets for quick setup
+# Пресеты настроек для разных типов проектов
 PRESETS = {
     "Default": {
         "ext": ".py .js .ts .vue .jsx .tsx .html .css .json .md .sql .xml .yaml .yml .sh .bat .go .java .cpp",
@@ -25,25 +22,26 @@ PRESETS = {
     }
 }
 
-# Defaults
-DEFAULT_EXTENSIONS = PRESETS["Default"]["ext"]
-DEFAULT_IGNORED = PRESETS["Default"]["ign"]
+# Системный промпт по умолчанию
 DEFAULT_SYSTEM_PROMPT = "You are an expert software engineer. Analyze the following codebase structure and file contents. Provide improvements, refactoring suggestions, or answer specific questions based on this context."
 
+# Максимальный размер файла (в МБ)
 MAX_FILE_SIZE_MB = 2.0
 
-# Regex for finding secrets to redact
+# Паттерны для поиска секретов
 SECRET_PATTERNS = [
     re.compile(r'(api[_-]?key|auth[_-]?token|secret[_-]?key|password|pwd)["\']?\s*[:=]\s*["\']([a-zA-Z0-9_\-]{8,})["\']', re.IGNORECASE),
-    re.compile(r'(AKIA[0-9A-Z]{16})'),  # AWS Access Key
-    re.compile(r'(eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,})')  # JWT-like tokens
+    re.compile(r'(AKIA[0-9A-Z]{16})'),
+    re.compile(r'(eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,})')
 ]
 
+# Путь к шрифту для PDF
 def get_font_path():
     system = platform.system()
     if system == "Windows":
         path = os.path.join(os.environ["WINDIR"], "Fonts", "arial.ttf")
-        if os.path.exists(path): return path
+        if os.path.exists(path):
+            return path
     return None
 
 FONT_PATH = get_font_path()
