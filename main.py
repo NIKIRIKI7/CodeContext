@@ -1,5 +1,5 @@
 """
-Main entry point for the Code Aggregator application.
+Main entry point for the CodeContext AI application.
 """
 import sys
 from src.ui.main_window import App
