@@ -1,79 +1,43 @@
-"""Code cleaning and minification service."""
+"""Code cleaning, minification and secret scrubbing."""
 import re
 from typing import Dict, Any
-
+from src.config import SECRET_PATTERNS
 
 class CodeCleaner:
-    """Сервис очистки и минификации кода."""
-    
+    # Pre-compiled patterns for performance
+    BLOCK_COMMENT_JS = re.compile(r'/\*.*?\*/', re.DOTALL)
+    LINE_COMMENT_JS = re.compile(r'//.*$', re.MULTILINE)
+    LINE_COMMENT_PY = re.compile(r'#.*$', re.MULTILINE)
+
     @staticmethod
     def remove_comments(text: str, extension: str) -> str:
-        """
-        Базовое удаление комментариев на основе регулярных выражений.
-        
-        Args:
-            text: Source code text
-            extension: File extension to determine comment style
-            
-        Returns:
-            Text with comments removed
-        """
-        # C-style comments (JS, TS, C++, Java, CSS, SCSS)
-        if extension in ['.js', '.ts', '.vue', '.jsx', '.tsx', '.css', '.scss', '.java', '.cpp', '.c', '.h', '.go']:
-            # Удаляем блочные /* */ и строчные //
-            pattern = r"(\".*?\"|\'.*?\')|(/\*.*?\*/|//[^\r\n]*$)"
-            # Функция замены проверяет, является ли совпадение строкой кода или комментарием
-            def replacer(match):
-                if match.group(1): 
-                    return match.group(1)  # Это строка в кавычках, оставляем
-                return ""  # Это комментарий, удаляем
-            
-            return re.sub(pattern, replacer, text, flags=re.MULTILINE|re.DOTALL)
-        
-        # Python-style comments
-        elif extension in ['.py', '.sh', '.yaml', '.yml', '.rb']:
-             # Удаляем #, но не внутри строк
-             pattern = r"(\".*?\"|\'.*?\')|(#.*$)"
-             def replacer(match):
-                if match.group(1): 
-                    return match.group(1)
-                return ""
-             return re.sub(pattern, replacer, text, flags=re.MULTILINE)
-        
+        if extension in ['.js', '.ts', '.vue', '.jsx', '.tsx', '.css', '.scss', '.java', '.cpp', '.c', '.h', '.go', '.php']:
+            text = CodeCleaner.BLOCK_COMMENT_JS.sub('', text)
+            text = CodeCleaner.LINE_COMMENT_JS.sub('', text)
+        elif extension in ['.py', '.sh', '.yaml', '.yml', '.rb', '.dockerfile']:
+            text = CodeCleaner.LINE_COMMENT_PY.sub('', text)
         return text
 
     @staticmethod
     def minify_whitespace(text: str) -> str:
-        """
-        Удаляет лишние пустые строки и пробелы в начале/конце строк.
-        
-        Args:
-            text: Source code text
-            
-        Returns:
-            Minified text
-        """
-        lines = [line.strip() for line in text.splitlines()]
-        # Фильтруем пустые строки, оставляя структуру минимально читаемой
-        non_empty_lines = [line for line in lines if line]
-        return "\n".join(non_empty_lines)
+        # Fast list comprehension is faster than regex for simple line stripping
+        return "\n".join([line.strip() for line in text.splitlines() if line.strip()])
+
+    @staticmethod
+    def remove_secrets(text: str) -> str:
+        """Masks potential API keys and passwords."""
+        for pattern in SECRET_PATTERNS:
+            text = pattern.sub(r'\1 [REDACTED]', text)
+        return text
 
     def process(self, text: str, ext: str, options: Dict[str, Any]) -> str:
-        """
-        Process text with cleaning and minification options.
-        
-        Args:
-            text: Source code text
-            ext: File extension
-            options: Dictionary with processing options
-            
-        Returns:
-            Processed text
-        """
         if options.get('remove_comments'):
             text = self.remove_comments(text, ext)
-        
+
+        if options.get('remove_secrets'):
+            text = self.remove_secrets(text)
+
         if options.get('minify'):
             text = self.minify_whitespace(text)
-            
+
         return text

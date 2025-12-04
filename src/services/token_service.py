@@ -1,6 +1,5 @@
 """Token service for counting tokens in text for LLM context evaluation."""
 import tiktoken
-from typing import Dict, Any
 
 
 class TokenService:

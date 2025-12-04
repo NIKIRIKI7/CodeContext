@@ -1,31 +1,49 @@
 """
-Configuration and constants for the Code Aggregator application (v3.0).
+Configuration and constants for CodeContext AI.
 """
-import platform
 import os
+import platform
+import re
 
-# Default file extensions to scan
-DEFAULT_EXTENSIONS = ".py .js .ts .vue .jsx .tsx .html .css .json .md .sql .xml .yaml .yml .sh .bat .go .java .cpp"
-DEFAULT_IGNORED = ".git, node_modules, .nuxt, __pycache__, dist, build, .idea, .vscode, venv, .venv, coverage, .next, target"
+# Presets for quick setup
+PRESETS = {
+    "Default": {
+        "ext": ".py .js .ts .vue .jsx .tsx .html .css .json .md .sql .xml .yaml .yml .sh .bat .go .java .cpp",
+        "ign": ".git, node_modules, .nuxt, __pycache__, dist, build, .idea, .vscode, venv, .venv, coverage, .next, target, bin, obj"
+    },
+    "Python Backend": {
+        "ext": ".py .toml .ini .env.example .dockerfile .yaml .sh",
+        "ign": "__pycache__, venv, .venv, .git, .idea, .pytest_cache"
+    },
+    "Web Frontend": {
+        "ext": ".js .ts .jsx .tsx .vue .html .css .scss .json",
+        "ign": "node_modules, dist, .next, .nuxt, .git, coverage"
+    },
+    "C++ / Embedded": {
+        "ext": ".cpp .c .h .hpp .ino .cmake .txt .xml",
+        "ign": "build, bin, obj, .git, .vscode"
+    }
+}
 
-# Constants
-MAX_FILE_SIZE_MB = 2.0  # Skip files larger than 2 MB to prevent memory issues
+# Defaults
+DEFAULT_EXTENSIONS = PRESETS["Default"]["ext"]
+DEFAULT_IGNORED = PRESETS["Default"]["ign"]
+DEFAULT_SYSTEM_PROMPT = "You are an expert software engineer. Analyze the following codebase structure and file contents. Provide improvements, refactoring suggestions, or answer specific questions based on this context."
 
-# Font path for PDF generation based on platform
+MAX_FILE_SIZE_MB = 2.0
+
+# Regex for finding secrets to redact
+SECRET_PATTERNS = [
+    re.compile(r'(api[_-]?key|auth[_-]?token|secret[_-]?key|password|pwd)["\']?\s*[:=]\s*["\']([a-zA-Z0-9_\-]{8,})["\']', re.IGNORECASE),
+    re.compile(r'(AKIA[0-9A-Z]{16})'),  # AWS Access Key
+    re.compile(r'(eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,})')  # JWT-like tokens
+]
+
 def get_font_path():
     system = platform.system()
     if system == "Windows":
         path = os.path.join(os.environ["WINDIR"], "Fonts", "arial.ttf")
         if os.path.exists(path): return path
-    elif system == "Darwin":  # MacOS
-        paths = ["/Library/Fonts/Arial.ttf", "/System/Library/Fonts/Helvetica.ttc"]
-        for p in paths:
-            if os.path.exists(p): return p
-    elif system == "Linux":
-        paths = ["/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-                 "/usr/share/fonts/TTF/Arial.ttf"]
-        for p in paths:
-            if os.path.exists(p): return p
     return None
 
 FONT_PATH = get_font_path()
