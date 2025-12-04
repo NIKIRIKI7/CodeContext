@@ -1,8 +1,8 @@
 import os
-import re
 import platform
+import re
 
-# Пресеты настроек для разных типов проектов
+# Пресеты настроек для разных типов проектов (расширения и игнор)
 PRESETS = {
     "Default": {
         "ext": ".py .js .ts .vue .jsx .tsx .html .css .json .md .sql .xml .yaml .yml .sh .bat .go .java .cpp",
@@ -22,8 +22,16 @@ PRESETS = {
     }
 }
 
-# Системный промпт по умолчанию
-DEFAULT_SYSTEM_PROMPT = "You are an expert software engineer. Analyze the following codebase structure and file contents. Provide improvements, refactoring suggestions, or answer specific questions based on this context."
+# Пресеты системных промптов
+PROMPT_PRESETS = {
+    "Code Analysis (Default)": "You are an expert software engineer. Analyze the following codebase structure and file contents. Provide improvements, refactoring suggestions, or answer specific questions based on this context.",
+    "Documentation Writer": "You are a technical writer. Based on the provided code, generate comprehensive documentation, including README structure, API references, and installation guides.",
+    "Bug Hunter": "You are a QA specialist and security expert. Analyze the provided code for potential bugs, security vulnerabilities, and race conditions. Provide a list of critical issues and how to fix them.",
+    "Architecture Review": "You are a software architect. Evaluate the project structure, separation of concerns, and design patterns used. Suggest architectural improvements.",
+    "Custom": "" # Оставляем пустым или не меняем текущий текст
+}
+
+DEFAULT_SYSTEM_PROMPT = PROMPT_PRESETS["Code Analysis (Default)"]
 
 # Максимальный размер файла (в МБ)
 MAX_FILE_SIZE_MB = 2.0
