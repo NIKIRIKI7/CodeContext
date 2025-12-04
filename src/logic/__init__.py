@@ -1,3 +1,0 @@
-"""
-Logic layer package initialization.
-"""

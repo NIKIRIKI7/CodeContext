@@ -1,3 +1,1 @@
-"""
-Services package initialization.
-"""
+"""Package initialization for services module."""

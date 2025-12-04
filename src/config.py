@@ -1,16 +1,15 @@
 """
-Configuration and constants for the Code Aggregator application.
+Configuration and constants for the Code Aggregator application (v3.0).
 """
 import platform
 import os
 
 # Default file extensions to scan
-DEFAULT_EXTENSIONS = ".py .js .ts .vue .jsx .tsx .html .css .json .md .sql .xml .yaml .yml .sh .bat"
-DEFAULT_IGNORED = ".git, node_modules, .nuxt, __pycache__, dist, build, .idea, .vscode, venv, .venv, coverage, .next"
+DEFAULT_EXTENSIONS = ".py .js .ts .vue .jsx .tsx .html .css .json .md .sql .xml .yaml .yml .sh .bat .go .java .cpp"
+DEFAULT_IGNORED = ".git, node_modules, .nuxt, __pycache__, dist, build, .idea, .vscode, venv, .venv, coverage, .next, target"
 
 # Constants
-MAX_FILE_SIZE_MB = 10.0  # Skip files larger than 2 MB to prevent memory issues
-DEFAULT_EXTENSIONS_LIST = DEFAULT_EXTENSIONS.split()
+MAX_FILE_SIZE_MB = 2.0  # Skip files larger than 2 MB to prevent memory issues
 
 # Font path for PDF generation based on platform
 def get_font_path():
