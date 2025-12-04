@@ -1,18 +1,28 @@
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
 
+
 @dataclass
 class AppSettings:
     """Модель настроек приложения"""
-    extensions: str = ""
-    ignored_paths: str = ""
+    # Основные настройки (GUI)
+    extensions: str = ".py .js .ts .vue .jsx .tsx .html .css .json .md .sql .xml .yaml .yml .sh .bat .go .java .cpp"
+    ignored_paths: str = ".git, node_modules, .nuxt, __pycache__, dist, build, .idea, .vscode, venv, .venv, coverage, .next, target, bin, obj"
     minify: bool = True
     remove_comments: bool = True
     remove_secrets: bool = True
     include_tree: bool = True
     use_git: bool = False
-    system_prompt: str = ""
+    system_prompt: str = "You are an expert software engineer. Analyze the following codebase structure and file contents."
     output_format: str = "markdown"
+
+    # Настройки для Context Menu (CLI)
+    cli_minify: bool = True
+    cli_remove_comments: bool = True
+    cli_remove_secrets: bool = True
+    cli_include_tree: bool = True
+    cli_format: str = "plain"  # plain, markdown, xml
+
 
 @dataclass
 class ProcessedFile:
@@ -21,21 +31,22 @@ class ProcessedFile:
     content: str
     tokens: int
 
+
 @dataclass
 class AppState:
     """Глобальное состояние приложения"""
     # Настройки
     settings: AppSettings = field(default_factory=AppSettings)
-    
+
     # Входные данные
     selected_folders: List[str] = field(default_factory=list)
-    
+
     # Результаты работы
     scanned_files_paths: List[str] = field(default_factory=list)
     processed_files: List[ProcessedFile] = field(default_factory=list)
     final_output_text: str = ""
     total_tokens: int = 0
-    
+
     # UI Состояние
     status_message: str = "Готов к работе"
     progress: float = 0.0
