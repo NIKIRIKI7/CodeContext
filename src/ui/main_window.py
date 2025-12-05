@@ -1,5 +1,7 @@
+import os
 import customtkinter as ctk
 from tkinter import filedialog, messagebox
+from tkinterdnd2 import TkinterDnD, DND_FILES
 from ..store.store import Store
 from ..controllers.main_controller import MainController
 from ..utils.config import PRESETS, PROMPT_PRESETS
@@ -8,13 +10,19 @@ ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
 
 
-class MainWindow(ctk.CTk):
+class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
     """
     Главное окно приложения (View).
+    Добавлена поддержка Drag & Drop через tkinterdnd2.
     """
 
     def __init__(self, store: Store, controller: MainController):
+        # 1. Инициализация CTk
         super().__init__()
+
+        # 2. Инициализация DnD (Критически важно вызвать это сразу)
+        self.TkdndVersion = TkinterDnD._require(self)
+
         self.store = store
         self.controller = controller
         self.title("CodeContext AI - Clean Architecture")
@@ -22,6 +30,11 @@ class MainWindow(ctk.CTk):
 
         self.unsubscribe = self.store.subscribe(self._on_store_changed)
         self._init_ui()
+
+        # 3. Регистрируем DnD на все окно целиком (самый надежный способ)
+        self.drop_target_register(DND_FILES)
+        self.dnd_bind('<<Drop>>', self._on_drop)
+
         self.controller.load_initial_settings()
 
     def _init_ui(self):
@@ -133,7 +146,7 @@ class MainWindow(ctk.CTk):
         ctk.CTkButton(self.tab_settings, text="Сбросить все", fg_color="gray", command=self._on_reset_settings).pack(
             fill="x", pady=5)
 
-        ctk.CTkLabel(self.tab_settings, text="v4.2 GitHub Support", text_color="gray").pack(side="bottom", pady=10)
+        ctk.CTkLabel(self.tab_settings, text="v4.4 Drag & Drop Fixed", text_color="gray").pack(side="bottom", pady=10)
 
         # === MAIN CONTENT ===
         main_frame = ctk.CTkFrame(self, fg_color="transparent")
@@ -142,7 +155,8 @@ class MainWindow(ctk.CTk):
         main_frame.grid_columnconfigure(0, weight=1)
 
         # 1. Folders List
-        self.scroll_folders = ctk.CTkScrollableFrame(main_frame, height=120, label_text="Источники")
+        self.scroll_folders = ctk.CTkScrollableFrame(main_frame, height=120,
+                                                     label_text="Источники (Перетащите папки сюда)")
         self.scroll_folders.grid(row=0, column=0, sticky="ew", pady=(0, 10))
 
         # 2. Options Bar
@@ -194,6 +208,41 @@ class MainWindow(ctk.CTk):
         self.lbl_tokens = ctk.CTkLabel(status_frame, text="Tokens: 0", text_color="gray")
         self.lbl_tokens.pack(side="right", padx=5)
 
+    # <--- HANDLER ---
+    def _on_drop(self, event):
+        """Обработка перетаскивания файлов/папок"""
+        if not event.data:
+            return
+
+        try:
+            # Парсим пути, учитывая пробелы и фигурные скобки Windows
+            raw_data = event.data
+            paths = self.tk.splitlist(raw_data)
+
+            count = 0
+            for path in paths:
+                # Очистка от лишних кавычек или скобок, если tk.splitlist пропустил
+                path = path.strip('{}')
+
+                if os.path.isdir(path):
+                    self.controller.add_folder(path)
+                    count += 1
+                elif os.path.isfile(path):
+                    # Если перетащили файл, берем его родительскую папку
+                    # или можно добавить сам файл, если доработать логику
+                    folder = os.path.dirname(path)
+                    self.controller.add_folder(folder)
+                    count += 1
+
+            if count > 0:
+                self.lbl_status.configure(text=f"Добавлено: {count}")
+
+        except Exception as e:
+            print(f"Drop error: {e}")
+            self.lbl_status.configure(text="Ошибка Drag&Drop")
+
+    # ---------------------------
+
     def _on_store_changed(self, state):
         """Обновление UI при изменении данных в Store"""
         if self.entry_ext.get() != state.settings.extensions:
@@ -243,7 +292,6 @@ class MainWindow(ctk.CTk):
             for folder in state.selected_folders:
                 row = ctk.CTkFrame(self.scroll_folders)
                 row.pack(fill="x", pady=2)
-                # Показываем (GitHub) для временных папок
                 is_temp = folder in state.temp_folders
                 prefix = "☁️" if is_temp else "📂"
                 ctk.CTkLabel(row, text=f"{prefix} {folder}", anchor="w").pack(side="left", padx=5)
@@ -374,7 +422,6 @@ class MainWindow(ctk.CTk):
             messagebox.showwarning("Внимание", msg)
 
     def on_closing(self):
-        # При закрытии окна очищаем временные папки
         self.controller.clear_folders()
         if self.unsubscribe:
             self.unsubscribe()
