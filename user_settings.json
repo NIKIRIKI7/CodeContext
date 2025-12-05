@@ -1,16 +1,18 @@
 {
-  "extensions": ".py .js .ts .vue .jsx .tsx .html .css .json .md .sql .xml .yaml .yml .sh .bat .go .java .cpp",
-  "ignored_paths": ".git, node_modules, .nuxt, __pycache__, dist, build, .idea, .vscode, venv, .venv, coverage, .next, target, bin, obj",
+  "extensions": ".js .ts .jsx .tsx .vue .html .css .scss .json",
+  "ignored_paths": "node_modules, dist, .next, .nuxt, .git, coverage",
   "minify": true,
   "remove_comments": true,
   "remove_secrets": true,
   "include_tree": true,
+  "skeleton_mode": true,
   "use_git": false,
   "system_prompt": "",
-  "output_format": "markdown",
+  "output_format": "plain",
   "cli_minify": true,
   "cli_remove_comments": true,
   "cli_remove_secrets": true,
   "cli_include_tree": true,
+  "cli_skeleton_mode": false,
   "cli_format": "xml"
 }

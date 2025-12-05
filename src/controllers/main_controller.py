@@ -1,14 +1,12 @@
 import threading
 import os
+import copy
 from typing import Tuple
-
 from ..store.store import Store
 from ..store.state import ProcessedFile
 from ..actions.dispatcher import Dispatcher
 from ..actions.action_types import *
 from ..utils.config import PRESETS, DEFAULT_SYSTEM_PROMPT
-
-# Импорт сервисов
 from ..services.file_service import FileService
 from ..services.processing_service import ProcessingService
 from ..services.cleaner_service import CleanerService
@@ -16,8 +14,7 @@ from ..services.token_service import TokenService
 from ..services.formatting_service import FormattingService
 from ..services.output_service import OutputService
 from ..services.integration_service import IntegrationService
-
-# Data Layer
+from ..services.skeleton_service import SkeletonService
 from ..data.file_system_repository import FileSystemRepository
 from ..data.settings_repository import SettingsRepository
 
@@ -31,14 +28,13 @@ class MainController:
     def __init__(self, store: Store, dispatcher: Dispatcher):
         self.store = store
         self.dispatcher = dispatcher
-
-        # --- Dependency Injection ---
         fs_repo = FileSystemRepository()
         self.settings_repo = SettingsRepository()
 
         self.file_service = FileService(fs_repo)
         self.process_service = ProcessingService(fs_repo)
         self.cleaner_service = CleanerService()
+        self.skeleton_service = SkeletonService()
         self.token_service = TokenService()
         self.format_service = FormattingService()
         self.output_service = OutputService()
@@ -73,10 +69,12 @@ class MainController:
             'remove_comments': True,
             'remove_secrets': True,
             'include_tree': True,
+            'skeleton_mode': False,
             'cli_minify': True,
             'cli_remove_comments': True,
             'cli_remove_secrets': True,
             'cli_include_tree': True,
+            'cli_skeleton_mode': False,
             'cli_format': "plain"
         }
         self.dispatcher.dispatch(SETTINGS_UPDATE, default_data)
@@ -84,7 +82,6 @@ class MainController:
         self.dispatcher.dispatch(UI_ADD_LOG, "Настройки сброшены")
 
     def apply_preset(self, preset_name: str):
-        """Применение пресета расширений"""
         preset = PRESETS.get(preset_name)
         if preset:
             self.dispatcher.dispatch(SETTINGS_UPDATE, {
@@ -128,7 +125,6 @@ class MainController:
         state = self.store.state
 
         try:
-            # 1. SCAN
             files_paths = self.file_service.scan_folders(
                 state.selected_folders,
                 state.settings.extensions,
@@ -144,13 +140,18 @@ class MainController:
             self.dispatcher.dispatch(SCAN_SUCCESS, files_paths)
             self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Чтение файлов...", 'progress': 0.2})
 
-            # 2. READ
             raw_files = self.process_service.read_files(files_paths)
 
             self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Обработка...", 'progress': 0.4})
 
-            # 3. PROCESS LOOP
             processed_results = []
+
+            # Подготовка настроек для очистки
+            # Если включен скелет, мы ОБЯЗАНЫ отключить минификацию,
+            # иначе Python AST парсер сломается из-за отсутствия отступов.
+            processing_settings = copy.copy(state.settings)
+            if state.settings.skeleton_mode:
+                processing_settings.minify = False
 
             for i, raw_file in enumerate(raw_files):
                 if i % 10 == 0:
@@ -161,8 +162,14 @@ class MainController:
                 content = raw_file['content']
                 ext = raw_file['ext']
 
-                # Используем настройки из Store
-                cleaned_content = self.cleaner_service.clean(content, ext, state.settings)
+                # 1. Очистка (с учетом отключенной минификации для скелета)
+                cleaned_content = self.cleaner_service.clean(content, ext, processing_settings)
+
+                # 2. Скелетирование
+                if state.settings.skeleton_mode:
+                    cleaned_content = self.skeleton_service.make_skeleton(cleaned_content, ext)
+
+                # 3. Токены
                 tokens = self.token_service.count_tokens(cleaned_content)
 
                 processed_results.append(ProcessedFile(
@@ -174,7 +181,6 @@ class MainController:
             self.dispatcher.dispatch(PROCESSING_SUCCESS, processed_results)
             self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Форматирование...", 'progress': 0.9})
 
-            # 4. FORMAT
             text_result = self.format_service.format_output(
                 processed_results,
                 state.settings.output_format,
@@ -184,23 +190,18 @@ class MainController:
 
             total_tokens = sum(f.tokens for f in processed_results)
             self.dispatcher.dispatch(FORMATTING_SUCCESS, {'text': text_result, 'tokens': total_tokens})
-
-            # 5. OUTPUT
             self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Сохранение...", 'progress': 0.95})
 
             if target == 'clipboard':
                 self.output_service.copy_to_clipboard(text_result)
                 self.dispatcher.dispatch(UI_ADD_LOG, "Скопировано в буфер обмена")
-
             elif target == 'file' and save_path:
                 self.output_service.save_to_file(text_result, save_path)
                 self.dispatcher.dispatch(UI_ADD_LOG, f"Сохранено в {save_path}")
-
             elif target == 'pdf' and save_path:
                 self.output_service.save_to_pdf(text_result, save_path)
                 self.dispatcher.dispatch(UI_ADD_LOG, f"PDF создан: {save_path}")
 
-            # Сохраняем настройки после успешного прогона
             self.save_settings()
 
         except Exception as e:
