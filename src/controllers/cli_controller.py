@@ -1,20 +1,16 @@
 import time
+import os
+import sys
 from types import SimpleNamespace
-from typing import List, Dict
-
-# Data Layer
+from typing import Dict, List
 from ..data.settings_repository import SettingsRepository
 from ..data.file_system_repository import FileSystemRepository
-
-# Service Layer
 from ..services.file_service import FileService
 from ..services.processing_service import ProcessingService
 from ..services.cleaner_service import CleanerService
 from ..services.token_service import TokenService
 from ..services.formatting_service import FormattingService
 from ..services.output_service import OutputService
-
-# Store/State DTO
 from ..store.state import ProcessedFile
 from ..utils.config import PRESETS, DEFAULT_SYSTEM_PROMPT
 
@@ -26,11 +22,8 @@ class CliController:
     """
 
     def __init__(self):
-        # Инициализация слоя данных
         self.settings_repo = SettingsRepository()
         self.fs_repo = FileSystemRepository()
-
-        # Инициализация сервисов
         self.file_service = FileService(self.fs_repo)
         self.process_service = ProcessingService(self.fs_repo)
         self.cleaner_service = CleanerService()
@@ -40,21 +33,32 @@ class CliController:
 
     def run(self, target_path: str):
         """Основной метод запуска CLI пайплайна"""
-        print(f"\n🚀 CodeContext AI: Запуск сканирования...")
+        # 1. Нормализация пути (удаляем кавычки, делаем абсолютным)
+        target_path = os.path.abspath(target_path.strip('"\''))
+
+        print(f"\n🚀 CodeContext AI: Запуск...")
         print(f"📂 Цель: {target_path}")
 
-        # 1. Загрузка конфигурации
+        if not os.path.exists(target_path):
+            print(f"❌ Ошибка: Путь не существует.")
+            self._keep_window_open()
+            return
+
+        # 2. Загрузка конфигурации с фоллбэками
         config = self._load_config()
 
-        # 2. Подготовка опций (Mapping Config -> Service Options)
-        # Мы используем настройки CLI (префикс cli_), но если их нет, берем дефолтные
+        # Защита от пустых расширений в конфиге
+        extensions = config.get('extensions', '')
+        if not extensions or not extensions.strip():
+            extensions = PRESETS['Default']['ext']
+
         options = SimpleNamespace(
             minify=config.get('cli_minify', True),
             remove_comments=config.get('cli_remove_comments', True),
             remove_secrets=config.get('cli_remove_secrets', True),
-            extensions=config.get('extensions', PRESETS['Default']['ext']),
+            extensions=extensions,
             ignored_paths=config.get('ignored_paths', PRESETS['Default']['ign']),
-            use_git=False  # В контекстном меню обычно сканируем всё
+            use_git=config.get('use_git', False)  # Исправлено: читаем из конфига
         )
 
         output_format = config.get('cli_format', 'plain')
@@ -62,8 +66,11 @@ class CliController:
         system_prompt = config.get('system_prompt', DEFAULT_SYSTEM_PROMPT)
 
         try:
-            # 3. Сканирование
-            print("🔍 Поиск файлов...", end=" ")
+            # 3. Поиск файлов
+            print(f"🔍 Сканирование ({'Git' if options.use_git else 'FS'})...", end=" ")
+
+            # Логика определения: файл или папка обрабатывается внутри service или здесь
+            # Передаем список, так как service принимает список
             file_paths = self.file_service.scan_folders(
                 [target_path],
                 options.extensions,
@@ -72,24 +79,25 @@ class CliController:
             )
 
             if not file_paths:
-                print("❌ Файлы не найдены.")
-                print("   (Проверьте настройки расширений в приложении)")
+                print("\n⚠️  Файлы не найдены.")
+                print(f"   Проверьте расширения: {options.extensions}")
+                if options.use_git:
+                    print("   (Включен режим Git: убедитесь, что файлы отслеживаются или изменены)")
                 return
 
             print(f"✅ Найдено: {len(file_paths)}")
 
             # 4. Чтение
-            print("📖 Чтение...", end=" ")
+            print("📖 Чтение файлов...", end=" ")
             raw_files = self.process_service.read_files(file_paths)
-            print(f"✅ Прочитано: {len(raw_files)}")
+            print(f"✅ Успешно: {len(raw_files)}")
 
-            # 5. Обработка (Cleaning + Tokenizing)
+            # 5. Обработка
             print("⚙️  Обработка...", end=" ")
             processed_files = []
             for raw in raw_files:
                 cleaned = self.cleaner_service.clean(raw['content'], raw['ext'], options)
                 tokens = self.token_service.count_tokens(cleaned)
-
                 processed_files.append(ProcessedFile(
                     path=raw['path'],
                     content=cleaned,
@@ -105,10 +113,10 @@ class CliController:
                 system_prompt
             )
 
-            # 7. Вывод
             total_tokens = sum(f.tokens for f in processed_files)
-            print(f"📊 Статистика: ~{total_tokens} токенов.")
+            print(f"📊 Всего токенов: ~{total_tokens}")
 
+            # 7. Вывод
             self.output_service.copy_to_clipboard(final_text)
             print(f"📋 Результат ({output_format}) скопирован в буфер обмена!")
 
@@ -123,8 +131,7 @@ class CliController:
         """Загружает настройки или возвращает дефолтные"""
         cfg = self.settings_repo.load()
         if not cfg:
-            print("⚠️  Файл настроек не найден, используем стандарты.")
-            return {}  # Вернет пустой словарь, .get() использует дефолты
+            return {}
         return cfg
 
     def _keep_window_open(self):

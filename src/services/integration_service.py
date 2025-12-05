@@ -20,39 +20,52 @@ class IntegrationService:
         Перезапускает текущий скрипт с запросом прав администратора (UAC)
         и добавляет аргумент действия (например, --install-context).
         """
-        if self.is_admin():
-            return
-
-        # Определяем, как мы запущены
+        # Если уже админ, не перезапускаем, чтобы избежать вечного цикла,
+        # если проблема не в правах
         if getattr(sys, 'frozen', False):
-            # Если это скомпилированный EXE
             executable = sys.executable
             params = extra_arg
         else:
-            # Если это Python скрипт
             executable = sys.executable
-            # Получаем абсолютный путь к main.py
-            # Важно: sys.argv[0] может быть относительным, делаем его абсолютным
             script_path = os.path.abspath(sys.argv[0])
-            # Формируем команду: "путь/к/main.py" --флаг
             params = f'"{script_path}" {extra_arg}'
 
         try:
-            # Запуск через ShellExecute с глаголом "runas" (запрос прав)
-            # Параметр 1 (SW_SHOWNORMAL) показывает окно консоли, чтобы пользователь видел результат
             ctypes.windll.shell32.ShellExecuteW(None, "runas", executable, params, None, 1)
         except Exception as e:
             print(f"Error elevating privileges: {e}")
 
+    def _delete_registry_tree(self, root_key, key_path):
+        """
+        Рекурсивно удаляет ключ реестра и все его подклавиши.
+        Необходим, так как winreg.DeleteKey падает с [WinError 5],
+        если внутри ключа есть что-то еще.
+        """
+        try:
+            open_key = winreg.OpenKey(root_key, key_path, 0, winreg.KEY_ALL_ACCESS)
+            info = winreg.QueryInfoKey(open_key)
+
+            # Рекурсивно удаляем подклавиши
+            # Мы всегда удаляем ключ с индексом 0, пока они есть
+            while info[0] > 0:
+                subkey_name = winreg.EnumKey(open_key, 0)
+                self._delete_registry_tree(open_key, subkey_name)
+                info = winreg.QueryInfoKey(open_key)
+
+            winreg.CloseKey(open_key)
+            winreg.DeleteKey(root_key, key_path)
+            return True
+        except FileNotFoundError:
+            return True  # Уже удалено
+        except Exception as e:
+            raise e
+
     def install_context_menu(self) -> Tuple[bool, str]:
         """Регистрация пункта в контекстном меню"""
-
-        # 1. Если нет прав, запускаем отдельный процесс-администратор с флагом установки
         if not self.is_admin():
             self.restart_as_admin("--install-context")
             return False, "Запрошены права администратора. Проверьте открывшееся окно."
 
-        # 2. Если права есть, выполняем запись в реестр
         try:
             if getattr(sys, 'frozen', False):
                 exe_path = sys.executable
@@ -60,28 +73,25 @@ class IntegrationService:
                 icon_path = exe_path
             else:
                 python_exe = sys.executable
+                # Убираем консольное окно для pythonw.exe если используется, но тут обычно python.exe
+                # Для корректной работы пути в кавычках
                 script_path = os.path.abspath(sys.argv[0])
-
-                # Костыль: если запускаем из src или другой папки, ищем main.py правильно
                 if not script_path.endswith("main.py"):
-                    # Пытаемся найти main.py в текущей директории
                     possible = os.path.join(os.getcwd(), "main.py")
                     if os.path.exists(possible):
                         script_path = possible
 
-                # Используем pythonw.exe для команды в реестре, чтобы при клике ПКМ не мигала консоль,
-                # либо python.exe если хотим видеть процесс.
-                # Для CLI режима обычно лучше python.exe, чтобы видеть ошибки,
-                # или реализовать логирование в файл.
                 command = f'"{python_exe}" "{script_path}" --cli --path "%1"'
                 icon_path = python_exe
 
             key_path = r"Directory\shell\CodeContextAI"
 
+            # Создаем основной ключ
             key = winreg.CreateKey(winreg.HKEY_CLASSES_ROOT, key_path)
             winreg.SetValue(key, "", winreg.REG_SZ, "Scan with CodeContext AI")
             winreg.SetValueEx(key, "Icon", 0, winreg.REG_SZ, icon_path)
 
+            # Создаем подключ command
             command_key = winreg.CreateKey(key, "command")
             winreg.SetValue(command_key, "", winreg.REG_SZ, command)
 
@@ -89,30 +99,30 @@ class IntegrationService:
             winreg.CloseKey(key)
 
             return True, "Успешно! Пункт меню добавлен."
-
         except Exception as e:
             return False, f"Ошибка записи в реестр: {e}"
 
     def remove_context_menu(self) -> Tuple[bool, str]:
         """Удаление пункта из контекстного меню"""
-
-        # 1. Если нет прав, перезапускаем с флагом удаления
         if not self.is_admin():
             self.restart_as_admin("--remove-context")
             return False, "Запрошены права администратора. Проверьте открывшееся окно."
 
-        # 2. Удаляем ключи
         key_path = r"Directory\shell\CodeContextAI"
-        try:
-            try:
-                winreg.DeleteKey(winreg.HKEY_CLASSES_ROOT, key_path + r"\command")
-            except FileNotFoundError:
-                pass
 
-            winreg.DeleteKey(winreg.HKEY_CLASSES_ROOT, key_path)
+        try:
+            # Используем рекурсивное удаление вместо обычного DeleteKey
+            self._delete_registry_tree(winreg.HKEY_CLASSES_ROOT, key_path)
             return True, "Успешно! Пункт меню удален."
 
-        except FileNotFoundError:
-            return True, "Пункта меню уже нет."
+        except PermissionError:
+            # Если получили WinError 5, значит прав все-таки нет, или антивирус блокирует
+            self.restart_as_admin("--remove-context")
+            return False, "Ошибка доступа. Попытка перезапуска с правами администратора..."
+
         except Exception as e:
+            # Дополнительная проверка на WinError 5 внутри общего Exception
+            if "[WinError 5]" in str(e):
+                self.restart_as_admin("--remove-context")
+                return False, "Доступ запрещен. Пробую перезапустить от имени администратора..."
             return False, f"Ошибка удаления из реестра: {e}"
