@@ -5,6 +5,7 @@
   "remove_comments": true,
   "remove_secrets": true,
   "include_tree": true,
+  "include_dependencies": true,
   "skeleton_mode": false,
   "use_git": false,
   "use_gitignore": true,

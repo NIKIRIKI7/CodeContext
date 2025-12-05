@@ -1,16 +1,13 @@
 import copy
 import os
 import asyncio
-from typing import Tuple
-
+from typing import Tuple, List, Dict
 from ..store.store import Store
 from ..store.state import ProcessedFile
 from ..actions.dispatcher import Dispatcher
 from ..actions.action_types import *
 from ..utils.config import PRESETS, DEFAULT_SYSTEM_PROMPT
 from ..utils.async_runtime import AsyncRuntime
-
-# Services
 from ..services.file_service import FileService
 from ..services.processing_service import ProcessingService
 from ..services.cleaner_service import CleanerService
@@ -20,22 +17,15 @@ from ..services.output_service import OutputService
 from ..services.integration_service import IntegrationService
 from ..services.skeleton_service import SkeletonService
 from ..services.github_service import GitHubService
-
-# Repos
+from ..services.dependency_service import DependencyService
 from ..data.file_system_repository import FileSystemRepository
 from ..data.settings_repository import SettingsRepository
 
 
 class MainController:
-    """
-    Контроллер для GUI режима.
-    Использует AsyncRuntime для выполнения тяжелых задач.
-    """
-
     def __init__(self, store: Store, dispatcher: Dispatcher):
         self.store = store
         self.dispatcher = dispatcher
-
         self.fs_repo = FileSystemRepository()
         self.settings_repo = SettingsRepository()
 
@@ -48,8 +38,8 @@ class MainController:
         self.output_service = OutputService()
         self.integration_service = IntegrationService()
         self.github_service = GitHubService()
+        self.dependency_service = DependencyService()
 
-    # --- Синхронные методы (настройки, папки) ---
     def _normalize_path(self, path: str) -> str:
         if not path: return ""
         clean_path = path
@@ -85,8 +75,10 @@ class MainController:
             'ignored_paths': PRESETS['Default']['ign'],
             'system_prompt': DEFAULT_SYSTEM_PROMPT,
             'minify': True, 'remove_comments': True, 'remove_secrets': True,
-            'include_tree': True, 'skeleton_mode': False, 'use_gitignore': True,
-            'cli_format': "plain"
+            'include_tree': True, 'include_dependencies': False,
+            'skeleton_mode': False, 'use_git': False, 'use_gitignore': True,
+            'cli_minify': True, 'cli_remove_comments': True, 'cli_remove_secrets': True,
+            'cli_include_tree': True, 'cli_skeleton_mode': False, 'cli_use_gitignore': True, 'cli_format': "plain"
         }
         self.dispatcher.dispatch(SETTINGS_UPDATE, default_data)
         self.settings_repo.save(default_data)
@@ -95,10 +87,7 @@ class MainController:
     def apply_preset(self, preset_name: str):
         preset = PRESETS.get(preset_name)
         if preset:
-            self.dispatcher.dispatch(SETTINGS_UPDATE, {
-                'extensions': preset['ext'],
-                'ignored_paths': preset['ign']
-            })
+            self.dispatcher.dispatch(SETTINGS_UPDATE, {'extensions': preset['ext'], 'ignored_paths': preset['ign']})
 
     def add_folder(self, path: str):
         clean_path = self._normalize_path(path)
@@ -117,7 +106,6 @@ class MainController:
         temp_folders = self.store.state.temp_folders
         if temp_folders:
             self.dispatcher.dispatch(UI_ADD_LOG, "Очистка временных файлов...")
-            # Удаление делаем в фоне, чтобы не фризить UI
             AsyncRuntime.run_coroutine(self._clear_folders_async(temp_folders))
         else:
             self.dispatcher.dispatch(FOLDER_CLEAR)
@@ -133,21 +121,9 @@ class MainController:
     def remove_context_menu(self) -> Tuple[bool, str]:
         return self.integration_service.remove_context_menu()
 
-    # --- Асинхронные задачи (Entry Points) ---
-
     def add_github_repo(self, url: str):
         if not url: return
-        # Запуск корутины через Runtime
         AsyncRuntime.run_coroutine(self._github_worker_async(url))
-
-    def start_processing(self, target_type: str, save_path: str = None):
-        if not self.store.state.selected_folders:
-            return False, "Выберите папки или URL для сканирования"
-
-        AsyncRuntime.run_coroutine(self._processing_worker_async(target_type, save_path))
-        return True, ""
-
-    # --- Корутины (Workers) ---
 
     async def _github_worker_async(self, url: str):
         self.dispatcher.dispatch(UI_SET_LOADING, True)
@@ -165,14 +141,22 @@ class MainController:
             self.dispatcher.dispatch(UI_SET_LOADING, False)
             self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Готово", 'progress': 0.0})
 
+    def start_processing(self, target_type: str, save_path: str = None):
+        if not self.store.state.selected_folders:
+            return False, "Выберите папки или URL для сканирования"
+
+        AsyncRuntime.run_coroutine(self._processing_worker_async(target_type, save_path))
+        return True, ""
+
     async def _processing_worker_async(self, target: str, save_path: str = None):
         self.dispatcher.dispatch(UI_SET_LOADING, True)
         self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Сканирование...", 'progress': 0.1})
         self.dispatcher.dispatch(UI_ADD_LOG, "Начало работы...")
 
         state = self.store.state
+
         try:
-            # 1. Сканирование (async)
+            # 1. Сканирование файловой системы
             files_paths = await self.file_service.scan_folders_async(
                 state.selected_folders,
                 state.settings.extensions,
@@ -187,38 +171,36 @@ class MainController:
 
             self.dispatcher.dispatch(SCAN_SUCCESS, files_paths)
 
-            # 2. Чтение файлов (async)
+            # 2. Чтение файлов (получаем сырой контент)
             self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Чтение файлов...", 'progress': 0.2})
             raw_files = await self.process_service.read_files_async(files_paths)
 
-            # 3. Обработка (CPU-bound)
-            # Поскольку Cleaner/Skeleton/TokenService - это чистый CPU,
-            # запускаем их через run_in_executor или внутри корутины (но они заблокируют loop на время)
-            # Для отзывчивости лучше обернуть тяжелый цикл
-            self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Обработка...", 'progress': 0.4})
+            # 3. Анализ зависимостей (на СЫРЫХ файлах, ДО минификации)
+            dependency_map = None
+            if state.settings.include_dependencies:
+                self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Анализ зависимостей...", 'progress': 0.3})
+                # Передаем raw_files, которые являются списком словарей
+                dependency_map = await self.dependency_service.resolve_dependencies(raw_files)
 
-            processed_results = await asyncio.to_thread(
-                self._cpu_heavy_processing,
-                raw_files,
-                state.settings
-            )
+            # 4. Обработка (очистка, минификация, скелет, токены)
+            self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Обработка и минификация...", 'progress': 0.5})
+            processed_results = await asyncio.to_thread(self._cpu_heavy_processing, raw_files, state.settings)
 
             self.dispatcher.dispatch(PROCESSING_SUCCESS, processed_results)
 
-            # 4. Форматирование
+            # 5. Форматирование результата
             self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Форматирование...", 'progress': 0.9})
-            text_result, total_tokens = self.format_service.format_output(
+            text_result, total_tokens = await asyncio.to_thread(
+                self._format_and_count,
                 processed_results,
-                state.settings.output_format,
-                state.settings.include_tree,
-                state.settings.system_prompt
-            ), sum(f.tokens for f in processed_results)  # Оптимизация подсчета
+                state.settings,
+                dependency_map  # Передаем карту зависимостей
+            )
 
             self.dispatcher.dispatch(FORMATTING_SUCCESS, {'text': text_result, 'tokens': total_tokens})
-
-            # 5. Сохранение
             self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Сохранение...", 'progress': 0.95})
 
+            # 6. Сохранение
             if target == 'clipboard':
                 self.output_service.copy_to_clipboard(text_result)
                 self.dispatcher.dispatch(UI_ADD_LOG, "Скопировано в буфер обмена")
@@ -226,7 +208,6 @@ class MainController:
                 self.output_service.save_to_file(text_result, save_path)
                 self.dispatcher.dispatch(UI_ADD_LOG, f"Сохранено в {save_path}")
             elif target == 'pdf' and save_path:
-                # PDF генерация может быть медленной
                 await asyncio.to_thread(self.output_service.save_to_pdf, text_result, save_path)
                 self.dispatcher.dispatch(UI_ADD_LOG, f"PDF создан: {save_path}")
 
@@ -241,31 +222,37 @@ class MainController:
             self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Готово", 'progress': 1.0})
 
     def _cpu_heavy_processing(self, raw_files, settings):
-        """Вынесенная CPU нагрузка"""
+        """Выполняется в отдельном потоке, так как Cleaner/Skeleton - синхронные и тяжелые"""
         results = []
-        # Копируем настройки, так как они могут измениться в основном потоке (редко, но безопасно)
         proc_settings = copy.copy(settings)
         if proc_settings.skeleton_mode:
-            proc_settings.minify = False
+            proc_settings.minify = False  # Skeleton несовместим с полной минификацией строк
 
-        total = len(raw_files)
         for i, raw_file in enumerate(raw_files):
-            # Для очень больших списков можно делать yield progress в Store,
-            # но из thread это требует аккуратности. Оставим просто расчет.
-
             content = raw_file['content']
             ext = raw_file['ext']
 
+            # Очистка и минификация
             cleaned = self.cleaner_service.clean(content, ext, proc_settings)
 
+            # Режим скелета
             if proc_settings.skeleton_mode:
                 cleaned = self.skeleton_service.make_skeleton(cleaned, ext)
 
+            # Подсчет токенов
             tokens = self.token_service.count_tokens(cleaned)
 
-            results.append(ProcessedFile(
-                path=raw_file['path'],
-                content=cleaned,
-                tokens=tokens
-            ))
+            results.append(ProcessedFile(path=raw_file['path'], content=cleaned, tokens=tokens))
+
         return results
+
+    def _format_and_count(self, processed_results, settings, dep_map):
+        text = self.format_service.format_output(
+            processed_results,
+            settings.output_format,
+            settings.include_tree,
+            settings.system_prompt,
+            dependency_map=dep_map
+        )
+        tokens = sum(f.tokens for f in processed_results)
+        return text, tokens
