@@ -20,6 +20,20 @@ class FileSystemRepository:
         except Exception:
             return None
 
+    def read_gitignore(self, folder_path: str) -> List[str]:
+        """
+        Читает .gitignore в указанной папке и возвращает список паттернов.
+        """
+        gitignore_path = os.path.join(folder_path, '.gitignore')
+        if not os.path.exists(gitignore_path):
+            return []
+
+        try:
+            with open(gitignore_path, 'r', encoding='utf-8') as f:
+                return f.readlines()
+        except Exception:
+            return []
+
     def _is_binary(self, path: str) -> bool:
         """
         Эвристическая проверка: если в первом блоке (1024 байта)
@@ -38,7 +52,9 @@ class FileSystemRepository:
         """Обычное сканирование папки"""
         result = []
         for root, dirs, files in os.walk(path):
+            # Модифицируем dirs in-place, чтобы os.walk не заходил в игнорируемые папки
             dirs[:] = [d for d in dirs if d not in ignored_dirs]
+
             for file in files:
                 if any(file.lower().endswith(ext) for ext in extensions):
                     result.append(os.path.join(root, file))
@@ -62,7 +78,6 @@ class FileSystemRepository:
             files = set()
             for f in all_raw:
                 p = repo / f
-                # Проверка существования, так как файл мог быть удален
                 if not p.exists() or p.is_dir():
                     continue
 

@@ -11,8 +11,9 @@ class AppSettings:
     remove_comments: bool = True
     remove_secrets: bool = True
     include_tree: bool = True
-    skeleton_mode: bool = False  # <--- NEW FLAG
+    skeleton_mode: bool = False
     use_git: bool = False
+    use_gitignore: bool = True  # <--- NEW: Учитывать .gitignore
     system_prompt: str = "You are an expert software engineer. Analyze the following codebase structure and file contents."
     output_format: str = "markdown"
 
@@ -21,7 +22,8 @@ class AppSettings:
     cli_remove_comments: bool = True
     cli_remove_secrets: bool = True
     cli_include_tree: bool = True
-    cli_skeleton_mode: bool = False  # <--- NEW FLAG FOR CLI
+    cli_skeleton_mode: bool = False
+    cli_use_gitignore: bool = True  # <--- NEW CLI
     cli_format: str = "plain"
 
 

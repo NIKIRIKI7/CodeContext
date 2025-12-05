@@ -60,6 +60,10 @@ class MainWindow(ctk.CTk):
         self.chk_git = ctk.CTkCheckBox(self.tab_run, text="Только Git Changes")
         self.chk_git.pack(anchor="w", pady=5)
 
+        # NEW: Checkbox for .gitignore
+        self.chk_gitignore = ctk.CTkCheckBox(self.tab_run, text="Учитывать .gitignore")
+        self.chk_gitignore.pack(anchor="w", pady=5)
+
         self.chk_tree = ctk.CTkCheckBox(self.tab_run, text="Дерево файлов")
         self.chk_tree.pack(anchor="w", pady=5)
 
@@ -68,6 +72,7 @@ class MainWindow(ctk.CTk):
                       border_width=1).pack(fill="x", pady=5)
 
         # --- Tab PROMPT ---
+        # (Без изменений)
         ctk.CTkLabel(self.tab_prompt, text="Выберите пресет промпта:").pack(anchor="w", pady=(5, 0))
         self.cmb_prompt_presets = ctk.CTkComboBox(
             self.tab_prompt,
@@ -98,9 +103,12 @@ class MainWindow(ctk.CTk):
         self.chk_cli_tree = ctk.CTkCheckBox(cli_frame, text="Добавлять дерево файлов")
         self.chk_cli_tree.pack(anchor="w", padx=10, pady=2)
 
-        # NEW: Skeleton Checkbox for CLI
-        self.chk_cli_skeleton = ctk.CTkCheckBox(cli_frame, text="Skeleton Mode (Structure only)")
+        self.chk_cli_skeleton = ctk.CTkCheckBox(cli_frame, text="Skeleton Mode")
         self.chk_cli_skeleton.pack(anchor="w", padx=10, pady=2)
+
+        # NEW: Checkbox for CLI .gitignore
+        self.chk_cli_gitignore = ctk.CTkCheckBox(cli_frame, text="Учитывать .gitignore")
+        self.chk_cli_gitignore.pack(anchor="w", padx=10, pady=2)
 
         ctk.CTkLabel(cli_frame, text="Формат вывода:").pack(anchor="w", padx=10, pady=(5, 0))
         self.cmb_cli_format = ctk.CTkComboBox(cli_frame, values=["plain", "markdown", "xml"])
@@ -121,7 +129,7 @@ class MainWindow(ctk.CTk):
         ctk.CTkButton(self.tab_settings, text="Сбросить все", fg_color="gray", command=self._on_reset_settings).pack(
             fill="x", pady=5)
 
-        ctk.CTkLabel(self.tab_settings, text="v4.0 Skeleton Support", text_color="gray").pack(side="bottom", pady=10)
+        ctk.CTkLabel(self.tab_settings, text="v4.1 .gitignore Support", text_color="gray").pack(side="bottom", pady=10)
 
         # === MAIN CONTENT ===
         main_frame = ctk.CTkFrame(self, fg_color="transparent")
@@ -146,7 +154,6 @@ class MainWindow(ctk.CTk):
         self.chk_secrets = ctk.CTkCheckBox(opts, text="No Secrets")
         self.chk_secrets.pack(side="left", padx=10)
 
-        # NEW: Skeleton Checkbox for GUI
         self.chk_skeleton = ctk.CTkCheckBox(opts, text="Skeleton ☠️")
         self.chk_skeleton.pack(side="left", padx=10)
 
@@ -198,7 +205,8 @@ class MainWindow(ctk.CTk):
         self._set_check(self.chk_secrets, state.settings.remove_secrets)
         self._set_check(self.chk_tree, state.settings.include_tree)
         self._set_check(self.chk_git, state.settings.use_git)
-        self._set_check(self.chk_skeleton, state.settings.skeleton_mode)  # <---
+        self._set_check(self.chk_gitignore, state.settings.use_gitignore)  # <---
+        self._set_check(self.chk_skeleton, state.settings.skeleton_mode)
 
         current_prompt = self.txt_system_prompt.get("1.0", "end-1c")
         if current_prompt != state.settings.system_prompt and not self.txt_system_prompt.focus_get():
@@ -220,7 +228,8 @@ class MainWindow(ctk.CTk):
         self._set_check(self.chk_cli_comments, state.settings.cli_remove_comments)
         self._set_check(self.chk_cli_secrets, state.settings.cli_remove_secrets)
         self._set_check(self.chk_cli_tree, state.settings.cli_include_tree)
-        self._set_check(self.chk_cli_skeleton, state.settings.cli_skeleton_mode)  # <---
+        self._set_check(self.chk_cli_skeleton, state.settings.cli_skeleton_mode)
+        self._set_check(self.chk_cli_gitignore, state.settings.cli_use_gitignore)  # <---
         self.cmb_cli_format.set(state.settings.cli_format)
 
         # Folders
@@ -262,19 +271,21 @@ class MainWindow(ctk.CTk):
             'remove_comments': bool(self.chk_comments.get()),
             'remove_secrets': bool(self.chk_secrets.get()),
             'include_tree': bool(self.chk_tree.get()),
-            'skeleton_mode': bool(self.chk_skeleton.get()),  # <---
+            'skeleton_mode': bool(self.chk_skeleton.get()),
             'use_git': bool(self.chk_git.get()),
+            'use_gitignore': bool(self.chk_gitignore.get()),  # <---
             'system_prompt': self.txt_system_prompt.get("1.0", "end-1c"),
             'output_format': self.seg_format.get(),
             'cli_minify': bool(self.chk_cli_minify.get()),
             'cli_remove_comments': bool(self.chk_cli_comments.get()),
             'cli_remove_secrets': bool(self.chk_cli_secrets.get()),
             'cli_include_tree': bool(self.chk_cli_tree.get()),
-            'cli_skeleton_mode': bool(self.chk_cli_skeleton.get()),  # <---
+            'cli_skeleton_mode': bool(self.chk_cli_skeleton.get()),
+            'cli_use_gitignore': bool(self.chk_cli_gitignore.get()),  # <---
             'cli_format': self.cmb_cli_format.get()
         }
 
-    # ... Остальные методы без изменений (event handlers) ...
+    # ... Остальные методы остаются прежними
     def _on_apply_preset(self, choice):
         self.controller.apply_preset(choice)
 
@@ -337,7 +348,6 @@ class MainWindow(ctk.CTk):
     def _on_run(self, target):
         data = self._collect_settings_from_ui()
         self.controller.update_settings(data)
-
         save_path = None
         state = self.store.state
         if target == 'file':
@@ -347,7 +357,6 @@ class MainWindow(ctk.CTk):
         elif target == 'pdf':
             save_path = filedialog.asksaveasfilename(defaultextension=".pdf")
             if not save_path: return
-
         success, msg = self.controller.start_processing(target, save_path)
         if not success:
             messagebox.showwarning("Внимание", msg)

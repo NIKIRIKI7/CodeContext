@@ -54,8 +54,6 @@ class CliController:
         # Читаем настройки
         skeleton_mode = config.get('cli_skeleton_mode', False)
         minify = config.get('cli_minify', True)
-
-        # Если включен скелет, принудительно выключаем минификацию
         if skeleton_mode:
             minify = False
 
@@ -66,7 +64,8 @@ class CliController:
             skeleton_mode=skeleton_mode,
             extensions=extensions,
             ignored_paths=config.get('ignored_paths', PRESETS['Default']['ign']),
-            use_git=config.get('use_git', False)
+            use_git=config.get('use_git', False),
+            use_gitignore=config.get('cli_use_gitignore', True)  # <--- NEW
         )
 
         output_format = config.get('cli_format', 'plain')
@@ -76,11 +75,13 @@ class CliController:
         try:
             print(f"🔍 Сканирование ({'Git' if options.use_git else 'FS'})...", end=" ")
 
+            # Передаем use_gitignore
             file_paths = self.file_service.scan_folders(
                 [target_path],
                 options.extensions,
                 options.ignored_paths,
-                options.use_git
+                options.use_git,
+                options.use_gitignore  # <---
             )
 
             if not file_paths:
@@ -96,10 +97,8 @@ class CliController:
             print("⚙️  Обработка...", end=" ")
             processed_files = []
             for raw in raw_files:
-                # 1. Cleaning (minify is false if skeleton is true)
                 cleaned = self.cleaner_service.clean(raw['content'], raw['ext'], options)
 
-                # 2. Skeleton Mode
                 if options.skeleton_mode:
                     cleaned = self.skeleton_service.make_skeleton(cleaned, raw['ext'])
 

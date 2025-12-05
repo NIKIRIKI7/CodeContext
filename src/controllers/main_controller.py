@@ -22,7 +22,7 @@ from ..data.settings_repository import SettingsRepository
 class MainController:
     """
     Контроллер для GUI режима.
-    Управляет бизнес-логикой, запускает потоки и взаимодействует с сервисами.
+    Управляет бизнес-логикой.
     """
 
     def __init__(self, store: Store, dispatcher: Dispatcher):
@@ -41,7 +41,6 @@ class MainController:
         self.integration_service = IntegrationService()
 
     def load_initial_settings(self):
-        """Загрузка настроек при старте"""
         data = self.settings_repo.load()
         if not data:
             data = {
@@ -52,15 +51,12 @@ class MainController:
         self.dispatcher.dispatch(SETTINGS_LOADED, data)
 
     def update_settings(self, settings_data: dict):
-        """Обновление настроек в стейте"""
         self.dispatcher.dispatch(SETTINGS_UPDATE, settings_data)
 
     def save_settings(self):
-        """Сохранение текущих настроек в файл"""
         self.settings_repo.save(self.store.state.settings.__dict__)
 
     def reset_settings(self):
-        """Сброс настроек к дефолтным"""
         default_data = {
             'extensions': PRESETS['Default']['ext'],
             'ignored_paths': PRESETS['Default']['ign'],
@@ -70,11 +66,13 @@ class MainController:
             'remove_secrets': True,
             'include_tree': True,
             'skeleton_mode': False,
+            'use_gitignore': True,
             'cli_minify': True,
             'cli_remove_comments': True,
             'cli_remove_secrets': True,
             'cli_include_tree': True,
             'cli_skeleton_mode': False,
+            'cli_use_gitignore': True,
             'cli_format': "plain"
         }
         self.dispatcher.dispatch(SETTINGS_UPDATE, default_data)
@@ -93,6 +91,7 @@ class MainController:
         self.dispatcher.dispatch(FOLDER_ADD, path)
 
     def clear_folders(self):
+        # Вызывает действие, которое теперь сбрасывает ВСЁ состояние
         self.dispatcher.dispatch(FOLDER_CLEAR)
 
     def install_context_menu(self) -> Tuple[bool, str]:
@@ -102,7 +101,6 @@ class MainController:
         return self.integration_service.remove_context_menu()
 
     def start_processing(self, target_type: str, save_path: str = None):
-        """Запуск воркера обработки в отдельном потоке"""
         if not self.store.state.selected_folders:
             return False, "Выберите папки для сканирования"
 
@@ -114,10 +112,6 @@ class MainController:
         return True, ""
 
     def _worker(self, target: str, save_path: str = None):
-        """
-        Основной пайплайн обработки данных.
-        Выполняется в фоновом потоке.
-        """
         self.dispatcher.dispatch(UI_SET_LOADING, True)
         self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Сканирование...", 'progress': 0.1})
         self.dispatcher.dispatch(UI_ADD_LOG, "Начало работы...")
@@ -129,7 +123,8 @@ class MainController:
                 state.selected_folders,
                 state.settings.extensions,
                 state.settings.ignored_paths,
-                state.settings.use_git
+                state.settings.use_git,
+                state.settings.use_gitignore
             )
 
             if not files_paths:
@@ -146,9 +141,6 @@ class MainController:
 
             processed_results = []
 
-            # Подготовка настроек для очистки
-            # Если включен скелет, мы ОБЯЗАНЫ отключить минификацию,
-            # иначе Python AST парсер сломается из-за отсутствия отступов.
             processing_settings = copy.copy(state.settings)
             if state.settings.skeleton_mode:
                 processing_settings.minify = False
@@ -162,14 +154,11 @@ class MainController:
                 content = raw_file['content']
                 ext = raw_file['ext']
 
-                # 1. Очистка (с учетом отключенной минификации для скелета)
                 cleaned_content = self.cleaner_service.clean(content, ext, processing_settings)
 
-                # 2. Скелетирование
                 if state.settings.skeleton_mode:
                     cleaned_content = self.skeleton_service.make_skeleton(cleaned_content, ext)
 
-                # 3. Токены
                 tokens = self.token_service.count_tokens(cleaned_content)
 
                 processed_results.append(ProcessedFile(

@@ -1,18 +1,20 @@
 {
-  "extensions": ".exe",
-  "ignored_paths": "node_modules, dist, .next, .nuxt, .git, coverage",
+  "extensions": ".txt",
+  "ignored_paths": ".git, node_modules, .nuxt, __pycache__, dist, build, .idea, .vscode, venv, .venv, coverage, .next, target, bin, obj",
   "minify": true,
   "remove_comments": true,
   "remove_secrets": true,
   "include_tree": true,
   "skeleton_mode": false,
   "use_git": false,
+  "use_gitignore": true,
   "system_prompt": "",
-  "output_format": "plain",
+  "output_format": "markdown",
   "cli_minify": true,
   "cli_remove_comments": true,
   "cli_remove_secrets": true,
   "cli_include_tree": true,
   "cli_skeleton_mode": false,
+  "cli_use_gitignore": true,
   "cli_format": "xml"
 }
