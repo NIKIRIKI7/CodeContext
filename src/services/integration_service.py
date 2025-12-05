@@ -62,20 +62,25 @@ class IntegrationService:
 
     def install_context_menu(self) -> Tuple[bool, str]:
         """Регистрация пункта в контекстном меню"""
+        # Если прав нет - перезапускаем с правами админа
         if not self.is_admin():
             self.restart_as_admin("--install-context")
+            # Возвращаем False, так как текущий процесс не выполнил действие,
+            # но запустил новый процесс, который всё сделает.
             return False, "Запрошены права администратора. Проверьте открывшееся окно."
 
+        # Если права ЕСТЬ (мы в процессе-администраторе), выполняем запись в реестр
         try:
             if getattr(sys, 'frozen', False):
                 exe_path = sys.executable
+                # Важно: кавычки вокруг путей для защиты от пробелов
                 command = f'"{exe_path}" --cli --path "%1"'
                 icon_path = exe_path
             else:
                 python_exe = sys.executable
-                # Убираем консольное окно для pythonw.exe если используется, но тут обычно python.exe
-                # Для корректной работы пути в кавычках
                 script_path = os.path.abspath(sys.argv[0])
+
+                # Защита: ищем main.py, если sys.argv[0] указывает на что-то другое
                 if not script_path.endswith("main.py"):
                     possible = os.path.join(os.getcwd(), "main.py")
                     if os.path.exists(possible):
@@ -85,19 +90,15 @@ class IntegrationService:
                 icon_path = python_exe
 
             key_path = r"Directory\shell\CodeContextAI"
-
-            # Создаем основной ключ
             key = winreg.CreateKey(winreg.HKEY_CLASSES_ROOT, key_path)
             winreg.SetValue(key, "", winreg.REG_SZ, "Scan with CodeContext AI")
             winreg.SetValueEx(key, "Icon", 0, winreg.REG_SZ, icon_path)
 
-            # Создаем подключ command
             command_key = winreg.CreateKey(key, "command")
             winreg.SetValue(command_key, "", winreg.REG_SZ, command)
 
             winreg.CloseKey(command_key)
             winreg.CloseKey(key)
-
             return True, "Успешно! Пункт меню добавлен."
         except Exception as e:
             return False, f"Ошибка записи в реестр: {e}"
@@ -109,20 +110,13 @@ class IntegrationService:
             return False, "Запрошены права администратора. Проверьте открывшееся окно."
 
         key_path = r"Directory\shell\CodeContextAI"
-
         try:
-            # Используем рекурсивное удаление вместо обычного DeleteKey
             self._delete_registry_tree(winreg.HKEY_CLASSES_ROOT, key_path)
             return True, "Успешно! Пункт меню удален."
-
-        except PermissionError:
-            # Если получили WinError 5, значит прав все-таки нет, или антивирус блокирует
-            self.restart_as_admin("--remove-context")
-            return False, "Ошибка доступа. Попытка перезапуска с правами администратора..."
-
+        except FileNotFoundError:
+            return True, "Пункт меню уже удален или не существовал."
         except Exception as e:
-            # Дополнительная проверка на WinError 5 внутри общего Exception
+            # Если ошибка прав доступа, хотя is_admin() вернул True (редкий кейс)
             if "[WinError 5]" in str(e):
-                self.restart_as_admin("--remove-context")
-                return False, "Доступ запрещен. Пробую перезапустить от имени администратора..."
+                return False, f"Ошибка доступа (попробуйте запустить IDE от админа): {e}"
             return False, f"Ошибка удаления из реестра: {e}"

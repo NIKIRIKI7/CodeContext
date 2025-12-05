@@ -1,6 +1,6 @@
 {
-  "extensions": ".py .toml .ini .env.example .dockerfile .yaml .sh",
-  "ignored_paths": "__pycache__, venv, .venv, .git, .idea, .pytest_cache",
+  "extensions": ".js .ts .jsx .tsx .vue .html .css .scss .json",
+  "ignored_paths": "node_modules, dist, .next, .nuxt, .git, coverage",
   "minify": true,
   "remove_comments": true,
   "remove_secrets": true,

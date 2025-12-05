@@ -1,8 +1,11 @@
 import time
 import os
 import sys
+import asyncio  # <--- Добавлен импорт
 from types import SimpleNamespace
 from typing import Dict, List
+import traceback
+
 from ..data.settings_repository import SettingsRepository
 from ..data.file_system_repository import FileSystemRepository
 from ..services.file_service import FileService
@@ -47,11 +50,11 @@ class CliController:
 
         config = self._load_config()
 
+        # Настройка параметров
         extensions = config.get('extensions', '')
         if not extensions or not extensions.strip():
             extensions = PRESETS['Default']['ext']
 
-        # Читаем настройки
         skeleton_mode = config.get('cli_skeleton_mode', False)
         minify = config.get('cli_minify', True)
         if skeleton_mode:
@@ -65,7 +68,7 @@ class CliController:
             extensions=extensions,
             ignored_paths=config.get('ignored_paths', PRESETS['Default']['ign']),
             use_git=config.get('use_git', False),
-            use_gitignore=config.get('cli_use_gitignore', True)  # <--- NEW
+            use_gitignore=config.get('cli_use_gitignore', True)
         )
 
         output_format = config.get('cli_format', 'plain')
@@ -75,27 +78,33 @@ class CliController:
         try:
             print(f"🔍 Сканирование ({'Git' if options.use_git else 'FS'})...", end=" ")
 
-            # Передаем use_gitignore
-            file_paths = self.file_service.scan_folders(
+            # --- ИСПРАВЛЕНИЕ 1: Запуск асинхронного сканирования через asyncio.run ---
+            file_paths = asyncio.run(self.file_service.scan_folders_async(
                 [target_path],
                 options.extensions,
                 options.ignored_paths,
                 options.use_git,
-                options.use_gitignore  # <---
-            )
+                options.use_gitignore
+            ))
 
             if not file_paths:
                 print("\n⚠️  Файлы не найдены.")
+                self._keep_window_open()
                 return
 
             print(f"✅ Найдено: {len(file_paths)}")
 
             print("📖 Чтение файлов...", end=" ")
-            raw_files = self.process_service.read_files(file_paths)
+
+            # --- ИСПРАВЛЕНИЕ 2: Запуск асинхронного чтения через asyncio.run ---
+            raw_files = asyncio.run(self.process_service.read_files_async(file_paths))
+
             print(f"✅ Успешно: {len(raw_files)}")
 
             print("⚙️  Обработка...", end=" ")
             processed_files = []
+
+            # Обработка остается синхронной (Cleaner/Skeleton работают с текстом в памяти)
             for raw in raw_files:
                 cleaned = self.cleaner_service.clean(raw['content'], raw['ext'], options)
 
@@ -103,6 +112,7 @@ class CliController:
                     cleaned = self.skeleton_service.make_skeleton(cleaned, raw['ext'])
 
                 tokens = self.token_service.count_tokens(cleaned)
+
                 processed_files.append(ProcessedFile(
                     path=raw['path'],
                     content=cleaned,
@@ -125,7 +135,6 @@ class CliController:
 
         except Exception as e:
             print(f"\n🔥 Критическая ошибка: {e}")
-            import traceback
             traceback.print_exc()
         finally:
             self._keep_window_open()
