@@ -19,7 +19,6 @@ class Store:
     def subscribe(self, listener: Callable[[AppState], None]):
         """Подписка на изменения состояния"""
         self._listeners.append(listener)
-        # Возвращаем функцию отписки
         return lambda: self._listeners.remove(listener)
 
     def _notify(self):
@@ -58,16 +57,29 @@ class Store:
             if payload not in self._state.selected_folders:
                 self._state.selected_folders.append(payload)
 
+        elif action_type == GITHUB_CLONE_SUCCESS:
+            path = payload
+            if path not in self._state.selected_folders:
+                self._state.selected_folders.append(path)
+            if path not in self._state.temp_folders:
+                self._state.temp_folders.append(path)
+            self._state.status_message = "Репозиторий загружен"
+            self._state.logs.append(f"GitHub Repo Cloned: {path}")
+
+        elif action_type == GITHUB_CLONE_FAILURE:
+            self._state.status_message = "Ошибка клонирования"
+            self._state.logs.append(f"GitHub Error: {payload}")
+
         elif action_type == FOLDER_CLEAR:
-            # === ИСПРАВЛЕНИЕ: Сбрасываем всё состояние сессии ===
             self._state.selected_folders = []
+            self._state.temp_folders = []  # Сбрасываем список, физическое удаление делает контроллер
             self._state.scanned_files_paths = []
             self._state.processed_files = []
             self._state.final_output_text = ""
             self._state.total_tokens = 0
             self._state.status_message = "Рабочая область очищена"
             self._state.progress = 0.0
-            self._state.logs = []  # Очищаем логи
+            self._state.logs = []
 
         elif action_type == SCAN_SUCCESS:
             self._state.scanned_files_paths = payload

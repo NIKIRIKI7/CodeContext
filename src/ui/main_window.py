@@ -60,19 +60,24 @@ class MainWindow(ctk.CTk):
         self.chk_git = ctk.CTkCheckBox(self.tab_run, text="Только Git Changes")
         self.chk_git.pack(anchor="w", pady=5)
 
-        # NEW: Checkbox for .gitignore
         self.chk_gitignore = ctk.CTkCheckBox(self.tab_run, text="Учитывать .gitignore")
         self.chk_gitignore.pack(anchor="w", pady=5)
 
         self.chk_tree = ctk.CTkCheckBox(self.tab_run, text="Дерево файлов")
         self.chk_tree.pack(anchor="w", pady=5)
 
-        ctk.CTkButton(self.tab_run, text="+ Папка", command=self._on_add_folder).pack(fill="x", pady=(20, 5))
+        # Buttons Frame
+        btn_frame = ctk.CTkFrame(self.tab_run, fg_color="transparent")
+        btn_frame.pack(fill="x", pady=(20, 5))
+
+        ctk.CTkButton(btn_frame, text="+ Папка", width=140, command=self._on_add_folder).pack(side="left", padx=(0, 5))
+        ctk.CTkButton(btn_frame, text="+ GitHub", width=140, command=self._on_add_github, fg_color="#2B2B2B",
+                      border_width=1).pack(side="right", padx=(5, 0))
+
         ctk.CTkButton(self.tab_run, text="Очистить", command=self._on_clear_folders, fg_color="transparent",
                       border_width=1).pack(fill="x", pady=5)
 
         # --- Tab PROMPT ---
-        # (Без изменений)
         ctk.CTkLabel(self.tab_prompt, text="Выберите пресет промпта:").pack(anchor="w", pady=(5, 0))
         self.cmb_prompt_presets = ctk.CTkComboBox(
             self.tab_prompt,
@@ -106,7 +111,6 @@ class MainWindow(ctk.CTk):
         self.chk_cli_skeleton = ctk.CTkCheckBox(cli_frame, text="Skeleton Mode")
         self.chk_cli_skeleton.pack(anchor="w", padx=10, pady=2)
 
-        # NEW: Checkbox for CLI .gitignore
         self.chk_cli_gitignore = ctk.CTkCheckBox(cli_frame, text="Учитывать .gitignore")
         self.chk_cli_gitignore.pack(anchor="w", padx=10, pady=2)
 
@@ -129,7 +133,7 @@ class MainWindow(ctk.CTk):
         ctk.CTkButton(self.tab_settings, text="Сбросить все", fg_color="gray", command=self._on_reset_settings).pack(
             fill="x", pady=5)
 
-        ctk.CTkLabel(self.tab_settings, text="v4.1 .gitignore Support", text_color="gray").pack(side="bottom", pady=10)
+        ctk.CTkLabel(self.tab_settings, text="v4.2 GitHub Support", text_color="gray").pack(side="bottom", pady=10)
 
         # === MAIN CONTENT ===
         main_frame = ctk.CTkFrame(self, fg_color="transparent")
@@ -205,7 +209,7 @@ class MainWindow(ctk.CTk):
         self._set_check(self.chk_secrets, state.settings.remove_secrets)
         self._set_check(self.chk_tree, state.settings.include_tree)
         self._set_check(self.chk_git, state.settings.use_git)
-        self._set_check(self.chk_gitignore, state.settings.use_gitignore)  # <---
+        self._set_check(self.chk_gitignore, state.settings.use_gitignore)
         self._set_check(self.chk_skeleton, state.settings.skeleton_mode)
 
         current_prompt = self.txt_system_prompt.get("1.0", "end-1c")
@@ -229,7 +233,7 @@ class MainWindow(ctk.CTk):
         self._set_check(self.chk_cli_secrets, state.settings.cli_remove_secrets)
         self._set_check(self.chk_cli_tree, state.settings.cli_include_tree)
         self._set_check(self.chk_cli_skeleton, state.settings.cli_skeleton_mode)
-        self._set_check(self.chk_cli_gitignore, state.settings.cli_use_gitignore)  # <---
+        self._set_check(self.chk_cli_gitignore, state.settings.cli_use_gitignore)
         self.cmb_cli_format.set(state.settings.cli_format)
 
         # Folders
@@ -239,7 +243,10 @@ class MainWindow(ctk.CTk):
             for folder in state.selected_folders:
                 row = ctk.CTkFrame(self.scroll_folders)
                 row.pack(fill="x", pady=2)
-                ctk.CTkLabel(row, text=f"📂 {folder}", anchor="w").pack(side="left", padx=5)
+                # Показываем (GitHub) для временных папок
+                is_temp = folder in state.temp_folders
+                prefix = "☁️" if is_temp else "📂"
+                ctk.CTkLabel(row, text=f"{prefix} {folder}", anchor="w").pack(side="left", padx=5)
 
         # Logs & Status
         self.txt_log.configure(state="normal")
@@ -263,7 +270,6 @@ class MainWindow(ctk.CTk):
             chk.deselect()
 
     def _collect_settings_from_ui(self):
-        """Собирает все настройки из UI элементов в словарь"""
         return {
             'extensions': self.entry_ext.get(),
             'ignored_paths': self.entry_ign.get(),
@@ -273,7 +279,7 @@ class MainWindow(ctk.CTk):
             'include_tree': bool(self.chk_tree.get()),
             'skeleton_mode': bool(self.chk_skeleton.get()),
             'use_git': bool(self.chk_git.get()),
-            'use_gitignore': bool(self.chk_gitignore.get()),  # <---
+            'use_gitignore': bool(self.chk_gitignore.get()),
             'system_prompt': self.txt_system_prompt.get("1.0", "end-1c"),
             'output_format': self.seg_format.get(),
             'cli_minify': bool(self.chk_cli_minify.get()),
@@ -281,11 +287,11 @@ class MainWindow(ctk.CTk):
             'cli_remove_secrets': bool(self.chk_cli_secrets.get()),
             'cli_include_tree': bool(self.chk_cli_tree.get()),
             'cli_skeleton_mode': bool(self.chk_cli_skeleton.get()),
-            'cli_use_gitignore': bool(self.chk_cli_gitignore.get()),  # <---
+            'cli_use_gitignore': bool(self.chk_cli_gitignore.get()),
             'cli_format': self.cmb_cli_format.get()
         }
 
-    # ... Остальные методы остаются прежними
+    # ... Handlers
     def _on_apply_preset(self, choice):
         self.controller.apply_preset(choice)
 
@@ -305,6 +311,12 @@ class MainWindow(ctk.CTk):
         path = filedialog.askdirectory()
         if path:
             self.controller.add_folder(path)
+
+    def _on_add_github(self):
+        dialog = ctk.CTkInputDialog(text="Введите URL репозитория:", title="GitHub Clone")
+        url = dialog.get_input()
+        if url:
+            self.controller.add_github_repo(url)
 
     def _on_clear_folders(self):
         self.controller.clear_folders()
@@ -362,6 +374,8 @@ class MainWindow(ctk.CTk):
             messagebox.showwarning("Внимание", msg)
 
     def on_closing(self):
+        # При закрытии окна очищаем временные папки
+        self.controller.clear_folders()
         if self.unsubscribe:
             self.unsubscribe()
         self.destroy()

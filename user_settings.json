@@ -1,6 +1,6 @@
 {
-  "extensions": ".txt",
-  "ignored_paths": ".git, node_modules, .nuxt, __pycache__, dist, build, .idea, .vscode, venv, .venv, coverage, .next, target, bin, obj",
+  "extensions": ".py .toml .ini .env.example .dockerfile .yaml .sh",
+  "ignored_paths": "__pycache__, venv, .venv, .git, .idea, .pytest_cache",
   "minify": true,
   "remove_comments": true,
   "remove_secrets": true,

@@ -1,5 +1,4 @@
 import threading
-import os
 import copy
 from typing import Tuple
 from ..store.store import Store
@@ -15,6 +14,7 @@ from ..services.formatting_service import FormattingService
 from ..services.output_service import OutputService
 from ..services.integration_service import IntegrationService
 from ..services.skeleton_service import SkeletonService
+from ..services.github_service import GitHubService  # <--- NEW
 from ..data.file_system_repository import FileSystemRepository
 from ..data.settings_repository import SettingsRepository
 
@@ -22,23 +22,23 @@ from ..data.settings_repository import SettingsRepository
 class MainController:
     """
     Контроллер для GUI режима.
-    Управляет бизнес-логикой.
     """
 
     def __init__(self, store: Store, dispatcher: Dispatcher):
         self.store = store
         self.dispatcher = dispatcher
-        fs_repo = FileSystemRepository()
+        self.fs_repo = FileSystemRepository()
         self.settings_repo = SettingsRepository()
 
-        self.file_service = FileService(fs_repo)
-        self.process_service = ProcessingService(fs_repo)
+        self.file_service = FileService(self.fs_repo)
+        self.process_service = ProcessingService(self.fs_repo)
         self.cleaner_service = CleanerService()
         self.skeleton_service = SkeletonService()
         self.token_service = TokenService()
         self.format_service = FormattingService()
         self.output_service = OutputService()
         self.integration_service = IntegrationService()
+        self.github_service = GitHubService()  # <--- NEW
 
     def load_initial_settings(self):
         data = self.settings_repo.load()
@@ -90,8 +90,36 @@ class MainController:
     def add_folder(self, path: str):
         self.dispatcher.dispatch(FOLDER_ADD, path)
 
+    def add_github_repo(self, url: str):
+        """Запускает процесс клонирования в потоке"""
+        if not url: return
+        threading.Thread(target=self._github_worker, args=(url,), daemon=True).start()
+
+    def _github_worker(self, url: str):
+        self.dispatcher.dispatch(UI_SET_LOADING, True)
+        self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Клонирование репозитория...", 'progress': 0.0})
+        self.dispatcher.dispatch(UI_ADD_LOG, f"GitHub Cloning: {url}")
+
+        try:
+            temp_path = self.github_service.clone_repo(url)
+            self.dispatcher.dispatch(GITHUB_CLONE_SUCCESS, temp_path)
+            self.dispatcher.dispatch(UI_ADD_LOG, "Репозиторий успешно загружен")
+        except Exception as e:
+            self.dispatcher.dispatch(GITHUB_CLONE_FAILURE, str(e))
+            self.dispatcher.dispatch(UI_ADD_LOG, f"GitHub Error: {e}")
+        finally:
+            self.dispatcher.dispatch(UI_SET_LOADING, False)
+            self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Готово", 'progress': 0.0})
+
     def clear_folders(self):
-        # Вызывает действие, которое теперь сбрасывает ВСЁ состояние
+        # 1. Физически удаляем временные папки
+        temp_folders = self.store.state.temp_folders
+        if temp_folders:
+            self.dispatcher.dispatch(UI_ADD_LOG, "Очистка временных файлов...")
+            for folder in temp_folders:
+                self.fs_repo.delete_directory(folder)
+
+        # 2. Очищаем состояние в сторе
         self.dispatcher.dispatch(FOLDER_CLEAR)
 
     def install_context_menu(self) -> Tuple[bool, str]:
@@ -102,7 +130,7 @@ class MainController:
 
     def start_processing(self, target_type: str, save_path: str = None):
         if not self.store.state.selected_folders:
-            return False, "Выберите папки для сканирования"
+            return False, "Выберите папки или URL для сканирования"
 
         threading.Thread(
             target=self._worker,

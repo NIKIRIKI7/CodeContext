@@ -13,7 +13,7 @@ class AppSettings:
     include_tree: bool = True
     skeleton_mode: bool = False
     use_git: bool = False
-    use_gitignore: bool = True  # <--- NEW: Учитывать .gitignore
+    use_gitignore: bool = True
     system_prompt: str = "You are an expert software engineer. Analyze the following codebase structure and file contents."
     output_format: str = "markdown"
 
@@ -23,7 +23,7 @@ class AppSettings:
     cli_remove_secrets: bool = True
     cli_include_tree: bool = True
     cli_skeleton_mode: bool = False
-    cli_use_gitignore: bool = True  # <--- NEW CLI
+    cli_use_gitignore: bool = True
     cli_format: str = "plain"
 
 
@@ -40,6 +40,7 @@ class AppState:
     """Глобальное состояние приложения"""
     settings: AppSettings = field(default_factory=AppSettings)
     selected_folders: List[str] = field(default_factory=list)
+    temp_folders: List[str] = field(default_factory=list)  # <--- NEW: Временные папки (GitHub)
     scanned_files_paths: List[str] = field(default_factory=list)
     processed_files: List[ProcessedFile] = field(default_factory=list)
     final_output_text: str = ""
