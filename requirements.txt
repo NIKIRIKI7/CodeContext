@@ -4,3 +4,5 @@ fpdf2>=1.7.2
 tiktoken>=0.5.0
 pathspec>=0.12.1
 tkinterdnd2>=0.4.3
+asyncio>=4.0.0
+pathspec>=0.12.1

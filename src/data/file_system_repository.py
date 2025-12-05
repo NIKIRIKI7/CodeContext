@@ -1,15 +1,22 @@
 import os
 import shutil
 import stat
-import subprocess
+import asyncio
 from pathlib import Path
 from typing import List, Set, Optional
 
 
 class FileSystemRepository:
-    """Низкоуровневая работа с файловой системой и Git"""
+    """
+    Низкоуровневая работа с файловой системой и Git.
+    Использует asyncio.to_thread для блокирующих операций.
+    """
 
-    def read_file(self, path: str) -> Optional[str]:
+    async def read_file_async(self, path: str) -> Optional[str]:
+        """Асинхронное чтение файла"""
+        return await asyncio.to_thread(self._read_file_sync, path)
+
+    def _read_file_sync(self, path: str) -> Optional[str]:
         if self._is_binary(path):
             return None
         try:
@@ -18,6 +25,7 @@ class FileSystemRepository:
             return None
 
     def read_gitignore(self, folder_path: str) -> List[str]:
+        # Чтение .gitignore быстрое, можно оставить синхронным или обернуть при желании
         gitignore_path = os.path.join(folder_path, '.gitignore')
         if not os.path.exists(gitignore_path):
             return []
@@ -27,13 +35,15 @@ class FileSystemRepository:
         except Exception:
             return []
 
-    def delete_directory(self, path: str):
-        """Рекурсивное удаление папки (для временных файлов)"""
+    async def delete_directory_async(self, path: str):
+        """Асинхронное удаление директории"""
+        await asyncio.to_thread(self._delete_directory_sync, path)
+
+    def _delete_directory_sync(self, path: str):
         if not os.path.exists(path):
             return
 
         def on_rm_error(func, path, exc_info):
-            """Обработчик ошибок для удаления read-only файлов (git)"""
             os.chmod(path, stat.S_IWRITE)
             os.unlink(path)
 
@@ -52,7 +62,11 @@ class FileSystemRepository:
             pass
         return False
 
-    def walk_directory(self, path: str, ignored_dirs: Set[str], extensions: List[str]) -> List[str]:
+    async def walk_directory_async(self, path: str, ignored_dirs: Set[str], extensions: List[str]) -> List[str]:
+        """Асинхронный обход директории (через поток)"""
+        return await asyncio.to_thread(self._walk_directory_sync, path, ignored_dirs, extensions)
+
+    def _walk_directory_sync(self, path: str, ignored_dirs: Set[str], extensions: List[str]) -> List[str]:
         result = []
         for root, dirs, files in os.walk(path):
             dirs[:] = [d for d in dirs if d not in ignored_dirs]
@@ -61,17 +75,34 @@ class FileSystemRepository:
                     result.append(os.path.join(root, file))
         return result
 
-    def get_git_changed_files(self, repo_path: str, extensions: List[str], ignored_substrings: Set[str]) -> List[str]:
+    async def get_git_changed_files_async(self, repo_path: str, extensions: List[str], ignored_substrings: Set[str]) -> \
+    List[str]:
+        """Асинхронное получение Git changes через asyncio.subprocess"""
         repo = Path(repo_path)
         if not (repo / ".git").exists():
             return []
-        try:
-            cmd_diff = ["git", "diff", "HEAD", "--name-only"]
-            output_diff = subprocess.check_output(cmd_diff, cwd=repo_path, text=True)
-            cmd_untracked = ["git", "ls-files", "--others", "--exclude-standard"]
-            output_untracked = subprocess.check_output(cmd_untracked, cwd=repo_path, text=True)
 
-            all_raw = output_diff.splitlines() + output_untracked.splitlines()
+        try:
+            # git diff
+            proc_diff = await asyncio.create_subprocess_exec(
+                "git", "diff", "HEAD", "--name-only",
+                cwd=repo_path,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            out_diff, _ = await proc_diff.communicate()
+
+            # git ls-files (untracked)
+            proc_untracked = await asyncio.create_subprocess_exec(
+                "git", "ls-files", "--others", "--exclude-standard",
+                cwd=repo_path,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            out_untracked, _ = await proc_untracked.communicate()
+
+            all_raw = out_diff.decode().splitlines() + out_untracked.decode().splitlines()
+
             files = set()
             for f in all_raw:
                 p = repo / f
@@ -82,6 +113,9 @@ class FileSystemRepository:
                 if any(ign in str(p) for ign in ignored_substrings):
                     continue
                 files.add(str(p))
+
             return list(files)
-        except subprocess.CalledProcessError:
+
+        except Exception as e:
+            print(f"Git async error: {e}")
             return []

@@ -1,50 +1,50 @@
 import os
-import subprocess
+import asyncio
 import tempfile
-from typing import Tuple
+import subprocess
 
 
 class GitHubService:
-    """Сервис для работы с GitHub репозиториями"""
+    """Сервис для работы с GitHub репозиториями (Async)"""
 
-    def clone_repo(self, url: str) -> Tuple[str, str]:
+    async def clone_repo_async(self, url: str) -> str:
         """
-        Клонирует репозиторий во временную папку.
-        Возвращает кортеж (путь_к_папке, имя_папки).
-        Выбрасывает исключение при ошибке.
+        Асинхронно клонирует репозиторий.
+        Возвращает путь к временной папке.
         """
         if not url.startswith("http"):
             raise ValueError("Некорректный URL")
 
-        # Создаем временную директорию
-        # Используем mkdtemp, чтобы создать уникальную папку
+        # Создаем папку синхронно (это быстро)
         temp_dir = tempfile.mkdtemp(prefix="codecontext_gh_")
 
         try:
-            # Запускаем git clone
-            # --depth 1 для ускорения (нам не нужна история)
-            cmd = ["git", "clone", "--depth", "1", url, temp_dir]
-
-            # Для Windows скрываем окно консоли
+            # Подготовка параметров для скрытия окна консоли на Windows
             startupinfo = None
             if os.name == 'nt':
                 startupinfo = subprocess.STARTUPINFO()
                 startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
 
-            subprocess.check_call(
-                cmd,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
+            # Асинхронный запуск процесса
+            process = await asyncio.create_subprocess_exec(
+                "git", "clone", "--depth", "1", url, temp_dir,
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.PIPE,
                 startupinfo=startupinfo
             )
 
+            _, stderr = await process.communicate()
+
+            if process.returncode != 0:
+                err_msg = stderr.decode().strip() if stderr else "Unknown error"
+                raise Exception(f"Git clone failed (code {process.returncode}): {err_msg}")
+
             return temp_dir
-        except subprocess.CalledProcessError:
-            # Если ошибка, удаляем пустую папку
+
+        except Exception as e:
+            # Очистка в случае ошибки
             try:
-                os.rmdir(temp_dir)
+                await asyncio.to_thread(os.rmdir, temp_dir)
             except:
                 pass
-            raise Exception("Ошибка выполнения git clone. Проверьте URL и наличие Git.")
-        except Exception as e:
             raise e

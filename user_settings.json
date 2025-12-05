@@ -1,6 +1,6 @@
 {
-  "extensions": ".js .ts .jsx .tsx .vue .html .css .scss .json",
-  "ignored_paths": "node_modules, dist, .next, .nuxt, .git, coverage",
+  "extensions": ".py .toml .ini .env.example .dockerfile .yaml .sh",
+  "ignored_paths": "__pycache__, venv, .venv, .git, .idea, .pytest_cache",
   "minify": true,
   "remove_comments": true,
   "remove_secrets": true,
@@ -16,5 +16,5 @@
   "cli_include_tree": true,
   "cli_skeleton_mode": false,
   "cli_use_gitignore": true,
-  "cli_format": "xml"
+  "cli_format": "plain"
 }

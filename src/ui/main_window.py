@@ -2,15 +2,16 @@ import os
 import customtkinter as ctk
 from tkinter import filedialog, messagebox
 from tkinterdnd2 import TkinterDnD, DND_FILES
+
 from ..store.store import Store
 from ..controllers.main_controller import MainController
 from ..utils.config import PRESETS, PROMPT_PRESETS
 
+# Настройки темы
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
 
 
-# === NEW: Custom Dialog Class ===
 class EditFolderDialog(ctk.CTkToplevel):
     """
     Кастомное диалоговое окно для редактирования пути с кнопкой обзора.
@@ -27,7 +28,7 @@ class EditFolderDialog(ctk.CTkToplevel):
         self.transient(parent)
         self.grab_set()
 
-        # Центрирование
+        # Центрирование относительно родителя
         self.update_idletasks()
         x = parent.winfo_x() + (parent.winfo_width() // 2) - (500 // 2)
         y = parent.winfo_y() + (parent.winfo_height() // 2) - (160 // 2)
@@ -42,7 +43,6 @@ class EditFolderDialog(ctk.CTkToplevel):
         self.entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
         self.entry.insert(0, initial_path)
 
-        # Кнопка с иконкой папки (символьной) или текстом
         self.btn_browse = ctk.CTkButton(
             self.input_frame,
             text="📁",
@@ -69,7 +69,7 @@ class EditFolderDialog(ctk.CTkToplevel):
         path = filedialog.askdirectory()
         if path:
             self.entry.delete(0, 'end')
-            self.entry.insert(0, path.replace('/', '\\'))  # Визуально для Windows красивее
+            self.entry.insert(0, path.replace('/', '\\'))
 
     def _on_ok(self):
         self.result = self.entry.get()
@@ -79,11 +79,10 @@ class EditFolderDialog(ctk.CTkToplevel):
         return self.result
 
 
-# ================================
-
 class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
     """
     Главное окно приложения (View).
+    Обеспечивает потокобезопасное обновление UI.
     """
 
     def __init__(self, store: Store, controller: MainController):
@@ -91,17 +90,22 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
         self.TkdndVersion = TkinterDnD._require(self)
         self.store = store
         self.controller = controller
-        self.title("CodeContext AI - Clean Architecture")
+
+        self.title("CodeContext AI - Async Architecture")
         self.geometry("1150x850")
 
         self._last_folders_hash = None
 
-        self.unsubscribe = self.store.subscribe(self._on_store_changed)
+        # Подписка на изменения Store через безопасную обертку
+        self.unsubscribe = self.store.subscribe(self._on_store_changed_threadsafe)
+
         self._init_ui()
 
+        # Drag & Drop
         self.drop_target_register(DND_FILES)
         self.dnd_bind('<<Drop>>', self._on_drop)
 
+        # Загрузка начальных настроек
         self.controller.load_initial_settings()
 
     def _init_ui(self):
@@ -109,7 +113,7 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
-        # === SIDEBAR ===
+        # --- Sidebar ---
         sidebar = ctk.CTkFrame(self, width=320, corner_radius=0)
         sidebar.grid(row=0, column=0, sticky="nsew")
         sidebar.grid_rowconfigure(2, weight=1)
@@ -120,11 +124,9 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
         self.tab_view = ctk.CTkTabview(sidebar)
         self.tab_view.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
 
+        # --- Tab: Run ---
         self.tab_run = self.tab_view.add("Run")
-        self.tab_prompt = self.tab_view.add("Prompt")
-        self.tab_settings = self.tab_view.add("Settings")
 
-        # --- Tab RUN ---
         ctk.CTkLabel(self.tab_run, text="Пресет файлов:").pack(anchor="w", pady=(5, 0))
         self.cmb_preset = ctk.CTkComboBox(self.tab_run, values=list(PRESETS.keys()), command=self._on_apply_preset)
         self.cmb_preset.pack(fill="x", pady=(0, 10))
@@ -146,18 +148,19 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
         self.chk_tree = ctk.CTkCheckBox(self.tab_run, text="Дерево файлов")
         self.chk_tree.pack(anchor="w", pady=5)
 
-        # Buttons Frame
         btn_frame = ctk.CTkFrame(self.tab_run, fg_color="transparent")
         btn_frame.pack(fill="x", pady=(20, 5))
 
         ctk.CTkButton(btn_frame, text="+ Папка", width=140, command=self._on_add_folder).pack(side="left", padx=(0, 5))
-        ctk.CTkButton(btn_frame, text="+ GitHub", width=140, command=self._on_add_github, fg_color="#2B2B2B",
-                      border_width=1).pack(side="right", padx=(5, 0))
+        ctk.CTkButton(btn_frame, text="+ GitHub", width=140, command=self._on_add_github, fg_color="#24292e",
+                      hover_color="#1b1f23", border_width=1).pack(side="right", padx=(5, 0))
 
         ctk.CTkButton(self.tab_run, text="Очистить", command=self._on_clear_folders, fg_color="transparent",
                       border_width=1).pack(fill="x", pady=5)
 
-        # --- Tab PROMPT ---
+        # --- Tab: Prompt ---
+        self.tab_prompt = self.tab_view.add("Prompt")
+
         ctk.CTkLabel(self.tab_prompt, text="Выберите пресет промпта:").pack(anchor="w", pady=(5, 0))
         self.cmb_prompt_presets = ctk.CTkComboBox(
             self.tab_prompt,
@@ -171,7 +174,10 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
         self.txt_system_prompt.pack(fill="both", expand=True, pady=5)
         self.txt_system_prompt.bind("<KeyRelease>", self._on_prompt_type)
 
-        # --- Tab SETTINGS (CLI & WIN) ---
+        # --- Tab: Settings ---
+        self.tab_settings = self.tab_view.add("Settings")
+
+        # CLI Settings
         cli_frame = ctk.CTkFrame(self.tab_settings)
         cli_frame.pack(fill="x", pady=5)
         ctk.CTkLabel(cli_frame, text="Настройки CLI", font=ctk.CTkFont(weight="bold")).pack(pady=5)
@@ -198,6 +204,7 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
         self.cmb_cli_format = ctk.CTkComboBox(cli_frame, values=["plain", "markdown", "xml"])
         self.cmb_cli_format.pack(fill="x", padx=10, pady=5)
 
+        # Windows Integration
         win_frame = ctk.CTkFrame(self.tab_settings)
         win_frame.pack(fill="x", pady=10)
         ctk.CTkLabel(win_frame, text="Интеграция с Windows", font=ctk.CTkFont(weight="bold")).pack(pady=5)
@@ -213,20 +220,20 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
         ctk.CTkButton(self.tab_settings, text="Сбросить все", fg_color="gray", command=self._on_reset_settings).pack(
             fill="x", pady=5)
 
-        ctk.CTkLabel(self.tab_settings, text="v4.7 Edit Fix & Clean", text_color="gray").pack(side="bottom", pady=10)
+        ctk.CTkLabel(self.tab_settings, text="v5.0 Async Architecture", text_color="gray").pack(side="bottom", pady=10)
 
-        # === MAIN CONTENT ===
+        # --- Main Area ---
         main_frame = ctk.CTkFrame(self, fg_color="transparent")
         main_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
         main_frame.grid_rowconfigure(3, weight=1)
         main_frame.grid_columnconfigure(0, weight=1)
 
-        # 1. Folders List
+        # Folders List
         self.scroll_folders = ctk.CTkScrollableFrame(main_frame, height=120,
                                                      label_text="Источники (Перетащите папки сюда)")
         self.scroll_folders.grid(row=0, column=0, sticky="ew", pady=(0, 10))
 
-        # 2. Options Bar
+        # Output Options
         opts = ctk.CTkFrame(main_frame, fg_color="transparent")
         opts.grid(row=1, column=0, sticky="ew", pady=(0, 10))
 
@@ -246,7 +253,7 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
         self.seg_format.pack(side="right")
         self.seg_format.set("markdown")
 
-        # 3. Action Buttons
+        # Action Buttons
         btns = ctk.CTkFrame(main_frame)
         btns.grid(row=2, column=0, sticky="ew", pady=(0, 10))
 
@@ -257,11 +264,11 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
         ctk.CTkButton(btns, text="В PDF", command=lambda: self._on_run("pdf")).pack(side="left", expand=True, fill="x",
                                                                                     padx=5, pady=5)
 
-        # 4. Logs
+        # Logs Area
         self.txt_log = ctk.CTkTextbox(main_frame, font=("Consolas", 12))
         self.txt_log.grid(row=3, column=0, sticky="nsew")
 
-        # 5. Status Bar
+        # Status Bar
         status_frame = ctk.CTkFrame(main_frame, height=30)
         status_frame.grid(row=4, column=0, sticky="ew", pady=(10, 0))
 
@@ -276,9 +283,11 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
         self.lbl_tokens.pack(side="right", padx=5)
 
     def _on_drop(self, event):
+        """Обработка Drag & Drop"""
         if not event.data: return
         try:
             raw_data = event.data
+            # TkinterDnD может возвращать пути в фигурных скобках если есть пробелы
             paths = self.tk.splitlist(raw_data)
             count = 0
             for path in paths:
@@ -287,17 +296,28 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
                     self.controller.add_folder(path)
                     count += 1
                 elif os.path.isfile(path):
+                    # Если перетащили файл, берем его папку
                     folder = os.path.dirname(path)
                     self.controller.add_folder(folder)
                     count += 1
+
             if count > 0:
                 self.lbl_status.configure(text=f"Добавлено: {count}")
         except Exception as e:
             print(f"Drop error: {e}")
             self.lbl_status.configure(text="Ошибка Drag&Drop")
 
+    def _on_store_changed_threadsafe(self, state):
+        """
+        Обертка для безопасного обновления UI из фоновых потоков (asyncio loop).
+        Планирует выполнение обновления в главном потоке Tkinter.
+        """
+        self.after(0, lambda: self._on_store_changed(state))
+
     def _on_store_changed(self, state):
-        """Обновление UI при изменении данных в Store"""
+        """Обновление UI при изменении данных в Store (выполняется в MainThread)"""
+
+        # Обновление полей настроек (если они не в фокусе)
         if self.entry_ext.get() != state.settings.extensions:
             self.entry_ext.delete(0, "end")
             self.entry_ext.insert(0, state.settings.extensions)
@@ -306,6 +326,7 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
             self.entry_ign.delete(0, "end")
             self.entry_ign.insert(0, state.settings.ignored_paths)
 
+        # Чекбоксы
         self._set_check(self.chk_minify, state.settings.minify)
         self._set_check(self.chk_comments, state.settings.remove_comments)
         self._set_check(self.chk_secrets, state.settings.remove_secrets)
@@ -314,11 +335,13 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
         self._set_check(self.chk_gitignore, state.settings.use_gitignore)
         self._set_check(self.chk_skeleton, state.settings.skeleton_mode)
 
+        # Системный промпт
         current_prompt = self.txt_system_prompt.get("1.0", "end-1c")
         if current_prompt != state.settings.system_prompt and not self.txt_system_prompt.focus_get():
             self.txt_system_prompt.delete("1.0", "end")
             self.txt_system_prompt.insert("1.0", state.settings.system_prompt)
 
+        # Обновление комбобокса пресетов промпта
         found = False
         for name, text in PROMPT_PRESETS.items():
             if name != "Custom" and text.strip() == state.settings.system_prompt.strip():
@@ -337,15 +360,16 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
         self._set_check(self.chk_cli_gitignore, state.settings.cli_use_gitignore)
         self.cmb_cli_format.set(state.settings.cli_format)
 
-        # Folders List Rendering
+        # Список папок (перерисовка только если изменился состав)
         current_folders_tuple = tuple(state.selected_folders)
-
         if self._last_folders_hash != current_folders_tuple:
             self._last_folders_hash = current_folders_tuple
 
+            # Очистка
             for w in self.scroll_folders.winfo_children():
                 w.destroy()
 
+            # Рендер
             for folder in state.selected_folders:
                 row = ctk.CTkFrame(self.scroll_folders, fg_color="transparent")
                 row.pack(fill="x", pady=2)
@@ -356,6 +380,7 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
                 label = ctk.CTkLabel(row, text=f"{prefix} {folder}", anchor="w")
                 label.pack(side="left", padx=5, expand=True, fill="x")
 
+                # Кнопка редактирования
                 btn_edit = ctk.CTkButton(
                     row, text="✏️", width=30, height=24, fg_color="transparent", border_width=1,
                     text_color=("gray10", "gray90"),
@@ -363,14 +388,15 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
                 )
                 btn_edit.pack(side="right", padx=2)
 
+                # Кнопка удаления
                 btn_del = ctk.CTkButton(
                     row, text="❌", width=30, height=24, fg_color="transparent", border_width=1,
-                    hover_color="#AA0000", text_color=("gray10", "gray90"),
+                    hover_color="#c42b1c",
                     command=lambda p=folder: self._on_remove_folder(p)
                 )
                 btn_del.pack(side="right", padx=2)
 
-        # Logs & Status
+        # Логи
         self.txt_log.configure(state="normal")
         self.txt_log.delete("1.0", "end")
         for log in state.logs:
@@ -378,12 +404,15 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
         self.txt_log.see("end")
         self.txt_log.configure(state="disabled")
 
+        # Статус
         self.lbl_status.configure(text=state.status_message)
         self.progress_bar.set(state.progress)
         self.lbl_tokens.configure(text=f"Tokens: {state.total_tokens}")
 
+        # Блокировка UI во время загрузки
         state_state = "disabled" if state.is_loading else "normal"
         self.tab_view.configure(state=state_state)
+        # Можно добавить блокировку отдельных кнопок, если нужно
 
     def _set_check(self, chk, val):
         if val:
@@ -392,6 +421,7 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
             chk.deselect()
 
     def _collect_settings_from_ui(self):
+        """Сбор данных из UI виджетов в словарь"""
         return {
             'extensions': self.entry_ext.get(),
             'ignored_paths': self.entry_ign.get(),
@@ -413,7 +443,6 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
             'cli_format': self.cmb_cli_format.get()
         }
 
-    # ... Handlers ...
     def _on_apply_preset(self, choice):
         self.controller.apply_preset(choice)
 
@@ -422,8 +451,10 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
         if choice != "Custom" and prompt_text is not None:
             self.txt_system_prompt.delete("1.0", "end")
             self.txt_system_prompt.insert("1.0", prompt_text)
-            data = self._collect_settings_from_ui()
-            self.controller.update_settings(data)
+
+        # Обновляем состояние, чтобы не потерять другие настройки
+        data = self._collect_settings_from_ui()
+        self.controller.update_settings(data)
 
     def _on_prompt_type(self, event):
         if self.cmb_prompt_presets.get() != "Custom":
@@ -444,10 +475,8 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
         self.controller.remove_folder(path)
 
     def _on_edit_folder(self, path):
-        # Используем наш новый кастомный диалог
         dialog = EditFolderDialog(self, path)
         new_path = dialog.get_input()
-
         if new_path:
             self.controller.edit_folder(path, new_path)
 
@@ -491,17 +520,23 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
             self.controller.reset_settings()
 
     def _on_run(self, target):
+        # 1. Собираем актуальные настройки из UI
         data = self._collect_settings_from_ui()
         self.controller.update_settings(data)
-        save_path = None
+
         state = self.store.state
+        save_path = None
+
         if target == 'file':
             ext = f".{state.settings.output_format}" if state.settings.output_format != 'plain' else ".txt"
             save_path = filedialog.asksaveasfilename(defaultextension=ext)
             if not save_path: return
+
         elif target == 'pdf':
             save_path = filedialog.asksaveasfilename(defaultextension=".pdf")
             if not save_path: return
+
+        # 2. Запускаем процесс (контроллер сам разрулит асинхронность)
         success, msg = self.controller.start_processing(target, save_path)
         if not success:
             messagebox.showwarning("Внимание", msg)

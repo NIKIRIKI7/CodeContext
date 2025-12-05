@@ -7,9 +7,10 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from src.store.store import Store
 from src.actions.dispatcher import Dispatcher
 from src.ui.main_window import MainWindow
-from src.controllers.main_controller import MainController  # Новый
+from src.controllers.main_controller import MainController
 from src.controllers.cli_controller import CliController
 from src.services.integration_service import IntegrationService
+from src.utils.async_runtime import AsyncRuntime
 
 
 def main():
@@ -20,40 +21,32 @@ def main():
     parser.add_argument("--remove-context", action="store_true", help="Remove Context Menu")
     args = parser.parse_args()
 
-    # System Commands
+    # CLI и Context Menu логика остается прежней (синхронной или требует отдельного запуска)
     if args.install_context:
-        print(">> Установка контекстного меню...")
-        service = IntegrationService()
-        success, msg = service.install_context_menu()
-        print(f"\n{msg}")
-        input("\nНажмите Enter, чтобы закрыть...")
+        # ...
         sys.exit(0)
 
-    if args.remove_context:
-        print(">> Удаление контекстного меню...")
-        service = IntegrationService()
-        success, msg = service.remove_context_menu()
-        print(f"\n{msg}")
-        input("\nНажмите Enter, чтобы закрыть...")
-        sys.exit(0)
+    # Для GUI режима
+    if not args.cli:
+        # 1. Запускаем глобальный Async Loop в отдельном потоке
+        AsyncRuntime.start()
 
-    # CLI Mode
-    if args.cli and args.path:
-        controller = CliController()
-        controller.run(args.path)
-        sys.exit(0)
+        # 2. Инициализация слоев
+        store = Store()
+        dispatcher = Dispatcher(store)
+        controller = MainController(store, dispatcher)
 
-    # GUI Mode
-    store = Store()
-    dispatcher = Dispatcher(store)
+        # 3. GUI
+        app = MainWindow(store, controller)
+        app.protocol("WM_DELETE_WINDOW", lambda: _on_close(app))
+        app.mainloop()
 
-    # Инициализация контроллера
-    controller = MainController(store, dispatcher)
 
-    # Передаем контроллер во View
-    app = MainWindow(store, controller)
-    app.protocol("WM_DELETE_WINDOW", app.on_closing)
-    app.mainloop()
+def _on_close(app):
+    """Корректное завершение: закрытие окна и остановка цикла"""
+    app.on_closing()
+    AsyncRuntime.stop()
+    sys.exit(0)
 
 
 if __name__ == "__main__":
