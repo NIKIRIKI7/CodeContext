@@ -1,5 +1,6 @@
 import threading
 import copy
+import os
 from typing import Tuple
 from ..store.store import Store
 from ..store.state import ProcessedFile
@@ -14,7 +15,7 @@ from ..services.formatting_service import FormattingService
 from ..services.output_service import OutputService
 from ..services.integration_service import IntegrationService
 from ..services.skeleton_service import SkeletonService
-from ..services.github_service import GitHubService  # <--- NEW
+from ..services.github_service import GitHubService
 from ..data.file_system_repository import FileSystemRepository
 from ..data.settings_repository import SettingsRepository
 
@@ -38,7 +39,37 @@ class MainController:
         self.format_service = FormattingService()
         self.output_service = OutputService()
         self.integration_service = IntegrationService()
-        self.github_service = GitHubService()  # <--- NEW
+        self.github_service = GitHubService()
+
+    def _normalize_path(self, path: str) -> str:
+        """
+        Мощная нормализация пути:
+        1. Удаляет пробелы по краям.
+        2. Удаляет кавычки.
+        3. Удаляет возможные пробелы, оставшиеся после удаления кавычек.
+        4. Приводит слеши к системному стандарту.
+        """
+        if not path:
+            return ""
+
+        # Шаг 1: Удаляем пробелы и кавычки в цикле, пока строка меняется
+        # Это защищает от ситуаций вида ' "Path" ' или " 'Path' "
+        clean_path = path
+        while True:
+            prev = clean_path
+            clean_path = clean_path.strip()
+            clean_path = clean_path.strip('"\'')
+            if clean_path == prev:
+                break
+
+        # Шаг 2: Нормализуем путь (меняет / на \ в Windows)
+        # Также убирает лишние слеши в конце
+        try:
+            clean_path = os.path.normpath(clean_path)
+        except:
+            pass  # Если путь совсем битый, оставляем как есть
+
+        return clean_path
 
     def load_initial_settings(self):
         data = self.settings_repo.load()
@@ -88,10 +119,24 @@ class MainController:
             })
 
     def add_folder(self, path: str):
-        self.dispatcher.dispatch(FOLDER_ADD, path)
+        """Добавление папки с нормализацией пути"""
+        clean_path = self._normalize_path(path)
+        if clean_path and os.path.exists(clean_path):
+            self.dispatcher.dispatch(FOLDER_ADD, clean_path)
+        elif clean_path:
+            # Если путь нормализовался, но не существует - логируем или игнорируем
+            print(f"Warning: Path does not exist: {clean_path}")
+
+    def remove_folder(self, path: str):
+        self.dispatcher.dispatch(FOLDER_REMOVE, path)
+
+    def edit_folder(self, old_path: str, new_path: str):
+        """Редактирование папки с нормализацией"""
+        clean_new = self._normalize_path(new_path)
+        if old_path != clean_new and clean_new:
+            self.dispatcher.dispatch(FOLDER_UPDATE, {'old': old_path, 'new': clean_new})
 
     def add_github_repo(self, url: str):
-        """Запускает процесс клонирования в потоке"""
         if not url: return
         threading.Thread(target=self._github_worker, args=(url,), daemon=True).start()
 
@@ -112,14 +157,12 @@ class MainController:
             self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Готово", 'progress': 0.0})
 
     def clear_folders(self):
-        # 1. Физически удаляем временные папки
         temp_folders = self.store.state.temp_folders
         if temp_folders:
             self.dispatcher.dispatch(UI_ADD_LOG, "Очистка временных файлов...")
             for folder in temp_folders:
                 self.fs_repo.delete_directory(folder)
 
-        # 2. Очищаем состояние в сторе
         self.dispatcher.dispatch(FOLDER_CLEAR)
 
     def install_context_menu(self) -> Tuple[bool, str]:

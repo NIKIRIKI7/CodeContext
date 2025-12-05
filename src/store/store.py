@@ -57,6 +57,28 @@ class Store:
             if payload not in self._state.selected_folders:
                 self._state.selected_folders.append(payload)
 
+        elif action_type == FOLDER_REMOVE:
+            # <--- NEW: Удаление конкретной папки
+            path_to_remove = payload
+            if path_to_remove in self._state.selected_folders:
+                self._state.selected_folders.remove(path_to_remove)
+            # Если это была временная папка (GitHub), удаляем и оттуда (физическое удаление оставим на clear/exit)
+            if path_to_remove in self._state.temp_folders:
+                self._state.temp_folders.remove(path_to_remove)
+
+        elif action_type == FOLDER_UPDATE:
+            # <--- NEW: Обновление пути (редактирование)
+            old_path = payload['old']
+            new_path = payload['new']
+            if old_path in self._state.selected_folders:
+                idx = self._state.selected_folders.index(old_path)
+                self._state.selected_folders[idx] = new_path
+
+            # Также обновляем в temp_folders если нужно
+            if old_path in self._state.temp_folders:
+                idx = self._state.temp_folders.index(old_path)
+                self._state.temp_folders[idx] = new_path
+
         elif action_type == GITHUB_CLONE_SUCCESS:
             path = payload
             if path not in self._state.selected_folders:
@@ -72,7 +94,7 @@ class Store:
 
         elif action_type == FOLDER_CLEAR:
             self._state.selected_folders = []
-            self._state.temp_folders = []  # Сбрасываем список, физическое удаление делает контроллер
+            self._state.temp_folders = []
             self._state.scanned_files_paths = []
             self._state.processed_files = []
             self._state.final_output_text = ""

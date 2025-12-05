@@ -10,28 +10,95 @@ ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
 
 
+# === NEW: Custom Dialog Class ===
+class EditFolderDialog(ctk.CTkToplevel):
+    """
+    Кастомное диалоговое окно для редактирования пути с кнопкой обзора.
+    """
+
+    def __init__(self, parent, initial_path: str):
+        super().__init__(parent)
+        self.title("Редактирование")
+        self.geometry("500x160")
+        self.resizable(False, False)
+        self.result = None
+
+        # Делаем окно модальным
+        self.transient(parent)
+        self.grab_set()
+
+        # Центрирование
+        self.update_idletasks()
+        x = parent.winfo_x() + (parent.winfo_width() // 2) - (500 // 2)
+        y = parent.winfo_y() + (parent.winfo_height() // 2) - (160 // 2)
+        self.geometry(f"+{x}+{y}")
+
+        ctk.CTkLabel(self, text="Измените путь:", font=("Arial", 14)).pack(pady=(20, 5))
+
+        self.input_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.input_frame.pack(fill="x", padx=20, pady=10)
+
+        self.entry = ctk.CTkEntry(self.input_frame)
+        self.entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
+        self.entry.insert(0, initial_path)
+
+        # Кнопка с иконкой папки (символьной) или текстом
+        self.btn_browse = ctk.CTkButton(
+            self.input_frame,
+            text="📁",
+            width=40,
+            command=self._on_browse
+        )
+        self.btn_browse.pack(side="right")
+
+        self.btn_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.btn_frame.pack(fill="x", padx=20, pady=5)
+
+        self.btn_ok = ctk.CTkButton(self.btn_frame, text="OK", width=100, command=self._on_ok)
+        self.btn_ok.pack(side="left", expand=True)
+
+        self.btn_cancel = ctk.CTkButton(self.btn_frame, text="Отмена", width=100, fg_color="transparent",
+                                        border_width=1, command=self.destroy)
+        self.btn_cancel.pack(side="right", expand=True)
+
+        self.protocol("WM_DELETE_WINDOW", self.destroy)
+        self.entry.focus_set()
+        self.wait_window()
+
+    def _on_browse(self):
+        path = filedialog.askdirectory()
+        if path:
+            self.entry.delete(0, 'end')
+            self.entry.insert(0, path.replace('/', '\\'))  # Визуально для Windows красивее
+
+    def _on_ok(self):
+        self.result = self.entry.get()
+        self.destroy()
+
+    def get_input(self):
+        return self.result
+
+
+# ================================
+
 class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
     """
     Главное окно приложения (View).
-    Добавлена поддержка Drag & Drop через tkinterdnd2.
     """
 
     def __init__(self, store: Store, controller: MainController):
-        # 1. Инициализация CTk
         super().__init__()
-
-        # 2. Инициализация DnD (Критически важно вызвать это сразу)
         self.TkdndVersion = TkinterDnD._require(self)
-
         self.store = store
         self.controller = controller
         self.title("CodeContext AI - Clean Architecture")
         self.geometry("1150x850")
 
+        self._last_folders_hash = None
+
         self.unsubscribe = self.store.subscribe(self._on_store_changed)
         self._init_ui()
 
-        # 3. Регистрируем DnD на все окно целиком (самый надежный способ)
         self.drop_target_register(DND_FILES)
         self.dnd_bind('<<Drop>>', self._on_drop)
 
@@ -146,7 +213,7 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
         ctk.CTkButton(self.tab_settings, text="Сбросить все", fg_color="gray", command=self._on_reset_settings).pack(
             fill="x", pady=5)
 
-        ctk.CTkLabel(self.tab_settings, text="v4.4 Drag & Drop Fixed", text_color="gray").pack(side="bottom", pady=10)
+        ctk.CTkLabel(self.tab_settings, text="v4.7 Edit Fix & Clean", text_color="gray").pack(side="bottom", pady=10)
 
         # === MAIN CONTENT ===
         main_frame = ctk.CTkFrame(self, fg_color="transparent")
@@ -208,40 +275,26 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
         self.lbl_tokens = ctk.CTkLabel(status_frame, text="Tokens: 0", text_color="gray")
         self.lbl_tokens.pack(side="right", padx=5)
 
-    # <--- HANDLER ---
     def _on_drop(self, event):
-        """Обработка перетаскивания файлов/папок"""
-        if not event.data:
-            return
-
+        if not event.data: return
         try:
-            # Парсим пути, учитывая пробелы и фигурные скобки Windows
             raw_data = event.data
             paths = self.tk.splitlist(raw_data)
-
             count = 0
             for path in paths:
-                # Очистка от лишних кавычек или скобок, если tk.splitlist пропустил
                 path = path.strip('{}')
-
                 if os.path.isdir(path):
                     self.controller.add_folder(path)
                     count += 1
                 elif os.path.isfile(path):
-                    # Если перетащили файл, берем его родительскую папку
-                    # или можно добавить сам файл, если доработать логику
                     folder = os.path.dirname(path)
                     self.controller.add_folder(folder)
                     count += 1
-
             if count > 0:
                 self.lbl_status.configure(text=f"Добавлено: {count}")
-
         except Exception as e:
             print(f"Drop error: {e}")
             self.lbl_status.configure(text="Ошибка Drag&Drop")
-
-    # ---------------------------
 
     def _on_store_changed(self, state):
         """Обновление UI при изменении данных в Store"""
@@ -266,7 +319,6 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
             self.txt_system_prompt.delete("1.0", "end")
             self.txt_system_prompt.insert("1.0", state.settings.system_prompt)
 
-        # Match Preset
         found = False
         for name, text in PROMPT_PRESETS.items():
             if name != "Custom" and text.strip() == state.settings.system_prompt.strip():
@@ -285,16 +337,38 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
         self._set_check(self.chk_cli_gitignore, state.settings.cli_use_gitignore)
         self.cmb_cli_format.set(state.settings.cli_format)
 
-        # Folders
-        if len(self.scroll_folders.winfo_children()) != len(state.selected_folders):
+        # Folders List Rendering
+        current_folders_tuple = tuple(state.selected_folders)
+
+        if self._last_folders_hash != current_folders_tuple:
+            self._last_folders_hash = current_folders_tuple
+
             for w in self.scroll_folders.winfo_children():
                 w.destroy()
+
             for folder in state.selected_folders:
-                row = ctk.CTkFrame(self.scroll_folders)
+                row = ctk.CTkFrame(self.scroll_folders, fg_color="transparent")
                 row.pack(fill="x", pady=2)
+
                 is_temp = folder in state.temp_folders
                 prefix = "☁️" if is_temp else "📂"
-                ctk.CTkLabel(row, text=f"{prefix} {folder}", anchor="w").pack(side="left", padx=5)
+
+                label = ctk.CTkLabel(row, text=f"{prefix} {folder}", anchor="w")
+                label.pack(side="left", padx=5, expand=True, fill="x")
+
+                btn_edit = ctk.CTkButton(
+                    row, text="✏️", width=30, height=24, fg_color="transparent", border_width=1,
+                    text_color=("gray10", "gray90"),
+                    command=lambda p=folder: self._on_edit_folder(p)
+                )
+                btn_edit.pack(side="right", padx=2)
+
+                btn_del = ctk.CTkButton(
+                    row, text="❌", width=30, height=24, fg_color="transparent", border_width=1,
+                    hover_color="#AA0000", text_color=("gray10", "gray90"),
+                    command=lambda p=folder: self._on_remove_folder(p)
+                )
+                btn_del.pack(side="right", padx=2)
 
         # Logs & Status
         self.txt_log.configure(state="normal")
@@ -339,7 +413,7 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
             'cli_format': self.cmb_cli_format.get()
         }
 
-    # ... Handlers
+    # ... Handlers ...
     def _on_apply_preset(self, choice):
         self.controller.apply_preset(choice)
 
@@ -365,6 +439,17 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
         url = dialog.get_input()
         if url:
             self.controller.add_github_repo(url)
+
+    def _on_remove_folder(self, path):
+        self.controller.remove_folder(path)
+
+    def _on_edit_folder(self, path):
+        # Используем наш новый кастомный диалог
+        dialog = EditFolderDialog(self, path)
+        new_path = dialog.get_input()
+
+        if new_path:
+            self.controller.edit_folder(path, new_path)
 
     def _on_clear_folders(self):
         self.controller.clear_folders()
