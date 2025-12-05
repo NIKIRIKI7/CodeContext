@@ -1,11 +1,11 @@
 {
-  "extensions": ".js .ts .jsx .tsx .vue .html .css .scss .json",
+  "extensions": ".exe",
   "ignored_paths": "node_modules, dist, .next, .nuxt, .git, coverage",
   "minify": true,
   "remove_comments": true,
   "remove_secrets": true,
   "include_tree": true,
-  "skeleton_mode": true,
+  "skeleton_mode": false,
   "use_git": false,
   "system_prompt": "",
   "output_format": "plain",
