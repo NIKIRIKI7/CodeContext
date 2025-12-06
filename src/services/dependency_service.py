@@ -1,20 +1,42 @@
-import ast
-import re
 import asyncio
 from typing import List, Dict, Set, Tuple
 
+# Импортируем стратегии из соседнего файла (точка означает текущую директорию пакета)
+from .strategies.dependency_strategies import (
+    DependencyParserStrategy,
+    PythonDependencyParser,
+    WebDependencyParser
+)
 
 class DependencyService:
     """
     Сервис для анализа зависимостей.
-    Работает с сырым контентом до минификации, чтобы корректно парсить AST/Regex.
+    Использует паттерн Стратегия для выбора парсера на основе расширения файла.
     """
+
+    def __init__(self):
+        # Реестр: { ".py": PythonStrategy(), ".js": WebStrategy(), ... }
+        self._parsers: Dict[str, DependencyParserStrategy] = {}
+        self._register_defaults()
+
+    def _register_defaults(self):
+        """Регистрация стратегий по умолчанию"""
+        strategies = [
+            PythonDependencyParser(),
+            WebDependencyParser()
+        ]
+        for strategy in strategies:
+            self.register_strategy(strategy)
+
+    def register_strategy(self, strategy: DependencyParserStrategy):
+        """Метод для динамического добавления новых стратегий"""
+        for ext in strategy.supported_extensions:
+            self._parsers[ext.lower()] = strategy
 
     async def resolve_dependencies(self, files: List[Dict[str, str]]) -> Dict[str, Set[str]]:
         """
         Асинхронно анализирует список файлов.
         files: Список словарей {'path': str, 'content': str, 'ext': str}
-        Возвращает: { "полный_путь_к_файлу": {"import1", "import2"} }
         """
         if not files:
             return {}
@@ -30,60 +52,28 @@ class DependencyService:
         return dependency_map
 
     async def _process_single_file(self, file: Dict[str, str]) -> Tuple[str, Set[str]]:
+        """Запуск синхронного анализа в отдельном потоке"""
         return await asyncio.to_thread(self._analyze_sync, file)
 
     def _analyze_sync(self, file: Dict[str, str]) -> Tuple[str, Set[str]]:
+        """Выбор стратегии и парсинг"""
         full_path = file['path']
         content = file['content']
-        # Определяем расширение, если его нет явно, берем из пути
+
+        if not content:
+            return full_path, set()
+
+        # Определяем расширение
         ext = file.get('ext')
         if not ext:
             ext = "." + full_path.split('.')[-1].lower() if '.' in full_path else ""
 
-        imports = set()
+        ext = ext.lower()
 
-        # Если контента нет, возвращаем пустоту
-        if not content:
-            return full_path, imports
+        # Получаем стратегию из реестра
+        parser = self._parsers.get(ext)
 
-        if ext == '.py':
-            imports = self._analyze_python(content)
-        elif ext in ['.js', '.jsx', '.ts', '.tsx', '.vue']:
-            imports = self._analyze_js_ts(content)
+        if parser:
+            return full_path, parser.parse(content)
 
-        return full_path, imports
-
-    def _analyze_python(self, code: str) -> Set[str]:
-        imports = set()
-        try:
-            tree = ast.parse(code)
-            for node in ast.walk(tree):
-                if isinstance(node, ast.Import):
-                    for alias in node.names:
-                        imports.add(alias.name)
-                elif isinstance(node, ast.ImportFrom):
-                    module = node.module if node.module else ""
-                    # Обработка относительных импортов (from . import x)
-                    prefix = "." * node.level
-                    if prefix or module:
-                        imports.add(f"{prefix}{module}")
-        except Exception:
-            # При минификации AST может падать, но мы теперь подаем сырой код,
-            # так что ошибки будут только если сам код изначально битый.
-            pass
-        return imports
-
-    def _analyze_js_ts(self, code: str) -> Set[str]:
-        imports = set()
-        # Regex для import ... from ...
-        import_pattern = re.compile(r'import\s+.*?\s+from\s+[\'"](.*?)[\'"]', re.MULTILINE)
-        # Regex для require(...) или import(...)
-        require_pattern = re.compile(r'(?:require|import)\s*\(\s*[\'"](.*?)[\'"]\s*\)', re.MULTILINE)
-
-        for match in import_pattern.finditer(code):
-            imports.add(match.group(1))
-
-        for match in require_pattern.finditer(code):
-            imports.add(match.group(1))
-
-        return imports
+        return full_path, set()
