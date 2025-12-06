@@ -20,6 +20,7 @@ from ..services.github_service import GitHubService
 from ..services.dependency_service import DependencyService
 from ..data.file_system_repository import FileSystemRepository
 from ..data.settings_repository import SettingsRepository
+from ..utils.pipeline_utils import PipelineUtils
 
 
 class MainController:
@@ -222,29 +223,20 @@ class MainController:
             self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Готово", 'progress': 1.0})
 
     def _cpu_heavy_processing(self, raw_files, settings):
-        """Выполняется в отдельном потоке, так как Cleaner/Skeleton - синхронные и тяжелые"""
-        results = []
+        """Выполняется в отдельном потоке"""
+
+        import copy
         proc_settings = copy.copy(settings)
         if proc_settings.skeleton_mode:
-            proc_settings.minify = False  # Skeleton несовместим с полной минификацией строк
+            proc_settings.minify = False
 
-        for i, raw_file in enumerate(raw_files):
-            content = raw_file['content']
-            ext = raw_file['ext']
-
-            # Очистка и минификация
-            cleaned = self.cleaner_service.clean(content, ext, proc_settings)
-
-            # Режим скелета
-            if proc_settings.skeleton_mode:
-                cleaned = self.skeleton_service.make_skeleton(cleaned, ext)
-
-            # Подсчет токенов
-            tokens = self.token_service.count_tokens(cleaned)
-
-            results.append(ProcessedFile(path=raw_file['path'], content=cleaned, tokens=tokens))
-
-        return results
+        return PipelineUtils.process_files_batch(
+            raw_files=raw_files,
+            options=proc_settings,
+            cleaner_service=self.cleaner_service,
+            skeleton_service=self.skeleton_service,
+            token_service=self.token_service
+        )
 
     def _format_and_count(self, processed_results, settings, dep_map):
         text = self.format_service.format_output(

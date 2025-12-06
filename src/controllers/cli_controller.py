@@ -1,10 +1,9 @@
 import time
 import os
-import sys
-import asyncio  # <--- Добавлен импорт
-from types import SimpleNamespace
-from typing import Dict, List
+import asyncio
 import traceback
+from types import SimpleNamespace
+from typing import Dict, List, Tuple
 
 from ..data.settings_repository import SettingsRepository
 from ..data.file_system_repository import FileSystemRepository
@@ -17,6 +16,7 @@ from ..services.formatting_service import FormattingService
 from ..services.output_service import OutputService
 from ..store.state import ProcessedFile
 from ..utils.config import PRESETS, DEFAULT_SYSTEM_PROMPT
+from ..utils.pipeline_utils import PipelineUtils  # <--- Импортируем нашу новую утилиту
 
 
 class CliController:
@@ -26,8 +26,11 @@ class CliController:
     """
 
     def __init__(self):
+        # Инициализация репозиториев
         self.settings_repo = SettingsRepository()
         self.fs_repo = FileSystemRepository()
+
+        # Инициализация сервисов
         self.file_service = FileService(self.fs_repo)
         self.process_service = ProcessingService(self.fs_repo)
         self.cleaner_service = CleanerService()
@@ -38,28 +41,126 @@ class CliController:
 
     def run(self, target_path: str):
         """Основной метод запуска CLI пайплайна"""
-        target_path = os.path.abspath(target_path.strip('"\''))
+        target_path = self._normalize_path(target_path)
 
         print(f"\n🚀 CodeContext AI: Запуск...")
         print(f"📂 Цель: {target_path}")
 
-        if not os.path.exists(target_path):
-            print(f"❌ Ошибка: Путь не существует.")
-            self._keep_window_open()
+        if not self._validate_target(target_path):
             return
 
+        # 1. Загрузка конфигурации
         config = self._load_config()
+        options, system_prompt, output_format = self._prepare_options(config)
 
-        # Настройка параметров
+        try:
+            # 2. Сканирование файлов
+            file_paths = self._step_scan_files(target_path, options)
+            if not file_paths:
+                self._exit_with_message("⚠️ Файлы не найдены.")
+                return
+
+            # 3. Чтение файлов
+            raw_files = self._step_read_files(file_paths)
+
+            # 4. Обработка (Очистка -> Скелет -> Токены)
+            processed_files = self._step_process_files(raw_files, options)
+
+            # 5. Форматирование и вывод
+            self._step_output(processed_files, output_format, options.include_tree, system_prompt)
+
+        except Exception as e:
+            self._handle_error(e)
+        finally:
+            self._keep_window_open()
+
+
+    def _step_scan_files(self, path: str, options: SimpleNamespace) -> List[str]:
+        """Шаг сканирования файловой системы"""
+        print(f"🔍 Сканирование ({'Git' if options.use_git else 'FS'})...", end=" ")
+
+        file_paths = asyncio.run(self.file_service.scan_folders_async(
+            [path],
+            options.extensions,
+            options.ignored_paths,
+            options.use_git,
+            options.use_gitignore
+        ))
+
+        print(f"✅ Найдено: {len(file_paths)}")
+        return file_paths
+
+    def _step_read_files(self, file_paths: List[str]) -> List[Dict]:
+        """Шаг чтения содержимого файлов"""
+        print("📖 Чтение файлов...", end=" ")
+
+        raw_files = asyncio.run(self.process_service.read_files_async(file_paths))
+
+        print(f"✅ Успешно: {len(raw_files)}")
+        return raw_files
+
+    def _step_process_files(self, raw_files: List[Dict], options: SimpleNamespace) -> List[ProcessedFile]:
+        """Шаг обработки контента (использует PipelineUtils)"""
+        print("⚙️  Обработка...", end=" ")
+
+        # Делегируем тяжелую логику утилите
+        processed_files = PipelineUtils.process_files_batch(
+            raw_files=raw_files,
+            options=options,
+            cleaner_service=self.cleaner_service,
+            skeleton_service=self.skeleton_service,
+            token_service=self.token_service
+        )
+
+        print("✅ Готово")
+        return processed_files
+
+    def _step_output(self, processed_files: List[ProcessedFile], fmt: str, include_tree: bool, prompt: str):
+        """Шаг форматирования и сохранения"""
+        final_text = self.format_service.format_output(
+            processed_files,
+            fmt,
+            include_tree,
+            prompt
+        )
+
+        total_tokens = sum(f.tokens for f in processed_files)
+        print(f"📊 Всего токенов: ~{total_tokens}")
+
+        self.output_service.copy_to_clipboard(final_text)
+        print(f"📋 Результат ({fmt}) скопирован в буфер обмена!")
+
+    # --- Вспомогательные методы конфигурации ---
+
+    def _normalize_path(self, path: str) -> str:
+        if not path: return ""
+        return os.path.abspath(path.strip('"\''))
+
+    def _validate_target(self, path: str) -> bool:
+        if not os.path.exists(path):
+            print(f"❌ Ошибка: Путь не существует.")
+            self._keep_window_open()
+            return False
+        return True
+
+    def _load_config(self) -> Dict:
+        cfg = self.settings_repo.load()
+        return cfg if cfg else {}
+
+    def _prepare_options(self, config: Dict) -> Tuple[SimpleNamespace, str, str]:
+        """Подготовка объекта опций из сырого конфига"""
+        # Расширения
         extensions = config.get('extensions', '')
         if not extensions or not extensions.strip():
             extensions = PRESETS['Default']['ext']
 
+        # Режимы
         skeleton_mode = config.get('cli_skeleton_mode', False)
         minify = config.get('cli_minify', True)
         if skeleton_mode:
             minify = False
 
+        # Объект опций для передачи в сервисы
         options = SimpleNamespace(
             minify=minify,
             remove_comments=config.get('cli_remove_comments', True),
@@ -68,83 +169,24 @@ class CliController:
             extensions=extensions,
             ignored_paths=config.get('ignored_paths', PRESETS['Default']['ign']),
             use_git=config.get('use_git', False),
-            use_gitignore=config.get('cli_use_gitignore', True)
+            use_gitignore=config.get('cli_use_gitignore', True),
+            include_tree=config.get('cli_include_tree', True)
         )
 
-        output_format = config.get('cli_format', 'plain')
-        include_tree = config.get('cli_include_tree', True)
         system_prompt = config.get('system_prompt', DEFAULT_SYSTEM_PROMPT)
+        output_format = config.get('cli_format', 'plain')
 
-        try:
-            print(f"🔍 Сканирование ({'Git' if options.use_git else 'FS'})...", end=" ")
+        return options, system_prompt, output_format
 
-            # --- ИСПРАВЛЕНИЕ 1: Запуск асинхронного сканирования через asyncio.run ---
-            file_paths = asyncio.run(self.file_service.scan_folders_async(
-                [target_path],
-                options.extensions,
-                options.ignored_paths,
-                options.use_git,
-                options.use_gitignore
-            ))
+    # --- Управление окном и ошибками ---
 
-            if not file_paths:
-                print("\n⚠️  Файлы не найдены.")
-                self._keep_window_open()
-                return
+    def _handle_error(self, e: Exception):
+        print(f"\n🔥 Критическая ошибка: {e}")
+        traceback.print_exc()
 
-            print(f"✅ Найдено: {len(file_paths)}")
-
-            print("📖 Чтение файлов...", end=" ")
-
-            # --- ИСПРАВЛЕНИЕ 2: Запуск асинхронного чтения через asyncio.run ---
-            raw_files = asyncio.run(self.process_service.read_files_async(file_paths))
-
-            print(f"✅ Успешно: {len(raw_files)}")
-
-            print("⚙️  Обработка...", end=" ")
-            processed_files = []
-
-            # Обработка остается синхронной (Cleaner/Skeleton работают с текстом в памяти)
-            for raw in raw_files:
-                cleaned = self.cleaner_service.clean(raw['content'], raw['ext'], options)
-
-                if options.skeleton_mode:
-                    cleaned = self.skeleton_service.make_skeleton(cleaned, raw['ext'])
-
-                tokens = self.token_service.count_tokens(cleaned)
-
-                processed_files.append(ProcessedFile(
-                    path=raw['path'],
-                    content=cleaned,
-                    tokens=tokens
-                ))
-            print("✅ Готово")
-
-            final_text = self.format_service.format_output(
-                processed_files,
-                output_format,
-                include_tree,
-                system_prompt
-            )
-
-            total_tokens = sum(f.tokens for f in processed_files)
-            print(f"📊 Всего токенов: ~{total_tokens}")
-
-            self.output_service.copy_to_clipboard(final_text)
-            print(f"📋 Результат ({output_format}) скопирован в буфер обмена!")
-
-        except Exception as e:
-            print(f"\n🔥 Критическая ошибка: {e}")
-            traceback.print_exc()
-        finally:
-            self._keep_window_open()
-
-    def _load_config(self) -> Dict:
-        """Загружает настройки или возвращает дефолтные"""
-        cfg = self.settings_repo.load()
-        if not cfg:
-            return {}
-        return cfg
+    def _exit_with_message(self, msg: str):
+        print(f"\n{msg}")
+        self._keep_window_open()
 
     def _keep_window_open(self):
         print("\n(Окно закроется через 3 секунды...)")
