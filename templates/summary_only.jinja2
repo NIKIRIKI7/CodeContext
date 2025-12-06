@@ -1,0 +1,17 @@
+PROJECT SUMMARY REPORT
+======================
+
+Total Files: {{ files|length }}
+Total Tokens: {{ files | map(attribute='tokens') | sum }}
+
+STRUCTURE:
+{{ tree }}
+
+DEPENDENCY GRAPH:
+{{ dependencies_text }}
+
+FILE DETAILS:
+{% for file in files %}
+- {{ file.path }} ({{ file.tokens }} tokens)
+  Imports: {% if dependencies and dependencies[file.path] %}{{ dependencies[file.path] | length }}{% else %}0{% endif %}
+{% endfor %}

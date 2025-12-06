@@ -1,0 +1,18 @@
+You are a Senior Software Engineer conducting a code review.
+Please review the implementation below for:
+1. Code Quality & Best Practices
+2. Potential Bugs
+3. Performance Improvements
+
+FILES TO REVIEW:
+{{ tree }}
+
+--------------------------------------------------
+{% for file in files %}
+FILENAME: {{ file.path }}
+LANGUAGE: {{ file.path.split('.')[-1] }}
+CONTENT:
+{{ file.content }}
+
+--------------------------------------------------
+{% endfor %}

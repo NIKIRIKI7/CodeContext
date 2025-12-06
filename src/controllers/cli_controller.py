@@ -44,35 +44,29 @@ class CliController:
     def run(self, target_path: str):
         """Основной метод запуска CLI пайплайна"""
         target_path = self._normalize_path(target_path)
-
         print(f"\n🚀 CodeContext AI: Запуск...")
         print(f"📂 Цель: {target_path}")
 
         if not self._validate_target(target_path):
             return
 
-        # 1. Загрузка конфигурации
         config = self._load_config()
-        options, system_prompt, output_format = self._prepare_options(config)
+        # Распаковываем 4 значения
+        options, system_prompt, output_format, template_path = self._prepare_options(config)
 
         try:
-            # 2. Сканирование файлов
             file_paths = self._step_scan_files(target_path, options)
             if not file_paths:
                 self._exit_with_message("⚠️ Файлы не найдены.")
                 return
 
-            # 3. Чтение файлов
             raw_files = self._step_read_files(file_paths)
-
-            # 4. Анализ зависимостей
             dependency_map = self._step_resolve_dependencies(raw_files, options)
-
-            # 5. Обработка (Очистка -> Скелет -> Токены)
             processed_files = self._step_process_files(raw_files, options)
 
-            # 6. Форматирование и вывод
-            self._step_output(processed_files, output_format, options.include_tree, system_prompt, dependency_map)
+            # Передаем template_path
+            self._step_output(processed_files, output_format, options.include_tree, system_prompt, dependency_map,
+                              template_path)
 
         except Exception as e:
             self._handle_error(e)
@@ -139,14 +133,16 @@ class CliController:
                      fmt: str,
                      include_tree: bool,
                      prompt: str,
-                     dependency_map: Optional[Dict[str, Set[str]]] = None):
+                     dependency_map: Optional[Dict[str, Set[str]]] = None,
+                     template_path: str = None):
         """Шаг форматирования и сохранения"""
         final_text = self.format_service.format_output(
             files=processed_files,
             fmt=fmt,
             include_tree=include_tree,
             system_prompt=prompt,
-            dependency_map=dependency_map
+            dependency_map=dependency_map,
+            template_path=template_path
         )
 
         total_tokens = sum(f.tokens for f in processed_files)
@@ -175,20 +171,18 @@ class CliController:
         return cfg if cfg else {}
 
     @staticmethod
-    def _prepare_options(config: Dict) -> Tuple[SimpleNamespace, str, str]:
+    def _prepare_options(config: Dict) -> Tuple[SimpleNamespace, str, str, str]:
         """Подготовка объекта опций из сырого конфига (нет self)"""
-        # Расширения
         extensions = config.get('extensions', '')
         if not extensions or not extensions.strip():
             extensions = PRESETS['Default']['ext']
 
-        # Режимы
         skeleton_mode = config.get('cli_skeleton_mode', False)
         minify = config.get('cli_minify', True)
+
         if skeleton_mode:
             minify = False
 
-        # Объект опций для передачи в сервисы
         options = SimpleNamespace(
             minify=minify,
             remove_comments=config.get('cli_remove_comments', True),
@@ -204,8 +198,10 @@ class CliController:
 
         system_prompt = config.get('system_prompt', DEFAULT_SYSTEM_PROMPT)
         output_format = config.get('cli_format', 'plain')
+        template_path = config.get('template_path', '')  # Читаем из конфига
 
-        return options, system_prompt, output_format
+        # Возвращаем 4 значения
+        return options, system_prompt, output_format, template_path
 
     # --- Управление окном и ошибками ---
 

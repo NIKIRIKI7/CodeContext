@@ -1,0 +1,18 @@
+<system_context>
+{{ system_prompt }}
+</system_context>
+
+<project_structure>
+{{ tree }}
+</project_structure>
+
+<documents>
+{% for file in files %}
+    <document index="{{ loop.index }}">
+        <source>{{ file.path }}</source>
+        <document_content>
+{{ file.content }}
+        </document_content>
+    </document>
+{% endfor %}
+</documents>

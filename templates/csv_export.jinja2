@@ -1,0 +1,4 @@
+Path|Tokens|Dependencies
+{% for file in files %}
+{{ file.path }}|{{ file.tokens }}|{% if dependencies and dependencies[file.path] %}{{ dependencies[file.path] | join(", ") }}{% else %}None{% endif %}
+{% endfor %}

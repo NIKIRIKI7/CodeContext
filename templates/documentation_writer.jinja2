@@ -1,0 +1,17 @@
+TASK: Write comprehensive documentation (README.md) for the project described below.
+Include:
+1. Project Overview
+2. Installation/Setup
+3. Key Components description based on the file structure.
+
+PROJECT STRUCTURE:
+{{ tree }}
+
+SOURCE CODE:
+{% for file in files %}
+---
+File: {{ file.path }}
+---
+{{ file.content }}
+
+{% endfor %}

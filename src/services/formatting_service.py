@@ -2,18 +2,50 @@ import html
 import os
 from pathlib import Path
 from typing import List, Dict, Set, Optional
+
+# Попытка импорта Jinja2, чтобы приложение работало и без него (с ограниченным функционалом)
+try:
+    from jinja2 import Template, Environment, FileSystemLoader, select_autoescape
+
+    JINJA_AVAILABLE = True
+except ImportError:
+    JINJA_AVAILABLE = False
+
 from ..store.state import ProcessedFile
 
 
 class FormattingService:
-    """Сервис форматирования итогового текста"""
+    """Сервис форматирования итогового текста с поддержкой Jinja2"""
 
     def format_output(self,
                       files: List[ProcessedFile],
                       fmt: str,
                       include_tree: bool,
                       system_prompt: str,
-                      dependency_map: Optional[Dict[str, Set[str]]] = None) -> str:
+                      dependency_map: Optional[Dict[str, Set[str]]] = None,
+                      template_path: str = None) -> str:
+
+        # Генерация дерева и графа (могут пригодиться в шаблоне)
+        tree_text = self._generate_tree([f.path for f in files]) if include_tree else ""
+        dep_text = self._format_dependency_graph(dependency_map) if dependency_map else ""
+
+        # Логика для кастомных шаблонов (Jinja2)
+        if fmt == 'custom':
+            if not JINJA_AVAILABLE:
+                return "Error: jinja2 library is not installed. Run 'pip install jinja2'."
+            if not template_path or not os.path.exists(template_path):
+                return "Error: Template file not found. Please select a .jinja2 file."
+
+            return self._render_custom_template(
+                template_path,
+                files=files,
+                tree=tree_text,
+                dependencies=dependency_map,  # Передаем объект, чтобы можно было итерировать
+                dependencies_text=dep_text,  # Передаем готовый текст
+                system_prompt=system_prompt
+            )
+
+        # Стандартные форматы (Markdown, XML, Plain)
         output = []
 
         # 1. System Prompt
@@ -25,31 +57,26 @@ class FormattingService:
             else:
                 output.append(f"SYSTEM PROMPT:\n{system_prompt}\n" + "=" * 50 + "\n")
 
-        # 2. Project Tree
+        # 2. Tree Structure
         if include_tree and files:
-            paths = [f.path for f in files]
-            tree = self._generate_tree(paths)
             if fmt == 'markdown':
-                # ИСПРАВЛЕНО: Восстановлена строка вывода дерева для Markdown
-                output.append(f"### Project Structure\n```\n{tree}\n```\n---\n")
+                output.append(f"## Project Structure\n```text\n{tree_text}\n```\n")
             elif fmt == 'xml':
-                output.append(f"<tree>\n{html.escape(tree)}\n</tree>")
+                output.append(f"<tree>\n{html.escape(tree_text)}\n</tree>")
             else:
-                output.append("PROJECT STRUCTURE:\n" + tree + "\n" + "=" * 50 + "\n")
+                output.append("PROJECT STRUCTURE:\n" + tree_text + "\n" + "=" * 50 + "\n")
 
         # 3. Dependency Graph
         if dependency_map:
-            graph_text = self._format_dependency_graph(dependency_map)
-            if graph_text:
+            if dep_text:
                 if fmt == 'markdown':
-                    # ИСПРАВЛЕНО: Восстановлена строка вывода графа для Markdown
-                    output.append(f"### Dependency Graph\n```\n{graph_text}\n```\n---\n")
+                    output.append(f"## Dependency Graph\n```text\n{dep_text}\n```\n")
                 elif fmt == 'xml':
-                    output.append(f"<dependencies>\n{html.escape(graph_text)}\n</dependencies>")
+                    output.append(f"<dependencies>\n{html.escape(dep_text)}\n</dependencies>")
                 else:
-                    output.append("DEPENDENCY GRAPH:\n" + graph_text + "\n" + "=" * 50 + "\n")
+                    output.append("DEPENDENCY GRAPH:\n" + dep_text + "\n" + "=" * 50 + "\n")
 
-        # 4. File Contents
+        # 4. Files Content
         if fmt == 'xml':
             output.append(self._to_xml(files, dependency_map))
         elif fmt == 'markdown':
@@ -59,39 +86,58 @@ class FormattingService:
 
         return "\n".join(output)
 
+    def _render_custom_template(self, template_path: str, **context) -> str:
+        """Рендер Jinja2 шаблона из файла"""
+        try:
+            template_dir = os.path.dirname(template_path)
+            template_file = os.path.basename(template_path)
+
+            env = Environment(
+                loader=FileSystemLoader(template_dir),
+                autoescape=select_autoescape(['html', 'xml'])
+            )
+            template = env.get_template(template_file)
+            return template.render(**context)
+        except Exception as e:
+            return f"Error rendering template: {str(e)}"
+
     @staticmethod
     def _format_dependency_graph(dep_map: Dict[str, Set[str]]) -> str:
         """Генерация текстового представления графа из словаря"""
         if not dep_map:
             return ""
-
         lines = []
-        # Сортируем файлы для стабильного вывода
         sorted_files = sorted(dep_map.keys())
-
         for file_path in sorted_files:
             imports = dep_map[file_path]
             if not imports:
                 continue
-
             display_name = os.path.basename(file_path)
             lines.append(f"{display_name}")
             for imp in sorted(list(imports)):
                 lines.append(f"  -> {imp}")
-            lines.append("")  # Пустая строка для читаемости
-
+            lines.append("")
         return "\n".join(lines)
 
     @staticmethod
     def _generate_tree(paths: List[str]) -> str:
         """Генерация ASCII дерева"""
         if not paths: return ""
+
+        base_dir = None
         try:
             common_path = os.path.commonpath(paths)
+
+            # Если общий путь - это файл, берем его директорию
             if os.path.isfile(common_path):
                 common_path = os.path.dirname(common_path)
+
+            # ИСПРАВЛЕНИЕ: Выносим инициализацию base_dir из под if
+            # Берем родителя общей папки, чтобы в дереве отображалась корневая папка проекта
             base_dir = Path(common_path).parent
+
         except (ValueError, OSError):
+            # ValueError может возникнуть, если пути на разных дисках (Windows)
             base_dir = None
 
         tree_structure = {}
@@ -101,6 +147,7 @@ class FormattingService:
                 try:
                     rel_parts = p.relative_to(base_dir).parts
                 except ValueError:
+                    # Если путь не является подпутем base_dir (крайний случай)
                     rel_parts = p.parts
             else:
                 rel_parts = p.parts
@@ -133,7 +180,6 @@ class FormattingService:
         out = ["<root>"]
         for f in files:
             out.append(f'  <file path="{f.path}">')
-
             if deps and f.path in deps:
                 sorted_deps = sorted(list(deps[f.path]))
                 if sorted_deps:
@@ -141,7 +187,6 @@ class FormattingService:
                     for d in sorted_deps:
                         out.append(f'      <import>{html.escape(d)}</import>')
                     out.append('    </imports>')
-
             out.append(f'    <content>\n{html.escape(f.content)}\n    </content>')
             out.append(f'  </file>')
         out.append("</root>")
@@ -152,8 +197,7 @@ class FormattingService:
         out = []
         for f in files:
             ext = Path(f.path).suffix.lstrip('.') or 'txt'
-            out.append(f"## File: {f.path}\n")
-
+            out.append(f"## File: `{f.path}`\n")
             if deps and f.path in deps:
                 sorted_deps = sorted(list(deps[f.path]))
                 if sorted_deps:
@@ -172,12 +216,10 @@ class FormattingService:
         for f in files:
             out.append(sep)
             out.append(f"FILE: {f.path}")
-
             if deps and f.path in deps:
                 sorted_deps = sorted(list(deps[f.path]))
                 if sorted_deps:
                     out.append(f"IMPORTS: {', '.join(sorted_deps)}")
-
             out.append(sep)
             out.append(f.content)
             out.append("\n")

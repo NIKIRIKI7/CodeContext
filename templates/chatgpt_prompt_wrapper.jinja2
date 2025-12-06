@@ -1,0 +1,13 @@
+I will provide you with a codebase.
+Your goal is: {{ system_prompt }}
+
+Here is the folder structure:
+{{ tree }}
+
+Here are the file contents. Please ingest them and wait for my specific question, or if I stated a task above, execute it.
+
+START OF CODE CONTEXT
+vvvvvvvvvvvvvvvvvvvvv
+
+{% for file in files %}
+file: {{ file.path }}

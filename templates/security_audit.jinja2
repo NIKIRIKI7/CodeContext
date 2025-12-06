@@ -1,0 +1,13 @@
+ROLE: Security Researcher.
+TASK: Analyze the following code for security vulnerabilities (OWASP Top 10), secrets leaks, and unsafe dependencies.
+
+DEPENDENCY MAP (Check for supply chain risks):
+{{ dependencies_text }}
+
+CODEBASE:
+{% for file in files %}
+==================================================
+TARGET: {{ file.path }}
+==================================================
+{{ file.content }}
+{% endfor %}

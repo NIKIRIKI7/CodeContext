@@ -1,0 +1,24 @@
+ОТЧЕТ О КОДЕ
+============
+
+СИСТЕМНЫЙ КОНТЕКСТ:
+{{ system_prompt }}
+
+СТРУКТУРА ПРОЕКТА:
+{{ tree }}
+
+{% if dependencies_text %}
+ЗАВИСИМОСТИ:
+{{ dependencies_text }}
+{% endif %}
+
+ФАЙЛЫ (Всего: {{ files|length }}):
+
+{% for file in files %}
+---
+Файл: {{ file.path }}
+Токенов: {{ file.tokens }}
+---
+{{ file.content }}
+
+{% endfor %}

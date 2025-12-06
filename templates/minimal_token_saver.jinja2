@@ -1,0 +1,6 @@
+{{ system_prompt }}
+
+{% for file in files %}
+### FILE: {{ file.path }}
+{{ file.content }}
+{% endfor %}

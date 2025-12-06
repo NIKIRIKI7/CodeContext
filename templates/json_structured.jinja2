@@ -1,0 +1,16 @@
+[
+{% for file in files %}
+  {
+    "path": {{ file.path | tojson }},
+    "tokens": {{ file.tokens }},
+    "content": {{ file.content | tojson }},
+    "imports": [
+      {% if dependencies and dependencies[file.path] %}
+        {% for imp in dependencies[file.path] %}
+        {{ imp | tojson }}{{ "," if not loop.last }}
+        {% endfor %}
+      {% endif %}
+    ]
+  }{{ "," if not loop.last }}
+{% endfor %}
+]

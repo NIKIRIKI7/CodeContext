@@ -250,7 +250,8 @@ class MainController:
             fmt=settings.output_format,
             include_tree=settings.include_tree,
             system_prompt=settings.system_prompt,
-            dependency_map=dep_map
+            dependency_map=dep_map,
+            template_path=settings.template_path  # Передаем путь
         )
 
     @staticmethod
