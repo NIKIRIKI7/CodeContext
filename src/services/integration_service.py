@@ -8,14 +8,16 @@ from typing import Tuple
 class IntegrationService:
     """Сервис для интеграции с Windows (Реестр, Права администратора)"""
 
-    def is_admin(self) -> bool:
+    @staticmethod
+    def is_admin() -> bool:
         """Проверяет, запущен ли процесс с правами администратора"""
         try:
             return ctypes.windll.shell32.IsUserAnAdmin()
         except:
             return False
 
-    def restart_as_admin(self, extra_arg: str):
+    @staticmethod
+    def restart_as_admin(extra_arg: str):
         """
         Перезапускает текущий скрипт с запросом прав администратора (UAC)
         и добавляет аргумент действия (например, --install-context).

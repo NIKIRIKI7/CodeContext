@@ -2,12 +2,14 @@ import os
 import asyncio
 import tempfile
 import subprocess
+import shutil
 
 
 class GitHubService:
     """Сервис для работы с GitHub репозиториями (Async)"""
 
-    async def clone_repo_async(self, url: str) -> str:
+    @staticmethod
+    async def clone_repo_async(url: str) -> str:
         """
         Асинхронно клонирует репозиторий.
         Возвращает путь к временной папке.
@@ -37,14 +39,14 @@ class GitHubService:
 
             if process.returncode != 0:
                 err_msg = stderr.decode().strip() if stderr else "Unknown error"
-                raise Exception(f"Git clone failed (code {process.returncode}): {err_msg}")
+                raise RuntimeError(f"Git clone failed (code {process.returncode}): {err_msg}")
 
             return temp_dir
 
         except Exception as e:
-            # Очистка в случае ошибки
             try:
-                await asyncio.to_thread(os.rmdir, temp_dir)
-            except:
+                await asyncio.to_thread(shutil.rmtree, temp_dir, ignore_errors=True)
+            except OSError:
                 pass
+
             raise e

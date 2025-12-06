@@ -1,5 +1,5 @@
 import re
-from typing import Dict, Any
+from typing import Any
 from ..utils.config import SECRET_PATTERNS
 
 
@@ -22,7 +22,8 @@ class CleanerService:
 
         return text
 
-    def _remove_comments(self, text: str, ext: str) -> str:
+    @staticmethod
+    def _remove_comments(text: str, ext: str) -> str:
         if ext in ['.js', '.ts', '.vue', '.jsx', '.tsx', '.css', '.scss', '.java', '.cpp', '.c', '.h', '.go', '.php']:
             # Удаление блочных комментариев /* ... */
             text = re.sub(r'/\*.*?\*/', '', text, flags=re.DOTALL)
@@ -33,10 +34,12 @@ class CleanerService:
             text = re.sub(r'#.*$', '', text, flags=re.MULTILINE)
         return text
 
-    def _remove_secrets(self, text: str) -> str:
+    @staticmethod
+    def _remove_secrets(text: str) -> str:
         for pattern in SECRET_PATTERNS:
             text = pattern.sub(r'\1 [REDACTED]', text)
         return text
 
-    def _minify_whitespace(self, text: str) -> str:
+    @staticmethod
+    def _minify_whitespace(text: str) -> str:
         return "\n".join([line.strip() for line in text.splitlines() if line.strip()])

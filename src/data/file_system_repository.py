@@ -21,44 +21,50 @@ class FileSystemRepository:
             return None
         try:
             return Path(path).read_text(encoding='utf-8', errors='replace')
-        except Exception:
+        except (OSError, UnicodeDecodeError):
             return None
 
-    def read_gitignore(self, folder_path: str) -> List[str]:
-        # Чтение .gitignore быстрое, можно оставить синхронным или обернуть при желании
+    @staticmethod
+    def read_gitignore(folder_path: str) -> List[str]:
         gitignore_path = os.path.join(folder_path, '.gitignore')
         if not os.path.exists(gitignore_path):
             return []
         try:
             with open(gitignore_path, 'r', encoding='utf-8') as f:
                 return f.readlines()
-        except Exception:
+        except (OSError, UnicodeDecodeError):
             return []
 
     async def delete_directory_async(self, path: str):
         """Асинхронное удаление директории"""
         await asyncio.to_thread(self._delete_directory_sync, path)
 
-    def _delete_directory_sync(self, path: str):
+    @staticmethod
+    def _delete_directory_sync(path: str):
         if not os.path.exists(path):
             return
 
-        def on_rm_error(func, path, exc_info):
-            os.chmod(path, stat.S_IWRITE)
-            os.unlink(path)
+        # Исправление: добавляем необходимые аргументы func и exc_info
+        def on_rm_error(p):
+            try:
+                os.chmod(p, stat.S_IWRITE)
+                os.unlink(p)
+            except OSError:
+                pass
 
         try:
             shutil.rmtree(path, onerror=on_rm_error)
-        except Exception as e:
+        except OSError as e:
             print(f"Error deleting temp dir {path}: {e}")
 
-    def _is_binary(self, path: str) -> bool:
+    @staticmethod
+    def _is_binary(path: str) -> bool:
         try:
             with open(path, 'rb') as f:
                 chunk = f.read(1024)
                 if b'\x00' in chunk:
                     return True
-        except IOError:
+        except OSError:
             pass
         return False
 
@@ -66,17 +72,20 @@ class FileSystemRepository:
         """Асинхронный обход директории (через поток)"""
         return await asyncio.to_thread(self._walk_directory_sync, path, ignored_dirs, extensions)
 
-    def _walk_directory_sync(self, path: str, ignored_dirs: Set[str], extensions: List[str]) -> List[str]:
+    @staticmethod
+    def _walk_directory_sync(path: str, ignored_dirs: Set[str], extensions: List[str]) -> List[str]:
         result = []
         for root, dirs, files in os.walk(path):
+            # Модифицируем dirs in-place для исключения папок
             dirs[:] = [d for d in dirs if d not in ignored_dirs]
             for file in files:
                 if any(file.lower().endswith(ext) for ext in extensions):
                     result.append(os.path.join(root, file))
         return result
 
-    async def get_git_changed_files_async(self, repo_path: str, extensions: List[str], ignored_substrings: Set[str]) -> \
-    List[str]:
+    @staticmethod
+    async def get_git_changed_files_async(repo_path: str, extensions: List[str], ignored_substrings: Set[str]) -> \
+            List[str]:
         """Асинхронное получение Git changes через asyncio.subprocess"""
         repo = Path(repo_path)
         if not (repo / ".git").exists():
@@ -116,6 +125,7 @@ class FileSystemRepository:
 
             return list(files)
 
-        except Exception as e:
-            print(f"Git async error: {e}")
+        except (OSError, ValueError):
+            # Перехватываем ошибки запуска процесса или декодирования
+            print(f"Git async error in {repo_path}")
             return []

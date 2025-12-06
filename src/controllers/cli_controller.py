@@ -14,7 +14,7 @@ from ..services.skeleton_service import SkeletonService
 from ..services.token_service import TokenService
 from ..services.formatting_service import FormattingService
 from ..services.output_service import OutputService
-from ..services.dependency_service import DependencyService  # <--- Добавлен импорт
+from ..services.dependency_service import DependencyService
 from ..store.state import ProcessedFile
 from ..utils.config import PRESETS, DEFAULT_SYSTEM_PROMPT
 from ..utils.pipeline_utils import PipelineUtils
@@ -39,7 +39,7 @@ class CliController:
         self.token_service = TokenService()
         self.format_service = FormattingService()
         self.output_service = OutputService()
-        self.dependency_service = DependencyService()  # <--- Инициализация сервиса зависимостей
+        self.dependency_service = DependencyService()
 
     def run(self, target_path: str):
         """Основной метод запуска CLI пайплайна"""
@@ -65,13 +65,13 @@ class CliController:
             # 3. Чтение файлов
             raw_files = self._step_read_files(file_paths)
 
-            # 4. Анализ зависимостей (НОВЫЙ ШАГ)
+            # 4. Анализ зависимостей
             dependency_map = self._step_resolve_dependencies(raw_files, options)
 
             # 5. Обработка (Очистка -> Скелет -> Токены)
             processed_files = self._step_process_files(raw_files, options)
 
-            # 6. Форматирование и вывод (Передаем dependency_map)
+            # 6. Форматирование и вывод
             self._step_output(processed_files, output_format, options.include_tree, system_prompt, dependency_map)
 
         except Exception as e:
@@ -112,7 +112,6 @@ class CliController:
 
         print("🕸  Анализ зависимостей...", end=" ")
         try:
-            # Запускаем асинхронный метод в синхронном контексте
             dependency_map = asyncio.run(self.dependency_service.resolve_dependencies(raw_files))
             print(f"✅ (Файлов со связями: {len(dependency_map)})")
             return dependency_map
@@ -147,7 +146,7 @@ class CliController:
             fmt=fmt,
             include_tree=include_tree,
             system_prompt=prompt,
-            dependency_map=dependency_map  # <--- Передаем карту зависимостей
+            dependency_map=dependency_map
         )
 
         total_tokens = sum(f.tokens for f in processed_files)
@@ -158,7 +157,9 @@ class CliController:
 
     # --- Вспомогательные методы конфигурации ---
 
-    def _normalize_path(self, path: str) -> str:
+    @staticmethod
+    def _normalize_path(path: str) -> str:
+        """Статический метод нормализации пути (нет self)"""
         if not path: return ""
         return os.path.abspath(path.strip('"\''))
 
@@ -173,8 +174,9 @@ class CliController:
         cfg = self.settings_repo.load()
         return cfg if cfg else {}
 
-    def _prepare_options(self, config: Dict) -> Tuple[SimpleNamespace, str, str]:
-        """Подготовка объекта опций из сырого конфига"""
+    @staticmethod
+    def _prepare_options(config: Dict) -> Tuple[SimpleNamespace, str, str]:
+        """Подготовка объекта опций из сырого конфига (нет self)"""
         # Расширения
         extensions = config.get('extensions', '')
         if not extensions or not extensions.strip():
@@ -197,7 +199,6 @@ class CliController:
             use_git=config.get('use_git', False),
             use_gitignore=config.get('cli_use_gitignore', True),
             include_tree=config.get('cli_include_tree', True),
-            # Важно: берем настройку зависимостей из конфига (по умолчанию False, если не задано)
             include_dependencies=config.get('include_dependencies', False)
         )
 
@@ -208,7 +209,9 @@ class CliController:
 
     # --- Управление окном и ошибками ---
 
-    def _handle_error(self, e: Exception):
+    @staticmethod
+    def _handle_error(e: Exception):
+        """Обработка ошибок (нет self)"""
         print(f"\n🔥 Критическая ошибка: {e}")
         traceback.print_exc()
 
@@ -216,6 +219,8 @@ class CliController:
         print(f"\n{msg}")
         self._keep_window_open()
 
-    def _keep_window_open(self):
+    @staticmethod
+    def _keep_window_open():
+        """Удержание окна (нет self)"""
         print("\n(Окно закроется через 3 секунды...)")
         time.sleep(3)

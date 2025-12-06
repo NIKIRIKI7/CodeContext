@@ -59,7 +59,8 @@ class FormattingService:
 
         return "\n".join(output)
 
-    def _format_dependency_graph(self, dep_map: Dict[str, Set[str]]) -> str:
+    @staticmethod
+    def _format_dependency_graph(dep_map: Dict[str, Set[str]]) -> str:
         """Генерация текстового представления графа из словаря"""
         if not dep_map:
             return ""
@@ -81,7 +82,8 @@ class FormattingService:
 
         return "\n".join(lines)
 
-    def _generate_tree(self, paths: List[str]) -> str:
+    @staticmethod
+    def _generate_tree(paths: List[str]) -> str:
         """Генерация ASCII дерева"""
         if not paths: return ""
         try:
@@ -126,7 +128,8 @@ class FormattingService:
         _build(tree_structure)
         return "\n".join(lines)
 
-    def _to_xml(self, files: List[ProcessedFile], deps: Optional[Dict[str, Set[str]]]) -> str:
+    @staticmethod
+    def _to_xml(files: List[ProcessedFile], deps: Optional[Dict[str, Set[str]]]) -> str:
         out = ["<root>"]
         for f in files:
             out.append(f'  <file path="{f.path}">')
@@ -144,11 +147,11 @@ class FormattingService:
         out.append("</root>")
         return "\n".join(out)
 
-    def _to_markdown(self, files: List[ProcessedFile], deps: Optional[Dict[str, Set[str]]]) -> str:
+    @staticmethod
+    def _to_markdown(files: List[ProcessedFile], deps: Optional[Dict[str, Set[str]]]) -> str:
         out = []
         for f in files:
             ext = Path(f.path).suffix.lstrip('.') or 'txt'
-            # ИСПРАВЛЕНО: Восстановлен заголовок файла
             out.append(f"## File: {f.path}\n")
 
             if deps and f.path in deps:
@@ -162,7 +165,8 @@ class FormattingService:
             out.append("```\n")
         return "\n".join(out)
 
-    def _to_plain(self, files: List[ProcessedFile], deps: Optional[Dict[str, Set[str]]]) -> str:
+    @staticmethod
+    def _to_plain(files: List[ProcessedFile], deps: Optional[Dict[str, Set[str]]]) -> str:
         out = []
         sep = "=" * 50
         for f in files:

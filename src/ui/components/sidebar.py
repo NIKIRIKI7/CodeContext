@@ -1,5 +1,4 @@
 import customtkinter as ctk
-from tkinter import messagebox
 from ...utils.config import PRESETS, PROMPT_PRESETS
 
 
@@ -61,15 +60,7 @@ class Sidebar(ctk.CTkFrame):
         btn_frame = ctk.CTkFrame(t, fg_color="transparent")
         btn_frame.pack(fill="x", pady=(20, 5))
 
-        # Эти кнопки вызывают методы контроллера, но сами диалоги выбора папки/url будут вызываться
-        # через коллбеки или события в main_window, либо передадим сюда методы из main_window.
-        # Для простоты, мы ожидаем, что в Sidebar передадут функции для открытия диалогов,
-        # НО архитектурно правильнее, если Sidebar просто эмитит событие.
-        # В данном коде, чтобы не усложнять, предположим, что controller методы вызываются из UI.
-        # Однако диалоги (askdirectory) лучше вызывать в View слое.
-        # Мы привяжем команды позже или передадим их.
-
-        self.btn_add_folder = ctk.CTkButton(btn_frame, text="+ Папка", width=140)  # Command будет задан извне
+        self.btn_add_folder = ctk.CTkButton(btn_frame, text="+ Папка", width=140)
         self.btn_add_folder.pack(side="left", padx=(0, 5))
 
         self.btn_add_github = ctk.CTkButton(btn_frame, text="+ GitHub", width=140, fg_color="#24292e",
@@ -145,11 +136,12 @@ class Sidebar(ctk.CTkFrame):
             self.txt_system_prompt.insert("1.0", prompt_text)
             self.on_settings_change()
 
-    def _on_prompt_type(self, event):
+    def _on_prompt_type(self):
         if self.cmb_prompt_presets.get() != "Custom":
             self.cmb_prompt_presets.set("Custom")
 
-    def _set_check(self, chk, val):
+    @staticmethod
+    def _set_check(chk, val):
         if val:
             chk.select()
         else:
@@ -165,18 +157,23 @@ class Sidebar(ctk.CTkFrame):
             self.entry_ign.delete(0, "end")
             self.entry_ign.insert(0, settings.ignored_paths)
 
-        self._set_check(self.chk_tree, settings.include_tree)
-        self._set_check(self.chk_dependencies, settings.include_dependencies)
-        self._set_check(self.chk_git, settings.use_git)
-        self._set_check(self.chk_gitignore, settings.use_gitignore)
+        # Использование цикла для обновления чекбоксов (устраняет дублирование кода)
+        checkboxes = [
+            (self.chk_tree, settings.include_tree),
+            (self.chk_dependencies, settings.include_dependencies),
+            (self.chk_git, settings.use_git),
+            (self.chk_gitignore, settings.use_gitignore),
+            (self.chk_cli_minify, settings.cli_minify),
+            (self.chk_cli_comments, settings.cli_remove_comments),
+            (self.chk_cli_secrets, settings.cli_remove_secrets),
+            (self.chk_cli_tree, settings.cli_include_tree),
+            (self.chk_cli_skeleton, settings.cli_skeleton_mode),
+            (self.chk_cli_gitignore, settings.cli_use_gitignore)
+        ]
 
-        # CLI Settings Update
-        self._set_check(self.chk_cli_minify, settings.cli_minify)
-        self._set_check(self.chk_cli_comments, settings.cli_remove_comments)
-        self._set_check(self.chk_cli_secrets, settings.cli_remove_secrets)
-        self._set_check(self.chk_cli_tree, settings.cli_include_tree)
-        self._set_check(self.chk_cli_skeleton, settings.cli_skeleton_mode)
-        self._set_check(self.chk_cli_gitignore, settings.cli_use_gitignore)
+        for chk, val in checkboxes:
+            self._set_check(chk, val)
+
         self.cmb_cli_format.set(settings.cli_format)
 
         # Prompt update

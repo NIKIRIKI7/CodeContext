@@ -1,8 +1,6 @@
 import ast
 import re
 import sys
-from typing import List
-
 
 class SkeletonService:
     """
@@ -25,12 +23,13 @@ class SkeletonService:
 
         # Web Strategy (JS, TS, Vue, Svelte, Angular, etc.)
         if ext in ['.js', '.jsx', '.ts', '.tsx', '.vue', '.svelte', '.html', '.css', '.scss']:
-            return self._web_skeleton(code, ext)
+            return self._web_skeleton(code)
 
         # Fallback: Return original
         return code
 
-    def _python_skeleton(self, code: str) -> str:
+    @staticmethod
+    def _python_skeleton(code: str) -> str:
         """
         Использует AST для Python.
         Оставляет сигнатуры, докстринги, удаляет тела методов.
@@ -48,9 +47,10 @@ class SkeletonService:
         if sys.version_info >= (3, 9):
             return ast.unparse(new_tree)
         else:
-            return code  # Fallback для старых версий Python
+            return code
 
-    def _web_skeleton(self, code: str, ext: str) -> str:
+    @staticmethod
+    def _web_skeleton(code: str) -> str:
         """
         Regex-based подход для JS/TS и фреймворков.
         Выделяет импорты, экспорты, классы и функции.

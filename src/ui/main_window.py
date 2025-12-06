@@ -5,7 +5,6 @@ from tkinterdnd2 import TkinterDnD, DND_FILES
 
 from ..store.store import Store
 from ..controllers.main_controller import MainController
-from ..utils.config import PRESETS
 
 # Импорт компонентов
 from .dialogs import EditFolderDialog

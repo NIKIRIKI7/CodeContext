@@ -38,10 +38,9 @@ class PythonDependencyParser(DependencyParserStrategy):
                     prefix = "." * node.level
                     if prefix or module:
                         imports.add(f"{prefix}{module}")
-        except Exception:
+        except (SyntaxError, ValueError):
             pass
         return imports
-
 
 class WebDependencyParser(DependencyParserStrategy):
     """Стратегия для JS/TS/Vue/React (Regex)"""

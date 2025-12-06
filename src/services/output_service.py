@@ -5,14 +5,17 @@ from ..utils.config import FONT_PATH
 class OutputService:
     """Сервис для сохранения результатов (Буфер, Файл, PDF)"""
     
-    def copy_to_clipboard(self, text: str):
+    @staticmethod
+    def copy_to_clipboard(text: str):
         pyperclip.copy(text)
 
-    def save_to_file(self, text: str, path: str):
+    @staticmethod
+    def save_to_file(text: str, path: str):
         with open(path, 'w', encoding='utf-8') as f:
             f.write(text)
 
-    def save_to_pdf(self, text: str, path: str):
+    @staticmethod
+    def save_to_pdf(text: str, path: str):
         pdf = FPDF()
         pdf.add_page()
         pdf.set_auto_page_break(auto=True, margin=15)

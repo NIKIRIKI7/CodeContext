@@ -1,6 +1,6 @@
 import copy
 from typing import List, Callable, Any
-from .state import AppState, AppSettings, ProcessedFile
+from .state import AppState, AppSettings
 from ..actions.action_types import *
 
 

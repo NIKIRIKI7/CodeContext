@@ -1,9 +1,8 @@
-import copy
 import os
 import asyncio
-from typing import Tuple, List, Dict
+import traceback
+from typing import Tuple, List
 from ..store.store import Store
-from ..store.state import ProcessedFile
 from ..actions.dispatcher import Dispatcher
 from ..actions.action_types import *
 from ..utils.config import PRESETS, DEFAULT_SYSTEM_PROMPT
@@ -21,6 +20,7 @@ from ..services.dependency_service import DependencyService
 from ..data.file_system_repository import FileSystemRepository
 from ..data.settings_repository import SettingsRepository
 from ..utils.pipeline_utils import PipelineUtils
+from ..store.state import ProcessedFile
 
 
 class MainController:
@@ -41,16 +41,19 @@ class MainController:
         self.github_service = GitHubService()
         self.dependency_service = DependencyService()
 
-    def _normalize_path(self, path: str) -> str:
-        if not path: return ""
+    @staticmethod
+    def _normalize_path(path: str) -> str:
+        if not path:
+            return ""
         clean_path = path
         while True:
             prev = clean_path
             clean_path = clean_path.strip().strip('"\'')
-            if clean_path == prev: break
+            if clean_path == prev:
+                break
         try:
             clean_path = os.path.normpath(clean_path)
-        except:
+        except (TypeError, ValueError, OSError):
             pass
         return clean_path
 
@@ -172,15 +175,14 @@ class MainController:
 
             self.dispatcher.dispatch(SCAN_SUCCESS, files_paths)
 
-            # 2. Чтение файлов (получаем сырой контент)
+            # 2. Чтение файлов
             self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Чтение файлов...", 'progress': 0.2})
             raw_files = await self.process_service.read_files_async(files_paths)
 
-            # 3. Анализ зависимостей (на СЫРЫХ файлах, ДО минификации)
+            # 3. Анализ зависимостей
             dependency_map = None
             if state.settings.include_dependencies:
                 self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Анализ зависимостей...", 'progress': 0.3})
-                # Передаем raw_files, которые являются списком словарей
                 dependency_map = await self.dependency_service.resolve_dependencies(raw_files)
 
             # 4. Обработка (очистка, минификация, скелет, токены)
@@ -189,14 +191,19 @@ class MainController:
 
             self.dispatcher.dispatch(PROCESSING_SUCCESS, processed_results)
 
-            # 5. Форматирование результата
+            # 5. Форматирование результата и подсчет токенов
             self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Форматирование...", 'progress': 0.9})
-            text_result, total_tokens = await asyncio.to_thread(
-                self._format_and_count,
+
+            # Форматирование (тяжелая операция -> в поток)
+            text_result = await asyncio.to_thread(
+                self._format_output,
                 processed_results,
                 state.settings,
-                dependency_map  # Передаем карту зависимостей
+                dependency_map
             )
+
+            # Подсчет токенов (быстрая операция -> синхронно)
+            total_tokens = self._count_total_tokens(processed_results)
 
             self.dispatcher.dispatch(FORMATTING_SUCCESS, {'text': text_result, 'tokens': total_tokens})
             self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Сохранение...", 'progress': 0.95})
@@ -216,7 +223,6 @@ class MainController:
 
         except Exception as e:
             self.dispatcher.dispatch(UI_ADD_LOG, f"CRITICAL ERROR: {e}")
-            import traceback
             traceback.print_exc()
         finally:
             self.dispatcher.dispatch(UI_SET_LOADING, False)
@@ -224,7 +230,6 @@ class MainController:
 
     def _cpu_heavy_processing(self, raw_files, settings):
         """Выполняется в отдельном потоке"""
-
         import copy
         proc_settings = copy.copy(settings)
         if proc_settings.skeleton_mode:
@@ -238,13 +243,17 @@ class MainController:
             token_service=self.token_service
         )
 
-    def _format_and_count(self, processed_results, settings, dep_map):
-        text = self.format_service.format_output(
-            processed_results,
-            settings.output_format,
-            settings.include_tree,
-            settings.system_prompt,
+    def _format_output(self, processed_results, settings, dep_map) -> str:
+        """Только форматирование текста"""
+        return self.format_service.format_output(
+            files=processed_results,
+            fmt=settings.output_format,
+            include_tree=settings.include_tree,
+            system_prompt=settings.system_prompt,
             dependency_map=dep_map
         )
-        tokens = sum(f.tokens for f in processed_results)
-        return text, tokens
+
+    @staticmethod
+    def _count_total_tokens(processed_results: List[ProcessedFile]) -> int:
+        """Только подсчет токенов"""
+        return sum(f.tokens for f in processed_results)

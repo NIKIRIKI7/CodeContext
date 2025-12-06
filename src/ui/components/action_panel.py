@@ -60,7 +60,8 @@ class ActionPanel(ctk.CTkFrame):
             'output_format': self.seg_format.get()
         }
 
-    def _set_check(self, chk, val):
+    @staticmethod
+    def _set_check(chk, val):
         if val:
             chk.select()
         else:
