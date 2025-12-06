@@ -11,7 +11,7 @@
   "use_gitignore": true,
   "system_prompt": "",
   "output_format": "custom",
-  "template_path": "C:/Users/mcniki/Documents/Проекты/Python/Мое/CodeContext/report.jinja2",
+  "template_path": "C:/Users/mcniki/Documents/Проекты/Python/Мое/CodeContext/templates/claude_xml_optimized.jinja2",
   "cli_minify": true,
   "cli_remove_comments": true,
   "cli_remove_secrets": true,

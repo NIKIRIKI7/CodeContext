@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Set
 
 
 @dataclass
@@ -16,8 +16,8 @@ class AppSettings:
     use_git: bool = False
     use_gitignore: bool = True
     system_prompt: str = "You are an expert software engineer. Analyze the following codebase structure and file contents."
-    output_format: str = "markdown"  # 'markdown', 'xml', 'plain', 'custom'
-    template_path: str = ""  # Путь к файлу шаблона .jinja2 (если format='custom')
+    output_format: str = "markdown"
+    template_path: str = ""
 
     # CLI Settings
     cli_minify: bool = True
@@ -43,7 +43,13 @@ class AppState:
     settings: AppSettings = field(default_factory=AppSettings)
     selected_folders: List[str] = field(default_factory=list)
     temp_folders: List[str] = field(default_factory=list)
+
+    # Результаты сканирования
     scanned_files_paths: List[str] = field(default_factory=list)
+
+    # Файлы, которые пользователь снял галочкой в дереве (исключенные вручную)
+    manual_exclusions: Set[str] = field(default_factory=set)
+
     processed_files: List[ProcessedFile] = field(default_factory=list)
     final_output_text: str = ""
     total_tokens: int = 0

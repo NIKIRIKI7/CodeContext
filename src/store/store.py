@@ -34,7 +34,6 @@ class Store:
 
     def _reducer(self, action_type: str, payload: Any):
         """Чистая функция изменения состояния"""
-
         if action_type == UI_SET_LOADING:
             self._state.is_loading = payload
 
@@ -58,23 +57,18 @@ class Store:
                 self._state.selected_folders.append(payload)
 
         elif action_type == FOLDER_REMOVE:
-            # <--- NEW: Удаление конкретной папки
             path_to_remove = payload
             if path_to_remove in self._state.selected_folders:
                 self._state.selected_folders.remove(path_to_remove)
-            # Если это была временная папка (GitHub), удаляем и оттуда (физическое удаление оставим на clear/exit)
             if path_to_remove in self._state.temp_folders:
                 self._state.temp_folders.remove(path_to_remove)
 
         elif action_type == FOLDER_UPDATE:
-            # <--- NEW: Обновление пути (редактирование)
             old_path = payload['old']
             new_path = payload['new']
             if old_path in self._state.selected_folders:
                 idx = self._state.selected_folders.index(old_path)
                 self._state.selected_folders[idx] = new_path
-
-            # Также обновляем в temp_folders если нужно
             if old_path in self._state.temp_folders:
                 idx = self._state.temp_folders.index(old_path)
                 self._state.temp_folders[idx] = new_path
@@ -97,6 +91,7 @@ class Store:
             self._state.temp_folders = []
             self._state.scanned_files_paths = []
             self._state.processed_files = []
+            self._state.manual_exclusions = set()
             self._state.final_output_text = ""
             self._state.total_tokens = 0
             self._state.status_message = "Рабочая область очищена"
@@ -105,12 +100,24 @@ class Store:
 
         elif action_type == SCAN_SUCCESS:
             self._state.scanned_files_paths = payload
+            # При новом сканировании сбрасываем старые исключения
+            self._state.manual_exclusions = set()
             self._state.status_message = f"Найдено файлов: {len(payload)}"
 
         elif action_type == SCAN_FAILURE:
             self._state.scanned_files_paths = []
             self._state.status_message = "Ошибка сканирования"
             self._state.logs.append(f"Error: {payload}")
+
+        elif action_type == EXCLUSION_ADD:
+            self._state.manual_exclusions.add(payload)
+
+        elif action_type == EXCLUSION_REMOVE:
+            if payload in self._state.manual_exclusions:
+                self._state.manual_exclusions.remove(payload)
+
+        elif action_type == EXCLUSION_CLEAR:
+            self._state.manual_exclusions = set()
 
         elif action_type == PROCESSING_SUCCESS:
             self._state.processed_files = payload

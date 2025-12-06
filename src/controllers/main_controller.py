@@ -29,7 +29,6 @@ class MainController:
         self.dispatcher = dispatcher
         self.fs_repo = FileSystemRepository()
         self.settings_repo = SettingsRepository()
-
         self.file_service = FileService(self.fs_repo)
         self.process_service = ProcessingService(self.fs_repo)
         self.cleaner_service = CleanerService()
@@ -133,7 +132,6 @@ class MainController:
         self.dispatcher.dispatch(UI_SET_LOADING, True)
         self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Клонирование...", 'progress': 0.0})
         self.dispatcher.dispatch(UI_ADD_LOG, f"GitHub Cloning: {url}")
-
         try:
             temp_path = await self.github_service.clone_repo_async(url)
             self.dispatcher.dispatch(GITHUB_CLONE_SUCCESS, temp_path)
@@ -145,22 +143,30 @@ class MainController:
             self.dispatcher.dispatch(UI_SET_LOADING, False)
             self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Готово", 'progress': 0.0})
 
-    def start_processing(self, target_type: str, save_path: str = None):
+    def toggle_file_exclusion(self, path: str, is_included: bool):
+        """Коллбек от дерева файлов: пользователь поменял галочку"""
+        if is_included:
+            # Если включили (поставили галочку), убираем из списка исключений
+            self.dispatcher.dispatch(EXCLUSION_REMOVE, path)
+        else:
+            # Если выключили (сняли галочку), добавляем в исключения
+            self.dispatcher.dispatch(EXCLUSION_ADD, path)
+
+    def scan_only(self):
+        """Только сканирование (для предпросмотра)"""
         if not self.store.state.selected_folders:
-            return False, "Выберите папки или URL для сканирования"
+            self.dispatcher.dispatch(UI_ADD_LOG, "⚠️ Выберите папки для сканирования")
+            return
 
-        AsyncRuntime.run_coroutine(self._processing_worker_async(target_type, save_path))
-        return True, ""
+        AsyncRuntime.run_coroutine(self._scan_worker_async())
 
-    async def _processing_worker_async(self, target: str, save_path: str = None):
+    async def _scan_worker_async(self):
         self.dispatcher.dispatch(UI_SET_LOADING, True)
-        self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Сканирование...", 'progress': 0.1})
-        self.dispatcher.dispatch(UI_ADD_LOG, "Начало работы...")
+        self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Сканирование...", 'progress': 0.0})
+        self.dispatcher.dispatch(UI_ADD_LOG, "Начало сканирования...")
 
         state = self.store.state
-
         try:
-            # 1. Сканирование файловой системы
             files_paths = await self.file_service.scan_folders_async(
                 state.selected_folders,
                 state.settings.extensions,
@@ -171,30 +177,73 @@ class MainController:
 
             if not files_paths:
                 self.dispatcher.dispatch(SCAN_FAILURE, "Файлы не найдены")
-                return
+                self.dispatcher.dispatch(UI_ADD_LOG, "⚠️ Файлы не найдены")
+            else:
+                self.dispatcher.dispatch(SCAN_SUCCESS, files_paths)
+                self.dispatcher.dispatch(UI_ADD_LOG, f"Найдено файлов: {len(files_paths)}")
 
-            self.dispatcher.dispatch(SCAN_SUCCESS, files_paths)
+        except Exception as e:
+            self.dispatcher.dispatch(SCAN_FAILURE, str(e))
+            self.dispatcher.dispatch(UI_ADD_LOG, f"Error: {e}")
+        finally:
+            self.dispatcher.dispatch(UI_SET_LOADING, False)
+            self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Сканирование завершено", 'progress': 0.0})
 
-            # 2. Чтение файлов
-            self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Чтение файлов...", 'progress': 0.2})
-            raw_files = await self.process_service.read_files_async(files_paths)
+    def start_processing(self, target_type: str, save_path: str = None):
+        if not self.store.state.selected_folders:
+            return False, "Выберите папки или URL для сканирования"
 
-            # 3. Анализ зависимостей
+        # Если файлы еще не сканированы (пустой список), сканируем сначала
+        if not self.store.state.scanned_files_paths:
+            AsyncRuntime.run_coroutine(self._scan_and_process_worker_async(target_type, save_path))
+        else:
+            # Если уже сканированы (и, возможно, отфильтрованы в дереве), сразу обрабатываем
+            AsyncRuntime.run_coroutine(self._process_worker_async(target_type, save_path))
+
+        return True, ""
+
+    async def _scan_and_process_worker_async(self, target: str, save_path: str = None):
+        """Полный цикл: Скан -> Фильтр -> Процессинг"""
+        await self._scan_worker_async()
+        # Если скан успешен, продолжаем
+        if self.store.state.scanned_files_paths:
+            await self._process_worker_async(target, save_path)
+
+    async def _process_worker_async(self, target: str, save_path: str = None):
+        """Обработка уже найденных файлов с учетом ручных исключений"""
+        self.dispatcher.dispatch(UI_SET_LOADING, True)
+        state = self.store.state
+
+        # Фильтрация на основе manual_exclusions
+        all_files = state.scanned_files_paths
+        exclusions = state.manual_exclusions
+
+        # Оставляем только те, которых НЕТ в исключениях
+        files_to_process = [p for p in all_files if p not in exclusions]
+
+        if not files_to_process:
+            self.dispatcher.dispatch(UI_ADD_LOG, "⚠️ Нет файлов для обработки (все исключены?)")
+            self.dispatcher.dispatch(UI_SET_LOADING, False)
+            return
+
+        self.dispatcher.dispatch(UI_UPDATE_STATUS,
+                                 {'message': f"Чтение {len(files_to_process)} файлов...", 'progress': 0.2})
+        self.dispatcher.dispatch(UI_ADD_LOG, f"Обработка {len(files_to_process)} файлов...")
+
+        try:
+            raw_files = await self.process_service.read_files_async(files_to_process)
+
             dependency_map = None
             if state.settings.include_dependencies:
                 self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Анализ зависимостей...", 'progress': 0.3})
                 dependency_map = await self.dependency_service.resolve_dependencies(raw_files)
 
-            # 4. Обработка (очистка, минификация, скелет, токены)
             self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Обработка и минификация...", 'progress': 0.5})
             processed_results = await asyncio.to_thread(self._cpu_heavy_processing, raw_files, state.settings)
 
             self.dispatcher.dispatch(PROCESSING_SUCCESS, processed_results)
 
-            # 5. Форматирование результата и подсчет токенов
             self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Форматирование...", 'progress': 0.9})
-
-            # Форматирование (тяжелая операция -> в поток)
             text_result = await asyncio.to_thread(
                 self._format_output,
                 processed_results,
@@ -202,13 +251,11 @@ class MainController:
                 dependency_map
             )
 
-            # Подсчет токенов (быстрая операция -> синхронно)
             total_tokens = self._count_total_tokens(processed_results)
-
             self.dispatcher.dispatch(FORMATTING_SUCCESS, {'text': text_result, 'tokens': total_tokens})
+
             self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Сохранение...", 'progress': 0.95})
 
-            # 6. Сохранение
             if target == 'clipboard':
                 self.output_service.copy_to_clipboard(text_result)
                 self.dispatcher.dispatch(UI_ADD_LOG, "Скопировано в буфер обмена")
@@ -234,7 +281,6 @@ class MainController:
         proc_settings = copy.copy(settings)
         if proc_settings.skeleton_mode:
             proc_settings.minify = False
-
         return PipelineUtils.process_files_batch(
             raw_files=raw_files,
             options=proc_settings,
@@ -251,7 +297,7 @@ class MainController:
             include_tree=settings.include_tree,
             system_prompt=settings.system_prompt,
             dependency_map=dep_map,
-            template_path=settings.template_path  # Передаем путь
+            template_path=settings.template_path
         )
 
     @staticmethod
