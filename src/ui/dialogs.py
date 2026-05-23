@@ -178,3 +178,94 @@ class InputTextDialog(ctk.CTkToplevel):
 
     def get_input(self):
         return self.result
+
+
+class InteractiveTourDialog(ctk.CTkToplevel):
+    """Интерактивный тур с детальной инструкцией по применению"""
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.title("Интерактивный тур - Как пользоваться CodeContext")
+        self.geometry("700x500")
+        self.transient(parent)
+        self.grab_set()
+
+        try:
+            x = parent.winfo_x() + (parent.winfo_width() // 2) - (700 // 2)
+            y = parent.winfo_y() + (parent.winfo_height() // 2) - (500 // 2)
+            self.geometry(f"+{x}+{y}")
+        except Exception:
+            pass
+
+        self.steps = [
+            {
+                "title": "👋 Добро пожаловать в CodeContext!",
+                "text": "CodeContext AI собирает ваш проект в единый, оптимизированный текстовый промпт для нейросетей.\n\nЭто позволяет ChatGPT, Claude или Cursor 'понять' всю архитектуру вашего проекта за секунды, избегая лимитов по токенам."
+            },
+            {
+                "title": "📂 Шаг 1: Добавление файлов",
+                "text": "1. Перетащите папку проекта (Drag & Drop) прямо в окно программы или нажмите кнопку '+ Папка'.\n2. Отметьте нужные файлы галочками в дереве.\n\n💡 Фишка: Файлы из .gitignore исключаются автоматически, а измененные в Git файлы подсвечиваются цветами (желтый/зеленый)!"
+            },
+            {
+                "title": "⚙️ Шаг 2: Экономия контекста",
+                "text": "Укажите настройки перед сборкой в панели ниже:\n\n• Minify - уберет пустые строки.\n• No Comments - вырежет все комментарии.\n• Skeleton ☠️ - оставит ТОЛЬКО названия функций/классов, удалив их логику (мастхэв для огромных проектов!)."
+            },
+            {
+                "title": "💬 Шаг 3: Магия промптов (Code Patcher)",
+                "text": "Перейдите на вкладку 'Prompt' в боковом меню и выберите пресет 'Code Patcher (JSON)'.\n\nЭтот системный промпт заставит нейросеть возвращать ответы в строгом формате JSON (с поддержкой 7 действий: replace, create, delete, append и т.д.). Вы сэкономите часы на копировании-вставке!"
+            },
+            {
+                "title": "🧩 Шаг 4: Применение патчей от LLM",
+                "text": "Получили ответ от ИИ с кодом?\n\n1. Скопируйте ответ (с массивом JSON).\n2. На вкладке 'Run' нажмите зеленую кнопку '🧩 Применить JSON-патч от LLM'.\n3. Вставьте текст и нажмите 'Применить'.\n\nУмный алгоритм сам найдет нужные файлы (игнорируя пробелы) и обновит точечные строки!"
+            },
+            {
+                "title": "👀 Шаг 5: Продвинутый Предпросмотр",
+                "text": "Нажмите кнопку '👀 Предпросмотр' (или Ctrl+Enter) перед сохранением в буфер обмена!\n\nВ открывшемся окне можно:\n- Посмотреть итоговый сгенерированный текст.\n- Открыть вкладку 'До/После', чтобы сравнить оригинальный код с ужатым (Minify/Skeleton).\n- Найти прошлые генерации на вкладке 'История'."
+            }
+        ]
+        self.current_step = 0
+
+        self.lbl_title = ctk.CTkLabel(self, text="", font=("Arial", 22, "bold"))
+        self.lbl_title.pack(pady=(20, 15))
+
+        self.txt_desc = ctk.CTkTextbox(self, font=("Consolas", 15), wrap="word", fg_color="transparent")
+        self.txt_desc.pack(fill="both", expand=True, padx=30, pady=10)
+
+        self.btn_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.btn_frame.pack(fill="x", padx=30, pady=20)
+
+        self.btn_prev = ctk.CTkButton(self.btn_frame, text="⬅ Назад", command=self._prev)
+        self.btn_prev.pack(side="left")
+
+        self.btn_next = ctk.CTkButton(self.btn_frame, text="Далее ➡", command=self._next)
+        self.btn_next.pack(side="right")
+
+        self._update_ui()
+
+    def _update_ui(self):
+        step = self.steps[self.current_step]
+        self.lbl_title.configure(text=step["title"])
+
+        self.txt_desc.configure(state="normal")
+        self.txt_desc.delete("1.0", "end")
+        self.txt_desc.insert("1.0", step["text"])
+        self.txt_desc.configure(state="disabled")
+
+        self.btn_prev.configure(state="normal" if self.current_step > 0 else "disabled")
+
+        if self.current_step == len(self.steps) - 1:
+            self.btn_next.configure(text="Начать работу 🚀", fg_color="#27694a", hover_color="#1d4f37")
+        else:
+            self.btn_next.configure(text="Далее ➡", fg_color=["#3B8ED0", "#1F6AA5"], hover_color=["#36719F", "#144870"])
+
+    def _prev(self):
+        if self.current_step > 0:
+            self.current_step -= 1
+            self._update_ui()
+
+    def _next(self):
+        if self.current_step < len(self.steps) - 1:
+            self.current_step += 1
+            self._update_ui()
+        else:
+            self.destroy()

@@ -31,7 +31,19 @@ class Sidebar(ctk.CTkFrame):
         self._build_prompt_tab()
         self._build_settings_tab()
 
-        ctk.CTkLabel(self, text="v5.3 Workspace Edition", text_color="gray").grid(row=2, column=0, sticky="s", pady=10)
+        bottom_frame = ctk.CTkFrame(self, fg_color="transparent")
+        # ИСПРАВЛЕНО: Для grid() используем sticky="sew" вместо fill="x"
+        bottom_frame.grid(row=2, column=0, sticky="sew", pady=10)
+
+        ctk.CTkLabel(bottom_frame, text="v5.3 Workspace", text_color="gray").pack(side="left", padx=20)
+
+        btn_tour = ctk.CTkButton(bottom_frame, text="ℹ️ Инструкция", width=100, height=24, fg_color="#3a5a78",
+                                 hover_color="#4a7a98", command=self._show_tour)
+        btn_tour.pack(side="right", padx=20)
+
+    def _show_tour(self):
+        from ..dialogs import InteractiveTourDialog
+        InteractiveTourDialog(self.winfo_toplevel())
 
     def _build_run_tab(self):
         t = self.tab_run
