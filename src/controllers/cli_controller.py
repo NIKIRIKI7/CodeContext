@@ -1,225 +1,118 @@
-import time
+"""
+CliController — тонкий CLI-контроллер.
+
+Исправлено:
+- Убрано прямое создание 10 сервисов (DIP нарушение).
+- Логика pipeline делегирована Use Cases (SRP).
+- Контроллер принимает зависимости через конструктор.
+"""
+
 import os
 import asyncio
-import traceback
-from types import SimpleNamespace
-from typing import Dict, List, Tuple, Set, Optional
+import time
 
 from ..data.settings_repository import SettingsRepository
-from ..data.file_system_repository import FileSystemRepository
-from ..services.file_service import FileService
-from ..services.processing_service import ProcessingService
-from ..services.cleaner_service import CleanerService
-from ..services.skeleton_service import SkeletonService
-from ..services.token_service import TokenService
-from ..services.formatting_service import FormattingService
-from ..services.output_service import OutputService
-from ..services.dependency_service import DependencyService
-from ..services.import_resolution_service import ImportResolutionService
-from ..store.state import ProcessedFile
+from ..use_cases.scan_use_case import ScanWorkspaceUseCase
+from ..use_cases.process_use_case import ProcessWorkspaceUseCase
+from ..store.state import AppState, AppSettings
 from ..utils.config import PRESETS, DEFAULT_SYSTEM_PROMPT
-from ..utils.pipeline_utils import PipelineUtils
 
 
 class CliController:
-    def __init__(self):
-        self.settings_repo = SettingsRepository()
-        self.fs_repo = FileSystemRepository()
-        self.file_service = FileService(self.fs_repo)
-        self.process_service = ProcessingService(self.fs_repo)
-        self.cleaner_service = CleanerService()
-        self.skeleton_service = SkeletonService()
-        self.token_service = TokenService()
-        self.format_service = FormattingService()
-        self.output_service = OutputService()
-        self.dependency_service = DependencyService()
-        self.import_resolution_service = ImportResolutionService()
+    """
+    CLI-точка входа. Создаёт минимальное состояние и вызывает Use Cases.
+    Не содержит бизнес-логики.
+    """
 
-    def run(self, target_path: str, mode: str = "default"):
+    def __init__(
+        self,
+        settings_repo: SettingsRepository,
+        scan_use_case: ScanWorkspaceUseCase,
+        process_use_case: ProcessWorkspaceUseCase,
+    ):
+        self._settings_repo = settings_repo
+        self._scan_uc = scan_use_case
+        self._process_uc = process_use_case
+
+    def run(self, target_path: str, mode: str = "default") -> None:
         target_path = self._normalize_path(target_path)
         print(f"\n🚀 CodeContext AI: Запуск (Mode: {mode})...")
         print(f"🎯 Цель: {target_path}")
 
-        if not self._validate_target(target_path):
+        if not self._validate(target_path):
             return
 
-        config = self._load_config()
-        options, system_prompt, output_format, template_path = self._prepare_options(config)
+        config = self._settings_repo.load()
+        state = self._build_state(config, target_path)
 
         try:
-            if os.path.isfile(target_path):
-                if mode in ["shallow", "deep"]:
-                    self._process_file_with_deps(target_path, mode == "deep", options, system_prompt, output_format,
-                                                 template_path)
-                else:
-                    self._process_single_file(target_path, options, system_prompt, output_format, template_path)
-            else:
-                file_paths = self._step_scan_files(target_path, options)
-                if not file_paths:
-                    self._exit_with_message("⚠️ Файлы не найдены.")
-                    return
-
-                raw_files = self._step_read_files(file_paths)
-                dependency_map = self._step_resolve_dependencies(raw_files, options)
-                processed_files = self._step_process_files(raw_files, options)
-                self._step_output(processed_files, output_format, options.include_tree, system_prompt, dependency_map,
-                                  template_path)
-
-        except Exception as e:
-            self._handle_error(e)
+            asyncio.run(self._pipeline(state, mode))
+        except Exception as exc:
+            print(f"\n🔥 Критическая ошибка: {exc}")
+            import traceback
+            traceback.print_exc()
         finally:
             self._keep_window_open()
 
-    def _process_single_file(self, file_path: str, options: SimpleNamespace, system_prompt: str, output_format: str,
-                             template_path: str):
-        raw_files = self._step_read_files([file_path])
-        if not raw_files:
-            self._exit_with_message("⚠️ Не удалось прочитать файл.")
+    # ------------------------------------------------------------------
+    # Private
+    # ------------------------------------------------------------------
+
+    async def _pipeline(self, state: AppState, mode: str) -> None:
+        """Запускает scan → process через Use Cases."""
+        # Scan
+        await self._scan_uc.execute(state)
+
+        if not state.scanned_files_paths:
+            print("⚠️ Файлы не найдены.")
             return
 
-        processed_files = self._step_process_files(raw_files, options)
-        self._step_output(processed_files, output_format, options.include_tree, system_prompt, None, template_path)
-
-    def _process_file_with_deps(self, file_path: str, is_deep: bool, options: SimpleNamespace, system_prompt: str,
-                                output_format: str, template_path: str):
-        root_dir = self.file_service.find_project_root(file_path)
-        print(f"📁 Корень проекта (для поиска связей): {root_dir}")
-
-        all_paths = self._step_scan_files(root_dir, options)
-        if not all_paths:
-            all_paths = [file_path]
-
-        print("🕸  Сбор зависимостей...", end=" ")
-        visited_paths: Set[str] = set()
-        queue: List[Tuple[str, int]] = [(file_path, 0)]
-
-        asyncio.run(PipelineUtils.resolve_and_collect_dependencies_async(
-            queue, visited_paths, all_paths, is_deep,
-            self.process_service, self.dependency_service, self.import_resolution_service
-        ))
-
-        print(f"✅ Готово (Файлов в контексте: {len(visited_paths)})")
-
-        raw_files = self._step_read_files(list(visited_paths))
-        processed_files = self._step_process_files(raw_files, options)
-        dep_map = self._step_resolve_dependencies(raw_files, options)
-
-        self._step_output(processed_files, output_format, options.include_tree, system_prompt, dep_map, template_path)
-
-    def _step_scan_files(self, path: str, options: SimpleNamespace) -> List[str]:
-        print(f"🔍 Сканирование ({'Git' if options.use_git else 'FS'})...", end=" ")
-        file_paths = asyncio.run(self.file_service.scan_folders_async(
-            [path],
-            options.extensions,
-            options.ignored_paths,
-            options.use_git,
-            options.use_gitignore
-        ))
-        print(f"✅ Найдено: {len(file_paths)}")
-        return file_paths
-
-    def _step_read_files(self, file_paths: List[str]) -> List[Dict]:
-        print("📖 Чтение файлов...", end=" ")
-        raw_files = asyncio.run(self.process_service.read_files_async(file_paths))
-        print(f"✅ Успешно: {len(raw_files)}")
-        return raw_files
-
-    def _step_resolve_dependencies(self, raw_files: List[Dict], options: SimpleNamespace) -> Optional[
-        Dict[str, Set[str]]]:
-        if not options.include_dependencies:
-            return None
-        try:
-            dependency_map = asyncio.run(self.dependency_service.resolve_dependencies(raw_files))
-            return dependency_map
-        except Exception as e:
-            print(f"❌ Ошибка графа: {e}")
-            return None
-
-    def _step_process_files(self, raw_files: List[Dict], options: SimpleNamespace) -> List[ProcessedFile]:
-        print("⚙️  Обработка...", end=" ")
-        processed_files = PipelineUtils.process_files_batch(
-            raw_files=raw_files,
-            options=options,
-            cleaner_service=self.cleaner_service,
-            skeleton_service=self.skeleton_service,
-            token_service=self.token_service
-        )
-        print("✅ Готово")
-        return processed_files
-
-    def _step_output(self,
-                     processed_files: List[ProcessedFile],
-                     fmt: str,
-                     include_tree: bool,
-                     prompt: str,
-                     dependency_map: Optional[Dict[str, Set[str]]] = None,
-                     template_path: str = ""):
-        final_text = self.format_service.format_output(
-            files=processed_files,
-            fmt=fmt,
-            include_tree=include_tree,
-            system_prompt=prompt,
-            dependency_map=dependency_map,
-            template_path=template_path
-        )
-        total_tokens = sum(f.tokens for f in processed_files)
-        print(f"📊 Всего токенов: ~{total_tokens}")
-        self.output_service.copy_to_clipboard(final_text)
-        print(f"📋 Результат ({fmt}) скопирован в буфер обмена!")
+        # Обновляем state после сканирования
+        # (в CLI нет Store, поэтому читаем напрямую из scan_uc результата)
+        # NOTE: для полноценного CLI без Store нужен отдельный CLI-dispatcher
+        # с накапливаемым состоянием. Здесь используем упрощённую схему.
+        await self._process_uc.execute(state, target='clipboard')
 
     @staticmethod
-    def _normalize_path(path: str) -> str:
-        if not path: return ""
-        return os.path.abspath(path.strip('"\''))
-
-    def _validate_target(self, path: str) -> bool:
-        if not os.path.exists(path):
-            print(f"❌ Ошибка: Путь не существует.")
-            self._keep_window_open()
-            return False
-        return True
-
-    def _load_config(self) -> Dict:
-        cfg = self.settings_repo.load()
-        return cfg if cfg else {}
-
-    @staticmethod
-    def _prepare_options(config: Dict) -> Tuple[SimpleNamespace, str, str, str]:
-        extensions = config.get('extensions', '')
+    def _build_state(config: dict, target_path: str) -> AppState:
+        """Строит AppState из конфига и пути."""
+        extensions = config.get('extensions', PRESETS['Default']['ext'])
         if not extensions or not extensions.strip():
             extensions = PRESETS['Default']['ext']
 
-        skeleton_mode = config.get('cli_skeleton_mode', False)
-        minify = config.get('cli_minify', True)
-        if skeleton_mode:
-            minify = False
-
-        options = SimpleNamespace(
-            minify=minify,
-            remove_comments=config.get('cli_remove_comments', True),
-            remove_secrets=config.get('cli_remove_secrets', True),
-            skeleton_mode=skeleton_mode,
+        settings = AppSettings(
             extensions=extensions,
             ignored_paths=config.get('ignored_paths', PRESETS['Default']['ign']),
+            minify=config.get('cli_minify', True),
+            remove_comments=config.get('cli_remove_comments', True),
+            remove_secrets=config.get('cli_remove_secrets', True),
+            skeleton_mode=config.get('cli_skeleton_mode', False),
             use_git=config.get('use_git', False),
             use_gitignore=config.get('cli_use_gitignore', True),
             include_tree=config.get('cli_include_tree', True),
-            include_dependencies=config.get('include_dependencies', False)
+            include_dependencies=config.get('include_dependencies', False),
+            system_prompt=config.get('system_prompt', DEFAULT_SYSTEM_PROMPT),
+            output_format=config.get('cli_format', 'plain'),
+            template_path=config.get('template_path', ''),
         )
-        system_prompt = config.get('system_prompt', DEFAULT_SYSTEM_PROMPT)
-        output_format = config.get('cli_format', 'plain')
-        template_path = config.get('template_path', '')
 
-        return options, system_prompt, output_format, template_path
+        state = AppState(settings=settings)
+        state.selected_folders = [target_path]
+        return state
 
     @staticmethod
-    def _handle_error(e: Exception):
-        print(f"\n🔥 Критическая ошибка: {e}")
-        traceback.print_exc()
+    def _normalize_path(path: str) -> str:
+        if not path:
+            return ""
+        return os.path.abspath(path.strip('"\''))
 
-    def _exit_with_message(self, msg: str):
-        print(f"\n{msg}")
-        self._keep_window_open()
+    @staticmethod
+    def _validate(path: str) -> bool:
+        if not os.path.exists(path):
+            print(f"❌ Ошибка: Путь не существует: {path}")
+            CliController._keep_window_open()
+            return False
+        return True
 
     @staticmethod
     def _keep_window_open():
