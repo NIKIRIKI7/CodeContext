@@ -23,13 +23,26 @@ class FileTree(ctk.CTkFrame):
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
+        # --- Empty State Label ---
+        self.empty_label = ctk.CTkLabel(
+            self,
+            text="📂 Перетащите папки или файлы в окно,\nчтобы увидеть структуру",
+            text_color="gray",
+            font=("Arial", 14)
+        )
+        self.empty_label.grid(row=0, column=0, sticky="nsew")
+        # -------------------------
+
         self.loading_label = ctk.CTkLabel(self, text="Построение дерева...", text_color="gray")
         self.tree = ttk.Treeview(self, show="tree", selectmode="none", style="CodeContext.Treeview")
         self.vsb = ctk.CTkScrollbar(self, orientation="vertical", command=self.tree.yview)
         self.hsb = ctk.CTkScrollbar(self, orientation="horizontal", command=self.tree.xview)
 
         self.tree.configure(yscrollcommand=self.vsb.set, xscrollcommand=self.hsb.set)
-        self.tree.grid(row=0, column=0, sticky="nsew")
+
+        # Tree is initially hidden (shown only when populated)
+        # self.tree.grid(row=0, column=0, sticky="nsew")
+
         self.vsb.grid(row=0, column=1, sticky="ns")
         self.hsb.grid(row=1, column=0, sticky="ew")
 
@@ -63,7 +76,9 @@ class FileTree(ctk.CTkFrame):
             task_id = self._current_task_id
             self.file_paths = file_paths
 
-            self.tree.grid_remove()
+            # Hide tree and empty state, show loading
+            self.tree.grid_forget()
+            self.empty_label.grid_forget()
             self.loading_label.grid(row=0, column=0, sticky="nsew")
 
             threading.Thread(
@@ -112,21 +127,38 @@ class FileTree(ctk.CTkFrame):
                 self.after(0, self._bulk_insert_ui, nodes_to_insert, task_id)
         except Exception as e:
             print(f"Error in tree thread: {e}")
+            # Revert to empty state on error if needed, or just hide loading
+            self.after(0, self.delete_all)
 
     def _bulk_insert_ui(self, nodes: List[Tuple], task_id: int):
         if task_id != self._current_task_id:
             return
-        self.delete_all()
+
+        # Sctrictly hide empty state when filling
+        self.empty_label.grid_forget()
+
+        self.delete_all_tree_only()  # Clear existing items without changing grid layout yet
+
         for parent, iid, text in nodes:
             try:
                 self.tree.insert(parent, "end", iid, text=text, open=True)
             except tk.TclError:
                 pass
+
+        # Hide loading, show tree
         self.loading_label.grid_forget()
         self.tree.grid(row=0, column=0, sticky="nsew")
 
-    def delete_all(self):
+    def delete_all_tree_only(self):
+        """Clears tree items but keeps the widget visible/grid configuration intact."""
         self.tree.delete(*self.tree.get_children())
+
+    def delete_all(self):
+        """Resets the component to the initial Empty State."""
+        self.delete_all_tree_only()
+        self.tree.grid_forget()
+        self.loading_label.grid_forget()
+        self.empty_label.grid(row=0, column=0, sticky="nsew")
 
     def _on_click(self, event: Any):
         region = self.tree.identify("region", event.x, event.y)

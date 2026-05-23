@@ -13,7 +13,7 @@ from typing import Optional, Tuple
 
 from ..actions.action_types import (
     FOLDER_ADD, FOLDER_REMOVE, FOLDER_UPDATE, FOLDER_CLEAR,
-    EXCLUSION_ADD, EXCLUSION_REMOVE, UI_ADD_LOG,
+    EXCLUSION_ADD, EXCLUSION_REMOVE, UI_ADD_LOG, UI_CLOSE_PREVIEW,
 )
 from ..actions.dispatcher import Dispatcher
 from ..store.store import Store
@@ -193,3 +193,7 @@ class MainController:
             return os.path.normpath(clean)
         except (TypeError, ValueError, OSError):
             return clean
+
+    def close_preview(self):
+        """Метод для делегирования закрытия превью в Store"""
+        self._dispatcher.dispatch(UI_CLOSE_PREVIEW, None)

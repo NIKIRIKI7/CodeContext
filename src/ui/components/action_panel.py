@@ -15,26 +15,19 @@ class ActionPanel(ctk.CTkFrame):
         self.opts_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.opts_frame.pack(fill="x", pady=(0, 10))
 
-        # Левая часть - чекбоксы
         self.left_opts = ctk.CTkFrame(self.opts_frame, fg_color="transparent")
         self.left_opts.pack(side="left")
-
         self.chk_minify = ctk.CTkCheckBox(self.left_opts, text="Minify")
         self.chk_minify.pack(side="left", padx=5)
-
         self.chk_comments = ctk.CTkCheckBox(self.left_opts, text="No Comments")
         self.chk_comments.pack(side="left", padx=5)
-
         self.chk_secrets = ctk.CTkCheckBox(self.left_opts, text="No Secrets")
         self.chk_secrets.pack(side="left", padx=5)
-
         self.chk_skeleton = ctk.CTkCheckBox(self.left_opts, text="Skeleton ☠️")
         self.chk_skeleton.pack(side="left", padx=5)
 
-        # Правая часть - Формат
         self.right_opts = ctk.CTkFrame(self.opts_frame, fg_color="transparent")
         self.right_opts.pack(side="right")
-
         self.seg_format = ctk.CTkSegmentedButton(
             self.right_opts,
             values=["markdown", "xml", "plain", "custom"],
@@ -43,27 +36,26 @@ class ActionPanel(ctk.CTkFrame):
         self.seg_format.pack(side="left")
         self.seg_format.set("markdown")
 
-        # Кнопка выбора шаблона (изначально скрыта)
         self.btn_template = ctk.CTkButton(
-            self.right_opts,
-            text="📂",
-            width=30,
-            command=self._choose_template,
-            fg_color="gray"
+            self.right_opts, text="📂", width=30, command=self._choose_template, fg_color="gray"
         )
-
-        # Лайбл с именем шаблона
         self.lbl_template = ctk.CTkLabel(self.right_opts, text="", text_color="gray")
 
     def _init_buttons(self):
         self.btns_frame = ctk.CTkFrame(self)
         self.btns_frame.pack(fill="x", pady=(0, 10))
 
-        ctk.CTkButton(self.btns_frame, text="В Буфер",
+        # Добавлена кнопка превью
+        ctk.CTkButton(self.btns_frame, text="👀 Предпросмотр",
+                      command=lambda: self.on_run("preview")).pack(side="left", expand=True, fill="x", padx=5, pady=5)
+
+        ctk.CTkButton(self.btns_frame, text="📋 В Буфер",
                       command=lambda: self.on_run("clipboard")).pack(side="left", expand=True, fill="x", padx=5, pady=5)
-        ctk.CTkButton(self.btns_frame, text="В Файл",
+
+        ctk.CTkButton(self.btns_frame, text="💾 В Файл",
                       command=lambda: self.on_run("file")).pack(side="left", expand=True, fill="x", padx=5, pady=5)
-        ctk.CTkButton(self.btns_frame, text="В PDF",
+
+        ctk.CTkButton(self.btns_frame, text="📄 В PDF",
                       command=lambda: self.on_run("pdf")).pack(side="left", expand=True, fill="x", padx=5, pady=5)
 
     def _on_format_change(self, value):
@@ -90,10 +82,8 @@ class ActionPanel(ctk.CTkFrame):
         self._set_check(self.chk_comments, settings.remove_comments)
         self._set_check(self.chk_secrets, settings.remove_secrets)
         self._set_check(self.chk_skeleton, settings.skeleton_mode)
-
         self.seg_format.set(settings.output_format)
 
-        # Восстановление состояния шаблона
         if settings.output_format == "custom":
             self.selected_template_path = settings.template_path
             self._on_format_change("custom")

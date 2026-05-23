@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import List, Set
 
+
 @dataclass
 class AppSettings:
     """Модель настроек приложения"""
@@ -26,12 +27,14 @@ class AppSettings:
     cli_format: str = "plain"
     python_interpreter: str = ""
 
+
 @dataclass
 class ProcessedFile:
     """Модель обработанного файла"""
     path: str
     content: str
     tokens: int
+
 
 @dataclass
 class AppState:
@@ -48,3 +51,7 @@ class AppState:
     progress: float = 0.0
     is_loading: bool = False
     logs: List[str] = field(default_factory=list)
+
+    # --- UI UX States ---
+    preview_text: str = ""
+    show_preview: bool = False

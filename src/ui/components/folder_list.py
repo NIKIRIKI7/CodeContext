@@ -9,18 +9,21 @@ class FolderList(ctk.CTkScrollableFrame):
         self._last_hash = None
 
     def update_ui(self, selected_folders, temp_folders):
-        """Перерисовывает список только если он изменился"""
         current_hash = tuple(selected_folders)
         if self._last_hash == current_hash:
             return
-
         self._last_hash = current_hash
 
-        # Очистка
         for widget in self.winfo_children():
             widget.destroy()
 
-        # Рендер
+        # --- Empty State ---
+        if not selected_folders:
+            lbl = ctk.CTkLabel(self, text="Источники не выбраны. Перетащите папки сюда.", text_color="gray")
+            lbl.pack(expand=True, fill="both", pady=20)
+            return
+        # -------------------
+
         for folder in selected_folders:
             row = ctk.CTkFrame(self, fg_color="transparent")
             row.pack(fill="x", pady=2)
@@ -31,16 +34,14 @@ class FolderList(ctk.CTkScrollableFrame):
             label = ctk.CTkLabel(row, text=f"{prefix} {folder}", anchor="w")
             label.pack(side="left", padx=5, expand=True, fill="x")
 
-            # Edit Button
             btn_edit = ctk.CTkButton(row, text="✏️", width=30, height=24,
                                      fg_color="transparent", border_width=1,
                                      text_color=("gray10", "gray90"),
                                      command=lambda p=folder: self.on_edit(p))
             btn_edit.pack(side="right", padx=2)
 
-            # Delete Button
             btn_del = ctk.CTkButton(row, text="❌", width=30, height=24,
                                     fg_color="transparent", border_width=1,
-                                    hover_color="#c42b1c",
+                                    hover_color="#c85a5a",
                                     command=lambda p=folder: self.on_delete(p))
             btn_del.pack(side="right", padx=2)

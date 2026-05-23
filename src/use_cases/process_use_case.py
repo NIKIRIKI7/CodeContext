@@ -14,7 +14,7 @@ from typing import Optional, List, Dict, Set
 from ..actions.action_types import (
     UI_SET_LOADING, UI_ADD_LOG,
     PROCESSING_SUCCESS, FORMATTING_SUCCESS,
-    WORKFLOW_STARTED, WORKFLOW_PROGRESS, WORKFLOW_FINISHED, WORKFLOW_ERROR,
+    WORKFLOW_STARTED, WORKFLOW_PROGRESS, WORKFLOW_FINISHED, WORKFLOW_ERROR, UI_SHOW_PREVIEW,
 )
 from ..actions.dispatcher import Dispatcher
 from ..services.cleaner_service import CleanerService
@@ -161,6 +161,8 @@ class ProcessWorkspaceUseCase:
         if target == 'clipboard':
             self._output_service.copy_to_clipboard(text)
             self._dispatcher.dispatch(UI_ADD_LOG, "📋 Скопировано в буфер обмена")
+        elif target == 'preview':
+            self._dispatcher.dispatch(UI_SHOW_PREVIEW, text)
         elif target == 'file' and save_path:
             self._output_service.save_to_file(text, save_path)
             self._dispatcher.dispatch(UI_ADD_LOG, f"💾 Сохранено в {save_path}")

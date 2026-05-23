@@ -5,7 +5,7 @@ from tkinterdnd2 import TkinterDnD, DND_FILES  # type: ignore
 
 from ..store.store import Store
 from ..controllers.main_controller import MainController
-from .dialogs import EditFolderDialog
+from .dialogs import EditFolderDialog, PreviewDialog  # <-- Added import
 from .components.sidebar import Sidebar
 from .components.folder_list import FolderList
 from .components.action_panel import ActionPanel
@@ -28,11 +28,21 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):  # type: ignore
         self.geometry("1150x850")
 
         self.unsubscribe = self.store.subscribe(self._on_store_changed_threadsafe)
+
+        self._preview_dialog = None  # <-- For tracking the preview window
+
         self._init_ui()
+        self._bind_hotkeys()  # <-- Hotkeys
 
         self.drop_target_register(DND_FILES)
         self.dnd_bind('<<Drop>>', self._on_drop)
         self.controller.load_initial_settings()
+
+    def _bind_hotkeys(self):
+        # Quick build to clipboard: Ctrl + Enter
+        self.bind("<Control-Return>", lambda e: self._on_run("clipboard"))
+        # Quick clear: Esc
+        self.bind("<Escape>", lambda e: self.controller.clear_folders())
 
     def _init_ui(self):
         self.grid_columnconfigure(1, weight=1)
@@ -40,6 +50,7 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):  # type: ignore
 
         self.sidebar = Sidebar(self, self.controller, self._on_ui_settings_change)
         self.sidebar.grid(row=0, column=0, sticky="nsew")
+
         self.sidebar.btn_add_folder.configure(command=self._on_add_folder)
         self.sidebar.btn_add_github.configure(command=self._on_add_github)
         self.sidebar.btn_clear.configure(command=self._on_clear_folders)
@@ -90,6 +101,17 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):  # type: ignore
         self.action_panel.update_ui(state.settings)
         self.log_panel.update_logs(state.logs)
         self.status_bar.update_ui(state.status_message, state.progress, state.total_tokens)
+
+        # --- UI Logic for Preview ---
+        if state.show_preview and not self._preview_dialog:
+            self._show_preview_dialog(state.preview_text)
+        elif not state.show_preview and self._preview_dialog:
+            self._preview_dialog.destroy()
+            self._preview_dialog = None
+
+    def _show_preview_dialog(self, text: str):
+        self._preview_dialog = PreviewDialog(self, text, self.controller.close_preview)
+        self._preview_dialog.grab_set()
 
     def _on_tree_toggle(self, path, state):
         self.controller.toggle_file_exclusion(path, state)

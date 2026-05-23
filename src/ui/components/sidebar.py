@@ -9,7 +9,9 @@ class Sidebar(ctk.CTkFrame):
         super().__init__(parent, width=320, corner_radius=0)
         self.controller = controller
         self.on_settings_change = on_settings_change_callback
+
         self.grid_rowconfigure(2, weight=1)
+
         self._init_header()
         self._init_tabs()
 
@@ -33,11 +35,12 @@ class Sidebar(ctk.CTkFrame):
 
     def _build_run_tab(self):
         t = self.tab_run
-
         ws_frame = ctk.CTkFrame(t, fg_color="transparent")
         ws_frame.pack(fill="x", pady=(0, 10))
+
         self.btn_save_ws = ctk.CTkButton(ws_frame, text="💾 Save Workspace", width=130, command=self._on_save_workspace)
         self.btn_save_ws.pack(side="left", padx=(0, 5))
+
         self.btn_load_ws = ctk.CTkButton(ws_frame, text="📂 Load Workspace", width=130, command=self._on_load_workspace,
                                          fg_color="gray")
         self.btn_load_ws.pack(side="right")
@@ -56,17 +59,22 @@ class Sidebar(ctk.CTkFrame):
 
         self.chk_git = ctk.CTkCheckBox(t, text="Только Git Changes")
         self.chk_git.pack(anchor="w", pady=5)
+
         self.chk_gitignore = ctk.CTkCheckBox(t, text="Учитывать .gitignore")
         self.chk_gitignore.pack(anchor="w", pady=5)
+
         self.chk_tree = ctk.CTkCheckBox(t, text="Дерево файлов")
         self.chk_tree.pack(anchor="w", pady=5)
+
         self.chk_dependencies = ctk.CTkCheckBox(t, text="Карта зависимостей (Beta)")
         self.chk_dependencies.pack(anchor="w", pady=5)
 
         btn_frame = ctk.CTkFrame(t, fg_color="transparent")
         btn_frame.pack(fill="x", pady=(20, 5))
+
         self.btn_add_folder = ctk.CTkButton(btn_frame, text="+ Папка", width=140)
         self.btn_add_folder.pack(side="left", padx=(0, 5))
+
         self.btn_add_github = ctk.CTkButton(btn_frame, text="+ GitHub", width=140, fg_color="#333")
         self.btn_add_github.pack(side="right")
 
@@ -78,6 +86,7 @@ class Sidebar(ctk.CTkFrame):
 
     def _build_prompt_tab(self):
         t = self.tab_prompt
+
         ctk.CTkLabel(t, text="Выберите пресет промпта:").pack(anchor="w", pady=(5, 0))
         self.cmb_prompt_presets = ctk.CTkComboBox(t, values=list(PROMPT_PRESETS.keys()),
                                                   command=self._on_prompt_preset_change)
@@ -90,10 +99,11 @@ class Sidebar(ctk.CTkFrame):
 
     def _build_settings_tab(self):
         t = self.tab_settings
+
         cli_frame = ctk.CTkFrame(t)
         cli_frame.pack(fill="x", pady=5)
-
         ctk.CTkLabel(cli_frame, text="Настройки CLI", font=ctk.CTkFont(weight="bold")).pack(pady=5)
+
         self.chk_cli_minify = ctk.CTkCheckBox(cli_frame, text="Minify (сжать)")
         self.chk_cli_minify.pack(anchor="w", padx=10, pady=2)
         self.chk_cli_comments = ctk.CTkCheckBox(cli_frame, text="Удалять комментарии")
@@ -114,9 +124,9 @@ class Sidebar(ctk.CTkFrame):
         win_frame = ctk.CTkFrame(t)
         win_frame.pack(fill="x", pady=10)
         ctk.CTkLabel(win_frame, text="Интеграция с Windows", font=ctk.CTkFont(weight="bold")).pack(pady=5)
-
         ctk.CTkLabel(win_frame, text="Путь к Python (для меню):", text_color="gray").pack(anchor="w", padx=10,
                                                                                           pady=(5, 0))
+
         py_path_frame = ctk.CTkFrame(win_frame, fg_color="transparent")
         py_path_frame.pack(fill="x", padx=10, pady=2)
         self.entry_py_path = ctk.CTkEntry(py_path_frame, placeholder_text="По умолчанию (sys.executable)")
@@ -129,10 +139,25 @@ class Sidebar(ctk.CTkFrame):
         self.btn_remove_ctx = ctk.CTkButton(win_frame, text="Удалить из меню", fg_color="red")
         self.btn_remove_ctx.pack(fill="x", padx=10, pady=5)
 
+        # --- Смена темы ---
+        theme_frame = ctk.CTkFrame(t)
+        theme_frame.pack(fill="x", pady=10)
+        ctk.CTkLabel(theme_frame, text="Внешний вид", font=ctk.CTkFont(weight="bold")).pack(pady=5)
+        self.seg_theme = ctk.CTkSegmentedButton(
+            theme_frame,
+            values=["Dark", "Light", "System"],
+            command=self._on_theme_change
+        )
+        self.seg_theme.pack(fill="x", padx=10, pady=5)
+        self.seg_theme.set("Dark")
+
         self.btn_save = ctk.CTkButton(t, text="💾 Сохранить настройки")
         self.btn_save.pack(fill="x", pady=10)
         self.btn_reset = ctk.CTkButton(t, text="Сбросить все", fg_color="gray")
         self.btn_reset.pack(fill="x", pady=5)
+
+    def _on_theme_change(self, value):
+        ctk.set_appearance_mode(value)
 
     def _on_save_workspace(self):
         self.on_settings_change()
@@ -182,6 +207,7 @@ class Sidebar(ctk.CTkFrame):
         if self.entry_ext.get() != settings.extensions:
             self.entry_ext.delete(0, "end")
             self.entry_ext.insert(0, settings.extensions)
+
         if self.entry_ign.get() != settings.ignored_paths:
             self.entry_ign.delete(0, "end")
             self.entry_ign.insert(0, settings.ignored_paths)
@@ -198,6 +224,7 @@ class Sidebar(ctk.CTkFrame):
             (self.chk_cli_skeleton, settings.cli_skeleton_mode),
             (self.chk_cli_gitignore, settings.cli_use_gitignore)
         ]
+
         for chk, val in checkboxes:
             self._set_check(chk, val)
 

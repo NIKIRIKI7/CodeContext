@@ -1,14 +1,8 @@
-# ============================================================
-# Все Action Types — единственный источник истины.
-# ЗАПРЕЩЕНО использовать строки-литералы action types вне этого файла.
-# ============================================================
-
-# --- UI ---
 UI_SET_LOADING = 'UI_SET_LOADING'
 UI_UPDATE_STATUS = 'UI_UPDATE_STATUS'
 UI_ADD_LOG = 'UI_ADD_LOG'
-
-# --- Settings ---
+UI_SHOW_PREVIEW = 'UI_SHOW_PREVIEW'
+UI_CLOSE_PREVIEW = 'UI_CLOSE_PREVIEW'
 SETTINGS_LOADED = 'SETTINGS_LOADED'
 SETTINGS_UPDATE = 'SETTINGS_UPDATE'
 

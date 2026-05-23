@@ -54,7 +54,8 @@ class Store:
             UI_SET_LOADING:       self._handle_set_loading,
             UI_UPDATE_STATUS:     self._handle_update_status,
             UI_ADD_LOG:           self._handle_add_log,
-
+            UI_SHOW_PREVIEW:      self._handle_show_preview,
+            UI_CLOSE_PREVIEW:     self._handle_close_preview,
             SETTINGS_LOADED:      self._handle_settings_loaded,
             SETTINGS_UPDATE:      self._handle_settings_update,
 
@@ -100,6 +101,14 @@ class Store:
 
     def _handle_add_log(self, payload):
         self._state.logs.append(str(payload))
+
+    def _handle_show_preview(self, payload: str):
+        self._state.preview_text = payload
+        self._state.show_preview = True
+
+    def _handle_close_preview(self, _):
+        self._state.show_preview = False
+        self._state.preview_text = ""
 
     def _handle_settings_loaded(self, payload: dict):
         self._state.settings = AppSettings(**payload)

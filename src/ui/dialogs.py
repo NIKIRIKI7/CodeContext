@@ -58,3 +58,45 @@ class EditFolderDialog(ctk.CTkToplevel):
 
     def get_input(self):
         return self.result
+
+class PreviewDialog(ctk.CTkToplevel):
+    """Окно для предпросмотра сгенерированного текста (UX Feature)"""
+    def __init__(self, parent, text_content: str, on_close_callback):
+        super().__init__(parent)
+        self.title("Предпросмотр результата")
+        self.geometry("900x700")
+        self.transient(parent)
+        self.on_close_callback = on_close_callback
+
+        try:
+            x = parent.winfo_x() + (parent.winfo_width() // 2) - (900 // 2)
+            y = parent.winfo_y() + (parent.winfo_height() // 2) - (700 // 2)
+            self.geometry(f"+{x}+{y}")
+        except Exception:
+            pass
+
+        self.textbox = ctk.CTkTextbox(self, wrap="word", font=("Consolas", 13))
+        self.textbox.pack(fill="both", expand=True, padx=10, pady=10)
+        self.textbox.insert("1.0", text_content)
+        self.textbox.configure(state="disabled")  # Read-only
+
+        btn_frame = ctk.CTkFrame(self, fg_color="transparent")
+        btn_frame.pack(fill="x", padx=10, pady=(0, 10))
+
+        self.btn_copy = ctk.CTkButton(btn_frame, text="📋 Скопировать всё", command=self._copy_all)
+        self.btn_copy.pack(side="left", padx=5)
+
+        ctk.CTkButton(btn_frame, text="Закрыть", command=self._close, fg_color="gray").pack(side="right", padx=5)
+
+        self.protocol("WM_DELETE_WINDOW", self._close)
+
+    def _copy_all(self):
+        self.clipboard_clear()
+        self.clipboard_append(self.textbox.get("1.0", "end-1c"))
+        self.update()
+        self.btn_copy.configure(text="✅ Скопировано!")
+        self.after(2000, lambda: self.btn_copy.configure(text="📋 Скопировать всё"))
+
+    def _close(self):
+        self.on_close_callback()
+        self.destroy()
