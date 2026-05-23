@@ -62,27 +62,24 @@ class IntegrationService:
         except Exception as e:
             raise e
 
-    def install_context_menu(self) -> Tuple[bool, str]:
+    def install_context_menu(self, custom_python_path: str = None) -> Tuple[bool, str]:
         """Регистрация пункта в контекстном меню"""
-        # Если прав нет - перезапускаем с правами админа
         if not self.is_admin():
             self.restart_as_admin("--install-context")
-            # Возвращаем False, так как текущий процесс не выполнил действие,
-            # но запустил новый процесс, который всё сделает.
             return False, "Запрошены права администратора. Проверьте открывшееся окно."
 
-        # Если права ЕСТЬ (мы в процессе-администраторе), выполняем запись в реестр
         try:
             if getattr(sys, 'frozen', False):
                 exe_path = sys.executable
-                # Важно: кавычки вокруг путей для защиты от пробелов
                 command = f'"{exe_path}" --cli --path "%1"'
                 icon_path = exe_path
             else:
-                python_exe = sys.executable
-                script_path = os.path.abspath(sys.argv[0])
+                if custom_python_path and os.path.exists(custom_python_path):
+                    python_exe = custom_python_path
+                else:
+                    python_exe = sys.executable
 
-                # Защита: ищем main.py, если sys.argv[0] указывает на что-то другое
+                script_path = os.path.abspath(sys.argv[0])
                 if not script_path.endswith("main.py"):
                     possible = os.path.join(os.getcwd(), "main.py")
                     if os.path.exists(possible):

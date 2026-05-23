@@ -28,6 +28,8 @@ class AppSettings:
     cli_use_gitignore: bool = True
     cli_format: str = "plain"
 
+    python_interpreter: str = ""
+
 
 @dataclass
 class ProcessedFile:

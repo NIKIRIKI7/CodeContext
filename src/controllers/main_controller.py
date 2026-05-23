@@ -81,7 +81,8 @@ class MainController:
             'include_tree': True, 'include_dependencies': False,
             'skeleton_mode': False, 'use_git': False, 'use_gitignore': True,
             'cli_minify': True, 'cli_remove_comments': True, 'cli_remove_secrets': True,
-            'cli_include_tree': True, 'cli_skeleton_mode': False, 'cli_use_gitignore': True, 'cli_format': "plain"
+            'cli_include_tree': True, 'cli_skeleton_mode': False, 'cli_use_gitignore': True, 'cli_format': "plain",
+            'python_interpreter': ""
         }
         self.dispatcher.dispatch(SETTINGS_UPDATE, default_data)
         self.settings_repo.save(default_data)

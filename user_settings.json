@@ -1,9 +1,9 @@
 {
-  "extensions": ".py .toml .ini .env.example .dockerfile .yaml .sh",
-  "ignored_paths": "__pycache__, venv, .venv, .git, .idea, .pytest_cache",
+  "extensions": ".py .js .ts .vue .jsx .tsx .html .css .json .md .sql .xml .yaml .yml .sh .bat .go .java .cpp .kt .kts",
+  "ignored_paths": ".git, node_modules, .nuxt, __pycache__, dist, build, .idea, .vscode, venv, .venv, coverage, .next, target, bin, obj",
   "minify": true,
   "remove_comments": true,
-  "remove_secrets": true,
+  "remove_secrets": false,
   "include_tree": true,
   "include_dependencies": true,
   "skeleton_mode": false,
@@ -18,5 +18,6 @@
   "cli_include_tree": true,
   "cli_skeleton_mode": false,
   "cli_use_gitignore": true,
-  "cli_format": "plain"
+  "cli_format": "plain",
+  "python_interpreter": "C:/python"
 }

@@ -1,4 +1,5 @@
 import customtkinter as ctk
+from tkinter import filedialog  # <--- Добавлен импорт
 from ...utils.config import PRESETS, PROMPT_PRESETS
 
 
@@ -66,7 +67,6 @@ class Sidebar(ctk.CTkFrame):
         self.btn_add_github = ctk.CTkButton(btn_frame, text="+ GitHub", width=140, fg_color="#333", hover_color="#444")
         self.btn_add_github.pack(side="right")
 
-        # НОВАЯ КНОПКА
         self.btn_scan = ctk.CTkButton(t, text="🔍 Сканировать (Preview)",
                                       fg_color="gray30",
                                       command=self._on_scan_click)
@@ -122,6 +122,18 @@ class Sidebar(ctk.CTkFrame):
         win_frame.pack(fill="x", pady=10)
 
         ctk.CTkLabel(win_frame, text="Интеграция с Windows", font=ctk.CTkFont(weight="bold")).pack(pady=5)
+
+        ctk.CTkLabel(win_frame, text="Путь к Python (для меню):", text_color="gray").pack(anchor="w", padx=10,
+                                                                                          pady=(5, 0))
+        py_path_frame = ctk.CTkFrame(win_frame, fg_color="transparent")
+        py_path_frame.pack(fill="x", padx=10, pady=2)
+
+        self.entry_py_path = ctk.CTkEntry(py_path_frame, placeholder_text="По умолчанию (sys.executable)")
+        self.entry_py_path.pack(side="left", fill="x", expand=True)
+
+        self.btn_browse_py = ctk.CTkButton(py_path_frame, text="📁", width=30, command=self._on_browse_py)
+        self.btn_browse_py.pack(side="right", padx=(5, 0))
+
         self.btn_install_ctx = ctk.CTkButton(win_frame, text="Установить в меню", fg_color="green")
         self.btn_install_ctx.pack(fill="x", padx=10, pady=5)
         self.btn_remove_ctx = ctk.CTkButton(win_frame, text="Удалить из меню", fg_color="red")
@@ -151,6 +163,17 @@ class Sidebar(ctk.CTkFrame):
         self.controller.update_settings(self.get_settings())
         self.controller.scan_only()
 
+    def _on_browse_py(self):
+        """Открыть диалог выбора интерпретатора Python"""
+        path = filedialog.askopenfilename(
+            title="Выберите интерпретатор Python",
+            filetypes=[("Python Executable", "python*.exe"), ("All Files", "*.*")]
+        )
+        if path:
+            self.entry_py_path.delete(0, "end")
+            self.entry_py_path.insert(0, path)
+            self.on_settings_change()
+
     @staticmethod
     def _set_check(chk, val):
         if val:
@@ -166,6 +189,16 @@ class Sidebar(ctk.CTkFrame):
         if self.entry_ign.get() != settings.ignored_paths:
             self.entry_ign.delete(0, "end")
             self.entry_ign.insert(0, settings.ignored_paths)
+
+        # Обновление поля пути к Python
+        if hasattr(settings, 'python_interpreter'):
+            if self.entry_py_path.get() != settings.python_interpreter:
+                self.entry_py_path.delete(0, "end")
+                self.entry_py_path.insert(0, settings.python_interpreter)
+        else:
+            # Если в настройках нет этого поля, очищаем
+            if self.entry_py_path.get():
+                self.entry_py_path.delete(0, "end")
 
         checkboxes = [
             (self.chk_tree, settings.include_tree),
@@ -213,7 +246,8 @@ class Sidebar(ctk.CTkFrame):
             'cli_include_tree': bool(self.chk_cli_tree.get()),
             'cli_skeleton_mode': bool(self.chk_cli_skeleton.get()),
             'cli_use_gitignore': bool(self.chk_cli_gitignore.get()),
-            'cli_format': self.cmb_cli_format.get()
+            'cli_format': self.cmb_cli_format.get(),
+            'python_interpreter': self.entry_py_path.get()  # <--- Добавлено
         }
 
     def set_loading(self, is_loading):
