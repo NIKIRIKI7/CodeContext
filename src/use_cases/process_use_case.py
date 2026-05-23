@@ -1,20 +1,11 @@
-"""
-ProcessWorkspaceUseCase — сценарий обработки файлов и экспорта результата.
-
-Исправлено:
-- Заменены несуществующие action types (WORKFLOW_STARTED, LOG_MESSAGE_ADDED,
-  PROCESSING_COMPLETED, FORMATTING_COMPLETED) на определённые в action_types.py.
-- Убран import ProcessedFile изнутри метода (был признаком плохой структуры).
-- Добавлен Optional[str] для save_path в pdf-экспорте.
-"""
-
 import asyncio
+import datetime
 from typing import Optional, List, Dict, Set
-
 from ..actions.action_types import (
-    UI_SET_LOADING, UI_ADD_LOG,
+    UI_SET_LOADING, UI_ADD_LOG, UI_SHOW_PREVIEW,
     PROCESSING_SUCCESS, FORMATTING_SUCCESS,
-    WORKFLOW_STARTED, WORKFLOW_PROGRESS, WORKFLOW_FINISHED, WORKFLOW_ERROR, UI_SHOW_PREVIEW,
+    WORKFLOW_STARTED, WORKFLOW_PROGRESS, WORKFLOW_FINISHED, WORKFLOW_ERROR,
+    HISTORY_ADD, SET_BEFORE_AFTER
 )
 from ..actions.dispatcher import Dispatcher
 from ..services.cleaner_service import CleanerService
@@ -27,13 +18,8 @@ from ..services.token_service import TokenService
 from ..store.state import AppState, ProcessedFile
 from ..utils.pipeline_utils import PipelineUtils
 
-
 class ProcessWorkspaceUseCase:
-    """
-    Оркестрирует чтение → очистку → форматирование → экспорт.
-    Не содержит бизнес-логики — только координацию сервисов.
-    """
-
+    """Оркестрирует чтение → очистку → форматирование → экспорт."""
     def __init__(
         self,
         dispatcher: Dispatcher,
@@ -60,14 +46,6 @@ class ProcessWorkspaceUseCase:
         target: str,
         save_path: Optional[str] = None,
     ) -> None:
-        """
-        Выполняет полный pipeline обработки.
-
-        Args:
-            state: снимок состояния приложения.
-            target: 'clipboard' | 'file' | 'pdf'
-            save_path: путь для сохранения (обязателен для 'file' и 'pdf')
-        """
         self._dispatcher.dispatch(UI_SET_LOADING, True)
         self._dispatcher.dispatch(WORKFLOW_STARTED, {
             'message': "Подготовка файлов...", 'progress': 0.1
@@ -78,18 +56,15 @@ class ProcessWorkspaceUseCase:
                 p for p in state.scanned_files_paths
                 if p not in state.manual_exclusions
             ]
-
             if not files_to_process:
                 self._dispatcher.dispatch(UI_ADD_LOG, "⚠️ Нет файлов для обработки (все исключены?)")
                 return
 
-            # 1. Чтение файлов
             self._dispatcher.dispatch(WORKFLOW_PROGRESS, {
                 'message': f"Чтение {len(files_to_process)} файлов...", 'progress': 0.3
             })
             raw_files = await self._process_service.read_files_async(files_to_process)
 
-            # 2. Анализ зависимостей (опционально)
             dependency_map: Optional[Dict[str, Set[str]]] = None
             if state.settings.include_dependencies:
                 self._dispatcher.dispatch(WORKFLOW_PROGRESS, {
@@ -97,7 +72,6 @@ class ProcessWorkspaceUseCase:
                 })
                 dependency_map = await self._dependency_service.resolve_dependencies(raw_files)
 
-            # 3. Обработка (CPU-heavy → отдельный поток)
             self._dispatcher.dispatch(WORKFLOW_PROGRESS, {
                 'message': "Обработка и минификация...", 'progress': 0.6
             })
@@ -106,19 +80,30 @@ class ProcessWorkspaceUseCase:
             )
             self._dispatcher.dispatch(PROCESSING_SUCCESS, processed)
 
-            # 4. Форматирование
             self._dispatcher.dispatch(WORKFLOW_PROGRESS, {
                 'message': "Форматирование...", 'progress': 0.85
             })
             text_result: str = await asyncio.to_thread(
                 self._run_formatting, processed, state.settings, dependency_map
             )
+
             total_tokens = sum(f.tokens for f in processed)
+
+            before_after = []
+            for r, p in zip(raw_files, processed):
+                before_after.append({"path": p.path, "original": r['content'], "processed": p.content})
+
+            self._dispatcher.dispatch(SET_BEFORE_AFTER, before_after)
+
+            timestamp = datetime.datetime.now().strftime("%H:%M:%S")
+            self._dispatcher.dispatch(HISTORY_ADD, {
+                "time": timestamp, "text": text_result, "tokens": total_tokens
+            })
+
             self._dispatcher.dispatch(FORMATTING_SUCCESS, {
                 'text': text_result, 'tokens': total_tokens
             })
 
-            # 5. Экспорт
             self._dispatcher.dispatch(WORKFLOW_PROGRESS, {
                 'message': "Сохранение...", 'progress': 0.95
             })
@@ -130,13 +115,8 @@ class ProcessWorkspaceUseCase:
         except Exception as exc:
             self._dispatcher.dispatch(WORKFLOW_ERROR, str(exc))
             self._dispatcher.dispatch(UI_ADD_LOG, f"🔥 Ошибка обработки: {exc}")
-
         finally:
             self._dispatcher.dispatch(UI_SET_LOADING, False)
-
-    # ------------------------------------------------------------------
-    # Private helpers (CPU-bound, выполняются в threadpool)
-    # ------------------------------------------------------------------
 
     def _run_processing(self, raw_files, settings) -> List[ProcessedFile]:
         return PipelineUtils.process_files_batch(

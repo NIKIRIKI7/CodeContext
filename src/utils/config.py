@@ -2,7 +2,6 @@ import os
 import platform
 import re
 
-# Пресеты настроек для разных типов проектов (расширения и игнор)
 PRESETS = {
     "Default": {
         "ext": ".py .js .ts .vue .jsx .tsx .html .css .json .md .sql .xml .yaml .yml .sh .bat .go .java .cpp",
@@ -22,32 +21,29 @@ PRESETS = {
     }
 }
 
-# Пресеты системных промптов
 PROMPT_PRESETS = {
     "Code Analysis (Default)": "You are an expert software engineer. Analyze the following codebase structure and file contents. Provide improvements, refactoring suggestions, or answer specific questions based on this context.",
+    "Code Patcher (JSON)": "You are an advanced AI assistant specialized in code modification. Your goal is to provide code changes in a strict JSON format that a patching script will automatically apply.\n\nSUPPORTED ACTIONS:\n1. \"replace\" - Replaces an exact block of existing code. Requires \"file\", \"search\", \"content\".\n2. \"create\" - Creates a new file. Requires \"file\", \"content\".\n3. \"delete\" - Deletes a file. Requires \"file\".\n4. \"append\" - Adds code to the end of a file. Requires \"file\", \"content\".\n5. \"prepend\" - Adds code to the start of a file. Requires \"file\", \"content\".\n6. \"insert_before\" - Inserts code before a matched block. Requires \"file\", \"search\", \"content\".\n7. \"insert_after\" - Inserts code after a matched block. Requires \"file\", \"search\", \"content\".\n\nFormat:\n[\n  {\n    \"action\": \"replace\",\n    \"file\": \"path/to/existing_file.py\",\n    \"search\": \"    def old_function():\\n        pass\",\n    \"content\": \"    def new_function():\\n        return True\"\n  },\n  {\n    \"action\": \"create\",\n    \"file\": \"path/to/new_file.py\",\n    \"content\": \"print('Hello')\\n\"\n  }\n]\n\nCRITICAL RULES:\n1. The \"search\" string MUST match the existing code EXACTLY, including all spaces and indentation.\n2. Provide enough context in \"search\" to make it uniquely identifiable (3-5 lines).",
     "Documentation Writer": "You are a technical writer. Based on the provided code, generate comprehensive documentation, including README structure, API references, and installation guides.",
     "Bug Hunter": "You are a QA specialist and security expert. Analyze the provided code for potential bugs, security vulnerabilities, and race conditions. Provide a list of critical issues and how to fix them.",
     "Architecture Review": "You are a software architect. Evaluate the project structure, separation of concerns, and design patterns used. Suggest architectural improvements.",
-    "Custom": "" # Оставляем пустым или не меняем текущий текст
+    "Custom": ""
 }
 
 DEFAULT_SYSTEM_PROMPT = PROMPT_PRESETS["Code Analysis (Default)"]
 
-# Максимальный размер файла (в МБ)
 MAX_FILE_SIZE_MB = 2.0
 
-# Паттерны для поиска секретов
 SECRET_PATTERNS = [
     re.compile(r'(api[_-]?key|auth[_-]?token|secret[_-]?key|password|pwd)["\']?\s*[:=]\s*["\']([a-zA-Z0-9_\-]{8,})["\']', re.IGNORECASE),
     re.compile(r'(AKIA[0-9A-Z]{16})'),
     re.compile(r'(eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,})')
 ]
 
-# Путь к шрифту для PDF
 def get_font_path():
     system = platform.system()
     if system == "Windows":
-        path = os.path.join(os.environ["WINDIR"], "Fonts", "arial.ttf")
+        path = os.path.join(os.environ.get("WINDIR", "C:\\Windows"), "Fonts", "arial.ttf")
         if os.path.exists(path):
             return path
     return None

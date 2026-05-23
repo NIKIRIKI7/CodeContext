@@ -1,24 +1,8 @@
-"""
-DIContainer — единственная точка создания объектов.
-
-Исправлено:
-- MainController теперь получает Use Cases (исправлен несовместимый интерфейс).
-- CliController получает Use Cases вместо прямых сервисов.
-- IntegrationService использует стратегию по платформе.
-- Все Use Cases реализованы и подключены.
-- Добавлен GitHubUseCase и SettingsUseCase.
-
-Правило: ТОЛЬКО этот файл имеет право писать `SomeClass()`.
-"""
-
 import platform
-
 from .store.store import Store
 from .actions.dispatcher import Dispatcher
-
 from .data.file_system_repository import FileSystemRepository
 from .data.settings_repository import SettingsRepository
-
 from .services.cleaner_service import CleanerService
 from .services.dependency_service import DependencyService
 from .services.file_service import FileService
@@ -30,18 +14,17 @@ from .services.output_service import OutputService
 from .services.processing_service import ProcessingService
 from .services.skeleton_service import SkeletonService
 from .services.token_service import TokenService
-
+from .services.patch_service import PatchService
 from .services.strategies.integration_strategies import (
     WindowsContextMenuStrategy,
     LinuxContextMenuStrategy,
     MacOSContextMenuStrategy,
 )
-
 from .use_cases.scan_use_case import ScanWorkspaceUseCase
 from .use_cases.process_use_case import ProcessWorkspaceUseCase
 from .use_cases.github_use_case import GitHubUseCase
 from .use_cases.settings_use_case import SettingsUseCase
-
+from .use_cases.patch_use_case import PatchUseCase
 from .controllers.main_controller import MainController
 from .controllers.cli_controller import CliController
 
@@ -56,21 +39,14 @@ def _make_integration_strategy():
 
 
 class DIContainer:
-    """
-    Граф зависимостей приложения.
-    Создаётся один раз в main.py.
-    """
+    """Граф зависимостей приложения."""
 
     def __init__(self):
-        # --- State ---
         self.store = Store()
         self.dispatcher = Dispatcher(self.store)
-
-        # --- Infrastructure ---
         self.fs_repo = FileSystemRepository()
         self.settings_repo = SettingsRepository()
 
-        # --- Services ---
         self.file_service = FileService(self.fs_repo)
         self.process_service = ProcessingService(self.fs_repo)
         self.cleaner_service = CleanerService()
@@ -81,16 +57,16 @@ class DIContainer:
         self.dependency_service = DependencyService()
         self.import_resolution_service = ImportResolutionService()
         self.github_service = GitHubService()
+        self.patch_service = PatchService()
 
-        # IntegrationService получает стратегию — не создаёт её сам
         self.integration_service = IntegrationService(
             strategy=_make_integration_strategy()
         )
 
-        # --- Use Cases ---
         self.scan_use_case = ScanWorkspaceUseCase(
             dispatcher=self.dispatcher,
             file_service=self.file_service,
+            fs_repo=self.fs_repo
         )
 
         self.process_use_case = ProcessWorkspaceUseCase(
@@ -115,7 +91,11 @@ class DIContainer:
             settings_repo=self.settings_repo,
         )
 
-        # --- Controllers ---
+        self.patch_use_case = PatchUseCase(
+            dispatcher=self.dispatcher,
+            patch_service=self.patch_service
+        )
+
         self.main_controller = MainController(
             store=self.store,
             dispatcher=self.dispatcher,
@@ -123,6 +103,7 @@ class DIContainer:
             process_use_case=self.process_use_case,
             github_use_case=self.github_use_case,
             settings_use_case=self.settings_use_case,
+            patch_use_case=self.patch_use_case,
             integration_service=self.integration_service,
             fs_repo=self.fs_repo,
         )

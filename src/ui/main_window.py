@@ -1,11 +1,10 @@
 import os
 import customtkinter as ctk
 from tkinter import filedialog, messagebox
-from tkinterdnd2 import TkinterDnD, DND_FILES  # type: ignore
-
+from tkinterdnd2 import TkinterDnD, DND_FILES
 from ..store.store import Store
 from ..controllers.main_controller import MainController
-from .dialogs import EditFolderDialog, PreviewDialog  # <-- Added import
+from .dialogs import EditFolderDialog, AdvancedPreviewDialog, InputTextDialog
 from .components.sidebar import Sidebar
 from .components.folder_list import FolderList
 from .components.action_panel import ActionPanel
@@ -17,7 +16,7 @@ ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
 
 
-class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):  # type: ignore
+class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
     def __init__(self, store: Store, controller: MainController):
         super().__init__()
         self.TkdndVersion = getattr(TkinterDnD, "_require")(self)
@@ -26,22 +25,19 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):  # type: ignore
 
         self.title("CodeContext AI - Modular Architecture")
         self.geometry("1150x850")
-
         self.unsubscribe = self.store.subscribe(self._on_store_changed_threadsafe)
 
-        self._preview_dialog = None  # <-- For tracking the preview window
+        self._preview_dialog = None
 
         self._init_ui()
-        self._bind_hotkeys()  # <-- Hotkeys
+        self._bind_hotkeys()
 
         self.drop_target_register(DND_FILES)
         self.dnd_bind('<<Drop>>', self._on_drop)
         self.controller.load_initial_settings()
 
     def _bind_hotkeys(self):
-        # Quick build to clipboard: Ctrl + Enter
         self.bind("<Control-Return>", lambda e: self._on_run("clipboard"))
-        # Quick clear: Esc
         self.bind("<Escape>", lambda e: self.controller.clear_folders())
 
     def _init_ui(self):
@@ -92,26 +88,21 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):  # type: ignore
         self.sidebar.set_loading(state.is_loading)
         self.folder_list.update_ui(state.selected_folders, state.temp_folders)
 
-        current_tree_files = self.file_tree.file_paths
-        if state.scanned_files_paths and state.scanned_files_paths != current_tree_files:
-            self.file_tree.populate(state.scanned_files_paths)
-        elif not state.scanned_files_paths and current_tree_files:
+        if state.scanned_files_paths:
+            self.file_tree.populate(state.scanned_files_paths, state.scanned_file_metadata)
+        else:
             self.file_tree.delete_all()
 
         self.action_panel.update_ui(state.settings)
         self.log_panel.update_logs(state.logs)
         self.status_bar.update_ui(state.status_message, state.progress, state.total_tokens)
 
-        # --- UI Logic for Preview ---
-        if state.show_preview and not self._preview_dialog:
-            self._show_preview_dialog(state.preview_text)
-        elif not state.show_preview and self._preview_dialog:
+        if state.show_preview and not getattr(self, '_preview_dialog', None):
+            self._preview_dialog = AdvancedPreviewDialog(self, state, self.controller.close_preview)
+            self._preview_dialog.grab_set()
+        elif not state.show_preview and getattr(self, '_preview_dialog', None):
             self._preview_dialog.destroy()
             self._preview_dialog = None
-
-    def _show_preview_dialog(self, text: str):
-        self._preview_dialog = PreviewDialog(self, text, self.controller.close_preview)
-        self._preview_dialog.grab_set()
 
     def _on_tree_toggle(self, path, state):
         self.controller.toggle_file_exclusion(path, state)
@@ -124,16 +115,13 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):  # type: ignore
         try:
             raw_data = event.data
             paths = self.tk.splitlist(raw_data)
-            count = 0
             for path in paths:
                 path = path.strip('{}')
                 if os.path.isdir(path):
                     self.controller.add_folder(path)
-                    count += 1
                 elif os.path.isfile(path):
                     folder = os.path.dirname(path)
                     self.controller.add_folder(folder)
-                    count += 1
         except Exception as e:
             print(f"Drop error: {e}")
 
@@ -210,7 +198,6 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):  # type: ignore
         self.controller.update_settings(data)
         state = self.store.state
         save_path = None
-
         if target == 'file':
             if state.settings.output_format == 'markdown':
                 ext = ".md"

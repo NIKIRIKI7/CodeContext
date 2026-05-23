@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Set
+from typing import List, Set, Dict
 
 
 @dataclass
@@ -43,6 +43,7 @@ class AppState:
     selected_folders: List[str] = field(default_factory=list)
     temp_folders: List[str] = field(default_factory=list)
     scanned_files_paths: List[str] = field(default_factory=list)
+    scanned_file_metadata: Dict[str, dict] = field(default_factory=dict)
     manual_exclusions: Set[str] = field(default_factory=set)
     processed_files: List[ProcessedFile] = field(default_factory=list)
     final_output_text: str = ""
@@ -52,6 +53,8 @@ class AppState:
     is_loading: bool = False
     logs: List[str] = field(default_factory=list)
 
-    # --- UI UX States ---
+    # UI UX States
     preview_text: str = ""
     show_preview: bool = False
+    preview_history: List[dict] = field(default_factory=list)
+    before_after_data: List[dict] = field(default_factory=list)

@@ -78,6 +78,17 @@ class Sidebar(ctk.CTkFrame):
         self.btn_add_github = ctk.CTkButton(btn_frame, text="+ GitHub", width=140, fg_color="#333")
         self.btn_add_github.pack(side="right")
 
+        tools_frame = ctk.CTkFrame(t, fg_color="transparent")
+        tools_frame.pack(fill="x", pady=5)
+
+        btn_parse_err = ctk.CTkButton(tools_frame, text="🐞 Найти по логу ошибки", fg_color="#b0523e",
+                                      command=self._on_parse_error)
+        btn_parse_err.pack(fill="x", pady=2)
+
+        btn_patch = ctk.CTkButton(tools_frame, text="🧩 Применить JSON-патч от LLM", fg_color="#27694a",
+                                  command=self._on_apply_patch)
+        btn_patch.pack(fill="x", pady=2)
+
         self.btn_scan = ctk.CTkButton(t, text="🔍 Сканировать (Preview)", fg_color="gray30", command=self._on_scan_click)
         self.btn_scan.pack(fill="x", pady=(10, 0))
 
@@ -139,7 +150,6 @@ class Sidebar(ctk.CTkFrame):
         self.btn_remove_ctx = ctk.CTkButton(win_frame, text="Удалить из меню", fg_color="red")
         self.btn_remove_ctx.pack(fill="x", padx=10, pady=5)
 
-        # --- Смена темы ---
         theme_frame = ctk.CTkFrame(t)
         theme_frame.pack(fill="x", pady=10)
         ctk.CTkLabel(theme_frame, text="Внешний вид", font=ctk.CTkFont(weight="bold")).pack(pady=5)
@@ -158,6 +168,21 @@ class Sidebar(ctk.CTkFrame):
 
     def _on_theme_change(self, value):
         ctk.set_appearance_mode(value)
+
+    def _on_parse_error(self):
+        from ..dialogs import InputTextDialog
+        d = InputTextDialog(self, "Парсинг лога ошибки", "Вставьте весь лог с ошибками сюда...")
+        res = d.get_input()
+        if res and res.strip():
+            self.controller.parse_error_log(res)
+
+    def _on_apply_patch(self):
+        from ..dialogs import InputTextDialog
+        placeholder = '[\n  {\n    "action": "replace",\n    "file": "main.py",\n    "search": "def test(): pass",\n    "content": "def test(): return True"\n  },\n  {\n    "action": "create",\n    "file": "new.py",\n    "content": "print(\'Hello\')"\n  }\n]'
+        d = InputTextDialog(self, "Применить патч LLM", placeholder)
+        res = d.get_input()
+        if res and res.strip() != placeholder:
+            self.controller.apply_llm_patch(res)
 
     def _on_save_workspace(self):
         self.on_settings_change()

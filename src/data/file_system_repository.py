@@ -88,7 +88,6 @@ class FileSystemRepository:
         repo = Path(repo_path)
         if not (repo / ".git").exists():
             return []
-
         try:
             proc_diff = await asyncio.create_subprocess_exec(
                 "git", "diff", "HEAD", "--name-only",
@@ -108,7 +107,6 @@ class FileSystemRepository:
 
             all_raw = out_diff.decode().splitlines() + out_untracked.decode().splitlines()
             files = set()
-
             for f in all_raw:
                 p = repo / f
                 if not p.exists() or p.is_dir():
@@ -118,8 +116,35 @@ class FileSystemRepository:
                 if any(ign in str(p) for ign in ignored_substrings):
                     continue
                 files.add(str(p))
-
             return list(files)
         except (OSError, ValueError):
             print(f"Git async error in {repo_path}")
             return []
+
+    @staticmethod
+    async def get_git_status_async(repo_path: str) -> dict:
+        """Асинхронно получает статус файлов из Git (Porcelain)"""
+        status_map = {}
+        if not Path(repo_path, ".git").exists():
+            return status_map
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "git", "status", "--porcelain",
+                cwd=repo_path,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            out, _ = await proc.communicate()
+            for line in out.decode('utf-8').splitlines():
+                if len(line) > 3:
+                    state = line[:2]
+                    file_path = line[3:].strip().strip('"')
+                    full_path = str(Path(repo_path) / file_path)
+
+                    if 'A' in state or '?' in state:
+                        status_map[full_path] = "added"
+                    elif 'M' in state:
+                        status_map[full_path] = "modified"
+        except Exception:
+            pass
+        return status_map

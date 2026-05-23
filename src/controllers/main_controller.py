@@ -1,19 +1,8 @@
-"""
-MainController — тонкий контроллер GUI.
-
-Исправлено (нарушения SOLID):
-- Убрано прямое создание 12 сервисов внутри __init__ (DIP).
-- Вся бизнес-логика переехала в Use Cases (SRP).
-- Контроллер принимает Use Cases через конструктор (DIP).
-- Длина методов не превышает 15 строк (SRP).
-"""
-
 import os
 from typing import Optional, Tuple
-
 from ..actions.action_types import (
     FOLDER_ADD, FOLDER_REMOVE, FOLDER_UPDATE, FOLDER_CLEAR,
-    EXCLUSION_ADD, EXCLUSION_REMOVE, UI_ADD_LOG, UI_CLOSE_PREVIEW,
+    EXCLUSION_ADD, EXCLUSION_REMOVE, EXCLUSION_CLEAR, UI_ADD_LOG, UI_CLOSE_PREVIEW
 )
 from ..actions.dispatcher import Dispatcher
 from ..store.store import Store
@@ -21,27 +10,26 @@ from ..use_cases.scan_use_case import ScanWorkspaceUseCase
 from ..use_cases.process_use_case import ProcessWorkspaceUseCase
 from ..use_cases.github_use_case import GitHubUseCase
 from ..use_cases.settings_use_case import SettingsUseCase
+from ..use_cases.patch_use_case import PatchUseCase
 from ..utils.async_runtime import AsyncRuntime
 from ..services.integration_service import IntegrationService
 from ..data.file_system_repository import FileSystemRepository
 
 
 class MainController:
-    """
-    GUI-контроллер. Принимает события от UI и делегирует Use Cases.
-    Не содержит бизнес-логики.
-    """
+    """GUI-контроллер. Принимает события от UI и делегирует Use Cases."""
 
     def __init__(
-        self,
-        store: Store,
-        dispatcher: Dispatcher,
-        scan_use_case: ScanWorkspaceUseCase,
-        process_use_case: ProcessWorkspaceUseCase,
-        github_use_case: GitHubUseCase,
-        settings_use_case: SettingsUseCase,
-        integration_service: IntegrationService,
-        fs_repo: FileSystemRepository,
+            self,
+            store: Store,
+            dispatcher: Dispatcher,
+            scan_use_case: ScanWorkspaceUseCase,
+            process_use_case: ProcessWorkspaceUseCase,
+            github_use_case: GitHubUseCase,
+            settings_use_case: SettingsUseCase,
+            patch_use_case: PatchUseCase,
+            integration_service: IntegrationService,
+            fs_repo: FileSystemRepository,
     ):
         self._store = store
         self._dispatcher = dispatcher
@@ -49,12 +37,9 @@ class MainController:
         self._process_uc = process_use_case
         self._github_uc = github_use_case
         self._settings_uc = settings_use_case
+        self._patch_uc = patch_use_case
         self._integration = integration_service
         self._fs_repo = fs_repo
-
-    # ------------------------------------------------------------------
-    # Settings
-    # ------------------------------------------------------------------
 
     def load_initial_settings(self):
         self._settings_uc.load_initial()
@@ -78,14 +63,14 @@ class MainController:
         self._settings_uc.load_workspace(path)
         self.scan_only()
 
-    # ------------------------------------------------------------------
-    # Folders
-    # ------------------------------------------------------------------
-
     def add_folder(self, path: str):
         clean = self._normalize_path(path)
         if clean and os.path.exists(clean):
             self._dispatcher.dispatch(FOLDER_ADD, clean)
+            config_path = os.path.join(clean, '.codecontext.json')
+            if os.path.exists(config_path):
+                self._dispatcher.dispatch(UI_ADD_LOG, f"🔧 Найден конфиг проекта: {config_path}")
+                self._settings_uc.load_workspace(config_path)
 
     def remove_folder(self, path: str):
         self._dispatcher.dispatch(FOLDER_REMOVE, path)
@@ -108,10 +93,6 @@ class MainController:
             await self._fs_repo.delete_directory_async(folder)
         self._dispatcher.dispatch(FOLDER_CLEAR, None)
 
-    # ------------------------------------------------------------------
-    # Scan & Process
-    # ------------------------------------------------------------------
-
     def scan_only(self):
         if not self._store.state.selected_folders:
             self._dispatcher.dispatch(UI_ADD_LOG, "⚠️ Выберите папки для сканирования")
@@ -122,7 +103,6 @@ class MainController:
     def start_processing(self, target: str, save_path: Optional[str] = None) -> Tuple[bool, str]:
         if not self._store.state.selected_folders:
             return False, "Выберите папки или URL для сканирования"
-
         state = self._store.state
         if not state.scanned_files_paths:
             AsyncRuntime.run_coroutine(self._scan_then_process(target, save_path))
@@ -133,13 +113,9 @@ class MainController:
     async def _scan_then_process(self, target: str, save_path: Optional[str]):
         state = self._store.state
         await self._scan_uc.execute(state)
-        state = self._store.state  # перечитываем после сканирования
+        state = self._store.state
         if state.scanned_files_paths:
             await self._process_uc.execute(state, target, save_path)
-
-    # ------------------------------------------------------------------
-    # File exclusion & context actions
-    # ------------------------------------------------------------------
 
     def toggle_file_exclusion(self, path: str, is_included: bool):
         action = EXCLUSION_REMOVE if is_included else EXCLUSION_ADD
@@ -147,26 +123,13 @@ class MainController:
 
     def copy_file_with_dependencies(self, target_file: str, deep: bool):
         state = self._store.state
-        AsyncRuntime.run_coroutine(
-            self._copy_deps_async(target_file, deep, state)
-        )
+        AsyncRuntime.run_coroutine(self._copy_deps_async(target_file, deep, state))
 
     async def _copy_deps_async(self, target_file, deep, state):
-        """Делегирует PipelineUtils — логика сбора зависимостей изолирована."""
-        # NOTE: эти сервисы получать из DI, а не создавать здесь.
-        # Оставлено как заглушка — реализация через CopyWithDepsUseCase.
         self._dispatcher.dispatch(UI_ADD_LOG, "copy_with_deps: используйте CopyWithDepsUseCase")
-
-    # ------------------------------------------------------------------
-    # GitHub
-    # ------------------------------------------------------------------
 
     def add_github_repo(self, url: str):
         AsyncRuntime.run_coroutine(self._github_uc.execute(url))
-
-    # ------------------------------------------------------------------
-    # Integration (Windows context menu)
-    # ------------------------------------------------------------------
 
     def install_context_menu(self) -> Tuple[bool, str]:
         python_path = self._store.state.settings.python_interpreter
@@ -175,14 +138,39 @@ class MainController:
     def remove_context_menu(self) -> Tuple[bool, str]:
         return self._integration.remove_context_menu()
 
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
+    def close_preview(self):
+        self._dispatcher.dispatch(UI_CLOSE_PREVIEW, None)
+
+    def apply_llm_patch(self, json_str: str):
+        folders = self._store.state.selected_folders
+        self._patch_uc.apply_json_patch(json_str, folders)
+
+    def parse_error_log(self, text: str):
+        state = self._store.state
+        if not state.scanned_files_paths:
+            self._dispatcher.dispatch(UI_ADD_LOG, "⚠️ Сначала отсканируйте файлы!")
+            return
+
+        matched = []
+        for path in state.scanned_files_paths:
+            basename = os.path.basename(path)
+            if basename in text:
+                matched.append(path)
+
+        if not matched:
+            self._dispatcher.dispatch(UI_ADD_LOG, "⚠️ В логе не найдены файлы проекта.")
+            return
+
+        self._dispatcher.dispatch(EXCLUSION_CLEAR, None)
+        all_paths = set(state.scanned_files_paths)
+        for p in (all_paths - set(matched)):
+            self._dispatcher.dispatch(EXCLUSION_ADD, p)
+
+        self._dispatcher.dispatch(UI_ADD_LOG, f"🎯 Найдено {len(matched)} файлов из лога ошибки!")
 
     @staticmethod
     def _normalize_path(path: str) -> str:
-        if not path:
-            return ""
+        if not path: return ""
         clean = path
         while True:
             prev = clean
@@ -193,7 +181,3 @@ class MainController:
             return os.path.normpath(clean)
         except (TypeError, ValueError, OSError):
             return clean
-
-    def close_preview(self):
-        """Метод для делегирования закрытия превью в Store"""
-        self._dispatcher.dispatch(UI_CLOSE_PREVIEW, None)
