@@ -1,7 +1,8 @@
 import os
 import asyncio
 import traceback
-from typing import Tuple, List
+import json
+from typing import Tuple, List, Set, Optional, Dict, Any
 from ..store.store import Store
 from ..actions.dispatcher import Dispatcher
 from ..actions.action_types import *
@@ -17,6 +18,7 @@ from ..services.integration_service import IntegrationService
 from ..services.skeleton_service import SkeletonService
 from ..services.github_service import GitHubService
 from ..services.dependency_service import DependencyService
+from ..services.import_resolution_service import ImportResolutionService
 from ..data.file_system_repository import FileSystemRepository
 from ..data.settings_repository import SettingsRepository
 from ..utils.pipeline_utils import PipelineUtils
@@ -39,6 +41,7 @@ class MainController:
         self.integration_service = IntegrationService()
         self.github_service = GitHubService()
         self.dependency_service = DependencyService()
+        self.import_resolution_service = ImportResolutionService()
 
     @staticmethod
     def _normalize_path(path: str) -> str:
@@ -88,6 +91,28 @@ class MainController:
         self.settings_repo.save(default_data)
         self.dispatcher.dispatch(UI_ADD_LOG, "Настройки сброшены")
 
+    def save_workspace(self, path: str):
+        data = {
+            'folders': self.store.state.selected_folders,
+            'settings': self.store.state.settings.__dict__
+        }
+        try:
+            with open(path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=4)
+            self.dispatcher.dispatch(UI_ADD_LOG, f"Workspace сохранен: {path}")
+        except Exception as e:
+            self.dispatcher.dispatch(UI_ADD_LOG, f"Ошибка сохранения Workspace: {e}")
+
+    def load_workspace(self, path: str):
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            self.dispatcher.dispatch(WORKSPACE_LOADED, data)
+            self.dispatcher.dispatch(UI_ADD_LOG, f"Workspace загружен: {path}")
+            self.scan_only()
+        except Exception as e:
+            self.dispatcher.dispatch(UI_ADD_LOG, f"Ошибка загрузки Workspace: {e}")
+
     def apply_preset(self, preset_name: str):
         preset = PRESETS.get(preset_name)
         if preset:
@@ -114,13 +139,14 @@ class MainController:
         else:
             self.dispatcher.dispatch(FOLDER_CLEAR)
 
-    async def _clear_folders_async(self, folders):
+    async def _clear_folders_async(self, folders: List[str]):
         for folder in folders:
             await self.fs_repo.delete_directory_async(folder)
         self.dispatcher.dispatch(FOLDER_CLEAR)
 
     def install_context_menu(self) -> Tuple[bool, str]:
-        return self.integration_service.install_context_menu()
+        python_path = self.store.state.settings.python_interpreter
+        return self.integration_service.install_context_menu(python_path)
 
     def remove_context_menu(self) -> Tuple[bool, str]:
         return self.integration_service.remove_context_menu()
@@ -145,27 +171,21 @@ class MainController:
             self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Готово", 'progress': 0.0})
 
     def toggle_file_exclusion(self, path: str, is_included: bool):
-        """Коллбек от дерева файлов: пользователь поменял галочку"""
         if is_included:
-            # Если включили (поставили галочку), убираем из списка исключений
             self.dispatcher.dispatch(EXCLUSION_REMOVE, path)
         else:
-            # Если выключили (сняли галочку), добавляем в исключения
             self.dispatcher.dispatch(EXCLUSION_ADD, path)
 
     def scan_only(self):
-        """Только сканирование (для предпросмотра)"""
         if not self.store.state.selected_folders:
             self.dispatcher.dispatch(UI_ADD_LOG, "⚠️ Выберите папки для сканирования")
             return
-
         AsyncRuntime.run_coroutine(self._scan_worker_async())
 
     async def _scan_worker_async(self):
         self.dispatcher.dispatch(UI_SET_LOADING, True)
         self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Сканирование...", 'progress': 0.0})
         self.dispatcher.dispatch(UI_ADD_LOG, "Начало сканирования...")
-
         state = self.store.state
         try:
             files_paths = await self.file_service.scan_folders_async(
@@ -175,14 +195,12 @@ class MainController:
                 state.settings.use_git,
                 state.settings.use_gitignore
             )
-
             if not files_paths:
                 self.dispatcher.dispatch(SCAN_FAILURE, "Файлы не найдены")
                 self.dispatcher.dispatch(UI_ADD_LOG, "⚠️ Файлы не найдены")
             else:
                 self.dispatcher.dispatch(SCAN_SUCCESS, files_paths)
                 self.dispatcher.dispatch(UI_ADD_LOG, f"Найдено файлов: {len(files_paths)}")
-
         except Exception as e:
             self.dispatcher.dispatch(SCAN_FAILURE, str(e))
             self.dispatcher.dispatch(UI_ADD_LOG, f"Error: {e}")
@@ -190,36 +208,26 @@ class MainController:
             self.dispatcher.dispatch(UI_SET_LOADING, False)
             self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Сканирование завершено", 'progress': 0.0})
 
-    def start_processing(self, target_type: str, save_path: str = None):
+    def start_processing(self, target_type: str, save_path: Optional[str] = None) -> Tuple[bool, str]:
         if not self.store.state.selected_folders:
             return False, "Выберите папки или URL для сканирования"
 
-        # Если файлы еще не сканированы (пустой список), сканируем сначала
         if not self.store.state.scanned_files_paths:
             AsyncRuntime.run_coroutine(self._scan_and_process_worker_async(target_type, save_path))
         else:
-            # Если уже сканированы (и, возможно, отфильтрованы в дереве), сразу обрабатываем
             AsyncRuntime.run_coroutine(self._process_worker_async(target_type, save_path))
-
         return True, ""
 
-    async def _scan_and_process_worker_async(self, target: str, save_path: str = None):
-        """Полный цикл: Скан -> Фильтр -> Процессинг"""
+    async def _scan_and_process_worker_async(self, target: str, save_path: Optional[str] = None):
         await self._scan_worker_async()
-        # Если скан успешен, продолжаем
         if self.store.state.scanned_files_paths:
             await self._process_worker_async(target, save_path)
 
-    async def _process_worker_async(self, target: str, save_path: str = None):
-        """Обработка уже найденных файлов с учетом ручных исключений"""
+    async def _process_worker_async(self, target: str, save_path: Optional[str] = None):
         self.dispatcher.dispatch(UI_SET_LOADING, True)
         state = self.store.state
-
-        # Фильтрация на основе manual_exclusions
         all_files = state.scanned_files_paths
         exclusions = state.manual_exclusions
-
-        # Оставляем только те, которых НЕТ в исключениях
         files_to_process = [p for p in all_files if p not in exclusions]
 
         if not files_to_process:
@@ -233,7 +241,6 @@ class MainController:
 
         try:
             raw_files = await self.process_service.read_files_async(files_to_process)
-
             dependency_map = None
             if state.settings.include_dependencies:
                 self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Анализ зависимостей...", 'progress': 0.3})
@@ -256,7 +263,6 @@ class MainController:
             self.dispatcher.dispatch(FORMATTING_SUCCESS, {'text': text_result, 'tokens': total_tokens})
 
             self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Сохранение...", 'progress': 0.95})
-
             if target == 'clipboard':
                 self.output_service.copy_to_clipboard(text_result)
                 self.dispatcher.dispatch(UI_ADD_LOG, "Скопировано в буфер обмена")
@@ -276,12 +282,55 @@ class MainController:
             self.dispatcher.dispatch(UI_SET_LOADING, False)
             self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Готово", 'progress': 1.0})
 
-    def _cpu_heavy_processing(self, raw_files, settings):
-        """Выполняется в отдельном потоке"""
+    def copy_file_with_dependencies(self, target_file: str, deep: bool):
+        AsyncRuntime.run_coroutine(self._copy_deps_worker_async(target_file, deep))
+
+    async def _copy_deps_worker_async(self, target_file: str, deep: bool):
+        self.dispatcher.dispatch(UI_SET_LOADING, True)
+        self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Сбор зависимостей...", 'progress': 0.3})
+        try:
+            all_paths = self.store.state.scanned_files_paths
+            # Если дерево еще не просканировано, сканируем проект автоматически
+            if not all_paths:
+                root_dir = self.file_service.find_project_root(target_file)
+                all_paths = await self.file_service.scan_folders_async(
+                    [root_dir],
+                    self.store.state.settings.extensions,
+                    self.store.state.settings.ignored_paths,
+                    self.store.state.settings.use_git,
+                    self.store.state.settings.use_gitignore
+                )
+                if not all_paths:
+                    all_paths = [target_file]
+
+            visited_paths: Set[str] = set()
+            queue: List[Tuple[str, int]] = [(target_file, 0)]
+
+            await PipelineUtils.resolve_and_collect_dependencies_async(
+                queue, visited_paths, all_paths, deep,
+                self.process_service, self.dependency_service, self.import_resolution_service
+            )
+
+            raw_files = await self.process_service.read_files_async(list(visited_paths))
+            processed = await asyncio.to_thread(self._cpu_heavy_processing, raw_files, self.store.state.settings)
+            text_result = await asyncio.to_thread(self._format_output, processed, self.store.state.settings, None)
+
+            self.output_service.copy_to_clipboard(text_result)
+            self.dispatcher.dispatch(UI_ADD_LOG, f"Скопировано файлов: {len(processed)} (Deep={deep})")
+
+        except Exception as e:
+            self.dispatcher.dispatch(UI_ADD_LOG, f"Ошибка при копировании: {e}")
+            traceback.print_exc()
+        finally:
+            self.dispatcher.dispatch(UI_SET_LOADING, False)
+            self.dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Готово", 'progress': 1.0})
+
+    def _cpu_heavy_processing(self, raw_files: List[Dict], settings: Any):
         import copy
         proc_settings = copy.copy(settings)
         if proc_settings.skeleton_mode:
             proc_settings.minify = False
+
         return PipelineUtils.process_files_batch(
             raw_files=raw_files,
             options=proc_settings,
@@ -290,8 +339,8 @@ class MainController:
             token_service=self.token_service
         )
 
-    def _format_output(self, processed_results, settings, dep_map) -> str:
-        """Только форматирование текста"""
+    def _format_output(self, processed_results: List[ProcessedFile], settings: Any,
+                       dep_map: Optional[Dict[str, Set[str]]]) -> str:
         return self.format_service.format_output(
             files=processed_results,
             fmt=settings.output_format,
@@ -303,5 +352,4 @@ class MainController:
 
     @staticmethod
     def _count_total_tokens(processed_results: List[ProcessedFile]) -> int:
-        """Только подсчет токенов"""
         return sum(f.tokens for f in processed_results)

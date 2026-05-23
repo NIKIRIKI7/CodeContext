@@ -3,7 +3,7 @@ import shutil
 import stat
 import asyncio
 from pathlib import Path
-from typing import List, Set, Optional
+from typing import List, Set, Optional, Any
 
 
 class FileSystemRepository:
@@ -44,8 +44,7 @@ class FileSystemRepository:
         if not os.path.exists(path):
             return
 
-        # Исправление: добавляем необходимые аргументы func и exc_info
-        def on_rm_error(p):
+        def on_rm_error(func: Any, p: str, exc_info: Any) -> None:
             try:
                 os.chmod(p, stat.S_IWRITE)
                 os.unlink(p)
@@ -76,7 +75,6 @@ class FileSystemRepository:
     def _walk_directory_sync(path: str, ignored_dirs: Set[str], extensions: List[str]) -> List[str]:
         result = []
         for root, dirs, files in os.walk(path):
-            # Модифицируем dirs in-place для исключения папок
             dirs[:] = [d for d in dirs if d not in ignored_dirs]
             for file in files:
                 if any(file.lower().endswith(ext) for ext in extensions):
@@ -84,15 +82,14 @@ class FileSystemRepository:
         return result
 
     @staticmethod
-    async def get_git_changed_files_async(repo_path: str, extensions: List[str], ignored_substrings: Set[str]) -> \
-            List[str]:
+    async def get_git_changed_files_async(repo_path: str, extensions: List[str], ignored_substrings: Set[str]) -> List[
+        str]:
         """Асинхронное получение Git changes через asyncio.subprocess"""
         repo = Path(repo_path)
         if not (repo / ".git").exists():
             return []
 
         try:
-            # git diff
             proc_diff = await asyncio.create_subprocess_exec(
                 "git", "diff", "HEAD", "--name-only",
                 cwd=repo_path,
@@ -101,7 +98,6 @@ class FileSystemRepository:
             )
             out_diff, _ = await proc_diff.communicate()
 
-            # git ls-files (untracked)
             proc_untracked = await asyncio.create_subprocess_exec(
                 "git", "ls-files", "--others", "--exclude-standard",
                 cwd=repo_path,
@@ -111,8 +107,8 @@ class FileSystemRepository:
             out_untracked, _ = await proc_untracked.communicate()
 
             all_raw = out_diff.decode().splitlines() + out_untracked.decode().splitlines()
-
             files = set()
+
             for f in all_raw:
                 p = repo / f
                 if not p.exists() or p.is_dir():
@@ -124,8 +120,6 @@ class FileSystemRepository:
                 files.add(str(p))
 
             return list(files)
-
         except (OSError, ValueError):
-            # Перехватываем ошибки запуска процесса или декодирования
             print(f"Git async error in {repo_path}")
             return []

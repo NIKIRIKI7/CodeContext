@@ -10,17 +10,15 @@ class EditFolderDialog(ctk.CTkToplevel):
         self.resizable(False, False)
         self.result = None
 
-        # Делаем окно модальным
         self.transient(parent)
         self.grab_set()
-
-        # Центрирование относительно родителя
         self.update_idletasks()
+
         try:
             x = parent.winfo_x() + (parent.winfo_width() // 2) - (500 // 2)
             y = parent.winfo_y() + (parent.winfo_height() // 2) - (160 // 2)
             self.geometry(f"+{x}+{y}")
-        except:
+        except Exception:
             pass
 
         ctk.CTkLabel(self, text="Измените путь:", font=("Arial", 14)).pack(pady=(20, 5))
@@ -40,7 +38,6 @@ class EditFolderDialog(ctk.CTkToplevel):
 
         self.btn_ok = ctk.CTkButton(self.btn_frame, text="OK", width=100, command=self._on_ok)
         self.btn_ok.pack(side="left", expand=True)
-
         self.btn_cancel = ctk.CTkButton(self.btn_frame, text="Отмена", width=100, fg_color="transparent",
                                         border_width=1, command=self.destroy)
         self.btn_cancel.pack(side="right", expand=True)

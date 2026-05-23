@@ -1,14 +1,14 @@
 import customtkinter as ctk
-from tkinter import filedialog  # <--- Добавлен импорт
+from tkinter import filedialog
+from typing import Any
 from ...utils.config import PRESETS, PROMPT_PRESETS
 
 
 class Sidebar(ctk.CTkFrame):
-    def __init__(self, parent, controller, on_settings_change_callback):
+    def __init__(self, parent: Any, controller: Any, on_settings_change_callback: Any):
         super().__init__(parent, width=320, corner_radius=0)
         self.controller = controller
         self.on_settings_change = on_settings_change_callback
-
         self.grid_rowconfigure(2, weight=1)
         self._init_header()
         self._init_tabs()
@@ -29,10 +29,18 @@ class Sidebar(ctk.CTkFrame):
         self._build_prompt_tab()
         self._build_settings_tab()
 
-        ctk.CTkLabel(self, text="v5.2 File Tree", text_color="gray").grid(row=2, column=0, sticky="s", pady=10)
+        ctk.CTkLabel(self, text="v5.3 Workspace Edition", text_color="gray").grid(row=2, column=0, sticky="s", pady=10)
 
     def _build_run_tab(self):
         t = self.tab_run
+
+        ws_frame = ctk.CTkFrame(t, fg_color="transparent")
+        ws_frame.pack(fill="x", pady=(0, 10))
+        self.btn_save_ws = ctk.CTkButton(ws_frame, text="💾 Save Workspace", width=130, command=self._on_save_workspace)
+        self.btn_save_ws.pack(side="left", padx=(0, 5))
+        self.btn_load_ws = ctk.CTkButton(ws_frame, text="📂 Load Workspace", width=130, command=self._on_load_workspace,
+                                         fg_color="gray")
+        self.btn_load_ws.pack(side="right")
 
         ctk.CTkLabel(t, text="Пресет файлов:").pack(anchor="w", pady=(5, 0))
         self.cmb_preset = ctk.CTkComboBox(t, values=list(PRESETS.keys()), command=self._on_apply_preset)
@@ -48,28 +56,21 @@ class Sidebar(ctk.CTkFrame):
 
         self.chk_git = ctk.CTkCheckBox(t, text="Только Git Changes")
         self.chk_git.pack(anchor="w", pady=5)
-
         self.chk_gitignore = ctk.CTkCheckBox(t, text="Учитывать .gitignore")
         self.chk_gitignore.pack(anchor="w", pady=5)
-
         self.chk_tree = ctk.CTkCheckBox(t, text="Дерево файлов")
         self.chk_tree.pack(anchor="w", pady=5)
-
         self.chk_dependencies = ctk.CTkCheckBox(t, text="Карта зависимостей (Beta)")
         self.chk_dependencies.pack(anchor="w", pady=5)
 
         btn_frame = ctk.CTkFrame(t, fg_color="transparent")
         btn_frame.pack(fill="x", pady=(20, 5))
-
         self.btn_add_folder = ctk.CTkButton(btn_frame, text="+ Папка", width=140)
         self.btn_add_folder.pack(side="left", padx=(0, 5))
-
-        self.btn_add_github = ctk.CTkButton(btn_frame, text="+ GitHub", width=140, fg_color="#333", hover_color="#444")
+        self.btn_add_github = ctk.CTkButton(btn_frame, text="+ GitHub", width=140, fg_color="#333")
         self.btn_add_github.pack(side="right")
 
-        self.btn_scan = ctk.CTkButton(t, text="🔍 Сканировать (Preview)",
-                                      fg_color="gray30",
-                                      command=self._on_scan_click)
+        self.btn_scan = ctk.CTkButton(t, text="🔍 Сканировать (Preview)", fg_color="gray30", command=self._on_scan_click)
         self.btn_scan.pack(fill="x", pady=(10, 0))
 
         self.btn_clear = ctk.CTkButton(t, text="Очистить", fg_color="transparent", border_width=1)
@@ -77,7 +78,6 @@ class Sidebar(ctk.CTkFrame):
 
     def _build_prompt_tab(self):
         t = self.tab_prompt
-
         ctk.CTkLabel(t, text="Выберите пресет промпта:").pack(anchor="w", pady=(5, 0))
         self.cmb_prompt_presets = ctk.CTkComboBox(t, values=list(PROMPT_PRESETS.keys()),
                                                   command=self._on_prompt_preset_change)
@@ -90,27 +90,20 @@ class Sidebar(ctk.CTkFrame):
 
     def _build_settings_tab(self):
         t = self.tab_settings
-
         cli_frame = ctk.CTkFrame(t)
         cli_frame.pack(fill="x", pady=5)
 
         ctk.CTkLabel(cli_frame, text="Настройки CLI", font=ctk.CTkFont(weight="bold")).pack(pady=5)
-
         self.chk_cli_minify = ctk.CTkCheckBox(cli_frame, text="Minify (сжать)")
         self.chk_cli_minify.pack(anchor="w", padx=10, pady=2)
-
         self.chk_cli_comments = ctk.CTkCheckBox(cli_frame, text="Удалять комментарии")
         self.chk_cli_comments.pack(anchor="w", padx=10, pady=2)
-
         self.chk_cli_secrets = ctk.CTkCheckBox(cli_frame, text="Скрывать секреты")
         self.chk_cli_secrets.pack(anchor="w", padx=10, pady=2)
-
         self.chk_cli_tree = ctk.CTkCheckBox(cli_frame, text="Добавлять дерево файлов")
         self.chk_cli_tree.pack(anchor="w", padx=10, pady=2)
-
         self.chk_cli_skeleton = ctk.CTkCheckBox(cli_frame, text="Skeleton Mode")
         self.chk_cli_skeleton.pack(anchor="w", padx=10, pady=2)
-
         self.chk_cli_gitignore = ctk.CTkCheckBox(cli_frame, text="Учитывать .gitignore")
         self.chk_cli_gitignore.pack(anchor="w", padx=10, pady=2)
 
@@ -120,17 +113,14 @@ class Sidebar(ctk.CTkFrame):
 
         win_frame = ctk.CTkFrame(t)
         win_frame.pack(fill="x", pady=10)
-
         ctk.CTkLabel(win_frame, text="Интеграция с Windows", font=ctk.CTkFont(weight="bold")).pack(pady=5)
 
         ctk.CTkLabel(win_frame, text="Путь к Python (для меню):", text_color="gray").pack(anchor="w", padx=10,
                                                                                           pady=(5, 0))
         py_path_frame = ctk.CTkFrame(win_frame, fg_color="transparent")
         py_path_frame.pack(fill="x", padx=10, pady=2)
-
         self.entry_py_path = ctk.CTkEntry(py_path_frame, placeholder_text="По умолчанию (sys.executable)")
         self.entry_py_path.pack(side="left", fill="x", expand=True)
-
         self.btn_browse_py = ctk.CTkButton(py_path_frame, text="📁", width=30, command=self._on_browse_py)
         self.btn_browse_py.pack(side="right", padx=(5, 0))
 
@@ -144,61 +134,57 @@ class Sidebar(ctk.CTkFrame):
         self.btn_reset = ctk.CTkButton(t, text="Сбросить все", fg_color="gray")
         self.btn_reset.pack(fill="x", pady=5)
 
-    def _on_apply_preset(self, choice):
+    def _on_save_workspace(self):
+        self.on_settings_change()
+        path = filedialog.asksaveasfilename(defaultextension=".json", filetypes=[("JSON Workspace", "*.json")])
+        if path:
+            self.controller.save_workspace(path)
+
+    def _on_load_workspace(self):
+        path = filedialog.askopenfilename(filetypes=[("JSON Workspace", "*.json")])
+        if path:
+            self.controller.load_workspace(path)
+
+    def _on_browse_py(self):
+        path = filedialog.askopenfilename(title="Выберите интерпретатор Python",
+                                          filetypes=[("Python Executable", "python*.exe"), ("All Files", "*.*")])
+        if path:
+            self.entry_py_path.delete(0, "end")
+            self.entry_py_path.insert(0, path)
+            self.on_settings_change()
+
+    def _on_apply_preset(self, choice: str):
         self.controller.apply_preset(choice)
 
-    def _on_prompt_preset_change(self, choice):
+    def _on_prompt_preset_change(self, choice: str):
         prompt_text = PROMPT_PRESETS.get(choice)
         if choice != "Custom" and prompt_text is not None:
             self.txt_system_prompt.delete("1.0", "end")
             self.txt_system_prompt.insert("1.0", prompt_text)
             self.on_settings_change()
 
-    def _on_prompt_type(self, event=None):
+    def _on_prompt_type(self, _event: Any = None):
         if self.cmb_prompt_presets.get() != "Custom":
             self.cmb_prompt_presets.set("Custom")
 
     def _on_scan_click(self):
-        """Вызов сканирования без копирования"""
         self.controller.update_settings(self.get_settings())
         self.controller.scan_only()
 
-    def _on_browse_py(self):
-        """Открыть диалог выбора интерпретатора Python"""
-        path = filedialog.askopenfilename(
-            title="Выберите интерпретатор Python",
-            filetypes=[("Python Executable", "python*.exe"), ("All Files", "*.*")]
-        )
-        if path:
-            self.entry_py_path.delete(0, "end")
-            self.entry_py_path.insert(0, path)
-            self.on_settings_change()
-
     @staticmethod
-    def _set_check(chk, val):
+    def _set_check(chk: Any, val: bool):
         if val:
             chk.select()
         else:
             chk.deselect()
 
-    def update_ui(self, settings):
+    def update_ui(self, settings: Any):
         if self.entry_ext.get() != settings.extensions:
             self.entry_ext.delete(0, "end")
             self.entry_ext.insert(0, settings.extensions)
-
         if self.entry_ign.get() != settings.ignored_paths:
             self.entry_ign.delete(0, "end")
             self.entry_ign.insert(0, settings.ignored_paths)
-
-        # Обновление поля пути к Python
-        if hasattr(settings, 'python_interpreter'):
-            if self.entry_py_path.get() != settings.python_interpreter:
-                self.entry_py_path.delete(0, "end")
-                self.entry_py_path.insert(0, settings.python_interpreter)
-        else:
-            # Если в настройках нет этого поля, очищаем
-            if self.entry_py_path.get():
-                self.entry_py_path.delete(0, "end")
 
         checkboxes = [
             (self.chk_tree, settings.include_tree),
@@ -216,6 +202,11 @@ class Sidebar(ctk.CTkFrame):
             self._set_check(chk, val)
 
         self.cmb_cli_format.set(settings.cli_format)
+
+        if hasattr(settings, 'python_interpreter'):
+            if self.entry_py_path.get() != settings.python_interpreter:
+                self.entry_py_path.delete(0, "end")
+                self.entry_py_path.insert(0, settings.python_interpreter)
 
         current_prompt = self.txt_system_prompt.get("1.0", "end-1c")
         if current_prompt != settings.system_prompt and not self.txt_system_prompt.focus_get():
@@ -247,9 +238,9 @@ class Sidebar(ctk.CTkFrame):
             'cli_skeleton_mode': bool(self.chk_cli_skeleton.get()),
             'cli_use_gitignore': bool(self.chk_cli_gitignore.get()),
             'cli_format': self.cmb_cli_format.get(),
-            'python_interpreter': self.entry_py_path.get()  # <--- Добавлено
+            'python_interpreter': self.entry_py_path.get()
         }
 
-    def set_loading(self, is_loading):
+    def set_loading(self, is_loading: bool):
         state = "disabled" if is_loading else "normal"
         self.tab_view.configure(state=state)
