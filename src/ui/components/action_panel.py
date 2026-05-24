@@ -1,81 +1,100 @@
 import customtkinter as ctk
-from tkinter import filedialog
-import os
+from ..theme import AppleTheme
 
 
 class ActionPanel(ctk.CTkFrame):
     def __init__(self, parent, on_run_callback):
-        super().__init__(parent, fg_color="transparent")
+        super().__init__(
+            parent,
+            fg_color=AppleTheme.CARD,
+            corner_radius=AppleTheme.RADIUS_CARD
+        )
         self.on_run = on_run_callback
         self.selected_template_path = ""
+
+        self.container = ctk.CTkFrame(self, fg_color=AppleTheme.TRANSPARENT)
+        self.container.pack(fill="both", expand=True, padx=AppleTheme.SP_28, pady=AppleTheme.SP_20)
+
         self._init_options()
         self._init_buttons()
 
     def _init_options(self):
-        self.opts_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.opts_frame.pack(fill="x", pady=(0, 10))
+        self.opts_frame = ctk.CTkFrame(self.container, fg_color=AppleTheme.TRANSPARENT)
+        self.opts_frame.pack(fill="x", pady=(AppleTheme.SP_0, AppleTheme.SP_16))
 
-        self.left_opts = ctk.CTkFrame(self.opts_frame, fg_color="transparent")
+        self.left_opts = ctk.CTkFrame(self.opts_frame, fg_color=AppleTheme.TRANSPARENT)
         self.left_opts.pack(side="left")
-        self.chk_minify = ctk.CTkCheckBox(self.left_opts, text="Minify")
-        self.chk_minify.pack(side="left", padx=5)
-        self.chk_comments = ctk.CTkCheckBox(self.left_opts, text="No Comments")
-        self.chk_comments.pack(side="left", padx=5)
-        self.chk_secrets = ctk.CTkCheckBox(self.left_opts, text="No Secrets")
-        self.chk_secrets.pack(side="left", padx=5)
-        self.chk_skeleton = ctk.CTkCheckBox(self.left_opts, text="Skeleton ☠️")
-        self.chk_skeleton.pack(side="left", padx=5)
 
-        self.right_opts = ctk.CTkFrame(self.opts_frame, fg_color="transparent")
+        chk_opts = {
+            "font": AppleTheme.FONT_BODY,
+            "text_color": AppleTheme.INK
+        }
+
+        self.chk_minify = ctk.CTkCheckBox(self.left_opts, text="Minify", **chk_opts)
+        self.chk_minify.pack(side="left", padx=(AppleTheme.SP_0, AppleTheme.SP_16))
+
+        self.chk_comments = ctk.CTkCheckBox(self.left_opts, text="No Comments", **chk_opts)
+        self.chk_comments.pack(side="left", padx=AppleTheme.SP_16)
+
+        self.chk_secrets = ctk.CTkCheckBox(self.left_opts, text="No Secrets", **chk_opts)
+        self.chk_secrets.pack(side="left", padx=AppleTheme.SP_16)
+
+        self.chk_skeleton = ctk.CTkCheckBox(self.left_opts, text="Skeleton ☠️", **chk_opts)
+        self.chk_skeleton.pack(side="left", padx=AppleTheme.SP_16)
+
+        self.right_opts = ctk.CTkFrame(self.opts_frame, fg_color=AppleTheme.TRANSPARENT)
         self.right_opts.pack(side="right")
+
         self.seg_format = ctk.CTkSegmentedButton(
             self.right_opts,
             values=["markdown", "xml", "plain", "custom"],
-            command=self._on_format_change
+            command=self._on_format_change,
+            font=AppleTheme.FONT_BODY,
+            selected_color=AppleTheme.FOG,
+            selected_hover_color=AppleTheme.BORDER,
+            unselected_color=AppleTheme.CARD,  # ИСПРАВЛЕНО: Вместо TRANSPARENT
+            unselected_hover_color=AppleTheme.FOG,
+            text_color=AppleTheme.INK
         )
         self.seg_format.pack(side="left")
         self.seg_format.set("markdown")
 
-        self.btn_template = ctk.CTkButton(
-            self.right_opts, text="📂", width=30, command=self._choose_template, fg_color="gray"
-        )
-        self.lbl_template = ctk.CTkLabel(self.right_opts, text="", text_color="gray")
-
     def _init_buttons(self):
-        self.btns_frame = ctk.CTkFrame(self)
-        self.btns_frame.pack(fill="x", pady=(0, 10))
+        self.btns_frame = ctk.CTkFrame(self.container, fg_color=AppleTheme.TRANSPARENT)
+        self.btns_frame.pack(fill="x")
 
-        # Добавлена кнопка превью
-        ctk.CTkButton(self.btns_frame, text="👀 Предпросмотр",
-                      command=lambda: self.on_run("preview")).pack(side="left", expand=True, fill="x", padx=5, pady=5)
+        ghost_opts = {
+            "fg_color": AppleTheme.FOG,
+            "text_color": AppleTheme.INK,
+            "hover_color": AppleTheme.BORDER,
+            "corner_radius": AppleTheme.RADIUS_PILL,
+            "font": AppleTheme.FONT_BUTTON,
+            "height": AppleTheme.HEIGHT_BTN_PRIMARY
+        }
 
-        ctk.CTkButton(self.btns_frame, text="📋 В Буфер",
-                      command=lambda: self.on_run("clipboard")).pack(side="left", expand=True, fill="x", padx=5, pady=5)
+        cta_opts = {
+            "fg_color": AppleTheme.AZURE,
+            "text_color": "#ffffff",
+            "hover_color": AppleTheme.AZURE_HOVER,
+            "corner_radius": AppleTheme.RADIUS_PILL,
+            "font": AppleTheme.FONT_BUTTON,
+            "height": AppleTheme.HEIGHT_BTN_PRIMARY
+        }
 
-        ctk.CTkButton(self.btns_frame, text="💾 В Файл",
-                      command=lambda: self.on_run("file")).pack(side="left", expand=True, fill="x", padx=5, pady=5)
+        btn_preview = ctk.CTkButton(self.btns_frame, text="👀 Предпросмотр", command=lambda: self.on_run("preview"),
+                                    **ghost_opts)
+        btn_preview.pack(side="left", expand=True, fill="x", padx=AppleTheme.SP_6)
 
-        ctk.CTkButton(self.btns_frame, text="📄 В PDF",
-                      command=lambda: self.on_run("pdf")).pack(side="left", expand=True, fill="x", padx=5, pady=5)
+        btn_copy = ctk.CTkButton(self.btns_frame, text="📋 В Буфер обмена", command=lambda: self.on_run("clipboard"),
+                                 **cta_opts)
+        btn_copy.pack(side="left", expand=True, fill="x", padx=AppleTheme.SP_6)
+
+        btn_file = ctk.CTkButton(self.btns_frame, text="💾 Сохранить в Файл", command=lambda: self.on_run("file"),
+                                 **ghost_opts)
+        btn_file.pack(side="left", expand=True, fill="x", padx=AppleTheme.SP_6)
 
     def _on_format_change(self, value):
-        if value == "custom":
-            self.btn_template.pack(side="left", padx=(5, 0))
-            self.lbl_template.pack(side="left", padx=(5, 0))
-            if not self.selected_template_path:
-                self.lbl_template.configure(text="(не выбран)")
-        else:
-            self.btn_template.pack_forget()
-            self.lbl_template.pack_forget()
-
-    def _choose_template(self):
-        file_path = filedialog.askopenfilename(
-            title="Выберите шаблон Jinja2",
-            filetypes=[("Jinja2 Template", "*.jinja2"), ("Text File", "*.txt"), ("All Files", "*.*")]
-        )
-        if file_path:
-            self.selected_template_path = file_path
-            self.lbl_template.configure(text=os.path.basename(file_path))
+        pass
 
     def update_ui(self, settings):
         self._set_check(self.chk_minify, settings.minify)
@@ -83,14 +102,6 @@ class ActionPanel(ctk.CTkFrame):
         self._set_check(self.chk_secrets, settings.remove_secrets)
         self._set_check(self.chk_skeleton, settings.skeleton_mode)
         self.seg_format.set(settings.output_format)
-
-        if settings.output_format == "custom":
-            self.selected_template_path = settings.template_path
-            self._on_format_change("custom")
-            if self.selected_template_path:
-                self.lbl_template.configure(text=os.path.basename(self.selected_template_path))
-        else:
-            self._on_format_change(settings.output_format)
 
     def get_settings(self):
         return {

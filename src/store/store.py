@@ -3,6 +3,7 @@ Store — центральное хранилище состояния (Redux-li
 """
 import copy
 from typing import List, Callable, Any, Dict
+
 from .state import AppState, AppSettings
 from ..actions.action_types import *
 
@@ -36,28 +37,40 @@ class Store:
             UI_SET_LOADING:       lambda p: self._state.__setattr__('is_loading', bool(p)),
             UI_UPDATE_STATUS:     self._handle_update_status,
             UI_ADD_LOG:           lambda p: self._state.logs.append(str(p)),
+
             UI_SHOW_PREVIEW:      self._handle_show_preview,
             UI_CLOSE_PREVIEW:     self._handle_close_preview,
+
+            UI_SHOW_TOUR:         self._handle_show_tour,   # <-- РЕДЬЮСЕР ТУРА
+            UI_CLOSE_TOUR:        self._handle_close_tour,  # <-- РЕДЬЮСЕР ТУРА
+
             SETTINGS_LOADED:      self._handle_settings_loaded,
             SETTINGS_UPDATE:      self._handle_settings_update,
             WORKSPACE_LOADED:     self._handle_workspace_loaded,
+
             FOLDER_ADD:           self._handle_folder_add,
             FOLDER_REMOVE:        self._handle_folder_remove,
             FOLDER_UPDATE:        self._handle_folder_update,
             FOLDER_CLEAR:         self._handle_folder_clear,
+
             GITHUB_CLONE_SUCCESS: self._handle_github_success,
             GITHUB_CLONE_FAILURE: self._handle_github_failure,
+
             SCAN_SUCCESS:         self._handle_scan_success,
             SCAN_FAILURE:         self._handle_scan_failure,
+
             EXCLUSION_ADD:        lambda p: self._state.manual_exclusions.add(p),
             EXCLUSION_REMOVE:     lambda p: self._state.manual_exclusions.discard(p),
             EXCLUSION_CLEAR:      lambda _: self._state.__setattr__('manual_exclusions', set()),
+
             PROCESSING_SUCCESS:   lambda p: self._state.__setattr__('processed_files', p),
             FORMATTING_SUCCESS:   self._handle_formatting_success,
+
             WORKFLOW_STARTED:     self._handle_update_status,
             WORKFLOW_PROGRESS:    self._handle_update_status,
             WORKFLOW_FINISHED:    lambda _: self._handle_update_status({'message': 'Готово', 'progress': 1.0}),
             WORKFLOW_ERROR:       self._handle_workflow_error,
+
             HISTORY_ADD:          self._handle_history_add,
             SET_BEFORE_AFTER:     lambda p: self._state.__setattr__('before_after_data', p),
         })
@@ -74,6 +87,14 @@ class Store:
     def _handle_close_preview(self, _):
         self._state.show_preview = False
         self._state.preview_text = ""
+
+    def _handle_show_tour(self, steps: list):
+        self._state.tour_steps = steps
+        self._state.show_tour = True
+
+    def _handle_close_tour(self, _):
+        self._state.show_tour = False
+        self._state.tour_steps = []
 
     def _handle_settings_loaded(self, payload: dict):
         self._state.settings = AppSettings(**payload)

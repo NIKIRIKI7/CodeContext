@@ -1,18 +1,23 @@
 import os
 from typing import Optional, Tuple
+
 from ..actions.action_types import (
     FOLDER_ADD, FOLDER_REMOVE, FOLDER_UPDATE, FOLDER_CLEAR,
-    EXCLUSION_ADD, EXCLUSION_REMOVE, EXCLUSION_CLEAR, UI_ADD_LOG, UI_CLOSE_PREVIEW
+    EXCLUSION_ADD, EXCLUSION_REMOVE, EXCLUSION_CLEAR,
+    UI_ADD_LOG, UI_CLOSE_PREVIEW, UI_SHOW_TOUR, UI_CLOSE_TOUR
 )
 from ..actions.dispatcher import Dispatcher
 from ..store.store import Store
+
 from ..use_cases.scan_use_case import ScanWorkspaceUseCase
 from ..use_cases.process_use_case import ProcessWorkspaceUseCase
 from ..use_cases.github_use_case import GitHubUseCase
 from ..use_cases.settings_use_case import SettingsUseCase
 from ..use_cases.patch_use_case import PatchUseCase
+
 from ..utils.async_runtime import AsyncRuntime
 from ..services.integration_service import IntegrationService
+from ..services.tour_service import TourService
 from ..data.file_system_repository import FileSystemRepository
 
 
@@ -30,6 +35,7 @@ class MainController:
             patch_use_case: PatchUseCase,
             integration_service: IntegrationService,
             fs_repo: FileSystemRepository,
+            tour_service: TourService,  # <-- НОВЫЙ СЕРВИС
     ):
         self._store = store
         self._dispatcher = dispatcher
@@ -40,6 +46,7 @@ class MainController:
         self._patch_uc = patch_use_case
         self._integration = integration_service
         self._fs_repo = fs_repo
+        self._tour_service = tour_service
 
     def load_initial_settings(self):
         self._settings_uc.load_initial()
@@ -67,6 +74,7 @@ class MainController:
         clean = self._normalize_path(path)
         if clean and os.path.exists(clean):
             self._dispatcher.dispatch(FOLDER_ADD, clean)
+
             config_path = os.path.join(clean, '.codecontext.json')
             if os.path.exists(config_path):
                 self._dispatcher.dispatch(UI_ADD_LOG, f"🔧 Найден конфиг проекта: {config_path}")
@@ -103,6 +111,7 @@ class MainController:
     def start_processing(self, target: str, save_path: Optional[str] = None) -> Tuple[bool, str]:
         if not self._store.state.selected_folders:
             return False, "Выберите папки или URL для сканирования"
+
         state = self._store.state
         if not state.scanned_files_paths:
             AsyncRuntime.run_coroutine(self._scan_then_process(target, save_path))
@@ -167,6 +176,16 @@ class MainController:
             self._dispatcher.dispatch(EXCLUSION_ADD, p)
 
         self._dispatcher.dispatch(UI_ADD_LOG, f"🎯 Найдено {len(matched)} файлов из лога ошибки!")
+
+    # --- НОВЫЕ МЕТОДЫ ДЛЯ ТУРА ---
+    def show_tour(self):
+        steps = self._tour_service.get_tour_steps()
+        self._dispatcher.dispatch(UI_SHOW_TOUR, steps)
+
+    def close_tour(self):
+        self._dispatcher.dispatch(UI_CLOSE_TOUR, None)
+
+    # -----------------------------
 
     @staticmethod
     def _normalize_path(path: str) -> str:

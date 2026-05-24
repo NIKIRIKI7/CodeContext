@@ -18,6 +18,8 @@ class AppSettings:
     system_prompt: str = "You are an expert software engineer. Analyze the following codebase structure and file contents."
     output_format: str = "markdown"
     template_path: str = ""
+    enable_logging: bool = True
+
     cli_minify: bool = True
     cli_remove_comments: bool = True
     cli_remove_secrets: bool = True
@@ -25,6 +27,7 @@ class AppSettings:
     cli_skeleton_mode: bool = False
     cli_use_gitignore: bool = True
     cli_format: str = "plain"
+
     python_interpreter: str = ""
 
 
@@ -46,6 +49,7 @@ class AppState:
     scanned_file_metadata: Dict[str, dict] = field(default_factory=dict)
     manual_exclusions: Set[str] = field(default_factory=set)
     processed_files: List[ProcessedFile] = field(default_factory=list)
+
     final_output_text: str = ""
     total_tokens: int = 0
     status_message: str = "Готов к работе"
@@ -53,8 +57,11 @@ class AppState:
     is_loading: bool = False
     logs: List[str] = field(default_factory=list)
 
-    # UI UX States
     preview_text: str = ""
     show_preview: bool = False
     preview_history: List[dict] = field(default_factory=list)
     before_after_data: List[dict] = field(default_factory=list)
+
+    # НОВЫЕ ПОЛЯ ДЛЯ ТУРА
+    show_tour: bool = False
+    tour_steps: List[dict] = field(default_factory=list)

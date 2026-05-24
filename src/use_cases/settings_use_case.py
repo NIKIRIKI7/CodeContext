@@ -1,13 +1,8 @@
 """
 SettingsUseCase — сценарии работы с настройками.
-
-Выделен из MainController для соблюдения SRP.
-Объединяет: загрузку, сохранение, сброс, применение пресетов.
 """
-
 import json
 from typing import Optional
-
 from ..actions.action_types import (
     SETTINGS_LOADED, SETTINGS_UPDATE, WORKSPACE_LOADED, UI_ADD_LOG,
 )
@@ -15,7 +10,6 @@ from ..actions.dispatcher import Dispatcher
 from ..data.settings_repository import SettingsRepository
 from ..store.store import Store
 from ..utils.config import PRESETS, DEFAULT_SYSTEM_PROMPT
-
 
 _DEFAULT_SETTINGS = {
     'extensions': PRESETS['Default']['ext'],
@@ -29,6 +23,7 @@ _DEFAULT_SETTINGS = {
     'skeleton_mode': False,
     'use_git': False,
     'use_gitignore': True,
+    'enable_logging': True,
     'cli_minify': True,
     'cli_remove_comments': True,
     'cli_remove_secrets': True,
@@ -44,7 +39,6 @@ _DEFAULT_SETTINGS = {
 
 class SettingsUseCase:
     """Управляет жизненным циклом настроек приложения."""
-
     def __init__(
         self,
         dispatcher: Dispatcher,

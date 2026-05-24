@@ -4,53 +4,86 @@ import customtkinter as ctk
 import os
 import threading
 from typing import List, Callable, Tuple, Any
+from ..theme import AppleTheme
 
 
 class FileTree(ctk.CTkFrame):
     def __init__(self, parent: Any, on_toggle_callback: Callable, on_context_action_callback: Callable):
-        super().__init__(parent, fg_color="transparent")
+        super().__init__(
+            parent,
+            fg_color=AppleTheme.CARD,
+            corner_radius=AppleTheme.RADIUS_CARD
+        )
         self.on_toggle = on_toggle_callback
         self.on_context_action = on_context_action_callback
+
         self.file_paths: List[str] = []
         self.metadata: dict = {}
         self._lock = threading.Lock()
         self._current_task_id = 0
+
         self._init_ui()
 
     def _init_ui(self):
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
 
-        top_frame = ctk.CTkFrame(self, fg_color="transparent")
-        top_frame.grid(row=0, column=0, sticky="ew", pady=(0, 5))
+        # Контейнер для отступов от краев карточки
+        inner_frame = ctk.CTkFrame(self, fg_color=AppleTheme.TRANSPARENT)
+        inner_frame.pack(fill="both", expand=True, padx=AppleTheme.SP_16, pady=AppleTheme.SP_16)
 
-        self.entry_search = ctk.CTkEntry(top_frame, placeholder_text="🔍 Поиск файлов...")
-        self.entry_search.pack(side="left", fill="x", expand=True, padx=(0, 5))
+        inner_frame.grid_columnconfigure(0, weight=1)
+        inner_frame.grid_rowconfigure(1, weight=1)
+
+        top_frame = ctk.CTkFrame(inner_frame, fg_color=AppleTheme.TRANSPARENT)
+        top_frame.grid(row=0, column=0, sticky="ew", pady=(AppleTheme.SP_0, AppleTheme.SP_8))
+
+        self.entry_search = ctk.CTkEntry(
+            top_frame,
+            placeholder_text="🔍 Поиск файлов...",
+            font=AppleTheme.FONT_BODY,
+            corner_radius=AppleTheme.RADIUS_SMALL
+        )
+        self.entry_search.pack(side="left", fill="x", expand=True, padx=(AppleTheme.SP_0, AppleTheme.SP_8))
         self.entry_search.bind("<KeyRelease>", self._on_search)
 
-        self.btn_select_filtered = ctk.CTkButton(top_frame, text="☑ Выбрать эти", width=100,
-                                                 command=self._select_filtered)
+        self.btn_select_filtered = ctk.CTkButton(
+            top_frame,
+            text="☑ Выбрать эти",
+            command=self._select_filtered,
+            fg_color=AppleTheme.FOG,
+            hover_color=AppleTheme.BORDER,
+            text_color=AppleTheme.INK,
+            font=AppleTheme.FONT_BODY_SM,
+            corner_radius=AppleTheme.RADIUS_PILL
+        )
         self.btn_select_filtered.pack(side="right")
 
         self.empty_label = ctk.CTkLabel(
-            self,
+            inner_frame,
             text="📂 Перетащите папки или файлы в окно,\nчтобы увидеть структуру",
-            text_color="gray",
-            font=("Arial", 14)
+            text_color=AppleTheme.GRAPHITE,
+            font=AppleTheme.FONT_BODY
         )
         self.empty_label.grid(row=1, column=0, sticky="nsew")
 
-        self.loading_label = ctk.CTkLabel(self, text="Построение дерева...", text_color="gray")
-        self.tree = ttk.Treeview(self, show="tree", selectmode="none")
-        self.vsb = ctk.CTkScrollbar(self, orientation="vertical", command=self.tree.yview)
-        self.hsb = ctk.CTkScrollbar(self, orientation="horizontal", command=self.tree.xview)
+        self.loading_label = ctk.CTkLabel(
+            inner_frame,
+            text="Построение дерева...",
+            text_color=AppleTheme.GRAPHITE,
+            font=AppleTheme.FONT_BODY
+        )
+
+        self.tree = ttk.Treeview(inner_frame, show="tree", selectmode="none")
+        self.vsb = ctk.CTkScrollbar(inner_frame, orientation="vertical", command=self.tree.yview)
+        self.hsb = ctk.CTkScrollbar(inner_frame, orientation="horizontal", command=self.tree.xview)
         self.tree.configure(yscrollcommand=self.vsb.set, xscrollcommand=self.hsb.set)
 
         self.vsb.grid(row=1, column=1, sticky="ns")
         self.hsb.grid(row=2, column=0, sticky="ew")
 
-        self.tree.tag_configure("added", foreground="#6bc46d")
-        self.tree.tag_configure("modified", foreground="#d4b85c")
+        self.tree.tag_configure("added", foreground=AppleTheme.SUCCESS[0])
+        self.tree.tag_configure("modified", foreground=AppleTheme.AZURE[0])
 
         self.tree.bind("<Button-1>", self._on_click)
         self.tree.bind("<Button-3>", self._on_right_click)
@@ -73,7 +106,6 @@ class FileTree(ctk.CTkFrame):
         try:
             paths = sorted(paths)
             search_query = self.entry_search.get().lower()
-
             common = os.path.commonpath(paths) if paths else ""
             if common and os.path.isfile(common):
                 common = os.path.dirname(common)
@@ -84,7 +116,6 @@ class FileTree(ctk.CTkFrame):
             for full_path in paths:
                 if search_query and search_query not in full_path.lower():
                     continue
-
                 rel_path = os.path.relpath(full_path, common) if common else full_path
                 parts = rel_path.split(os.sep)
                 current_id = ""
@@ -92,23 +123,17 @@ class FileTree(ctk.CTkFrame):
                 for i, part in enumerate(parts):
                     parent_id = current_id
                     current_id = os.path.join(common, *parts[:i + 1]) if common else os.path.join(*parts[:i + 1])
-
                     if current_id not in created_ids:
                         text = part
                         tags = ()
-
                         if current_id == full_path:
                             meta = self.metadata.get(full_path, {})
                             tokens = meta.get("tokens", 0)
                             git_status = meta.get("git_status", "")
-
                             token_str = f"({tokens / 1000:.1f}k tk)" if tokens > 1000 else f"({tokens} tk)"
                             text = f"☑ {part} {token_str}"
                             if git_status:
                                 tags = (git_status,)
-                        else:
-                            text = f"☑ {part}"
-
                         nodes_to_insert.append((parent_id, current_id, text, tags))
                         created_ids.add(current_id)
 
@@ -152,7 +177,6 @@ class FileTree(ctk.CTkFrame):
         if region != "tree": return
         item_id = self.tree.identify_row(event.y)
         if not item_id: return
-
         item_text = self.tree.item(item_id, "text")
         if item_text.startswith("☑"):
             new_text = item_text.replace("☑", "☐", 1)
@@ -162,7 +186,6 @@ class FileTree(ctk.CTkFrame):
             new_state = True
         else:
             return
-
         self.tree.item(item_id, text=new_text)
         self._propagate_check(item_id, new_state)
         self._update_controller_state(item_id, new_state)

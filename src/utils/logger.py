@@ -1,14 +1,55 @@
 import logging
 import sys
+import os
+from logging.handlers import RotatingFileHandler
 
-def setup_logger(name: str) -> logging.Logger:
-    """Настройка логгера для приложения"""
+
+def setup_logger(name: str = "CodeContext") -> logging.Logger:
+    """Настройка логгера для приложения (Консоль + Файл)"""
     logger = logging.getLogger(name)
-    if not logger.handlers:
-        logger.setLevel(logging.INFO)
-        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-        
-        handler = logging.StreamHandler(sys.stdout)
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
+
+    # Если логгер уже настроен, не добавляем хендлеры повторно
+    if logger.hasHandlers():
+        return logger
+
+    logger.setLevel(logging.DEBUG)  # Перехватываем всё, фильтруем в хендлерах
+
+    # Форматы логов
+    file_formatter = logging.Formatter('%(asctime)s | %(levelname)-8s | [%(filename)s:%(lineno)d] | %(message)s')
+    console_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+
+    # 1. Вывод в консоль (INFO и выше)
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(logging.INFO)
+    console_handler.setFormatter(console_formatter)
+    logger.addHandler(console_handler)
+
+    # 2. Вывод в файл (DEBUG и выше - логируем всё)
+    if getattr(sys, 'frozen', False):
+        # Если запущено как .exe (PyInstaller)
+        base_dir = os.path.dirname(sys.executable)
+    else:
+        # Если запущено как скрипт (поднимаемся на 3 уровня вверх от utils/logger.py к корню)
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+    logs_dir = os.path.join(base_dir, "logs")
+
+    try:
+        os.makedirs(logs_dir, exist_ok=True)
+        log_file = os.path.join(logs_dir, "app.log")
+
+        # Ротация логов: макс 10 МБ на файл, храним 5 последних копий
+        file_handler = RotatingFileHandler(log_file, maxBytes=10 * 1024 * 1024, backupCount=5, encoding='utf-8')
+        file_handler.setLevel(logging.DEBUG)
+        file_handler.setFormatter(file_formatter)
+        logger.addHandler(file_handler)
+
+        logger.info(f"📁 Файловое логирование инициализировано: {log_file}")
+    except Exception as e:
+        logger.error(f"❌ Ошибка создания папки логов: {e}")
+
     return logger
+
+
+# Глобальный инстанс логгера для всего приложения
+app_logger = setup_logger()

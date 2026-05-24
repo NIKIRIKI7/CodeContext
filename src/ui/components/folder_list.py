@@ -1,9 +1,15 @@
 import customtkinter as ctk
+from ..theme import AppleTheme
 
 
 class FolderList(ctk.CTkScrollableFrame):
     def __init__(self, parent, on_edit_callback, on_delete_callback):
-        super().__init__(parent, height=120, label_text="Источники (Перетащите папки сюда)")
+        super().__init__(
+            parent,
+            height=AppleTheme.HEIGHT_LOGS,
+            fg_color=AppleTheme.CARD,
+            corner_radius=AppleTheme.RADIUS_CARD
+        )
         self.on_edit = on_edit_callback
         self.on_delete = on_delete_callback
         self._last_hash = None
@@ -17,31 +23,43 @@ class FolderList(ctk.CTkScrollableFrame):
         for widget in self.winfo_children():
             widget.destroy()
 
-        # --- Empty State ---
         if not selected_folders:
-            lbl = ctk.CTkLabel(self, text="Источники не выбраны. Перетащите папки сюда.", text_color="gray")
-            lbl.pack(expand=True, fill="both", pady=20)
+            lbl = ctk.CTkLabel(
+                self,
+                text="Источники не выбраны. Перетащите папки сюда.",
+                font=AppleTheme.FONT_BODY,
+                text_color=AppleTheme.GRAPHITE
+            )
+            lbl.pack(expand=True, fill="both", pady=AppleTheme.SP_20)
             return
-        # -------------------
 
         for folder in selected_folders:
-            row = ctk.CTkFrame(self, fg_color="transparent")
-            row.pack(fill="x", pady=2)
+            row = ctk.CTkFrame(self, fg_color=AppleTheme.TRANSPARENT)
+            row.pack(fill="x", pady=AppleTheme.SP_4, padx=AppleTheme.SP_12)
 
             is_temp = folder in temp_folders
             prefix = "☁️" if is_temp else "📂"
 
-            label = ctk.CTkLabel(row, text=f"{prefix} {folder}", anchor="w")
-            label.pack(side="left", padx=5, expand=True, fill="x")
+            label = ctk.CTkLabel(
+                row,
+                text=f"{prefix} {folder}",
+                font=AppleTheme.FONT_BODY,
+                text_color=AppleTheme.INK,
+                anchor="w"
+            )
+            label.pack(side="left", padx=AppleTheme.SP_4, expand=True, fill="x")
 
-            btn_edit = ctk.CTkButton(row, text="✏️", width=30, height=24,
-                                     fg_color="transparent", border_width=1,
-                                     text_color=("gray10", "gray90"),
-                                     command=lambda p=folder: self.on_edit(p))
-            btn_edit.pack(side="right", padx=2)
+            btn_opts = {
+                "width": AppleTheme.SP_32,
+                "height": AppleTheme.SP_32,
+                "fg_color": AppleTheme.FOG,
+                "hover_color": AppleTheme.BORDER,
+                "text_color": AppleTheme.INK,
+                "corner_radius": AppleTheme.RADIUS_SMALL
+            }
 
-            btn_del = ctk.CTkButton(row, text="❌", width=30, height=24,
-                                    fg_color="transparent", border_width=1,
-                                    hover_color="#c85a5a",
-                                    command=lambda p=folder: self.on_delete(p))
-            btn_del.pack(side="right", padx=2)
+            btn_edit = ctk.CTkButton(row, text="✏️", command=lambda p=folder: self.on_edit(p), **btn_opts)
+            btn_edit.pack(side="right", padx=AppleTheme.SP_4)
+
+            btn_del = ctk.CTkButton(row, text="✕", command=lambda p=folder: self.on_delete(p), **btn_opts)
+            btn_del.pack(side="right", padx=AppleTheme.SP_4)
