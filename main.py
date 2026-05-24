@@ -1,81 +1,65 @@
-"""
-main.py — точка входа приложения.
-"""
 import sys
 import argparse
 import os
 import time
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
 from src.di_container import DIContainer
 from src.utils.async_runtime import AsyncRuntime
 from src.utils.logger import app_logger
+from PySide6.QtWidgets import QApplication
+
+from src.ui.theme_manager import ThemeManager
+from src.ui.main_window import MainWindow
+
 
 def main():
-    app_logger.info("="*50)
+    app_logger.info("=" * 50)
     app_logger.info("🚀 CodeContext AI Started")
-    app_logger.info(f"🔧 Arguments: {sys.argv}")
 
-    parser = argparse.ArgumentParser(description="CodeContext AI Entry Point")
-    parser.add_argument("--cli", action="store_true", help="Run in headless CLI mode")
-    parser.add_argument("--path", type=str, help="Target path for CLI mode")
-    parser.add_argument(
-        "--mode",
-        type=str,
-        choices=["default", "shallow", "deep"],
-        default="default",
-        help="Scan mode for files",
-    )
-    parser.add_argument("--install-context", action="store_true", help="Install Context Menu")
-    parser.add_argument("--remove-context", action="store_true", help="Remove Context Menu")
-    args = parser.parse_args()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--cli", action="store_true")
+    parser.add_argument("--path", type=str)
+    args, _ = parser.parse_known_args()
 
     container = DIContainer()
 
-    if args.install_context:
-        print("Installing context menu...")
-        success, msg = container.integration_service.install_context_menu()
-        print(msg)
-        if not success:
-            time.sleep(3)
-        sys.exit(0)
-
-    if args.remove_context:
-        print("Removing context menu...")
-        success, msg = container.integration_service.remove_context_menu()
-        print(msg)
-        if not success:
-            time.sleep(3)
-        sys.exit(0)
-
     if args.cli:
         if not args.path:
-            app_logger.error("CLI Mode Error: --path is required")
-            print("Error: --path is required for CLI mode")
             sys.exit(1)
-
-        container.cli_controller.run(args.path, args.mode)
+        container.cli_controller.run(args.path)
         sys.exit(0)
 
-    # GUI Mode
-    app_logger.info("Starting GUI Mode...")
+    app_logger.info("Starting GUI Mode (PySide6)...")
+
+    # 1. Запуск asyncio loop в фоне
     AsyncRuntime.start()
 
-    from src.ui.main_window import MainWindow
-    app = MainWindow(container.store, container.main_controller)
-    app.protocol("WM_DELETE_WINDOW", lambda: _on_close(app))
-    app.mainloop()
+    # 2. Инициализация Qt
+    app = QApplication(sys.argv)
 
-def _on_close(app):
-    """Корректное завершение: закрытие окна и остановка loop."""
-    app_logger.info("Application shutting down...")
-    try:
-        app.on_closing()
-    except Exception:
-        pass
+    # 3. Загрузка JSON тем
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    themes_dir = os.path.join(base_dir, "themes")
+    ThemeManager.load_themes(themes_dir)
+
+    # 4. Применение темы по умолчанию
+    # Пробуем загрузить apple, если ее нет - любую доступную
+    if "apple" in ThemeManager.get_available_themes():
+        ThemeManager.apply_theme("apple", "light")
+    elif ThemeManager.get_available_themes():
+        ThemeManager.apply_theme(ThemeManager.get_available_themes()[0], "light")
+
+    # 5. Создание и запуск главного окна
+    window = MainWindow(container.store, container.main_controller)
+    window.show()
+
+    exit_code = app.exec()
+
+    # 6. Очистка ресурсов
     AsyncRuntime.stop()
-    sys.exit(0)
+    sys.exit(exit_code)
+
 
 if __name__ == "__main__":
     main()

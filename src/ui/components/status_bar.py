@@ -1,41 +1,35 @@
-import customtkinter as ctk
-from ..theme import AppleTheme
+from PySide6.QtWidgets import QWidget, QHBoxLayout, QLabel, QProgressBar
+
+from ..theme_manager import ThemeManager, theme_bus
 
 
-class StatusBar(ctk.CTkFrame):
-    def __init__(self, parent):
-        super().__init__(
-            parent,
-            height=AppleTheme.SP_32,
-            fg_color=AppleTheme.TRANSPARENT
-        )
+class StatusBar(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.layout = QHBoxLayout(self)
+        self.layout.setContentsMargins(0, 0, 0, 0)
 
-        self.progress_bar = ctk.CTkProgressBar(
-            self,
-            height=AppleTheme.SP_4,
-            progress_color=AppleTheme.AZURE[0],
-            fg_color=AppleTheme.BORDER[0]
-        )
-        self.progress_bar.pack(fill="x", side="top", pady=(AppleTheme.SP_0, AppleTheme.SP_12))
-        self.progress_bar.set(0)
+        self.lbl_status = QLabel("Idle")
+        self.lbl_status.setProperty("cssClass", "muted")
 
-        self.lbl_status = ctk.CTkLabel(
-            self,
-            text="Idle",
-            font=AppleTheme.FONT_BODY,
-            text_color=AppleTheme.GRAPHITE
-        )
-        self.lbl_status.pack(side="left", padx=AppleTheme.SP_12)
+        self.progress = QProgressBar()
+        self.progress.setTextVisible(False)
 
-        self.lbl_tokens = ctk.CTkLabel(
-            self,
-            text="Tokens: 0",
-            font=AppleTheme.FONT_BODY,
-            text_color=AppleTheme.GRAPHITE
-        )
-        self.lbl_tokens.pack(side="right", padx=AppleTheme.SP_12)
+        self.lbl_tokens = QLabel("Tokens: 0")
+        self.lbl_tokens.setProperty("cssClass", "muted")
 
-    def update_ui(self, status_message, progress, tokens):
-        self.lbl_status.configure(text=status_message)
-        self.progress_bar.set(progress)
-        self.lbl_tokens.configure(text=f"Tokens: {tokens}")
+        self.layout.addWidget(self.lbl_status)
+        self.layout.addWidget(self.progress, 1)
+        self.layout.addWidget(self.lbl_tokens)
+
+        self._update_metrics()
+        theme_bus.theme_changed.connect(self._update_metrics)
+
+    def _update_metrics(self):
+        s = ThemeManager.get_layout("main_spacing", 12)
+        self.layout.setSpacing(s)
+
+    def update_ui(self, msg, prog, tokens):
+        self.lbl_status.setText(msg)
+        self.progress.setValue(int(prog * 100))
+        self.lbl_tokens.setText(f"Tokens: {tokens}")

@@ -1,238 +1,153 @@
 import os
-import customtkinter as ctk
-from tkinter import filedialog, messagebox
-from tkinterdnd2 import TkinterDnD, DND_FILES
+from PySide6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QFileDialog
+from PySide6.QtCore import Signal, QObject, Qt
 
 from ..store.store import Store
 from ..controllers.main_controller import MainController
-from .dialogs import EditFolderDialog, AdvancedPreviewDialog, InputTextDialog, InteractiveTourDialog
 from .components.sidebar import Sidebar
 from .components.folder_list import FolderList
 from .components.action_panel import ActionPanel
 from .components.log_panel import LogPanel
 from .components.status_bar import StatusBar
 from .components.file_tree import FileTree
-from ..utils.logger import app_logger
-from .theme import AppleTheme
-
-ctk.set_appearance_mode("System")
+from .dialogs import AdvancedPreviewDialog, InteractiveTourDialog, EditFolderDialog
+from .theme_manager import ThemeManager, theme_bus
 
 
-class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
+class UIBridge(QObject):
+    state_changed = Signal(object)
+
+
+class MainWindow(QMainWindow):
     def __init__(self, store: Store, controller: MainController):
         super().__init__()
-        self.TkdndVersion = getattr(TkinterDnD, "_require")(self)
         self.store = store
         self.controller = controller
+        self.setWindowTitle("CodeContext AI")
+        self.resize(1200, 850)
+        self.setAcceptDrops(True)
 
-        self.title("CodeContext AI")
-        self.geometry(AppleTheme.WIN_MAIN)
-        self.configure(fg_color=AppleTheme.CANVAS)
-
-        self.unsubscribe = self.store.subscribe(self._on_store_changed_threadsafe)
+        self.bridge = UIBridge()
+        self.bridge.state_changed.connect(self._on_store_changed)
+        self.unsubscribe = self.store.subscribe(self.bridge.state_changed.emit)
 
         self._preview_dialog = None
         self._tour_dialog = None
 
         self._init_ui()
-        self._bind_hotkeys()
-
-        self.drop_target_register(DND_FILES)
-        self.dnd_bind('<<Drop>>', self._on_drop)
+        self._update_theme_metrics()
+        theme_bus.theme_changed.connect(self._update_theme_metrics)
 
         self.controller.load_initial_settings()
 
-    def _bind_hotkeys(self):
-        self.bind("<Control-Return>", lambda e: self._on_run("clipboard"))
-        self.bind("<Escape>", lambda e: self.controller.clear_folders())
-
     def _init_ui(self):
-        self.grid_columnconfigure(1, weight=1)
-        self.grid_rowconfigure(0, weight=1)
+        self.central_widget = QWidget()
+        self.central_widget.setObjectName("centralwidget")  # Явное указание для QSS (Фон)
+        self.setCentralWidget(self.central_widget)
 
-        self.sidebar = Sidebar(self, self.controller, self._on_ui_settings_change)
-        self.sidebar.grid(row=0, column=0, sticky="nsew", padx=(AppleTheme.SP_20, AppleTheme.SP_12),
-                          pady=AppleTheme.SP_20)
+        self.main_layout = QHBoxLayout(self.central_widget)
 
-        self.sidebar.btn_add_folder.configure(command=self._on_add_folder)
-        self.sidebar.btn_add_github.configure(command=self._on_add_github)
-        self.sidebar.btn_clear.configure(command=self._on_clear_folders)
+        self.splitter = QSplitter(Qt.Horizontal)
+        self.main_layout.addWidget(self.splitter)
 
-        main_frame = ctk.CTkFrame(self, fg_color=AppleTheme.TRANSPARENT)
-        main_frame.grid(row=0, column=1, sticky="nsew", padx=(AppleTheme.SP_8, AppleTheme.SP_20), pady=AppleTheme.SP_20)
+        self.sidebar = Sidebar(self.controller, self._on_ui_settings_change)
+        self.splitter.addWidget(self.sidebar)
 
-        main_frame.grid_columnconfigure(0, weight=1)
-        main_frame.grid_rowconfigure(1, weight=1)
+        right_panel = QWidget()
+        self.right_layout = QVBoxLayout(right_panel)
 
-        self.folder_list = FolderList(main_frame, self._on_edit_folder, self._on_remove_folder)
-        self.folder_list.grid(row=0, column=0, sticky="ew", pady=(AppleTheme.SP_0, AppleTheme.SP_12))
+        self.folder_list = FolderList(self._on_edit_folder, self.controller.remove_folder)
+        self.file_tree = FileTree(self.controller.toggle_file_exclusion, self.controller.copy_file_with_dependencies)
+        self.action_panel = ActionPanel(self._on_run)
+        self.log_panel = LogPanel()
+        self.status_bar = StatusBar()
 
-        self.file_tree = FileTree(main_frame, self._on_tree_toggle, self._on_tree_context_action)
-        self.file_tree.grid(row=1, column=0, sticky="nsew", pady=(AppleTheme.SP_0, AppleTheme.SP_12))
+        self.right_layout.addWidget(self.folder_list, 1)
+        self.right_layout.addWidget(self.file_tree, 4)
+        self.right_layout.addWidget(self.action_panel, 0)
+        self.right_layout.addWidget(self.log_panel, 1)
+        self.right_layout.addWidget(self.status_bar, 0)
 
-        self.action_panel = ActionPanel(main_frame, self._on_run)
-        self.action_panel.grid(row=2, column=0, sticky="ew", pady=(AppleTheme.SP_0, AppleTheme.SP_12))
+        self.splitter.addWidget(right_panel)
 
-        self.log_panel = LogPanel(main_frame)
-        self.log_panel.grid(row=3, column=0, sticky="ew")
+    def _update_theme_metrics(self):
+        m = ThemeManager.get_layout("main_margin", 16)
+        s = ThemeManager.get_layout("main_spacing", 12)
+        w = ThemeManager.get_layout("sidebar_width", 340)
 
-        self.status_bar = StatusBar(main_frame)
-        self.status_bar.grid(row=4, column=0, sticky="ew", pady=(AppleTheme.SP_12, AppleTheme.SP_0))
+        self.main_layout.setContentsMargins(m, m, m, m)
+        self.right_layout.setContentsMargins(0, 0, 0, 0)
+        self.right_layout.setSpacing(s)
+        self.splitter.setSizes([w, self.width() - w])
 
-    def _on_store_changed_threadsafe(self, state):
-        self.after(0, self._on_store_changed, state)
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+
+    def dropEvent(self, event):
+        for url in event.mimeData().urls():
+            path = url.toLocalFile()
+            if os.path.isdir(path):
+                self.controller.add_folder(path)
+            elif os.path.isfile(path):
+                self.controller.add_folder(os.path.dirname(path))
+        event.acceptProposedAction()
 
     def _on_store_changed(self, state):
         self.sidebar.update_ui(state.settings)
         self.folder_list.update_ui(state.selected_folders, state.temp_folders)
 
         if state.scanned_files_paths:
-            self.file_tree.populate(state.scanned_files_paths, state.scanned_file_metadata)
+            self.file_tree.populate(state.scanned_files_paths, state.scanned_file_metadata, state.manual_exclusions)
         else:
-            self.file_tree.delete_all()
+            self.file_tree.clear()
 
         self.action_panel.update_ui(state.settings)
         self.log_panel.update_logs(state.logs)
         self.status_bar.update_ui(state.status_message, state.progress, state.total_tokens)
 
         if state.show_preview:
-            if hasattr(self, '_preview_dialog') and self._preview_dialog is not None:
-                if self._preview_dialog.winfo_exists():
-                    try:
-                        self._preview_dialog.update_data(state)
-                        self._preview_dialog.deiconify()
-                        self._preview_dialog.lift()
-                        self._preview_dialog.focus_force()
-                    except Exception as e:
-                        app_logger.error(f"Error updating preview dialog: {e}")
-                else:
-                    self._preview_dialog = AdvancedPreviewDialog(self, state, self.controller.close_preview)
-            else:
+            if not self._preview_dialog:
                 self._preview_dialog = AdvancedPreviewDialog(self, state, self.controller.close_preview)
-        else:
-            if getattr(self, '_preview_dialog', None) is not None:
-                if self._preview_dialog.winfo_exists():
-                    self._preview_dialog.destroy()
-                self._preview_dialog = None
+            self._preview_dialog.update_data(state)
+            self._preview_dialog.show()
+            self._preview_dialog.raise_()
+        elif self._preview_dialog:
+            self._preview_dialog.close()
+            self._preview_dialog = None
 
         if state.show_tour:
-            if hasattr(self, '_tour_dialog') and self._tour_dialog is not None:
-                if self._tour_dialog.winfo_exists():
-                    self._tour_dialog.lift()
-                    self._tour_dialog.focus_force()
-                else:
-                    self._tour_dialog = InteractiveTourDialog(self, state.tour_steps, self.controller.close_tour)
-            else:
+            if not self._tour_dialog:
                 self._tour_dialog = InteractiveTourDialog(self, state.tour_steps, self.controller.close_tour)
-        else:
-            if getattr(self, '_tour_dialog', None) is not None:
-                if self._tour_dialog.winfo_exists():
-                    self._tour_dialog.destroy()
-                self._tour_dialog = None
-
-    def _on_tree_toggle(self, path, state):
-        self.controller.toggle_file_exclusion(path, state)
-
-    def _on_tree_context_action(self, path: str, is_deep: bool):
-        self.controller.copy_file_with_dependencies(path, is_deep)
-
-    def _on_drop(self, event):
-        if not event.data: return
-        try:
-            raw_data = event.data
-            paths = self.tk.splitlist(raw_data)
-            for path in paths:
-                path = path.strip('{}')
-                if os.path.isdir(path):
-                    self.controller.add_folder(path)
-                elif os.path.isfile(path):
-                    folder = os.path.dirname(path)
-                    self.controller.add_folder(folder)
-        except Exception as e:
-            app_logger.error(f"Drop error: {e}")
+            self._tour_dialog.show()
+            self._tour_dialog.raise_()
+        elif self._tour_dialog:
+            self._tour_dialog.close()
+            self._tour_dialog = None
 
     def _on_ui_settings_change(self):
-        data = self._collect_settings()
-        self.controller.update_settings(data)
-
-    def _collect_settings(self):
         s_data = self.sidebar.get_settings()
         a_data = self.action_panel.get_settings()
-        return {**s_data, **a_data}
+        self.controller.update_settings({**s_data, **a_data})
 
-    def _on_add_folder(self):
-        path = filedialog.askdirectory()
-        if path:
-            self.controller.add_folder(path)
-
-    def _on_add_github(self):
-        dialog = ctk.CTkInputDialog(text="Введите URL репозитория:", title="GitHub Clone")
-        url = dialog.get_input()
-        if url:
-            self.controller.add_github_repo(url)
-
-    def _on_remove_folder(self, path):
-        self.controller.remove_folder(path)
+    def _on_run(self, target):
+        self._on_ui_settings_change()
+        if target in ('file', 'pdf'):
+            path, _ = QFileDialog.getSaveFileName(self, "Сохранить файл", "", "All Files (*.*)")
+            if path:
+                self.controller.start_processing(target, path)
+        else:
+            self.controller.start_processing(target)
 
     def _on_edit_folder(self, path):
         dialog = EditFolderDialog(self, path)
-        new_path = dialog.get_input()
-        if new_path:
-            self.controller.edit_folder(path, new_path)
+        if dialog.exec():
+            new_path = dialog.get_input()
+            if new_path:
+                self.controller.edit_folder(path, new_path)
 
-    def _on_clear_folders(self):
-        self.controller.clear_folders()
-
-    def _on_save_settings(self):
-        data = self._collect_settings()
-        self.controller.update_settings(data)
-        self.controller.save_settings()
-        messagebox.showinfo("Сохранено", "Настройки успешно сохранены!")
-
-    def _on_reset_settings(self):
-        if messagebox.askyesno("Сброс", "Сбросить все настройки?"):
-            self.controller.reset_settings()
-
-    def _on_install_context(self):
-        try:
-            success, msg = self.controller.install_context_menu()
-            if success:
-                messagebox.showinfo("Успех", msg)
-            else:
-                messagebox.showwarning("Инфо", msg) if "Запрошены права" in msg else messagebox.showerror("Ошибка", msg)
-        except SystemExit:
-            pass
-
-    def _on_remove_context(self):
-        try:
-            success, msg = self.controller.remove_context_menu()
-            if success:
-                messagebox.showinfo("Успех", msg)
-            else:
-                messagebox.showwarning("Инфо", msg) if "Запрошены права" in msg else messagebox.showerror("Ошибка", msg)
-        except SystemExit:
-            pass
-
-    def _on_run(self, target):
-        data = self._collect_settings()
-        self.controller.update_settings(data)
-        state = self.store.state
-
-        save_path = None
-        if target == 'file':
-            ext = ".md" if state.settings.output_format == 'markdown' else ".xml" if state.settings.output_format == 'xml' else ".txt"
-            save_path = filedialog.asksaveasfilename(defaultextension=ext)
-            if not save_path: return
-        elif target == 'pdf':
-            save_path = filedialog.asksaveasfilename(defaultextension=".pdf")
-            if not save_path: return
-
-        success, msg = self.controller.start_processing(target, save_path)
-        if not success:
-            messagebox.showwarning("Внимание", msg)
-
-    def on_closing(self):
+    def closeEvent(self, event):
         self.controller.clear_folders()
         if self.unsubscribe:
             self.unsubscribe()
-        self.destroy()
+        super().closeEvent(event)

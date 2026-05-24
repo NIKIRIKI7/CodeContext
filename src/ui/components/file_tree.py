@@ -1,220 +1,171 @@
-import tkinter as tk
-from tkinter import ttk
-import customtkinter as ctk
 import os
-import threading
-from typing import List, Callable, Tuple, Any
-from ..theme import AppleTheme
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QTreeView, QLineEdit, QMenu
+from PySide6.QtGui import QStandardItemModel, QStandardItem
+from PySide6.QtCore import Qt
+from ..theme_manager import ThemeManager, theme_bus
 
 
-class FileTree(ctk.CTkFrame):
-    def __init__(self, parent: Any, on_toggle_callback: Callable, on_context_action_callback: Callable):
-        super().__init__(
-            parent,
-            fg_color=AppleTheme.CARD,
-            corner_radius=AppleTheme.RADIUS_CARD
-        )
+class FileTree(QWidget):
+    def __init__(self, on_toggle_callback, on_context_action_callback):
+        super().__init__()
         self.on_toggle = on_toggle_callback
-        self.on_context_action = on_context_action_callback
+        self.on_context = on_context_action_callback
 
-        self.file_paths: List[str] = []
-        self.metadata: dict = {}
-        self._lock = threading.Lock()
-        self._current_task_id = 0
+        self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(0, 0, 0, 0)
 
-        self._init_ui()
+        self.search = QLineEdit()
+        self.search.setPlaceholderText("🔍 Поиск файлов...")
 
-    def _init_ui(self):
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(1, weight=1)
+        self.tree = QTreeView()
+        self.tree.setHeaderHidden(True)
+        self.tree.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.tree.customContextMenuRequested.connect(self._show_context_menu)
 
-        # Контейнер для отступов от краев карточки
-        inner_frame = ctk.CTkFrame(self, fg_color=AppleTheme.TRANSPARENT)
-        inner_frame.pack(fill="both", expand=True, padx=AppleTheme.SP_16, pady=AppleTheme.SP_16)
+        self.model = QStandardItemModel()
+        self.tree.setModel(self.model)
 
-        inner_frame.grid_columnconfigure(0, weight=1)
-        inner_frame.grid_rowconfigure(1, weight=1)
+        self.model.itemChanged.connect(self._on_item_changed)
 
-        top_frame = ctk.CTkFrame(inner_frame, fg_color=AppleTheme.TRANSPARENT)
-        top_frame.grid(row=0, column=0, sticky="ew", pady=(AppleTheme.SP_0, AppleTheme.SP_8))
+        self.layout.addWidget(self.search)
+        self.layout.addWidget(self.tree)
 
-        self.entry_search = ctk.CTkEntry(
-            top_frame,
-            placeholder_text="🔍 Поиск файлов...",
-            font=AppleTheme.FONT_BODY,
-            corner_radius=AppleTheme.RADIUS_SMALL
-        )
-        self.entry_search.pack(side="left", fill="x", expand=True, padx=(AppleTheme.SP_0, AppleTheme.SP_8))
-        self.entry_search.bind("<KeyRelease>", self._on_search)
+        self.search.textChanged.connect(self._filter_tree)
+        self._all_items = []
 
-        self.btn_select_filtered = ctk.CTkButton(
-            top_frame,
-            text="☑ Выбрать эти",
-            command=self._select_filtered,
-            fg_color=AppleTheme.FOG,
-            hover_color=AppleTheme.BORDER,
-            text_color=AppleTheme.INK,
-            font=AppleTheme.FONT_BODY_SM,
-            corner_radius=AppleTheme.RADIUS_PILL
-        )
-        self.btn_select_filtered.pack(side="right")
+        # Флаг-защитник от рекурсии и крашей при очистке памяти
+        self._is_updating = False
 
-        self.empty_label = ctk.CTkLabel(
-            inner_frame,
-            text="📂 Перетащите папки или файлы в окно,\nчтобы увидеть структуру",
-            text_color=AppleTheme.GRAPHITE,
-            font=AppleTheme.FONT_BODY
-        )
-        self.empty_label.grid(row=1, column=0, sticky="nsew")
+        self._update_metrics()
+        theme_bus.theme_changed.connect(self._update_metrics)
 
-        self.loading_label = ctk.CTkLabel(
-            inner_frame,
-            text="Построение дерева...",
-            text_color=AppleTheme.GRAPHITE,
-            font=AppleTheme.FONT_BODY
-        )
+    def _update_metrics(self):
+        s = ThemeManager.get_layout("panel_spacing", 16)
+        self.layout.setSpacing(s)
 
-        self.tree = ttk.Treeview(inner_frame, show="tree", selectmode="none")
-        self.vsb = ctk.CTkScrollbar(inner_frame, orientation="vertical", command=self.tree.yview)
-        self.hsb = ctk.CTkScrollbar(inner_frame, orientation="horizontal", command=self.tree.xview)
-        self.tree.configure(yscrollcommand=self.vsb.set, xscrollcommand=self.hsb.set)
-
-        self.vsb.grid(row=1, column=1, sticky="ns")
-        self.hsb.grid(row=2, column=0, sticky="ew")
-
-        self.tree.tag_configure("added", foreground=AppleTheme.SUCCESS[0])
-        self.tree.tag_configure("modified", foreground=AppleTheme.AZURE[0])
-
-        self.tree.bind("<Button-1>", self._on_click)
-        self.tree.bind("<Button-3>", self._on_right_click)
-
-    def populate(self, file_paths: List[str], metadata: dict):
-        if not file_paths:
-            self.delete_all()
+    def populate(self, file_paths, metadata, manual_exclusions):
+        # БЛОКИРУЕМ ПЕРЕРИСОВКУ, ЕСЛИ МЫ СЕЙЧАС КЛИКАЕМ ПО ЧЕКБОКСАМ
+        # Это полностью устраняет краш от удаления C++ объектов во время их перебора
+        if self._is_updating:
             return
-        with self._lock:
-            self._current_task_id += 1
-            self.file_paths = file_paths
-            self.metadata = metadata
-            self.empty_label.grid_forget()
-            self.tree.grid_remove()
-            self.loading_label.grid(row=1, column=0, sticky="nsew")
-            threading.Thread(target=self._prepare_nodes_thread, args=(file_paths, self._current_task_id),
-                             daemon=True).start()
 
-    def _prepare_nodes_thread(self, paths: List[str], task_id: int):
-        try:
-            paths = sorted(paths)
-            search_query = self.entry_search.get().lower()
-            common = os.path.commonpath(paths) if paths else ""
-            if common and os.path.isfile(common):
-                common = os.path.dirname(common)
+        self._is_updating = True
 
-            nodes_to_insert = []
-            created_ids = set()
+        self.model.clear()
+        self._all_items.clear()
 
-            for full_path in paths:
-                if search_query and search_query not in full_path.lower():
-                    continue
-                rel_path = os.path.relpath(full_path, common) if common else full_path
-                parts = rel_path.split(os.sep)
-                current_id = ""
+        root = self.model.invisibleRootItem()
+        common = os.path.commonpath(file_paths) if file_paths else ""
+        if common and os.path.isfile(common):
+            common = os.path.dirname(common)
 
-                for i, part in enumerate(parts):
-                    parent_id = current_id
-                    current_id = os.path.join(common, *parts[:i + 1]) if common else os.path.join(*parts[:i + 1])
-                    if current_id not in created_ids:
-                        text = part
-                        tags = ()
-                        if current_id == full_path:
-                            meta = self.metadata.get(full_path, {})
-                            tokens = meta.get("tokens", 0)
-                            git_status = meta.get("git_status", "")
-                            token_str = f"({tokens / 1000:.1f}k tk)" if tokens > 1000 else f"({tokens} tk)"
-                            text = f"☑ {part} {token_str}"
-                            if git_status:
-                                tags = (git_status,)
-                        nodes_to_insert.append((parent_id, current_id, text, tags))
-                        created_ids.add(current_id)
+        node_map = {"": root}
 
-            if task_id == self._current_task_id:
-                self.after(0, self._bulk_insert_ui, nodes_to_insert, task_id)
-        except Exception as e:
-            print(f"Error in tree thread: {e}")
+        for path in sorted(file_paths):
+            rel_path = os.path.relpath(path, common) if common else path
+            parts = rel_path.split(os.sep)
+            curr = ""
 
-    def _bulk_insert_ui(self, nodes: List[Tuple], task_id: int):
-        if task_id != self._current_task_id: return
-        self.delete_all_tree_only()
-        for parent, iid, text, tags in nodes:
-            try:
-                self.tree.insert(parent, "end", iid, text=text, tags=tags, open=True)
-            except tk.TclError:
-                pass
-        self.loading_label.grid_forget()
-        self.tree.grid(row=1, column=0, sticky="nsew")
+            for i, part in enumerate(parts):
+                parent_key = curr
+                curr = os.path.join(curr, part) if curr else part
 
-    def delete_all_tree_only(self):
-        self.tree.delete(*self.tree.get_children())
+                if curr not in node_map:
+                    item = QStandardItem(part)
+                    item.setCheckable(True)
 
-    def delete_all(self):
-        self.delete_all_tree_only()
-        self.tree.grid_forget()
-        self.empty_label.grid(row=1, column=0, sticky="nsew")
+                    full_path = os.path.join(common, curr) if common else curr
+                    is_file = (i == len(parts) - 1)
 
-    def _on_search(self, event):
-        self.populate(self.file_paths, self.metadata)
+                    if is_file:
+                        meta = metadata.get(full_path, {})
+                        tokens = meta.get("tokens", 0)
+                        item.setText(f"{part} ({tokens} tk)")
+                        item.setData(full_path, Qt.UserRole)
+                        state = Qt.Unchecked if full_path in manual_exclusions else Qt.Checked
+                        item.setCheckState(state)
+                        self._all_items.append((item, full_path))
+                    else:
+                        item.setCheckState(Qt.Checked)
 
-    def _select_filtered(self):
-        search_query = self.entry_search.get().lower()
-        if not search_query: return
-        for path in self.file_paths:
-            is_match = search_query in path.lower()
-            self.on_toggle(path, is_match)
-        self.populate(self.file_paths, self.metadata)
+                    node_map[parent_key].appendRow(item)
+                    node_map[curr] = item
 
-    def _on_click(self, event: Any):
-        region = self.tree.identify("region", event.x, event.y)
-        if region != "tree": return
-        item_id = self.tree.identify_row(event.y)
-        if not item_id: return
-        item_text = self.tree.item(item_id, "text")
-        if item_text.startswith("☑"):
-            new_text = item_text.replace("☑", "☐", 1)
-            new_state = False
-        elif item_text.startswith("☐"):
-            new_text = item_text.replace("☐", "☑", 1)
-            new_state = True
+        self.tree.expandAll()
+        self._is_updating = False
+
+    def _on_item_changed(self, item):
+        if self._is_updating:
+            return
+
+        state = item.checkState() == Qt.Checked
+        path = item.data(Qt.UserRole)
+
+        if path:
+            # Защита для одиночного клика по файлу
+            self._is_updating = True
+            self.on_toggle(path, state)
+            self._is_updating = False
         else:
-            return
-        self.tree.item(item_id, text=new_text)
-        self._propagate_check(item_id, new_state)
-        self._update_controller_state(item_id, new_state)
+            # Клик по папке: каскадное обновление файлов
+            self._propagate_check(item, state)
 
-    def _on_right_click(self, event: Any):
-        item_id = self.tree.identify_row(event.y)
-        if not item_id or not os.path.isfile(item_id):
-            return
-        self.tree.selection_set(item_id)
-        menu = tk.Menu(self, tearoff=0)
-        menu.add_command(label="Копировать с зависимостями (Shallow)",
-                         command=lambda: self.on_context_action(item_id, False))
-        menu.add_command(label="Копировать с зависимостями (Deep)",
-                         command=lambda: self.on_context_action(item_id, True))
-        menu.post(event.x_root, event.y_root)
+    def _propagate_check(self, parent_item, state):
+        self._is_updating = True
 
-    def _propagate_check(self, item_id: str, state: bool):
-        children = self.tree.get_children(item_id)
-        icon = "☑" if state else "☐"
-        stack = list(children)
-        while stack:
-            child = stack.pop()
-            old_text = self.tree.item(child, "text")
-            if isinstance(old_text, str) and len(old_text) > 2:
-                clean_name = old_text[2:]
-                self.tree.item(child, text=f"{icon} {clean_name}")
-                self._update_controller_state(str(child), state)
-            stack.extend(self.tree.get_children(child))
+        for row in range(parent_item.rowCount()):
+            child = parent_item.child(row)
+            # Изменение состояния вызовет _on_item_changed, но он сразу вернет return
+            child.setCheckState(Qt.Checked if state else Qt.Unchecked)
 
-    def _update_controller_state(self, item_id: str, state: bool):
-        if os.path.isfile(item_id):
-            self.on_toggle(item_id, state)
+            path = child.data(Qt.UserRole)
+            if path:
+                self.on_toggle(path, state)
+
+            if child.hasChildren():
+                self._propagate_check_recursive(child, state)
+
+        self._is_updating = False
+
+    def _propagate_check_recursive(self, parent_item, state):
+        for row in range(parent_item.rowCount()):
+            child = parent_item.child(row)
+            child.setCheckState(Qt.Checked if state else Qt.Unchecked)
+
+            path = child.data(Qt.UserRole)
+            if path:
+                self.on_toggle(path, state)
+
+            if child.hasChildren():
+                self._propagate_check_recursive(child, state)
+
+    def _filter_tree(self, text):
+        search_query = text.lower()
+        for item, full_path in self._all_items:
+            match = search_query in full_path.lower()
+            parent = item.parent()
+            root = self.model.invisibleRootItem()
+            self.tree.setRowHidden(item.row(), parent.index() if parent else root.index(), not match)
+
+    def _show_context_menu(self, position):
+        index = self.tree.indexAt(position)
+        if not index.isValid(): return
+        item = self.model.itemFromIndex(index)
+        path = item.data(Qt.UserRole)
+        if not path: return
+
+        menu = QMenu()
+        act_shallow = menu.addAction("Копировать с зависимостями (Shallow)")
+        act_deep = menu.addAction("Копировать с зависимостями (Deep)")
+
+        action = menu.exec(self.tree.viewport().mapToGlobal(position))
+        if action == act_shallow:
+            self.on_context(path, False)
+        elif action == act_deep:
+            self.on_context(path, True)
+
+    def clear(self):
+        self._is_updating = True
+        self.model.clear()
+        self._all_items.clear()
+        self._is_updating = False
