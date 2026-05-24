@@ -8,13 +8,11 @@ from ..actions.action_types import (
 )
 from ..actions.dispatcher import Dispatcher
 from ..store.store import Store
-
 from ..use_cases.scan_use_case import ScanWorkspaceUseCase
 from ..use_cases.process_use_case import ProcessWorkspaceUseCase
 from ..use_cases.github_use_case import GitHubUseCase
 from ..use_cases.settings_use_case import SettingsUseCase
 from ..use_cases.patch_use_case import PatchUseCase
-
 from ..utils.async_runtime import AsyncRuntime
 from ..services.integration_service import IntegrationService
 from ..services.tour_service import TourService
@@ -35,7 +33,7 @@ class MainController:
             patch_use_case: PatchUseCase,
             integration_service: IntegrationService,
             fs_repo: FileSystemRepository,
-            tour_service: TourService,  # <-- НОВЫЙ СЕРВИС
+            tour_service: TourService,
     ):
         self._store = store
         self._dispatcher = dispatcher
@@ -122,6 +120,7 @@ class MainController:
     async def _scan_then_process(self, target: str, save_path: Optional[str]):
         state = self._store.state
         await self._scan_uc.execute(state)
+
         state = self._store.state
         if state.scanned_files_paths:
             await self._process_uc.execute(state, target, save_path)
@@ -137,8 +136,8 @@ class MainController:
     async def _copy_deps_async(self, target_file, deep, state):
         self._dispatcher.dispatch(UI_ADD_LOG, "copy_with_deps: используйте CopyWithDepsUseCase")
 
-    def add_github_repo(self, url: str):
-        AsyncRuntime.run_coroutine(self._github_uc.execute(url))
+    def add_github_repo(self, url: str, dest_path: str = ""):
+        AsyncRuntime.run_coroutine(self._github_uc.execute(url, dest_path))
 
     def install_context_menu(self) -> Tuple[bool, str]:
         python_path = self._store.state.settings.python_interpreter
@@ -177,15 +176,12 @@ class MainController:
 
         self._dispatcher.dispatch(UI_ADD_LOG, f"🎯 Найдено {len(matched)} файлов из лога ошибки!")
 
-    # --- НОВЫЕ МЕТОДЫ ДЛЯ ТУРА ---
     def show_tour(self):
         steps = self._tour_service.get_tour_steps()
         self._dispatcher.dispatch(UI_SHOW_TOUR, steps)
 
     def close_tour(self):
         self._dispatcher.dispatch(UI_CLOSE_TOUR, None)
-
-    # -----------------------------
 
     @staticmethod
     def _normalize_path(path: str) -> str:

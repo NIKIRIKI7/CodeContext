@@ -3,7 +3,6 @@ Store — центральное хранилище состояния (Redux-li
 """
 import copy
 from typing import List, Callable, Any, Dict
-
 from .state import AppState, AppSettings
 from ..actions.action_types import *
 
@@ -30,19 +29,17 @@ class Store:
         handler = self._handlers.get(action_type)
         if handler:
             handler(payload)
-            self._notify()
+        self._notify()
 
     def _register_handlers(self):
         self._handlers.update({
             UI_SET_LOADING:       lambda p: self._state.__setattr__('is_loading', bool(p)),
             UI_UPDATE_STATUS:     self._handle_update_status,
             UI_ADD_LOG:           lambda p: self._state.logs.append(str(p)),
-
             UI_SHOW_PREVIEW:      self._handle_show_preview,
             UI_CLOSE_PREVIEW:     self._handle_close_preview,
-
-            UI_SHOW_TOUR:         self._handle_show_tour,   # <-- РЕДЬЮСЕР ТУРА
-            UI_CLOSE_TOUR:        self._handle_close_tour,  # <-- РЕДЬЮСЕР ТУРА
+            UI_SHOW_TOUR:         self._handle_show_tour,
+            UI_CLOSE_TOUR:        self._handle_close_tour,
 
             SETTINGS_LOADED:      self._handle_settings_loaded,
             SETTINGS_UPDATE:      self._handle_settings_update,
@@ -140,11 +137,17 @@ class Store:
         self._state.progress = 0.0
         self._state.logs.clear()
 
-    def _handle_github_success(self, path: str):
-        if path not in self._state.selected_folders:
+    def _handle_github_success(self, payload: dict):
+        path = payload.get("path")
+        is_temp = payload.get("is_temp", True)
+
+        if path and path not in self._state.selected_folders:
             self._state.selected_folders.append(path)
-        if path not in self._state.temp_folders:
+
+        # Добавляем во временные только если пользователь не выбрал свою папку
+        if path and is_temp and path not in self._state.temp_folders:
             self._state.temp_folders.append(path)
+
         self._state.status_message = "Репозиторий загружен"
         self._state.logs.append(f"GitHub Repo Cloned: {path}")
 

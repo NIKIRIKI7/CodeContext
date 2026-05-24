@@ -1,6 +1,7 @@
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QTabWidget, QFormLayout,
                                QCheckBox, QComboBox, QLineEdit, QTextEdit,
-                               QPushButton, QHBoxLayout, QLabel, QFileDialog)
+                               QPushButton, QHBoxLayout, QLabel, QFileDialog,
+                               QInputDialog, QMessageBox)
 from PySide6.QtCore import Qt
 from ...utils.config import PRESETS, PROMPT_PRESETS
 from ..theme_manager import ThemeManager, theme_bus
@@ -12,7 +13,6 @@ class Sidebar(QWidget):
         self.controller = controller
         self.on_settings_change = on_settings_change
 
-        # ВАЖНО: Разрешаем кастомному QWidget отрисовывать QSS фоны и рамки
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.setProperty("cssClass", "card")
 
@@ -97,8 +97,7 @@ class Sidebar(QWidget):
 
         btn_gh = QPushButton("+ GitHub")
         btn_gh.setProperty("cssClass", "success")
-        from PySide6.QtWidgets import QInputDialog
-        btn_gh.clicked.connect(lambda: self._add_github())
+        btn_gh.clicked.connect(self._add_github)
 
         btn_layout.addWidget(btn_add)
         btn_layout.addWidget(btn_gh)
@@ -116,16 +115,31 @@ class Sidebar(QWidget):
         layout.addStretch()
 
     def _add_folder(self):
-        from PySide6.QtWidgets import QFileDialog
         path = QFileDialog.getExistingDirectory(self, "Выберите папку")
         if path:
             self.controller.add_folder(path)
 
     def _add_github(self):
-        from PySide6.QtWidgets import QInputDialog
-        url, ok = QInputDialog.getText(self, "GitHub", "Введите URL репозитория:")
+        url, ok = QInputDialog.getText(self, "GitHub",
+                                       "Введите URL репозитория (например, https://github.com/user/repo):")
         if ok and url:
-            self.controller.add_github_repo(url)
+            reply = QMessageBox.question(
+                self,
+                "Сохранение",
+                "Сохранить репозиторий на диск навсегда?\n\n"
+                "• Да — выбрать папку на ПК\n"
+                "• Нет — загрузить во временную папку (удалится при закрытии)",
+                QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel
+            )
+
+            if reply == QMessageBox.Yes:
+                dest_dir = QFileDialog.getExistingDirectory(self,
+                                                            "Выберите папку для клонирования (туда будет создана папка проекта)")
+                if dest_dir:
+                    self.controller.add_github_repo(url, dest_dir)
+            elif reply == QMessageBox.No:
+                # Временная папка
+                self.controller.add_github_repo(url, "")
 
     def _trigger_scan(self):
         self.on_settings_change()
@@ -153,7 +167,6 @@ class Sidebar(QWidget):
         layout.addWidget(btn_patch)
 
     def _open_patch_dialog(self):
-        # ИСПРАВЛЕНО: Правильный путь импорта к файлу dialogs.py
         from ..dialogs import JsonPatchDialog
         dialog = JsonPatchDialog(self)
         if dialog.exec():
