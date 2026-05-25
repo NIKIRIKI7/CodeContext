@@ -363,3 +363,16 @@ class ThemeManager:
 
         app.setStyleSheet(qss)
         theme_bus.theme_changed.emit()
+
+    @classmethod
+    def get_current_colors(cls) -> dict:
+        """Возвращает словарь цветов для текущей темы и режима."""
+        theme = cls._themes.get(cls._current_theme, {})
+        modes = theme.get("modes", {})
+        return modes.get(cls._current_mode, modes.get("light", {}))
+
+    @classmethod
+    def get_font_settings(cls) -> dict:
+        """Возвращает шрифты текущей темы."""
+        theme = cls._themes.get(cls._current_theme, {})
+        return theme.get("default_styles", {}).get("fonts", {})

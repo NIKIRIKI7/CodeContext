@@ -138,7 +138,6 @@ class Sidebar(QWidget):
                 if dest_dir:
                     self.controller.add_github_repo(url, dest_dir)
             elif reply == QMessageBox.No:
-                # Временная папка
                 self.controller.add_github_repo(url, "")
 
     def _trigger_scan(self):
@@ -167,12 +166,22 @@ class Sidebar(QWidget):
         layout.addWidget(btn_patch)
 
     def _open_patch_dialog(self):
-        from ..dialogs import JsonPatchDialog
+        from ..dialogs import JsonPatchDialog, InteractiveDiffDialog
+
+        # Шаг 1: Получаем JSON
         dialog = JsonPatchDialog(self)
         if dialog.exec():
             json_str = dialog.get_json()
             if json_str:
-                self.controller.apply_llm_patch(json_str)
+                # Шаг 2: Генерируем Diff'ы в памяти
+                prepared_patches = self.controller.prepare_llm_patch(json_str)
+                if prepared_patches:
+                    # Шаг 3: Открываем окно предпросмотра Diff Viewer
+                    diff_dialog = InteractiveDiffDialog(self, prepared_patches, self.controller)
+                    if diff_dialog.exec():
+                        selected = diff_dialog.get_selected()
+                        if selected:
+                            self.controller.apply_prepared_patches(selected)
 
     def _on_prompt_preset_change(self, text):
         if text != "Custom" and text in PROMPT_PRESETS:
@@ -182,14 +191,6 @@ class Sidebar(QWidget):
     def _build_settings_tab(self):
         layout = QVBoxLayout(self.tab_settings)
         layout.setContentsMargins(0, 10, 0, 0)
-
-        self.chk_cli_minify = QCheckBox("CLI Minify")
-        self.chk_cli_comments = QCheckBox("CLI Убрать комментарии")
-        self.chk_cli_secrets = QCheckBox("CLI Убрать секреты")
-        self.chk_cli_tree = QCheckBox("CLI Включать дерево")
-
-        self.cmb_cli_format = QComboBox()
-        self.cmb_cli_format.addItems(["plain", "markdown", "xml"])
 
         self.cmb_theme = QComboBox()
         themes = ThemeManager.get_available_themes()
@@ -202,21 +203,53 @@ class Sidebar(QWidget):
         self.cmb_mode.setCurrentText(ThemeManager._current_mode)
         self.cmb_mode.currentTextChanged.connect(lambda m: ThemeManager.apply_theme(mode=m))
 
+        # Настройки LLM Validator
+        self.chk_llm_check = QCheckBox("Включить проверку кода (LLM Checker)")
+        self.entry_llm_url = QLineEdit()
+        self.entry_llm_url.setPlaceholderText("https://api.openai.com/v1")
+        self.entry_llm_key = QLineEdit()
+        self.entry_llm_key.setEchoMode(QLineEdit.Password)
+        self.entry_llm_key.setPlaceholderText("sk-...")
+        self.entry_llm_model = QLineEdit()
+        self.entry_llm_model.setPlaceholderText("gpt-4o-mini / local-model")
+
+        # CLI
+        self.chk_cli_minify = QCheckBox("CLI Minify")
+        self.chk_cli_comments = QCheckBox("CLI Убрать комментарии")
+        self.chk_cli_tree = QCheckBox("CLI Включать дерево")
+        self.cmb_cli_format = QComboBox()
+        self.cmb_cli_format.addItems(["plain", "markdown", "xml"])
+
+        form = QFormLayout()
+        form.setContentsMargins(0, 10, 0, 0)
+        form.addRow("Тема:", self.cmb_theme)
+        form.addRow("Режим:", self.cmb_mode)
+
+        lbl_llm = QLabel("LLM Validator (Настройки API):")
+        lbl_llm.setProperty("cssClass", "muted")
+        layout.addLayout(form)
+        layout.addWidget(lbl_llm)
+        layout.addWidget(self.chk_llm_check)
+
+        form_llm = QFormLayout()
+        form_llm.setContentsMargins(0, 0, 0, 0)
+        form_llm.addRow("URL:", self.entry_llm_url)
+        form_llm.addRow("Ключ:", self.entry_llm_key)
+        form_llm.addRow("Модель:", self.entry_llm_model)
+        layout.addLayout(form_llm)
+
         lbl_cli = QLabel("CLI Настройки:")
         lbl_cli.setProperty("cssClass", "muted")
         layout.addWidget(lbl_cli)
 
         layout.addWidget(self.chk_cli_minify)
         layout.addWidget(self.chk_cli_comments)
-        layout.addWidget(self.chk_cli_secrets)
         layout.addWidget(self.chk_cli_tree)
 
-        form = QFormLayout()
-        form.setContentsMargins(0, 10, 0, 0)
-        form.addRow("Формат CLI:", self.cmb_cli_format)
-        form.addRow("UI Тема:", self.cmb_theme)
-        form.addRow("UI Режим:", self.cmb_mode)
-        layout.addLayout(form)
+        form_cli = QFormLayout()
+        form_cli.setContentsMargins(0, 0, 0, 0)
+        form_cli.addRow("CLI Формат:", self.cmb_cli_format)
+        layout.addLayout(form_cli)
 
         layout.addStretch()
 
@@ -227,12 +260,16 @@ class Sidebar(QWidget):
         self.chk_dependencies.setChecked(settings.include_dependencies)
         self.chk_git.setChecked(settings.use_git)
         self.chk_gitignore.setChecked(settings.use_gitignore)
-
         self.txt_system_prompt.setText(settings.system_prompt)
+
+        # Обновление полей LLM
+        self.chk_llm_check.setChecked(settings.llm_check_enabled)
+        self.entry_llm_url.setText(settings.llm_base_url)
+        self.entry_llm_key.setText(settings.llm_api_key)
+        self.entry_llm_model.setText(settings.llm_model)
 
         self.chk_cli_minify.setChecked(settings.cli_minify)
         self.chk_cli_comments.setChecked(settings.cli_remove_comments)
-        self.chk_cli_secrets.setChecked(settings.cli_remove_secrets)
         self.chk_cli_tree.setChecked(settings.cli_include_tree)
         self.cmb_cli_format.setCurrentText(settings.cli_format)
 
@@ -245,9 +282,14 @@ class Sidebar(QWidget):
             'use_git': self.chk_git.isChecked(),
             'use_gitignore': self.chk_gitignore.isChecked(),
             'system_prompt': self.txt_system_prompt.toPlainText(),
+
+            'llm_check_enabled': self.chk_llm_check.isChecked(),
+            'llm_base_url': self.entry_llm_url.text(),
+            'llm_api_key': self.entry_llm_key.text(),
+            'llm_model': self.entry_llm_model.text(),
+
             'cli_minify': self.chk_cli_minify.isChecked(),
             'cli_remove_comments': self.chk_cli_comments.isChecked(),
-            'cli_remove_secrets': self.chk_cli_secrets.isChecked(),
             'cli_include_tree': self.chk_cli_tree.isChecked(),
             'cli_format': self.cmb_cli_format.currentText(),
         }

@@ -1,5 +1,6 @@
 import os
 from typing import Optional, Tuple
+from PySide6.QtCore import QTimer
 
 from ..actions.action_types import (
     FOLDER_ADD, FOLDER_REMOVE, FOLDER_UPDATE, FOLDER_CLEAR,
@@ -16,12 +17,11 @@ from ..use_cases.patch_use_case import PatchUseCase
 from ..utils.async_runtime import AsyncRuntime
 from ..services.integration_service import IntegrationService
 from ..services.tour_service import TourService
+from ..services.llm_checker_service import LlmCheckerService
 from ..data.file_system_repository import FileSystemRepository
 
 
 class MainController:
-    """GUI-контроллер. Принимает события от UI и делегирует Use Cases."""
-
     def __init__(
             self,
             store: Store,
@@ -34,6 +34,7 @@ class MainController:
             integration_service: IntegrationService,
             fs_repo: FileSystemRepository,
             tour_service: TourService,
+            llm_checker: LlmCheckerService,
     ):
         self._store = store
         self._dispatcher = dispatcher
@@ -45,6 +46,7 @@ class MainController:
         self._integration = integration_service
         self._fs_repo = fs_repo
         self._tour_service = tour_service
+        self._llm_checker = llm_checker
 
     def load_initial_settings(self):
         self._settings_uc.load_initial()
@@ -149,9 +151,32 @@ class MainController:
     def close_preview(self):
         self._dispatcher.dispatch(UI_CLOSE_PREVIEW, None)
 
-    def apply_llm_patch(self, json_str: str):
+    # ==== МЕТОДЫ ДЛЯ ПАТЧЕЙ И LLM ====
+
+    def prepare_llm_patch(self, json_str: str) -> list:
+        """Парсит JSON и генерирует данные для DiffViewer."""
         folders = self._store.state.selected_folders
-        self._patch_uc.apply_json_patch(json_str, folders)
+        return self._patch_uc.prepare_json_patch(json_str, folders)
+
+    def verify_patch_with_llm(self, patch: dict, callback):
+        """Асинхронно отправляет запрос к LLM и вызывает callback в главном потоке."""
+
+        async def task():
+            verdict = await self._llm_checker.check_patch(
+                patch.get('original_content', ''),
+                patch.get('patched_content', ''),
+                self._store.state.settings
+            )
+            # Вызов callback в основном потоке интерфейса
+            QTimer.singleShot(0, lambda: callback(verdict))
+
+        AsyncRuntime.run_coroutine(task())
+
+    def apply_prepared_patches(self, prepared_patches: list):
+        """Реально записывает файлы на диск из DiffViewer."""
+        self._patch_uc.apply_prepared(prepared_patches)
+
+    # =================================
 
     def parse_error_log(self, text: str):
         state = self._store.state

@@ -1,71 +1,63 @@
 {
-    "name": "Apple",
-    "modes": {
-        "light": {
-            "bg": "#f5f5f7",
-            "card": "#ffffff",
-            "text": "#1d1d1f",
-            "text_muted": "#707070",
-            "primary": "#0071e3",
-            "primary_fg": "#ffffff",
-            "secondary": "#e8e8ed",
-            "secondary_fg": "#1d1d1f",
-            "border": "#d2d2d7",
-            "success": "#34c759",
-            "danger": "#ff3b30",
-            "input_bg": "#ffffff",
-            "transparent": "transparent"
-        },
-        "dark": {
-            "bg": "#000000",
-            "card": "#1c1c1e",
-            "text": "#f5f5f7",
-            "text_muted": "#98989d",
-            "primary": "#0a84ff",
-            "primary_fg": "#ffffff",
-            "secondary": "#2c2c2e",
-            "secondary_fg": "#ffffff",
-            "border": "#38383a",
-            "success": "#32d74b",
-            "danger": "#ff453a",
-            "input_bg": "#1c1c1e",
-            "transparent": "transparent"
-        }
+  "name": "Apple",
+  "modes": {
+    "light": {
+      "bg": "#f5f5f7",
+      "card": "#ffffff",
+      "text": "#1d1d1f",
+      "text_muted": "#707070",
+      "primary": "#0071e3",
+      "primary_fg": "#ffffff",
+      "secondary": "#e8e8ed",
+      "secondary_fg": "#1d1d1f",
+      "border": "#d2d2d7",
+      "success": "#34c759",
+      "danger": "#ff3b30",
+      "input_bg": "#ffffff",
+      "transparent": "transparent",
+      "diff_add": "#e6ffed",
+      "diff_sub": "#ffeef0",
+      "diff_chg": "#fff5b1",
+      "diff_hdr": "#f0f0f0"
     },
-    "default_styles": {
-        "radii": {
-            "card": "24px",
-            "button": "16px",
-            "input": "10px",
-            "small": "8px",
-            "checkbox": "4px",
-            "scrollbar": "5px",
-            "progress": "4px"
-        },
-        "fonts": {
-            "family": "SF Pro Text, Segoe UI, -apple-system, Roboto, sans-serif",
-            "size": "14px",
-            "heading_size": "18px"
-        },
-        "spacing": {
-            "padding_btn": "8px 16px",
-            "padding_input": "8px 12px",
-            "padding_item": "6px 8px",
-            "margin_tab": "6px",
-            "checkbox_spacing": "10px"
-        },
-        "sizes": {
-            "checkbox_size": "18px",
-            "scrollbar_width": "10px",
-            "progress_height": "6px",
-            "tree_indicator": "18px"
-        },
-        "layout": {
-            "main_margin": 20,
-            "main_spacing": 16,
-            "panel_margin": 20,
-            "panel_spacing": 16,
-            "sidebar_width": 340
-        }
+    "dark": {
+      "bg": "#000000",
+      "card": "#1c1c1e",
+      "text": "#f5f5f7",
+      "text_muted": "#98989d",
+      "primary": "#0a84ff",
+      "primary_fg": "#ffffff",
+      "secondary": "#2c2c2e",
+      "secondary_fg": "#ffffff",
+      "border": "#38383a",
+      "success": "#32d74b",
+      "danger": "#ff453a",
+      "input_bg": "#1c1c1e",
+      "transparent": "transparent",
+      "diff_add": "#194d25",
+      "diff_sub": "#5c1b22",
+      "diff_chg": "#594d12",
+      "diff_hdr": "#2c2c2e"
     }
+  },
+  "default_styles": {
+    "radii": {
+      "card": "24px", "button": "16px", "input": "10px",
+      "small": "8px", "checkbox": "4px", "scrollbar": "5px", "progress": "4px"
+    },
+    "fonts": {
+      "family": "SF Pro Text, Segoe UI, -apple-system, Roboto, sans-serif",
+      "size": "14px", "heading_size": "18px"
+    },
+    "spacing": {
+      "padding_btn": "8px 16px", "padding_input": "8px 12px", "padding_item": "6px 8px",
+      "margin_tab": "6px", "checkbox_spacing": "10px"
+    },
+    "sizes": {
+      "checkbox_size": "18px", "scrollbar_width": "10px", "progress_height": "6px", "tree_indicator": "18px"
+    },
+    "layout": {
+      "main_margin": 20, "main_spacing": 16, "panel_margin": 20, "panel_spacing": 16, "sidebar_width": 340
+    }
+  }
 }
