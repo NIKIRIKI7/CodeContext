@@ -48,6 +48,7 @@ class InteractiveTourDialog(QDialog):
         self.steps = steps
         self.on_close = on_close
         self.current_step = 0
+
         self.setWindowTitle("Интерактивный тур")
         self.resize(700, 500)
 
@@ -121,7 +122,6 @@ class EditFolderDialog(QDialog):
         btn_ok = QPushButton("OK")
         btn_ok.clicked.connect(self._on_ok)
         btn_layout.addWidget(btn_ok)
-
         layout.addLayout(btn_layout)
 
     def _on_ok(self):
@@ -139,6 +139,7 @@ class JsonPatchDialog(QDialog):
         self.resize(650, 450)
 
         layout = QVBoxLayout(self)
+
         lbl = QLabel("Вставьте ответ нейросети (массив JSON с инструкциями):")
         lbl.setProperty("cssClass", "muted")
         layout.addWidget(lbl)
@@ -160,6 +161,7 @@ class JsonPatchDialog(QDialog):
         btn_layout.addStretch()
         btn_layout.addWidget(btn_cancel)
         btn_layout.addWidget(btn_apply)
+
         layout.addLayout(btn_layout)
 
     def get_json(self):
@@ -173,14 +175,15 @@ class InteractiveDiffDialog(QDialog):
         super().__init__(parent)
         self.prepared = prepared_patches
         self.controller = controller
+
         self.setWindowTitle("Предпросмотр изменений (Safety Diff Viewer)")
         self.resize(1200, 800)
 
         layout = QVBoxLayout(self)
+
         splitter = QSplitter(Qt.Horizontal)
         layout.addWidget(splitter)
 
-        # --- Левая панель: список файлов ---
         self.list_widget = QListWidget()
         for p in self.prepared:
             item = QListWidgetItem(p['file_target'])
@@ -192,16 +195,13 @@ class InteractiveDiffDialog(QDialog):
         self.list_widget.currentRowChanged.connect(self._on_file_selected)
         splitter.addWidget(self.list_widget)
 
-        # --- Правая панель ---
         right_widget = QWidget()
         right_layout = QVBoxLayout(right_widget)
         right_layout.setContentsMargins(0, 0, 0, 0)
 
-        # 1. Основной браузер Diff
         self.diff_browser = QTextBrowser()
         right_layout.addWidget(self.diff_browser, 3)
 
-        # 2. Блок управления LLM
         llm_container = QWidget()
         llm_container.setProperty("cssClass", "card")
         llm_layout = QVBoxLayout(llm_container)
@@ -220,7 +220,6 @@ class InteractiveDiffDialog(QDialog):
         llm_top_layout.addWidget(self.lbl_llm_verdict, 1)
         llm_layout.addLayout(llm_top_layout)
 
-        # 3. Скрытая панель с предложением кода от LLM
         self.suggestion_panel = QWidget()
         self.suggestion_panel.setVisible(False)
         sug_layout = QVBoxLayout(self.suggestion_panel)
@@ -250,11 +249,10 @@ class InteractiveDiffDialog(QDialog):
 
         llm_layout.addWidget(self.suggestion_panel)
         right_layout.addWidget(llm_container, 2)
-
         splitter.addWidget(right_widget)
+
         splitter.setSizes([300, 900])
 
-        # --- Подвал с кнопками сохранения ---
         btn_layout = QHBoxLayout()
         btn_cancel = QPushButton("Отмена")
         btn_cancel.setProperty("cssClass", "ghost")
@@ -267,19 +265,19 @@ class InteractiveDiffDialog(QDialog):
         btn_layout.addStretch()
         btn_layout.addWidget(btn_cancel)
         btn_layout.addWidget(btn_apply)
+
         layout.addLayout(btn_layout)
 
         self.current_llm_suggestion = None
-
-        # Выбираем первый элемент списка по умолчанию
         if self.prepared:
             self.list_widget.setCurrentRow(0)
 
     def _generate_html_diff(self, source_text, target_text):
-        """Генерирует HTML Diff, строго опираясь на JSON темы."""
+        """Генерирует HTML Diff, переопределяя хардкод стили difflib с помощью !important."""
         colors = ThemeManager.get_current_colors()
         fonts = ThemeManager.get_font_settings()
         font_family = fonts.get("family", "monospace")
+        font_size = fonts.get("size", "14px")
 
         html_diff = difflib.HtmlDiff(wrapcolumn=90).make_file(
             source_text.splitlines(),
@@ -287,19 +285,49 @@ class InteractiveDiffDialog(QDialog):
             context=True, numlines=5
         )
 
-        # Динамический CSS из настроек темы
         custom_css = f"""
         <style>
-            table.diff {{font-family: {font_family}; width: 100%; border-collapse: collapse; color: {colors.get('text', '#000')};}}
-            .diff_header {{background-color: {colors.get('diff_hdr', '#e0e0e0')}; text-align:center;}}
-            .diff_next {{background-color: {colors.get('diff_hdr', '#e0e0e0')};}}
-            .diff_add {{background-color: {colors.get('diff_add', '#cceeff')};}}
-            .diff_chg {{background-color: {colors.get('diff_chg', '#ffffcc')};}}
-            .diff_sub {{background-color: {colors.get('diff_sub', '#ffcccc')};}}
-            td {{padding: 2px 6px; border: 1px solid {colors.get('border', '#ccc')};}}
+        body {{
+            background-color: {colors.get('card', '#fff')};
+            color: {colors.get('text', '#000')};
+            font-family: {font_family};
+            font-size: {font_size};
+        }}
+        table.diff {{
+            font-family: {font_family};
+            font-size: {font_size};
+            width: 100%;
+            border-collapse: collapse;
+            color: {colors.get('text', '#000')};
+        }}
+        .diff_header {{
+            background-color: {colors.get('diff_hdr', '#e0e0e0')} !important;
+            color: {colors.get('text_muted', '#777')} !important;
+        }}
+        .diff_next {{
+            background-color: {colors.get('diff_hdr', '#e0e0e0')} !important;
+        }}
+        .diff_add {{
+            background-color: {colors.get('diff_add', '#aaffaa')} !important;
+            color: {colors.get('text', '#000')} !important;
+        }}
+        .diff_chg {{
+            background-color: {colors.get('diff_chg', '#ffffaa')} !important;
+            color: {colors.get('text', '#000')} !important;
+        }}
+        .diff_sub {{
+            background-color: {colors.get('diff_sub', '#ffaaaa')} !important;
+            color: {colors.get('text', '#000')} !important;
+        }}
+        td {{
+            padding: 3px 6px;
+            border: 1px solid {colors.get('border', '#ccc')};
+        }}
         </style>
         """
-        html_diff = html_diff.replace('<style type="text/css">', custom_css + '<style type="text/css">')
+        # Инжектируем стили ПЕРЕД закрывающим тегом </head>, чтобы они стояли ниже встроенных стилей difflib
+        # и переопределили их с помощью !important.
+        html_diff = html_diff.replace('</head>', custom_css + '</head>')
         return html_diff
 
     def _on_file_selected(self, idx):
@@ -325,7 +353,6 @@ class InteractiveDiffDialog(QDialog):
         idx = self.list_widget.currentRow()
         if idx < 0: return
         patch = self.prepared[idx]
-
         if not patch['success']: return
 
         self.btn_llm.setText("⏳ Проверка...")
@@ -343,14 +370,12 @@ class InteractiveDiffDialog(QDialog):
             self.btn_llm.setText("🤖 Проверить снова")
             self.btn_llm.setEnabled(True)
 
-            # Если есть предложенный код и он отличается от изначального патча
             if sug_code and sug_code.strip() != patch['patched_content'].strip():
                 self.current_llm_suggestion = sug_code
                 self.suggestion_panel.setVisible(True)
                 sug_html = self._generate_html_diff(patch['patched_content'], sug_code)
                 self.sug_diff_browser.setHtml(sug_html)
 
-        # Вызываем контроллер (который пробросит вызов в сервис)
         self.controller.verify_patch_with_llm(patch, on_result)
 
     def _accept_suggestion(self):
@@ -358,16 +383,14 @@ class InteractiveDiffDialog(QDialog):
         idx = self.list_widget.currentRow()
         if idx < 0 or not self.current_llm_suggestion: return
 
-        # Обновляем содержимое патча
         self.prepared[idx]['patched_content'] = self.current_llm_suggestion
         self.prepared[idx]['msg'] += " (✨ Обновлено по совету ИИ)"
 
-        # Скрываем панель
         self.suggestion_panel.setVisible(False)
         self.current_llm_suggestion = None
         self.lbl_llm_verdict.setPlainText("✅ Предложение LLM успешно применено к патчу!")
 
-        # Перерисовываем основной Diff с новым (принятым) кодом
+        # Обновляем отображение
         self._on_file_selected(idx)
 
     def _reject_suggestion(self):

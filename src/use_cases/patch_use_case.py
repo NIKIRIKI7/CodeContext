@@ -18,7 +18,23 @@ class PatchUseCase:
             return []
 
         self._dispatcher.dispatch(UI_ADD_LOG, "🔍 Парсинг ответа LLM...")
+
+        # 1. Попытка найти JSON-блоки (маркдаун)
         blocks = re.findall(r'```(?:json)?\s*(.*?)\s*```', patch_str, re.DOTALL)
+
+        # 2. Если не нашли, ищем просто массив [...]
+        if not blocks:
+            match = re.search(r'\[\s*\{.*?\}\s*\]', patch_str, re.DOTALL)
+            if match:
+                blocks = [match.group(0)]
+
+        # 3. Если всё еще не нашли, ищем один объект {...} (если нейросеть забыла массив)
+        if not blocks:
+            match = re.search(r'\{\s*"action".*?\}', patch_str, re.DOTALL)
+            if match:
+                blocks = ["[" + match.group(0) + "]"]
+
+        # 4. Фолбэк на весь текст
         if not blocks:
             blocks = [patch_str.strip()]
 
@@ -32,7 +48,8 @@ class PatchUseCase:
                     all_patches.extend(data)
                 elif isinstance(data, dict):
                     all_patches.append(data)
-            except json.JSONDecodeError:
+            except json.JSONDecodeError as e:
+                self._dispatcher.dispatch(UI_ADD_LOG, f"⚠️ Ошибка парсинга блока: {e}")
                 continue
 
         if not all_patches:
@@ -44,9 +61,12 @@ class PatchUseCase:
 
     def apply_prepared(self, prepared_patches: list):
         if not prepared_patches:
-            return
+            return 0, []
+
         applied_count, logs = self._patch_service.apply_prepared(prepared_patches)
         for log in logs:
             self._dispatcher.dispatch(UI_ADD_LOG, log)
 
         self._dispatcher.dispatch(UI_ADD_LOG, f"🎉 Итог: Успешно сохранено на диск {applied_count} патчей!")
+
+        return applied_count, logs

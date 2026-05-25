@@ -131,7 +131,6 @@ class Sidebar(QWidget):
                 "• Нет — загрузить во временную папку (удалится при закрытии)",
                 QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel
             )
-
             if reply == QMessageBox.Yes:
                 dest_dir = QFileDialog.getExistingDirectory(self,
                                                             "Выберите папку для клонирования (туда будет создана папка проекта)")
@@ -150,7 +149,6 @@ class Sidebar(QWidget):
 
         self.cmb_prompt = QComboBox()
         self.cmb_prompt.addItems(list(PROMPT_PRESETS.keys()))
-
         self.txt_system_prompt = QTextEdit()
 
         layout.addWidget(QLabel("Пресет промпта:"))
@@ -163,30 +161,34 @@ class Sidebar(QWidget):
         btn_patch = QPushButton("🧩 Применить JSON-патч от LLM")
         btn_patch.setProperty("cssClass", "success")
         btn_patch.clicked.connect(self._open_patch_dialog)
+
         layout.addWidget(btn_patch)
 
     def _open_patch_dialog(self):
         from ..dialogs import JsonPatchDialog, InteractiveDiffDialog
 
-        # Шаг 1: Получаем JSON
         dialog = JsonPatchDialog(self)
         if dialog.exec():
             json_str = dialog.get_json()
             if json_str:
-                # Шаг 2: Генерируем Diff'ы в памяти
                 prepared_patches = self.controller.prepare_llm_patch(json_str)
                 if prepared_patches:
-                    # Шаг 3: Открываем окно предпросмотра Diff Viewer
                     diff_dialog = InteractiveDiffDialog(self, prepared_patches, self.controller)
                     if diff_dialog.exec():
                         selected = diff_dialog.get_selected()
                         if selected:
                             self.controller.apply_prepared_patches(selected)
+                else:
+                    QMessageBox.warning(
+                        self,
+                        "Ошибка патча",
+                        "Не найдено валидных JSON-инструкций.\n\nУбедитесь, что ответ содержит массив объектов с действиями 'action', 'file' и т.д."
+                    )
 
     def _on_prompt_preset_change(self, text):
         if text != "Custom" and text in PROMPT_PRESETS:
             self.txt_system_prompt.setText(PROMPT_PRESETS[text])
-            self.on_settings_change()
+        self.on_settings_change()
 
     def _build_settings_tab(self):
         layout = QVBoxLayout(self.tab_settings)
@@ -203,20 +205,22 @@ class Sidebar(QWidget):
         self.cmb_mode.setCurrentText(ThemeManager._current_mode)
         self.cmb_mode.currentTextChanged.connect(lambda m: ThemeManager.apply_theme(mode=m))
 
-        # Настройки LLM Validator
         self.chk_llm_check = QCheckBox("Включить проверку кода (LLM Checker)")
+
         self.entry_llm_url = QLineEdit()
         self.entry_llm_url.setPlaceholderText("https://api.openai.com/v1")
+
         self.entry_llm_key = QLineEdit()
         self.entry_llm_key.setEchoMode(QLineEdit.Password)
         self.entry_llm_key.setPlaceholderText("sk-...")
+
         self.entry_llm_model = QLineEdit()
         self.entry_llm_model.setPlaceholderText("gpt-4o-mini / local-model")
 
-        # CLI
         self.chk_cli_minify = QCheckBox("CLI Minify")
         self.chk_cli_comments = QCheckBox("CLI Убрать комментарии")
         self.chk_cli_tree = QCheckBox("CLI Включать дерево")
+
         self.cmb_cli_format = QComboBox()
         self.cmb_cli_format.addItems(["plain", "markdown", "xml"])
 
@@ -262,7 +266,6 @@ class Sidebar(QWidget):
         self.chk_gitignore.setChecked(settings.use_gitignore)
         self.txt_system_prompt.setText(settings.system_prompt)
 
-        # Обновление полей LLM
         self.chk_llm_check.setChecked(settings.llm_check_enabled)
         self.entry_llm_url.setText(settings.llm_base_url)
         self.entry_llm_key.setText(settings.llm_api_key)

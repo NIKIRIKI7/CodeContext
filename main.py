@@ -1,7 +1,6 @@
-import sys
 import argparse
 import os
-import time
+import sys
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from src.di_container import DIContainer
@@ -19,15 +18,21 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--cli", action="store_true")
-    parser.add_argument("--path", type=str)
+    parser.add_argument("--path", type=str, help="Путь к проекту")
+    parser.add_argument("--patch", type=str, help="Путь к JSON-файлу с патчами от LLM")
+    parser.add_argument("--mode", type=str, default="default")
     args, _ = parser.parse_known_args()
 
     container = DIContainer()
 
     if args.cli:
         if not args.path:
+            print("❌ Укажите путь к проекту через --path")
             sys.exit(1)
-        container.cli_controller.run(args.path)
+        if args.patch:
+            container.cli_controller.run_patch(args.path, args.patch)
+        else:
+            container.cli_controller.run(args.path, mode=args.mode)
         sys.exit(0)
 
     app_logger.info("Starting GUI Mode (PySide6)...")

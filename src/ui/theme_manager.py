@@ -53,21 +53,26 @@ QPushButton {{
     font-weight: bold;
     border: none;
 }}
+
 QPushButton:hover {{
     background-color: {c_primary};
     opacity: 0.9;
 }}
+
 QPushButton:disabled {{
     background-color: {c_border};
     color: {c_text_muted};
 }}
+
 QPushButton[cssClass="ghost"] {{
     background-color: {c_secondary};
     color: {c_text};
 }}
+
 QPushButton[cssClass="ghost"]:hover {{
     background-color: {c_border};
 }}
+
 QPushButton[cssClass="success"] {{
     background-color: {c_success};
     color: white;
@@ -81,6 +86,7 @@ QPushButton[cssClass="icon"] {{
     font-weight: normal;
     font-size: 16px;
 }}
+
 QPushButton[cssClass="icon"]:hover {{
     background-color: {c_border};
     color: {c_text};
@@ -96,6 +102,7 @@ QLineEdit, QComboBox {{
     selection-background-color: {c_primary};
     selection-color: {c_primary_fg};
 }}
+
 QLineEdit:focus, QComboBox:focus {{
     border: 1px solid {c_primary};
 }}
@@ -106,6 +113,7 @@ QComboBox::drop-down {{
     width: 24px;
     border-left: none;
 }}
+
 QComboBox::down-arrow {{
     image: {svg_down_arrow};
     width: 14px;
@@ -122,11 +130,13 @@ QComboBox QAbstractItemView {{
     outline: none;
     padding: 4px;
 }}
+
 QComboBox QAbstractItemView::item {{
     min-height: 28px;
     border-radius: {r_small};
 }}
 
+/* ИСПРАВЛЕНИЕ: Добавлен padding, чтобы текст и контент не наезжали на скругленные углы */
 QTreeView, QListWidget, QPlainTextEdit, QTextEdit, QScrollArea {{
     background-color: {c_card};
     color: {c_text};
@@ -135,17 +145,20 @@ QTreeView, QListWidget, QPlainTextEdit, QTextEdit, QScrollArea {{
     outline: none;
     selection-background-color: {c_primary};
     selection-color: {c_primary_fg};
+    padding: 8px;
 }}
 
+/* ИСПРАВЛЕНИЕ: Убран border-radius из viewport, фон сделан прозрачным, чтобы углы не красились в белый/чёрный цвет */
 QScrollArea::viewport, QTreeView::viewport, QListWidget::viewport, QPlainTextEdit::viewport, QTextEdit::viewport {{
     background-color: transparent;
-    border-radius: {r_card};
+    border: none;
 }}
 
 QCheckBox {{
     spacing: {s_chk_space};
     color: {c_text};
 }}
+
 QCheckBox::indicator {{
     width: {sz_chk};
     height: {sz_chk};
@@ -153,9 +166,11 @@ QCheckBox::indicator {{
     border: 1px solid {c_border};
     background-color: {c_input_bg};
 }}
+
 QCheckBox::indicator:hover {{
     border: 1px solid {c_primary};
 }}
+
 QCheckBox::indicator:checked {{
     background-color: {c_primary};
     border: 1px solid {c_primary};
@@ -166,6 +181,7 @@ QTabWidget::pane {{
     border: none;
     background-color: transparent;
 }}
+
 QTabBar::tab {{
     background: {c_bg};
     color: {c_text_muted};
@@ -175,6 +191,7 @@ QTabBar::tab {{
     margin-bottom: {s_tab_margin};
     font-weight: bold;
 }}
+
 QTabBar::tab:selected {{
     background: {c_secondary};
     color: {c_text};
@@ -185,10 +202,12 @@ QTreeView::item, QListWidget::item {{
     border-radius: {r_small};
     min-height: 24px;
 }}
+
 QTreeView::item:selected, QListWidget::item:selected {{
     background-color: {c_secondary};
     color: {c_text};
 }}
+
 QTreeView::indicator {{
     width: {sz_tree_ind};
     height: {sz_tree_ind};
@@ -196,6 +215,7 @@ QTreeView::indicator {{
     border: 1px solid {c_border};
     background-color: {c_input_bg};
 }}
+
 QTreeView::indicator:checked {{
     background-color: {c_primary};
     border: 1px solid {c_primary};
@@ -206,20 +226,25 @@ QSplitter::handle {{
     background-color: transparent;
 }}
 
+/* ИСПРАВЛЕНИЕ: Добавлен margin для скроллбаров, чтобы они не перекрывали скругленные углы карточек */
 QScrollBar:vertical {{
     border: none;
     background: transparent;
     width: {sz_scroll};
     border-radius: {r_scroll};
+    margin: 8px 4px 8px 0px;
 }}
+
 QScrollBar::handle:vertical {{
     background: {c_border};
     min-height: 20px;
     border-radius: {r_scroll};
 }}
+
 QScrollBar::handle:vertical:hover {{
     background: {c_text_muted};
 }}
+
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0px; }}
 
 QScrollBar:horizontal {{
@@ -227,15 +252,19 @@ QScrollBar:horizontal {{
     background: transparent;
     height: {sz_scroll};
     border-radius: {r_scroll};
+    margin: 0px 8px 4px 8px;
 }}
+
 QScrollBar::handle:horizontal {{
     background: {c_border};
     min-width: 20px;
     border-radius: {r_scroll};
 }}
+
 QScrollBar::handle:horizontal:hover {{
     background: {c_text_muted};
 }}
+
 QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{ width: 0px; }}
 
 QProgressBar {{
@@ -246,6 +275,7 @@ QProgressBar {{
     color: transparent;
     max-height: {sz_prog};
 }}
+
 QProgressBar::chunk {{
     background-color: {c_primary};
     border-radius: {r_prog};
@@ -262,7 +292,6 @@ class ThemeManager:
     def load_themes(cls, themes_dir: str):
         if not os.path.exists(themes_dir):
             return
-
         for filename in os.listdir(themes_dir):
             if filename.endswith(".json"):
                 path = os.path.join(themes_dir, filename)
@@ -273,7 +302,6 @@ class ThemeManager:
                         cls._themes[theme_id] = data
                 except Exception as e:
                     print(f"Error loading theme {filename}: {e}")
-
         if cls._themes and cls._current_theme not in cls._themes:
             cls._current_theme = list(cls._themes.keys())[0]
 
@@ -304,17 +332,15 @@ class ThemeManager:
 
         modes = theme.get("modes", {})
         selected_mode_colors = modes.get(cls._current_mode, modes.get("light", {}))
-
         defaults = theme.get("default_styles", {})
+
         radii = defaults.get("radii", {})
         fonts = defaults.get("fonts", {})
         spacing = defaults.get("spacing", {})
         sizes = defaults.get("sizes", {})
 
-        primary_fg_hex = selected_mode_colors.get("primary_fg", "#ffffff")
-        text_hex = selected_mode_colors.get("text", "#000000")
-
-        # Добавлены 'Segoe UI Emoji', 'Apple Color Emoji' для гарантии отрисовки 📂 ✏️
+        primary_fg_hex = selected_mode_colors.get("primary_fg", "#fff")
+        text_hex = selected_mode_colors.get("text", "#000")
         base_font_family = fonts.get("family", "sans-serif")
         f_family_with_emoji = f"{base_font_family}, 'Segoe UI Emoji', 'Apple Color Emoji'"
 
@@ -322,20 +348,20 @@ class ThemeManager:
         svg_arrow_str = f"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='{text_hex}' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>"
 
         qss = QSS_TEMPLATE.format(
-            c_bg=selected_mode_colors.get("bg", "#ffffff"),
-            c_card=selected_mode_colors.get("card", "#f9f9f9"),
+            c_bg=selected_mode_colors.get("bg", "#fff"),
+            c_card=selected_mode_colors.get("card", "#fff"),
             c_text=text_hex,
-            c_text_muted=selected_mode_colors.get("text_muted", "#888888"),
-            c_primary=selected_mode_colors.get("primary", "#007bff"),
+            c_text_muted=selected_mode_colors.get("text_muted", "#666"),
+            c_primary=selected_mode_colors.get("primary", "#007acc"),
             c_primary_fg=primary_fg_hex,
             svg_check=_create_svg_url(svg_check_str),
             svg_down_arrow=_create_svg_url(svg_arrow_str),
-            c_secondary=selected_mode_colors.get("secondary", "#e0e0e0"),
-            c_secondary_fg=selected_mode_colors.get("secondary_fg", "#000000"),
-            c_border=selected_mode_colors.get("border", "#cccccc"),
+            c_secondary=selected_mode_colors.get("secondary", "#eee"),
+            c_secondary_fg=selected_mode_colors.get("secondary_fg", "#000"),
+            c_border=selected_mode_colors.get("border", "#ccc"),
             c_success=selected_mode_colors.get("success", "#28a745"),
             c_danger=selected_mode_colors.get("danger", "#dc3545"),
-            c_input_bg=selected_mode_colors.get("input_bg", "#ffffff"),
+            c_input_bg=selected_mode_colors.get("input_bg", "#fff"),
 
             r_card=radii.get("card", "8px"),
             r_button=radii.get("button", "6px"),
@@ -366,13 +392,11 @@ class ThemeManager:
 
     @classmethod
     def get_current_colors(cls) -> dict:
-        """Возвращает словарь цветов для текущей темы и режима."""
         theme = cls._themes.get(cls._current_theme, {})
         modes = theme.get("modes", {})
         return modes.get(cls._current_mode, modes.get("light", {}))
 
     @classmethod
     def get_font_settings(cls) -> dict:
-        """Возвращает шрифты текущей темы."""
         theme = cls._themes.get(cls._current_theme, {})
         return theme.get("default_styles", {}).get("fonts", {})

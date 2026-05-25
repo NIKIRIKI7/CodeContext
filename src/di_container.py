@@ -122,4 +122,5 @@ class DIContainer:
             settings_repo=self.settings_repo,
             scan_use_case=self.scan_use_case,
             process_use_case=self.process_use_case,
+            patch_use_case=self.patch_use_case,
         )

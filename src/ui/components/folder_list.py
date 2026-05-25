@@ -10,14 +10,16 @@ class FolderList(QScrollArea):
         self.on_delete = on_delete
 
         self.setWidgetResizable(True)
-        self.setFrameShape(QFrame.NoFrame)
+
+        # Гарантируем, что класс card применится корректно
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.setProperty("cssClass", "card")
 
         self.container = QWidget()
         self.container.setStyleSheet("background-color: transparent;")
 
         self.layout = QVBoxLayout(self.container)
         self.layout.setAlignment(Qt.AlignTop)
-
         self.setWidget(self.container)
 
         self._update_metrics()
@@ -50,12 +52,12 @@ class FolderList(QScrollArea):
             lbl = QLabel(f"{prefix}  {folder}")
 
             btn_edit = QPushButton("✏️")
-            btn_edit.setProperty("cssClass", "icon")  # ИСПРАВЛЕНО (Убирает огромные отступы)
+            btn_edit.setProperty("cssClass", "icon")
             btn_edit.setFixedSize(30, 30)
             btn_edit.clicked.connect(lambda _, p=folder: self.on_edit(p))
 
             btn_del = QPushButton("✕")
-            btn_del.setProperty("cssClass", "icon")  # ИСПРАВЛЕНО
+            btn_del.setProperty("cssClass", "icon")
             btn_del.setFixedSize(30, 30)
             btn_del.clicked.connect(lambda _, p=folder: self.on_delete(p))
 
