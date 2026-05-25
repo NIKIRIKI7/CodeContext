@@ -28,8 +28,8 @@ class FileTree(QWidget):
 
         self.layout.addWidget(self.search)
         self.layout.addWidget(self.tree)
-
         self.search.textChanged.connect(self._filter_tree)
+
         self._all_items = []
         self._is_updating = False
 
@@ -43,7 +43,6 @@ class FileTree(QWidget):
     def populate(self, file_paths, metadata, manual_exclusions):
         if self._is_updating:
             return
-
         self._is_updating = True
         self.model.clear()
         self._all_items.clear()
@@ -55,7 +54,6 @@ class FileTree(QWidget):
 
         node_map = {"": root}
 
-        # 💡 UI просто мапит категории на иконки, не зная логики их определения
         icon_map = {
             "DEPENDENCY": "📦 [ЗАВИСИМОСТЬ]",
             "HUGE": "🔥 [ОГРОМНЫЙ]",
@@ -67,6 +65,7 @@ class FileTree(QWidget):
         for path in sorted(file_paths):
             rel_path = os.path.relpath(path, common) if common else path
             parts = rel_path.split(os.sep)
+
             curr = ""
             for i, part in enumerate(parts):
                 parent_key = curr
@@ -86,10 +85,8 @@ class FileTree(QWidget):
                         meta = metadata.get(full_path, {})
                         tokens = meta.get("tokens", 0)
                         category = meta.get("category", "LIGHT")
-
                         item.setData(tokens, Qt.UserRole + 2)
                         item.setData(category, Qt.UserRole + 3)
-
                         icon = icon_map.get(category, "🟢")
                         item.setText(f"{icon} {part} ({tokens} tk)")
 
@@ -109,11 +106,9 @@ class FileTree(QWidget):
     def _on_item_changed(self, item):
         if self._is_updating:
             return
-
         state = item.checkState() == Qt.Checked
         path = item.data(Qt.UserRole)
         is_file = item.data(Qt.UserRole + 1)
-
         if path and is_file:
             self._is_updating = True
             self.on_toggle(path, state)
@@ -128,10 +123,8 @@ class FileTree(QWidget):
             child.setCheckState(Qt.Checked if state else Qt.Unchecked)
             path = child.data(Qt.UserRole)
             is_file = child.data(Qt.UserRole + 1)
-
             if path and is_file:
                 self.on_toggle(path, state)
-
             if child.hasChildren():
                 self._propagate_check_recursive(child, state)
         self._is_updating = False
@@ -142,10 +135,8 @@ class FileTree(QWidget):
             child.setCheckState(Qt.Checked if state else Qt.Unchecked)
             path = child.data(Qt.UserRole)
             is_file = child.data(Qt.UserRole + 1)
-
             if path and is_file:
                 self.on_toggle(path, state)
-
             if child.hasChildren():
                 self._propagate_check_recursive(child, state)
 
@@ -160,24 +151,25 @@ class FileTree(QWidget):
     def _show_context_menu(self, position):
         index = self.tree.indexAt(position)
         if not index.isValid(): return
-
         item = self.model.itemFromIndex(index)
         path = item.data(Qt.UserRole)
         is_file = item.data(Qt.UserRole + 1)
-
         if not path: return
 
         menu = QMenu()
-
         if is_file:
+            act_none = menu.addAction("Копировать без зависимостей")
             act_shallow = menu.addAction("Копировать с зависимостями (Shallow)")
             act_deep = menu.addAction("Копировать с зависимостями (Deep)")
+
             action = menu.exec(self.tree.viewport().mapToGlobal(position))
 
-            if action == act_shallow:
-                self.on_context(path, False)
+            if action == act_none:
+                self.on_context(path, 'none')
+            elif action == act_shallow:
+                self.on_context(path, 'shallow')
             elif action == act_deep:
-                self.on_context(path, True)
+                self.on_context(path, 'deep')
         else:
             act_only_py = menu.addAction("Выбрать только .py файлы внутри")
             act_only_js = menu.addAction("Выбрать только .js / .ts / .vue внутри")
@@ -206,7 +198,6 @@ class FileTree(QWidget):
             child = parent_item.child(row)
             is_file = child.data(Qt.UserRole + 1)
             path = child.data(Qt.UserRole)
-
             if is_file and path:
                 ext = os.path.splitext(path)[1].lower()
                 state = Qt.Checked if ext in exts else Qt.Unchecked
@@ -216,7 +207,6 @@ class FileTree(QWidget):
                 self._apply_ext_filter_recursive(child, exts)
 
     def _exclude_heavy_children(self, parent_item):
-        """Снимает галочки с файлов, отмеченных как DEPENDENCY, HUGE или HEAVY"""
         self._is_updating = True
         self._apply_heavy_filter_recursive(parent_item)
         self._is_updating = False
@@ -225,7 +215,6 @@ class FileTree(QWidget):
         for row in range(parent_item.rowCount()):
             child = parent_item.child(row)
             is_file = child.data(Qt.UserRole + 1)
-
             if is_file:
                 category = child.data(Qt.UserRole + 3)
                 if category in ("HUGE", "HEAVY", "DEPENDENCY"):

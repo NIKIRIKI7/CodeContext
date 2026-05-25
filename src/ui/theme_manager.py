@@ -297,6 +297,35 @@ QProgressBar::chunk {{
     background-color: {c_primary};
     border-radius: {r_prog};
 }}
+
+/* Стилизация контекстного меню */
+QMenu {{
+    background-color: {c_card};
+    color: {c_text};
+    border: 1px solid {c_border};
+    border-radius: {r_small};
+    padding: 4px;
+}}
+
+QMenu::item {{
+    padding: {s_pad_item};
+    border-radius: {r_small};
+}}
+
+QMenu::item:selected {{
+    background-color: {c_secondary};
+    color: {c_text};
+}}
+
+QMenu::item:disabled {{
+    color: {c_text_muted};
+}}
+
+QMenu::separator {{
+    height: 1px;
+    background-color: {c_border};
+    margin: 4px 0px;
+}}
 """
 
 
@@ -319,6 +348,7 @@ class ThemeManager:
                         cls._themes[theme_id] = data
                 except Exception as e:
                     print(f"Error loading theme {filename}: {e}")
+
         if cls._themes and cls._current_theme not in cls._themes:
             cls._current_theme = list(cls._themes.keys())[0]
 
@@ -349,15 +379,16 @@ class ThemeManager:
 
         modes = theme.get("modes", {})
         selected_mode_colors = modes.get(cls._current_mode, modes.get("light", {}))
-        defaults = theme.get("default_styles", {})
 
+        defaults = theme.get("default_styles", {})
         radii = defaults.get("radii", {})
         fonts = defaults.get("fonts", {})
         spacing = defaults.get("spacing", {})
         sizes = defaults.get("sizes", {})
 
-        primary_fg_hex = selected_mode_colors.get("primary_fg", "#fff")
-        text_hex = selected_mode_colors.get("text", "#000")
+        primary_fg_hex = selected_mode_colors.get("primary_fg", "#ffffff")
+        text_hex = selected_mode_colors.get("text", "#000000")
+
         base_font_family = fonts.get("family", "sans-serif")
         f_family_with_emoji = f"{base_font_family}, 'Segoe UI Emoji', 'Apple Color Emoji'"
 
@@ -365,20 +396,20 @@ class ThemeManager:
         svg_arrow_str = f"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='{text_hex}' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>"
 
         qss = QSS_TEMPLATE.format(
-            c_bg=selected_mode_colors.get("bg", "#fff"),
-            c_card=selected_mode_colors.get("card", "#fff"),
+            c_bg=selected_mode_colors.get("bg", "#ffffff"),
+            c_card=selected_mode_colors.get("card", "#ffffff"),
             c_text=text_hex,
-            c_text_muted=selected_mode_colors.get("text_muted", "#666"),
-            c_primary=selected_mode_colors.get("primary", "#007acc"),
+            c_text_muted=selected_mode_colors.get("text_muted", "#777777"),
+            c_primary=selected_mode_colors.get("primary", "#000000"),
             c_primary_fg=primary_fg_hex,
             svg_check=_create_svg_url(svg_check_str),
             svg_down_arrow=_create_svg_url(svg_arrow_str),
-            c_secondary=selected_mode_colors.get("secondary", "#eee"),
-            c_secondary_fg=selected_mode_colors.get("secondary_fg", "#000"),
-            c_border=selected_mode_colors.get("border", "#ccc"),
-            c_success=selected_mode_colors.get("success", "#28a745"),
-            c_danger=selected_mode_colors.get("danger", "#dc3545"),
-            c_input_bg=selected_mode_colors.get("input_bg", "#fff"),
+            c_secondary=selected_mode_colors.get("secondary", "#f0f0f0"),
+            c_secondary_fg=selected_mode_colors.get("secondary_fg", "#000000"),
+            c_border=selected_mode_colors.get("border", "#cccccc"),
+            c_success=selected_mode_colors.get("success", "#00aa00"),
+            c_danger=selected_mode_colors.get("danger", "#aa0000"),
+            c_input_bg=selected_mode_colors.get("input_bg", "#ffffff"),
 
             r_card=radii.get("card", "8px"),
             r_button=radii.get("button", "6px"),

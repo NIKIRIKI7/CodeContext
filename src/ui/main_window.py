@@ -38,14 +38,12 @@ class MainWindow(QMainWindow):
         self._init_ui()
         self._update_theme_metrics()
         theme_bus.theme_changed.connect(self._update_theme_metrics)
-
         self.controller.load_initial_settings()
 
     def _init_ui(self):
         self.central_widget = QWidget()
         self.central_widget.setObjectName("centralwidget")
         self.setCentralWidget(self.central_widget)
-
         self.main_layout = QHBoxLayout(self.central_widget)
 
         self.splitter = QSplitter(Qt.Horizontal)
@@ -54,17 +52,12 @@ class MainWindow(QMainWindow):
         self.sidebar = Sidebar(self.controller, self._on_ui_settings_change)
         self.splitter.addWidget(self.sidebar)
 
-        # Заменяем правую панель на стек (Empty State / Основной контент)
         self.right_stack = QStackedWidget()
-
-        # Индекс 0: Пустое состояние (Drag & Drop + Recent)
         self.empty_state = EmptyState(self.controller.add_folder)
         self.right_stack.addWidget(self.empty_state)
 
-        # Индекс 1: Основной контент
         right_panel = QWidget()
         self.right_layout = QVBoxLayout(right_panel)
-
         self.folder_list = FolderList(self._on_edit_folder, self.controller.remove_folder)
         self.file_tree = FileTree(self.controller.toggle_file_exclusion, self.controller.copy_file_with_dependencies)
         self.action_panel = ActionPanel(self._on_run)
@@ -78,7 +71,6 @@ class MainWindow(QMainWindow):
         self.right_layout.addWidget(self.status_bar, 0)
 
         self.right_stack.addWidget(right_panel)
-
         self.splitter.addWidget(self.right_stack)
 
     def _update_theme_metrics(self):
@@ -125,7 +117,9 @@ class MainWindow(QMainWindow):
 
         if state.show_preview:
             if not self._preview_dialog:
-                self._preview_dialog = AdvancedPreviewDialog(self, state, self.controller.close_preview)
+                # ВАЖНО: Теперь передаем контроллер в диалог
+                self._preview_dialog = AdvancedPreviewDialog(self, state, self.controller.close_preview,
+                                                             self.controller)
             self._preview_dialog.update_data(state)
             self._preview_dialog.show()
             self._preview_dialog.raise_()

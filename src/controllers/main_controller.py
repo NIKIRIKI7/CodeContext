@@ -1,5 +1,5 @@
 import os
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 from PySide6.QtCore import QTimer
 
 from ..actions.action_types import (
@@ -9,32 +9,37 @@ from ..actions.action_types import (
 )
 from ..actions.dispatcher import Dispatcher
 from ..store.store import Store
+from ..store.state import ProcessedFile  # Добавлен импорт для режима "none"
 from ..use_cases.scan_use_case import ScanWorkspaceUseCase
 from ..use_cases.process_use_case import ProcessWorkspaceUseCase
 from ..use_cases.github_use_case import GitHubUseCase
 from ..use_cases.settings_use_case import SettingsUseCase
 from ..use_cases.patch_use_case import PatchUseCase
 from ..utils.async_runtime import AsyncRuntime
+
 from ..services.integration_service import IntegrationService
 from ..services.tour_service import TourService
 from ..services.llm_checker_service import LlmCheckerService
+from ..services.formatting_service import FormattingService
+from ..services.output_service import OutputService
 from ..data.file_system_repository import FileSystemRepository
-
 
 class MainController:
     def __init__(
-            self,
-            store: Store,
-            dispatcher: Dispatcher,
-            scan_use_case: ScanWorkspaceUseCase,
-            process_use_case: ProcessWorkspaceUseCase,
-            github_use_case: GitHubUseCase,
-            settings_use_case: SettingsUseCase,
-            patch_use_case: PatchUseCase,
-            integration_service: IntegrationService,
-            fs_repo: FileSystemRepository,
-            tour_service: TourService,
-            llm_checker: LlmCheckerService,
+        self,
+        store: Store,
+        dispatcher: Dispatcher,
+        scan_use_case: ScanWorkspaceUseCase,
+        process_use_case: ProcessWorkspaceUseCase,
+        github_use_case: GitHubUseCase,
+        settings_use_case: SettingsUseCase,
+        patch_use_case: PatchUseCase,
+        integration_service: IntegrationService,
+        fs_repo: FileSystemRepository,
+        tour_service: TourService,
+        llm_checker: LlmCheckerService,
+        format_service: FormattingService,
+        output_service: OutputService,
     ):
         self._store = store
         self._dispatcher = dispatcher
@@ -47,6 +52,8 @@ class MainController:
         self._fs_repo = fs_repo
         self._tour_service = tour_service
         self._llm_checker = llm_checker
+        self._format_service = format_service
+        self._output_service = output_service
 
     def load_initial_settings(self):
         self._settings_uc.load_initial()
@@ -74,8 +81,6 @@ class MainController:
         clean = self._normalize_path(path)
         if clean and os.path.exists(clean):
             self._dispatcher.dispatch(FOLDER_ADD, clean)
-
-            # Сохранение в список недавних проектов (максимум 6)
             recent = list(self._store.state.settings.recent_workspaces)
             if clean in recent:
                 recent.remove(clean)
@@ -83,8 +88,6 @@ class MainController:
             recent = recent[:6]
             self._settings_uc.update({'recent_workspaces': recent})
             self._settings_uc.save()
-
-            config_path = os.path.join(clean, '.codecontext.json')
 
     def remove_folder(self, path: str):
         self._dispatcher.dispatch(FOLDER_REMOVE, path)
@@ -117,7 +120,6 @@ class MainController:
     def start_processing(self, target: str, save_path: Optional[str] = None) -> Tuple[bool, str]:
         if not self._store.state.selected_folders:
             return False, "Выберите папки или URL для сканирования"
-
         state = self._store.state
         if not state.scanned_files_paths:
             AsyncRuntime.run_coroutine(self._scan_then_process(target, save_path))
@@ -128,7 +130,6 @@ class MainController:
     async def _scan_then_process(self, target: str, save_path: Optional[str]):
         state = self._store.state
         await self._scan_uc.execute(state)
-
         state = self._store.state
         if state.scanned_files_paths:
             await self._process_uc.execute(state, target, save_path)
@@ -137,12 +138,26 @@ class MainController:
         action = EXCLUSION_REMOVE if is_included else EXCLUSION_ADD
         self._dispatcher.dispatch(action, path)
 
-    def copy_file_with_dependencies(self, target_file: str, deep: bool):
+    def copy_file_with_dependencies(self, target_file: str, mode: str):
         state = self._store.state
-        AsyncRuntime.run_coroutine(self._copy_deps_async(target_file, deep, state))
+        AsyncRuntime.run_coroutine(self._copy_deps_async(target_file, mode, state))
 
-    async def _copy_deps_async(self, target_file, deep, state):
-        self._dispatcher.dispatch(UI_ADD_LOG, "copy_with_deps: используйте CopyWithDepsUseCase")
+    async def _copy_deps_async(self, target_file: str, mode: str, state):
+        if mode == 'none':
+            content = await self._fs_repo.read_file_async(target_file)
+            if content is not None:
+                pf = ProcessedFile(path=target_file, content=content, tokens=len(content)//4)
+                text = self._format_service.format_output(
+                    files=[pf],
+                    fmt=state.settings.output_format,
+                    include_tree=False,
+                    system_prompt=""
+                )
+                self.copy_to_clipboard(text)
+            else:
+                self._dispatcher.dispatch(UI_ADD_LOG, f"⚠️ Не удалось прочитать файл: {target_file}")
+        else:
+            self._dispatcher.dispatch(UI_ADD_LOG, f"copy_with_deps (mode: {mode}): используйте CopyWithDepsUseCase")
 
     def add_github_repo(self, url: str, dest_path: str = ""):
         AsyncRuntime.run_coroutine(self._github_uc.execute(url, dest_path))
@@ -157,54 +172,40 @@ class MainController:
     def close_preview(self):
         self._dispatcher.dispatch(UI_CLOSE_PREVIEW, None)
 
-    # ==== МЕТОДЫ ДЛЯ ПАТЧЕЙ И LLM ====
-
     def prepare_llm_patch(self, json_str: str) -> list:
-        """Парсит JSON и генерирует данные для DiffViewer."""
         folders = self._store.state.selected_folders
         return self._patch_uc.prepare_json_patch(json_str, folders)
 
     def verify_patch_with_llm(self, patch: dict, callback):
-        """Асинхронно отправляет запрос к LLM и вызывает callback в главном потоке."""
-
         async def task():
             verdict = await self._llm_checker.check_patch(
                 patch.get('original_content', ''),
                 patch.get('patched_content', ''),
                 self._store.state.settings
             )
-            # Вызов callback в основном потоке интерфейса
             QTimer.singleShot(0, lambda: callback(verdict))
-
         AsyncRuntime.run_coroutine(task())
 
     def apply_prepared_patches(self, prepared_patches: list):
-        """Реально записывает файлы на диск из DiffViewer."""
         self._patch_uc.apply_prepared(prepared_patches)
-
-    # =================================
 
     def parse_error_log(self, text: str):
         state = self._store.state
         if not state.scanned_files_paths:
             self._dispatcher.dispatch(UI_ADD_LOG, "⚠️ Сначала отсканируйте файлы!")
             return
-
         matched = []
         for path in state.scanned_files_paths:
             basename = os.path.basename(path)
             if basename in text:
                 matched.append(path)
-
         if not matched:
             self._dispatcher.dispatch(UI_ADD_LOG, "⚠️ В логе не найдены файлы проекта.")
             return
-
         self._dispatcher.dispatch(EXCLUSION_CLEAR, None)
         all_paths = set(state.scanned_files_paths)
         for p in (all_paths - set(matched)):
             self._dispatcher.dispatch(EXCLUSION_ADD, p)
-
         self._dispatcher.dispatch(UI_ADD_LOG, f"🎯 Найдено {len(matched)} файлов из лога ошибки!")
 
     def show_tour(self):
@@ -213,6 +214,16 @@ class MainController:
 
     def close_tour(self):
         self._dispatcher.dispatch(UI_CLOSE_TOUR, None)
+
+    def copy_to_clipboard(self, text: str):
+        self._output_service.copy_to_clipboard(text)
+        self._dispatcher.dispatch(UI_ADD_LOG, "📋 Текст скопирован в буфер обмена")
+
+    def get_search_markers_for_preview(self, filepath: str) -> List[str]:
+        return self._format_service.get_search_markers(filepath)
+
+    def generate_html_diff(self, source_text: str, target_text: str, colors: dict, fonts: dict) -> str:
+        return self._format_service.generate_html_diff(source_text, target_text, colors, fonts)
 
     @staticmethod
     def _normalize_path(path: str) -> str:

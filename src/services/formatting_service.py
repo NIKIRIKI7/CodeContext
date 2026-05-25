@@ -1,5 +1,6 @@
 import html
 import os
+import difflib
 from pathlib import Path
 from typing import List, Dict, Set, Optional, Any
 
@@ -9,13 +10,13 @@ try:
     JINJA_AVAILABLE = True
 except ImportError:
     JINJA_AVAILABLE = False
-    Template = Environment = FileSystemLoader = select_autoescape = None  # type: ignore
+    Template = Environment = FileSystemLoader = select_autoescape = None
 
 from ..store.state import ProcessedFile
 
 
 class FormattingService:
-    """Сервис форматирования итогового текста с поддержкой Jinja2"""
+    """Сервис форматирования итогового текста с поддержкой Jinja2 и генерацией Diff"""
 
     def format_output(self,
                       files: List[ProcessedFile],
@@ -52,7 +53,7 @@ class FormattingService:
 
         if include_tree and files:
             if fmt == 'markdown':
-                output.append(f"### Project Structure\n```text\n{tree_text}\n```\n")
+                output.append(f"### PROJECT STRUCTURE\n```text\n{tree_text}\n```\n")
             elif fmt == 'xml':
                 output.append(f"<tree>\n{html.escape(tree_text)}\n</tree>")
             else:
@@ -61,7 +62,7 @@ class FormattingService:
         if dependency_map:
             if dep_text:
                 if fmt == 'markdown':
-                    output.append(f"### Dependency Graph\n```text\n{dep_text}\n```\n")
+                    output.append(f"### DEPENDENCY GRAPH\n```text\n{dep_text}\n```\n")
                 elif fmt == 'xml':
                     output.append(f"<dependencies>\n{html.escape(dep_text)}\n</dependencies>")
                 else:
@@ -77,15 +78,77 @@ class FormattingService:
         return "\n".join(output)
 
     @staticmethod
+    def get_search_markers(filepath: str) -> List[str]:
+        """Возвращает возможные варианты заголовка файла для навигации в предпросмотре."""
+        return [
+            f"FILE: {filepath}",  # plain format
+            f"### FILE: {filepath}",  # markdown format
+            f'<file path="{filepath}">',  # xml format
+            filepath  # fallback
+        ]
+
+    @staticmethod
+    def generate_html_diff(source_text: str, target_text: str, colors: dict, fonts: dict) -> str:
+        """Создает HTML Diff с заданными цветами темы."""
+        font_family = fonts.get("family", "monospace")
+        font_size = fonts.get("size", "14px")
+
+        html_diff = difflib.HtmlDiff(wrapcolumn=90).make_file(
+            source_text.splitlines(),
+            target_text.splitlines(),
+            context=True, numlines=5
+        )
+
+        custom_css = f"""
+        <style>
+        body {{
+            background-color: {colors.get('card', '#fff')};
+            color: {colors.get('text', '#000')};
+            font-family: {font_family};
+            font-size: {font_size};
+        }}
+        table.diff {{
+            font-family: {font_family};
+            font-size: {font_size};
+            width: 100%;
+            border-collapse: collapse;
+            color: {colors.get('text', '#000')};
+        }}
+        .diff_header {{
+            background-color: {colors.get('diff_hdr', '#f0f0f0')};
+            color: {colors.get('text_muted', '#777')};
+        }}
+        .diff_next {{
+            background-color: {colors.get('diff_hdr', '#f0f0f0')};
+        }}
+        .diff_add {{
+            background-color: {colors.get('diff_add', '#e6ffed')};
+            color: {colors.get('text', '#000')};
+        }}
+        .diff_chg {{
+            background-color: {colors.get('diff_chg', '#fff5b1')};
+            color: {colors.get('text', '#000')};
+        }}
+        .diff_sub {{
+            background-color: {colors.get('diff_sub', '#ffeef0')};
+            color: {colors.get('text', '#000')};
+        }}
+        td {{
+            padding: 3px 6px;
+            border: 1px solid {colors.get('border', '#ccc')};
+        }}
+        </style>
+        """
+        html_diff = html_diff.replace('</head>', custom_css + '</head>')
+        return html_diff
+
+    @staticmethod
     def _render_custom_template(template_path: str, **context: Any) -> str:
-        """Рендер Jinja2 шаблона из файла"""
         if Environment is None or FileSystemLoader is None or select_autoescape is None:
             return "Error: Jinja2 is not available."
-
         try:
             template_dir = os.path.dirname(template_path)
             template_file = os.path.basename(template_path)
-
             env = Environment(
                 loader=FileSystemLoader(template_dir),
                 autoescape=select_autoescape(['html', 'xml'])
@@ -97,15 +160,13 @@ class FormattingService:
 
     @staticmethod
     def _format_dependency_graph(dep_map: Dict[str, Set[str]]) -> str:
-        """Генерация текстового представления графа из словаря"""
         if not dep_map:
             return ""
         lines = []
         sorted_files = sorted(dep_map.keys())
         for file_path in sorted_files:
             imports = dep_map[file_path]
-            if not imports:
-                continue
+            if not imports: continue
             display_name = os.path.basename(file_path)
             lines.append(f"{display_name}")
             for imp in sorted(list(imports)):
@@ -115,10 +176,8 @@ class FormattingService:
 
     @staticmethod
     def _generate_tree(paths: List[str]) -> str:
-        """Генерация ASCII дерева"""
         if not paths: return ""
         base_dir: Optional[Path] = None
-
         try:
             common_path = os.path.commonpath(paths)
             if os.path.isfile(common_path):
@@ -182,7 +241,7 @@ class FormattingService:
         out = []
         for f in files:
             ext = Path(f.path).suffix.lstrip('.') or 'txt'
-            out.append(f"### `{f.path}`\n")
+            out.append(f"### FILE: {f.path}")
             if deps and f.path in deps:
                 sorted_deps = sorted(list(deps[f.path]))
                 if sorted_deps:

@@ -16,8 +16,7 @@ from .services.skeleton_service import SkeletonService
 from .services.token_service import TokenService
 from .services.patch_service import PatchService
 from .services.tour_service import TourService
-from .services.llm_checker_service import LlmCheckerService  # НОВЫЙ ИМПОРТ
-
+from .services.llm_checker_service import LlmCheckerService
 from .services.strategies.integration_strategies import (
     WindowsContextMenuStrategy,
     LinuxContextMenuStrategy,
@@ -47,10 +46,8 @@ class DIContainer:
     def __init__(self):
         self.store = Store()
         self.dispatcher = Dispatcher(self.store)
-
         self.fs_repo = FileSystemRepository()
         self.settings_repo = SettingsRepository()
-
         self.file_service = FileService(self.fs_repo)
         self.process_service = ProcessingService(self.fs_repo)
         self.cleaner_service = CleanerService()
@@ -63,7 +60,7 @@ class DIContainer:
         self.github_service = GitHubService()
         self.patch_service = PatchService()
         self.tour_service = TourService()
-        self.llm_checker = LlmCheckerService()  # НОВЫЙ СЕРВИС
+        self.llm_checker = LlmCheckerService()
 
         self.integration_service = IntegrationService(
             strategy=_make_integration_strategy()
@@ -74,7 +71,6 @@ class DIContainer:
             file_service=self.file_service,
             fs_repo=self.fs_repo
         )
-
         self.process_use_case = ProcessWorkspaceUseCase(
             dispatcher=self.dispatcher,
             process_service=self.process_service,
@@ -85,23 +81,19 @@ class DIContainer:
             format_service=self.format_service,
             output_service=self.output_service,
         )
-
         self.github_use_case = GitHubUseCase(
             dispatcher=self.dispatcher,
             github_service=self.github_service,
         )
-
         self.settings_use_case = SettingsUseCase(
             dispatcher=self.dispatcher,
             store=self.store,
             settings_repo=self.settings_repo,
         )
-
         self.patch_use_case = PatchUseCase(
             dispatcher=self.dispatcher,
             patch_service=self.patch_service
         )
-
         self.main_controller = MainController(
             store=self.store,
             dispatcher=self.dispatcher,
@@ -113,9 +105,10 @@ class DIContainer:
             integration_service=self.integration_service,
             fs_repo=self.fs_repo,
             tour_service=self.tour_service,
-            llm_checker=self.llm_checker  # ПРОБРОС
+            llm_checker=self.llm_checker,
+            format_service=self.format_service,  # Добавлено
+            output_service=self.output_service  # Добавлено
         )
-
         self.cli_controller = CliController(
             store=self.store,
             dispatcher=self.dispatcher,
