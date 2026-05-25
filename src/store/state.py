@@ -25,6 +25,7 @@ class AppSettings:
     cli_include_tree: bool = True
     cli_skeleton_mode: bool = False
     cli_use_gitignore: bool = True
+
     cli_format: str = "plain"
     python_interpreter: str = ""
 
@@ -33,6 +34,7 @@ class AppSettings:
     llm_api_key: str = ""
     llm_base_url: str = "https://api.openai.com/v1"
     llm_model: str = "gpt-4o-mini"
+    recent_workspaces: List[str] = field(default_factory=list)
 
 
 @dataclass

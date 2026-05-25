@@ -75,10 +75,16 @@ class MainController:
         if clean and os.path.exists(clean):
             self._dispatcher.dispatch(FOLDER_ADD, clean)
 
+            # Сохранение в список недавних проектов (максимум 6)
+            recent = list(self._store.state.settings.recent_workspaces)
+            if clean in recent:
+                recent.remove(clean)
+            recent.insert(0, clean)
+            recent = recent[:6]
+            self._settings_uc.update({'recent_workspaces': recent})
+            self._settings_uc.save()
+
             config_path = os.path.join(clean, '.codecontext.json')
-            if os.path.exists(config_path):
-                self._dispatcher.dispatch(UI_ADD_LOG, f"🔧 Найден конфиг проекта: {config_path}")
-                self._settings_uc.load_workspace(config_path)
 
     def remove_folder(self, path: str):
         self._dispatcher.dispatch(FOLDER_REMOVE, path)

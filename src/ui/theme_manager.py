@@ -35,6 +35,23 @@ QWidget[cssClass="card"] {{
     border: 1px solid {c_border};
 }}
 
+QFrame[cssClass="drop_zone"] {{
+    background-color: {c_card};
+    border: 2px dashed {c_border};
+    border-radius: {r_card};
+}}
+
+QFrame[cssClass="recent_card"] {{
+    background-color: {c_card};
+    border: 1px solid {c_border};
+    border-radius: {r_card};
+}}
+
+QFrame[cssClass="recent_card"]:hover {{
+    background-color: {c_secondary};
+    border: 1px solid {c_primary};
+}}
+
 QLabel[cssClass="heading"] {{
     font-size: {f_heading};
     font-weight: bold;

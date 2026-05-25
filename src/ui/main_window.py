@@ -1,5 +1,5 @@
 import os
-from PySide6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QFileDialog
+from PySide6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QFileDialog, QStackedWidget
 from PySide6.QtCore import Signal, QObject, Qt
 
 from ..store.store import Store
@@ -10,6 +10,7 @@ from .components.action_panel import ActionPanel
 from .components.log_panel import LogPanel
 from .components.status_bar import StatusBar
 from .components.file_tree import FileTree
+from .components.empty_state import EmptyState
 from .dialogs import AdvancedPreviewDialog, InteractiveTourDialog, EditFolderDialog
 from .theme_manager import ThemeManager, theme_bus
 
@@ -42,7 +43,7 @@ class MainWindow(QMainWindow):
 
     def _init_ui(self):
         self.central_widget = QWidget()
-        self.central_widget.setObjectName("centralwidget")  # Явное указание для QSS (Фон)
+        self.central_widget.setObjectName("centralwidget")
         self.setCentralWidget(self.central_widget)
 
         self.main_layout = QHBoxLayout(self.central_widget)
@@ -53,6 +54,14 @@ class MainWindow(QMainWindow):
         self.sidebar = Sidebar(self.controller, self._on_ui_settings_change)
         self.splitter.addWidget(self.sidebar)
 
+        # Заменяем правую панель на стек (Empty State / Основной контент)
+        self.right_stack = QStackedWidget()
+
+        # Индекс 0: Пустое состояние (Drag & Drop + Recent)
+        self.empty_state = EmptyState(self.controller.add_folder)
+        self.right_stack.addWidget(self.empty_state)
+
+        # Индекс 1: Основной контент
         right_panel = QWidget()
         self.right_layout = QVBoxLayout(right_panel)
 
@@ -68,7 +77,9 @@ class MainWindow(QMainWindow):
         self.right_layout.addWidget(self.log_panel, 1)
         self.right_layout.addWidget(self.status_bar, 0)
 
-        self.splitter.addWidget(right_panel)
+        self.right_stack.addWidget(right_panel)
+
+        self.splitter.addWidget(self.right_stack)
 
     def _update_theme_metrics(self):
         m = ThemeManager.get_layout("main_margin", 16)
@@ -94,6 +105,12 @@ class MainWindow(QMainWindow):
         event.acceptProposedAction()
 
     def _on_store_changed(self, state):
+        if state.selected_folders:
+            self.right_stack.setCurrentIndex(1)
+        else:
+            self.empty_state.update_recent(state.settings.recent_workspaces)
+            self.right_stack.setCurrentIndex(0)
+
         self.sidebar.update_ui(state.settings)
         self.folder_list.update_ui(state.selected_folders, state.temp_folders)
 

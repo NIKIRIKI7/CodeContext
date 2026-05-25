@@ -12,6 +12,7 @@
   "system_prompt": "",
   "output_format": "custom",
   "template_path": "C:/Users/mcniki/Documents/Проекты/Python/Мое/CodeContext/templates/claude_xml_optimized.jinja2",
+  "enable_logging": true,
   "cli_minify": true,
   "cli_remove_comments": true,
   "cli_remove_secrets": true,
@@ -19,5 +20,13 @@
   "cli_skeleton_mode": false,
   "cli_use_gitignore": true,
   "cli_format": "plain",
-  "python_interpreter": "C:/python"
+  "python_interpreter": "C:/python",
+  "llm_check_enabled": false,
+  "llm_api_key": "",
+  "llm_base_url": "https://api.openai.com/v1",
+  "llm_model": "gpt-4o-mini",
+  "recent_workspaces": [
+    "C:\\Users\\mcniki\\Documents\\Проекты\\Python\\Мое\\zapret",
+    "C:\\Users\\mcniki\\Documents\\Проекты\\Python\\Мое\\CodeContext"
+  ]
 }

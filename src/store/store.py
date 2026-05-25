@@ -94,17 +94,24 @@ class Store:
         self._state.tour_steps = []
 
     def _handle_settings_loaded(self, payload: dict):
-        self._state.settings = AppSettings(**payload)
+        valid_keys = set(AppSettings.__dataclass_fields__.keys())
+        filtered = {k: v for k, v in payload.items() if k in valid_keys}
+        self._state.settings = AppSettings(**filtered)
 
     def _handle_settings_update(self, payload: dict):
         current = self._state.settings.__dict__.copy()
-        current.update(payload)
+        valid_keys = set(AppSettings.__dataclass_fields__.keys())
+        filtered = {k: v for k, v in payload.items() if k in valid_keys}
+        current.update(filtered)
         self._state.settings = AppSettings(**current)
 
     def _handle_workspace_loaded(self, payload: dict):
         self._state.selected_folders = payload.get('folders', [])
         current = self._state.settings.__dict__.copy()
-        current.update(payload.get('settings', {}))
+        settings_payload = payload.get('settings', {})
+        valid_keys = set(AppSettings.__dataclass_fields__.keys())
+        filtered = {k: v for k, v in settings_payload.items() if k in valid_keys}
+        current.update(filtered)
         self._state.settings = AppSettings(**current)
         self._state.temp_folders = []
 
