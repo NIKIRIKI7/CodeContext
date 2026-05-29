@@ -1,3 +1,4 @@
+import platform
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QTabWidget, QFormLayout,
                                QCheckBox, QComboBox, QLineEdit, QTextEdit,
                                QPushButton, QHBoxLayout, QLabel, QFileDialog,
@@ -205,7 +206,7 @@ class Sidebar(QWidget):
         self.cmb_mode.setCurrentText(ThemeManager._current_mode)
         self.cmb_mode.currentTextChanged.connect(lambda m: ThemeManager.apply_theme(mode=m))
 
-        self.chk_llm_check = QCheckBox("Включить проверку кода (LLM Checker)")
+        self.chk_llm_check = QCheckBox("Включить проверку (LLM Checker)")
 
         self.entry_llm_url = QLineEdit()
         self.entry_llm_url.setPlaceholderText("https://api.openai.com/v1")
@@ -255,7 +256,43 @@ class Sidebar(QWidget):
         form_cli.addRow("CLI Формат:", self.cmb_cli_format)
         layout.addLayout(form_cli)
 
+        # ====== Блок Интеграции с ОС ======
+        lbl_os = QLabel(f"Интеграция с ОС ({platform.system()}):")
+        lbl_os.setProperty("cssClass", "muted")
+        layout.addWidget(lbl_os)
+
+        btn_ctx_layout = QHBoxLayout()
+        self.btn_install_ctx = QPushButton("В меню")
+        self.btn_install_ctx.setProperty("cssClass", "success")
+        self.btn_install_ctx.clicked.connect(self._install_context_menu)
+
+        self.btn_remove_ctx = QPushButton("Из меню")
+        self.btn_remove_ctx.setProperty("cssClass", "ghost")
+        self.btn_remove_ctx.clicked.connect(self._remove_context_menu)
+
+        btn_ctx_layout.addWidget(self.btn_install_ctx)
+        btn_ctx_layout.addWidget(self.btn_remove_ctx)
+        layout.addLayout(btn_ctx_layout)
+        # ===================================
+
         layout.addStretch()
+
+    # --- Обработчики Интеграции ОС ---
+    def _install_context_menu(self):
+        self.on_settings_change()
+        success, msg = self.controller.install_context_menu()
+        if success or "запрошены права" in msg.lower():
+            QMessageBox.information(self, "Интеграция", msg)
+        else:
+            QMessageBox.warning(self, "Ошибка", msg)
+
+    def _remove_context_menu(self):
+        success, msg = self.controller.remove_context_menu()
+        if success or "запрошены права" in msg.lower():
+            QMessageBox.information(self, "Интеграция", msg)
+        else:
+            QMessageBox.warning(self, "Ошибка", msg)
+    # ---------------------------------
 
     def update_ui(self, settings):
         self.entry_ext.setText(settings.extensions)

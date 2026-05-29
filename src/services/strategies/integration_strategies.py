@@ -54,7 +54,7 @@ class WindowsContextMenuStrategy(ContextMenuStrategy):
             script_path = os.path.abspath(sys.argv[0])
             params = f'"{script_path}" {extra_arg}'
         try:
-            ctypes.windll.shell32.ShellExecuteW(None, "runas", executable, params, None, 1)
+            ctypes.windll.shell32.ShellExecuteW(None, "runas", executable, params, None, 0)
         except Exception as exc:
             print(f"Error elevating privileges: {exc}")
 
@@ -76,7 +76,7 @@ class WindowsContextMenuStrategy(ContextMenuStrategy):
     def install(self, custom_python_path: Optional[str] = None) -> Tuple[bool, str]:
         if not self._is_admin():
             self._restart_as_admin("--install-context")
-            return False, "Запрошены права администратора. Проверьте открывшееся окно."
+            return False, "🛡 Запрошены права администратора. Применится в фоновом режиме."
 
         winreg, _ = self._imports()
         try:
@@ -136,7 +136,7 @@ class WindowsContextMenuStrategy(ContextMenuStrategy):
     def remove(self) -> Tuple[bool, str]:
         if not self._is_admin():
             self._restart_as_admin("--remove-context")
-            return False, "Запрошены права администратора. Проверьте открывшееся окно."
+            return False, "🛡 Запрошены права администратора. Будет удалено в фоновом режиме."
 
         winreg, _ = self._imports()
         err_msg = ""
