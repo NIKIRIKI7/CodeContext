@@ -35,6 +35,8 @@ class AppSettings:
     llm_base_url: str = "https://api.openai.com/v1"
     llm_model: str = "gpt-4o-mini"
     recent_workspaces: List[str] = field(default_factory=list)
+    custom_presets: Dict[str, dict] = field(default_factory=dict)
+    custom_prompt_presets: Dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
