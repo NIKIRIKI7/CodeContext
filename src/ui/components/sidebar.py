@@ -1,4 +1,5 @@
 import os
+import sys
 import shutil
 import platform
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QTabWidget, QFormLayout,
@@ -8,6 +9,21 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QTabWidget, QFormLayout,
 from PySide6.QtCore import Qt
 from ...utils.config import PRESETS, PROMPT_PRESETS
 from ..theme_manager import ThemeManager, theme_bus
+
+def _get_app_version() -> str:
+    try:
+        if getattr(sys, 'frozen', False):
+            base_dir = sys._MEIPASS
+        else:
+            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+        version_file = os.path.join(base_dir, "VERSION.txt")
+        if os.path.exists(version_file):
+            with open(version_file, "r", encoding="utf-8") as f:
+                return f.read().strip()
+    except Exception:
+        pass
+    return "1.0.0"
+
 
 class Sidebar(QWidget):
     def __init__(self, controller, on_settings_change):
@@ -50,7 +66,8 @@ class Sidebar(QWidget):
         btn_tour.setProperty("cssClass", "ghost")
         btn_tour.clicked.connect(self.controller.show_tour)
 
-        lbl_version = QLabel("v6.0 Qt Edition")
+        version_str = _get_app_version()
+        lbl_version = QLabel(f"v{version_str} Qt Edition")
         lbl_version.setProperty("cssClass", "muted")
 
         bottom_layout.addWidget(lbl_version)
@@ -424,7 +441,6 @@ class Sidebar(QWidget):
     # --- Themes Management ---
 
     def _get_themes_dir(self):
-        import sys
         if getattr(sys, 'frozen', False):
             base_dir = os.path.dirname(sys.executable)
         else:
