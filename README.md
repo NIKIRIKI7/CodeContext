@@ -39,7 +39,7 @@
 1. Склонируйте репозиторий:
    ```bash
    git clone https://github.com/NIKIRIKI7/CodeContext.git
-   cd codecontext-ai
+   cd codecontext
    ```
 
 2. Создайте виртуальное окружение и активируйте его:
