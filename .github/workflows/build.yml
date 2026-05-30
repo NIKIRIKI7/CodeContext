@@ -97,7 +97,7 @@ jobs:
           pip install pyinstaller PySide6 tiktoken pathspec pyperclip fpdf2 jinja2
 
           BIN_NAME="CodeContext-${{ needs.prepare.outputs.version }}-${{ matrix.distro }}"
-          pyinstaller --noconfirm --onefile --windowed --name "$BIN_NAME" --add-data "themes:themes" --add-data "user_settings.json:." --add-data "VERSION.txt:." main.py
+          pyinstaller --noconfirm --onefile --windowed --icon="assets/images/logo.png" --name "$BIN_NAME" --add-data "themes:themes" --add-data "assets:assets" --add-data "user_settings.json:." --add-data "VERSION.txt:." main.py
 
           mkdir -p build_output
           cp dist/$BIN_NAME build_output/
@@ -124,13 +124,13 @@ jobs:
         shell: bash
         run: |
           python -m pip install --upgrade pip
-          pip install pyinstaller PySide6 tiktoken pathspec pyperclip fpdf2 jinja2
+          pip install pyinstaller PySide6 tiktoken pathspec pyperclip fpdf2 jinja2 Pillow
 
       - name: Build with PyInstaller
         shell: bash
         run: |
           BIN_NAME="CodeContext-${{ needs.prepare.outputs.version }}-windows.exe"
-          pyinstaller --noconfirm --onefile --windowed --name "$BIN_NAME" --add-data "themes;themes" --add-data "user_settings.json;." --add-data "VERSION.txt;." main.py
+          pyinstaller --noconfirm --onefile --windowed --icon="assets/images/logo.png" --name "$BIN_NAME" --add-data "themes;themes" --add-data "assets;assets" --add-data "user_settings.json;." --add-data "VERSION.txt;." main.py
 
           mkdir -p build_output
           cp dist/$BIN_NAME build_output/
