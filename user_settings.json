@@ -26,11 +26,11 @@
   "llm_base_url": "https://api.openai.com/v1",
   "llm_model": "gpt-4o-mini",
   "recent_workspaces": [
+    "C:\\Users\\mcniki\\Documents\\Проекты\\Python\\Мое\\zapret",
     "C:\\Users\\mcniki\\Documents\\Проекты\\WEB\\fanfics-site",
     "C:\\Users\\mcniki\\Documents\\Works\\Chapa\\Avia",
     "C:\\Users\\mcniki\\Documents\\Работа\\Chapa\\Avia",
-    "C:\\Users\\mcniki\\Documents\\Проекты\\Python\\Мое\\CodeContext",
-    "C:\\Users\\mcniki\\Documents\\Проекты\\Python\\Мое\\zapret"
+    "C:\\Users\\mcniki\\Documents\\Проекты\\Python\\Мое\\CodeContext"
   ],
   "custom_presets": {},
   "custom_prompt_presets": {}

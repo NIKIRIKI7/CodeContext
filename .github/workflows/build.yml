@@ -1,0 +1,102 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            executable_name: CodeContextAI-Linux
+            artifact_name: CodeContextAI-Linux
+          - os: windows-latest
+            executable_name: CodeContextAI.exe
+            artifact_name: CodeContextAI-Windows.exe
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+          pip install -r requirements.txt
+
+      - name: Build with PyInstaller (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          pyinstaller --noconfirm --onefile --windowed --name "CodeContextAI" --add-data "themes;themes" --add-data "user_settings.json;." --add-data "templates;templates" --add-data "assets;assets" main.py
+
+      - name: Build with PyInstaller (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          pyinstaller --noconfirm --onefile --windowed --name "CodeContextAI-Linux" --add-data "themes:themes" --add-data "user_settings.json:." --add-data "templates:templates" --add-data "assets:assets" main.py
+
+      - name: Upload Artifact (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: dist/CodeContextAI.exe
+
+      - name: Upload Artifact (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-build
+          path: dist/CodeContextAI-Linux
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Windows Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-build
+          path: ./release-assets/
+
+      - name: Download Linux Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-build
+          path: ./release-assets/
+
+      - name: Generate Release Tag
+        id: tag
+        run: |
+          echo "tag_name=build-$(date +'%Y%m%d')-${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+
+      - name: Publish Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag_name }}
+          name: "Auto-Build: ${{ steps.tag.outputs.tag_name }}"
+          body: |
+            🚀 Автоматическая сборка проекта из ветки `main`.
+
+            **Изменения в этом билде:**
+            ${{ github.event.head_commit.message }}
+          files: |
+            ./release-assets/CodeContextAI.exe
+            ./release-assets/CodeContextAI-Linux
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
