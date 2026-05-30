@@ -1,102 +1,155 @@
-name: Build and Release
+name: Build and Release Multi-OS
 
 on:
   push:
     branches:
       - main
+      - dev
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  build:
-    name: Build on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-        include:
-          - os: ubuntu-latest
-            executable_name: CodeContextAI-Linux
-            artifact_name: CodeContextAI-Linux
-          - os: windows-latest
-            executable_name: CodeContextAI.exe
-            artifact_name: CodeContextAI-Windows.exe
-
+  # 1. Подготовительный этап: читаем версию и определяем тип релиза
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.set_ver.outputs.version }}
+      is_prerelease: ${{ steps.set_rel.outputs.is_prerelease }}
+      tag_name: ${{ steps.set_rel.outputs.tag_name }}
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      
+      - name: Read Version
+        id: set_ver
+        run: |
+          if [ -f "VERSION.txt" ]; then
+            VER="v$(cat VERSION.txt | xargs)"
+          else
+            VER="v1.0.0"
+          fi
+          echo "version=$VER" >> $GITHUB_OUTPUT
 
+      - name: Set Release Info based on Branch
+        id: set_rel
+        run: |
+          VER="${{ steps.set_ver.outputs.version }}"
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+            echo "tag_name=$VER" >> $GITHUB_OUTPUT
+          else
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+            echo "tag_name=${VER}-pre.${{ github.run_number }}" >> $GITHUB_OUTPUT
+          fi
+
+  # 2. Сборка для разных дистрибутивов Linux в родных контейнерах
+  build-linux:
+    needs: prepare
+    runs-on: ubuntu-latest
+    container: ${{ matrix.container }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distro: ubuntu
+            container: ubuntu:22.04
+          - distro: debian
+            container: debian:latest
+          - distro: arch
+            container: archlinux:latest
+          - distro: kali
+            container: kalilinux/kali-rolling:latest
+          - distro: manjaro
+            container: manjarolinux/base:latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install System Dependencies & Python
+        run: |
+          if command -v pacman &> /dev/null; then
+            pacman -Syu --noconfirm python python-pip base-devel git
+          elif command -v apt-get &> /dev/null; then
+            export DEBIAN_FRONTEND=noninteractive
+            apt-get update
+            apt-get install -y python3 python3-pip python3-venv build-essential git
+          fi
+
+      - name: Build with PyInstaller
+        run: |
+          if command -v python3 &> /dev/null; then
+            PYTHON_CMD=python3
+          else
+            PYTHON_CMD=python
+          fi
+          
+          $PYTHON_CMD -m venv venv
+          source venv/bin/activate
+          
+          pip install --upgrade pip
+          pip install pyinstaller PySide6 tiktoken pathspec pyperclip fpdf2 jinja2
+          
+          BIN_NAME="CodeContext-${{ needs.prepare.outputs.version }}-${{ matrix.distro }}"
+          pyinstaller --noconfirm --onefile --windowed --name "$BIN_NAME" --add-data "themes:themes" --add-data "user_settings.json:." main.py
+          
+          mkdir -p build_output
+          cp dist/$BIN_NAME build_output/
+
+      - name: Upload Linux Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bin-linux-${{ matrix.distro }}
+          path: build_output/*
+
+  # 3. Сборка для Windows
+  build-windows:
+    needs: prepare
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
+          
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pyinstaller
-          pip install -r requirements.txt
-
-      - name: Build with PyInstaller (Windows)
-        if: matrix.os == 'windows-latest'
+          pip install pyinstaller PySide6 tiktoken pathspec pyperclip fpdf2 jinja2
+          
+      - name: Build with PyInstaller
         run: |
-          pyinstaller --noconfirm --onefile --windowed --name "CodeContextAI" --add-data "themes;themes" --add-data "user_settings.json;." --add-data "templates;templates" --add-data "assets;assets" main.py
+          $BIN_NAME="CodeContext-${{ needs.prepare.outputs.version }}.exe"
+          pyinstaller --noconfirm --onefile --windowed --name "$BIN_NAME" --add-data "themes;themes" --add-data "user_settings.json;." main.py
+          
+          mkdir build_output
+          copy dist\$BIN_NAME build_output\
 
-      - name: Build with PyInstaller (Linux)
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          pyinstaller --noconfirm --onefile --windowed --name "CodeContextAI-Linux" --add-data "themes:themes" --add-data "user_settings.json:." --add-data "templates:templates" --add-data "assets:assets" main.py
-
-      - name: Upload Artifact (Windows)
-        if: matrix.os == 'windows-latest'
+      - name: Upload Windows Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: windows-build
-          path: dist/CodeContextAI.exe
+          name: bin-windows
+          path: build_output\*
 
-      - name: Upload Artifact (Linux)
-        if: matrix.os == 'ubuntu-latest'
-        uses: actions/upload-artifact@v4
-        with:
-          name: linux-build
-          path: dist/CodeContextAI-Linux
-
+  # 4. Создание Релиза и загрузка всех файлов
   release:
-    name: Create GitHub Release
-    needs: build
+    needs: [prepare, build-linux, build-windows]
     runs-on: ubuntu-latest
     steps:
-      - name: Download Windows Artifact
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          name: windows-build
           path: ./release-assets/
+          merge-multiple: true
 
-      - name: Download Linux Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: linux-build
-          path: ./release-assets/
-
-      - name: Generate Release Tag
-        id: tag
-        run: |
-          echo "tag_name=build-$(date +'%Y%m%d')-${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
-
-      - name: Publish Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.tag.outputs.tag_name }}
-          name: "Auto-Build: ${{ steps.tag.outputs.tag_name }}"
-          body: |
-            🚀 Автоматическая сборка проекта из ветки `main`.
-
-            **Изменения в этом билде:**
-            ${{ github.event.head_commit.message }}
-          files: |
-            ./release-assets/CodeContextAI.exe
-            ./release-assets/CodeContextAI-Linux
+          tag_name: ${{ needs.prepare.outputs.tag_name }}
+          name: "CodeContext ${{ needs.prepare.outputs.tag_name }}"
+          prerelease: ${{ needs.prepare.outputs.is_prerelease == 'true' }}
+          generate_release_notes: true
+          files: ./release-assets/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
