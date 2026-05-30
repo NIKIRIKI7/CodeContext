@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 jobs:
-  # 1. Подготовительный этап: читаем версию и определяем тип релиза
+  # 1. Читаем версию и формируем правильные названия (SemVer)
   prepare:
     runs-on: ubuntu-latest
     outputs:
@@ -20,12 +20,13 @@ jobs:
       tag_name: ${{ steps.set_rel.outputs.tag_name }}
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Read Version
         id: set_ver
+        shell: bash
         run: |
           if [ -f "VERSION.txt" ]; then
-            VER="v$(cat VERSION.txt | xargs)"
+            VER="v$(cat VERSION.txt | tr -d '[:space:]')"
           else
             VER="v1.0.0"
           fi
@@ -33,6 +34,7 @@ jobs:
 
       - name: Set Release Info based on Branch
         id: set_rel
+        shell: bash
         run: |
           VER="${{ steps.set_ver.outputs.version }}"
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
@@ -43,7 +45,7 @@ jobs:
             echo "tag_name=${VER}-pre.${{ github.run_number }}" >> $GITHUB_OUTPUT
           fi
 
-  # 2. Сборка для разных дистрибутивов Linux в родных контейнерах
+  # 2. Сборка для дистрибутивов Linux
   build-linux:
     needs: prepare
     runs-on: ubuntu-latest
@@ -64,34 +66,39 @@ jobs:
             container: manjarolinux/base:latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Install System Dependencies & Python
+        shell: bash
         run: |
-          if command -v pacman &> /dev/null; then
-            pacman -Syu --noconfirm python python-pip base-devel git
-          elif command -v apt-get &> /dev/null; then
+          if command -v apt-get >/dev/null 2>&1; then
             export DEBIAN_FRONTEND=noninteractive
             apt-get update
             apt-get install -y python3 python3-pip python3-venv build-essential git
+          elif command -v pacman >/dev/null 2>&1; then
+            pacman -Syu --noconfirm python python-pip base-devel git
+          else
+            echo "Package manager not found!"
+            exit 1
           fi
 
       - name: Build with PyInstaller
+        shell: bash
         run: |
-          if command -v python3 &> /dev/null; then
+          if command -v python3 >/dev/null 2>&1; then
             PYTHON_CMD=python3
           else
             PYTHON_CMD=python
           fi
-          
+
           $PYTHON_CMD -m venv venv
           source venv/bin/activate
-          
+
           pip install --upgrade pip
           pip install pyinstaller PySide6 tiktoken pathspec pyperclip fpdf2 jinja2
-          
+
           BIN_NAME="CodeContext-${{ needs.prepare.outputs.version }}-${{ matrix.distro }}"
           pyinstaller --noconfirm --onefile --windowed --name "$BIN_NAME" --add-data "themes:themes" --add-data "user_settings.json:." main.py
-          
+
           mkdir -p build_output
           cp dist/$BIN_NAME build_output/
 
@@ -107,32 +114,34 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          
+
       - name: Install Dependencies
+        shell: bash
         run: |
           python -m pip install --upgrade pip
           pip install pyinstaller PySide6 tiktoken pathspec pyperclip fpdf2 jinja2
-          
+
       - name: Build with PyInstaller
+        shell: bash
         run: |
-          $BIN_NAME="CodeContext-${{ needs.prepare.outputs.version }}.exe"
+          BIN_NAME="CodeContext-${{ needs.prepare.outputs.version }}-windows.exe"
           pyinstaller --noconfirm --onefile --windowed --name "$BIN_NAME" --add-data "themes;themes" --add-data "user_settings.json;." main.py
-          
-          mkdir build_output
-          copy dist\$BIN_NAME build_output\
+
+          mkdir -p build_output
+          cp dist/$BIN_NAME build_output/
 
       - name: Upload Windows Artifact
         uses: actions/upload-artifact@v4
         with:
           name: bin-windows
-          path: build_output\*
+          path: build_output/*
 
-  # 4. Создание Релиза и загрузка всех файлов
+  # 4. Публикация релиза
   release:
     needs: [prepare, build-linux, build-windows]
     runs-on: ubuntu-latest
