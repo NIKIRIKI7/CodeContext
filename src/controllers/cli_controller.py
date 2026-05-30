@@ -149,7 +149,7 @@ class CliController:
                 print(line.rstrip())
 
     def _init_store(self, config: dict, target_path: str):
-        """Загружает настройки в глобальный Redux Store."""
+        """Загружает настройки в глобальный Redux Store, объединяя GUI и CLI фильтры."""
         extensions = config.get('extensions', PRESETS['Default']['ext'])
         if not extensions or not extensions.strip():
             extensions = PRESETS['Default']['ext']
@@ -157,25 +157,19 @@ class CliController:
         settings_dict = {
             'extensions': extensions,
             'ignored_paths': config.get('ignored_paths', PRESETS['Default']['ign']),
-            'minify': config.get('cli_minify', True),
-            'remove_comments': config.get('cli_remove_comments', True),
-            'remove_secrets': config.get('cli_remove_secrets', True),
-            'skeleton_mode': config.get('cli_skeleton_mode', False),
-            'use_git': config.get('use_git', False),
-            'use_gitignore': config.get('cli_use_gitignore', True),
-            'include_tree': config.get('cli_include_tree', True),
+            # ВАЖНО: Теперь берем основные настройки из GUI, чтобы они применялись из проводника!
+            'minify': config.get('minify', True),
+            'remove_comments': config.get('remove_comments', True),
+            'remove_secrets': config.get('remove_secrets', True),
+            'skeleton_mode': config.get('skeleton_mode', False),
+            'use_gitignore': config.get('use_gitignore', True),
+            'include_tree': config.get('include_tree', True),
             'include_dependencies': config.get('include_dependencies', False),
+            'output_format': config.get('output_format', 'plain'),
             'system_prompt': config.get('system_prompt', DEFAULT_SYSTEM_PROMPT),
-            'output_format': config.get('cli_format', 'plain'),
             'template_path': config.get('template_path', ''),
             'enable_logging': config.get('enable_logging', True),
-            'cli_minify': config.get('cli_minify', True),
-            'cli_remove_comments': config.get('cli_remove_comments', True),
-            'cli_remove_secrets': config.get('cli_remove_secrets', True),
-            'cli_include_tree': config.get('cli_include_tree', True),
-            'cli_skeleton_mode': config.get('cli_skeleton_mode', False),
-            'cli_use_gitignore': config.get('cli_use_gitignore', True),
-            'cli_format': config.get('cli_format', 'plain'),
+            'use_git': config.get('use_git', False),
             'python_interpreter': config.get('python_interpreter', '')
         }
 

@@ -17,6 +17,7 @@ from .services.token_service import TokenService
 from .services.patch_service import PatchService
 from .services.tour_service import TourService
 from .services.llm_checker_service import LlmCheckerService
+from .services.updater_service import UpdaterService
 from .services.strategies.integration_strategies import (
     WindowsContextMenuStrategy,
     LinuxContextMenuStrategy,
@@ -27,6 +28,7 @@ from .use_cases.process_use_case import ProcessWorkspaceUseCase
 from .use_cases.github_use_case import GitHubUseCase
 from .use_cases.settings_use_case import SettingsUseCase
 from .use_cases.patch_use_case import PatchUseCase
+from .use_cases.updater_use_case import UpdaterUseCase
 from .controllers.main_controller import MainController
 from .controllers.cli_controller import CliController
 
@@ -61,6 +63,7 @@ class DIContainer:
         self.patch_service = PatchService()
         self.tour_service = TourService()
         self.llm_checker = LlmCheckerService()
+        self.updater_service = UpdaterService()
 
         self.integration_service = IntegrationService(
             strategy=_make_integration_strategy()
@@ -94,6 +97,10 @@ class DIContainer:
             dispatcher=self.dispatcher,
             patch_service=self.patch_service
         )
+        self.updater_use_case = UpdaterUseCase(
+            dispatcher=self.dispatcher,
+            updater_service=self.updater_service
+        )
         self.main_controller = MainController(
             store=self.store,
             dispatcher=self.dispatcher,
@@ -106,8 +113,9 @@ class DIContainer:
             fs_repo=self.fs_repo,
             tour_service=self.tour_service,
             llm_checker=self.llm_checker,
-            format_service=self.format_service,  # Добавлено
-            output_service=self.output_service  # Добавлено
+            format_service=self.format_service,
+            output_service=self.output_service,
+            updater_use_case=self.updater_use_case
         )
         self.cli_controller = CliController(
             store=self.store,

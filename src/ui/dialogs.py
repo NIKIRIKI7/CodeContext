@@ -412,3 +412,95 @@ class InteractiveDiffDialog(QDialog):
             if self.list_widget.item(i).checkState() == Qt.Checked:
                 selected.append(self.prepared[i])
         return selected
+
+
+class UpdateDialog(QDialog):
+    """Диалог обновления с полной поддержкой ThemeManager и Redux State."""
+
+    def __init__(self, parent, update_info, on_close, controller):
+        super().__init__(parent)
+        self.on_close = on_close
+        self.controller = controller
+
+        self.setWindowTitle("Обновления CodeContext AI")
+        self.resize(550, 450)
+        self.layout = QVBoxLayout(self)
+
+        self.lbl_title = QLabel()
+        self.lbl_title.setProperty("cssClass", "heading")
+        self.layout.addWidget(self.lbl_title)
+
+        self.notes = QTextBrowser()
+        self.notes.setOpenExternalLinks(True)
+        self.layout.addWidget(self.notes)
+
+        self.btn_layout = QHBoxLayout()
+        self.btn_cancel = QPushButton()
+        self.btn_cancel.setProperty("cssClass", "ghost")
+        self.btn_cancel.clicked.connect(self.reject)
+
+        self.btn_update = QPushButton()
+        self.btn_update.setProperty("cssClass", "success")
+        self.btn_update.clicked.connect(self._do_update)
+
+        self.btn_layout.addStretch()
+        self.btn_layout.addWidget(self.btn_cancel)
+        self.btn_layout.addWidget(self.btn_update)
+        self.layout.addLayout(self.btn_layout)
+
+        self.update_data(update_info)
+
+    def update_data(self, update_info):
+        self.update_info = update_info
+        status = update_info.get('status', 'checking')
+        version = update_info.get('version', '')
+        notes_text = update_info.get('notes', '')
+
+        if status == 'checking':
+            self.lbl_title.setText(f"⏳ Поиск обновлений (v{version})...")
+            self.notes.setMarkdown(notes_text)
+            self.btn_update.hide()
+            self.btn_cancel.setEnabled(True)
+            self.btn_cancel.setText("Отмена")
+
+        elif status == 'available':
+            self.lbl_title.setText(f"🎉 Доступна новая версия: {version}")
+            self.notes.setMarkdown(notes_text)
+            self.btn_update.show()
+            self.btn_update.setText("Скачать и обновить")
+            self.btn_update.setEnabled(True)
+            self.btn_cancel.setEnabled(True)
+            self.btn_cancel.setText("Позже")
+
+        elif status == 'latest':
+            self.lbl_title.setText("✅ У вас самая актуальная версия")
+            self.notes.setMarkdown(notes_text)
+            self.btn_update.hide()
+            self.btn_cancel.setEnabled(True)
+            self.btn_cancel.setText("Закрыть")
+
+        else:
+            self.lbl_title.setText("❌ Ошибка при проверке/установке")
+            self.notes.setMarkdown(notes_text)
+            self.btn_update.hide()
+            self.btn_cancel.setEnabled(True)
+            self.btn_cancel.setText("Закрыть")
+
+        self.lbl_title.style().unpolish(self.lbl_title)
+        self.lbl_title.style().polish(self.lbl_title)
+
+    def _do_update(self):
+        self.btn_update.setEnabled(False)
+        self.btn_update.setText("Загрузка...")
+        self.btn_cancel.setEnabled(False)
+        self.lbl_title.setText("⬇️ Идёт скачивание и установка...")
+        self.notes.setMarkdown(
+            "Пожалуйста, не закрывайте приложение.\n\n"
+            "После загрузки программа будет автоматически перезапущена.\n"
+            "Вы можете наблюдать за прогрессом загрузки в статус-баре на главном экране."
+        )
+        self.controller.apply_update(self.update_info['download_url'])
+
+    def closeEvent(self, event):
+        self.on_close()
+        super().closeEvent(event)

@@ -29,6 +29,8 @@ class AppSettings:
     cli_format: str = "plain"
     python_interpreter: str = ""
 
+    receive_prereleases: bool = False
+
     # Новые поля для проверки патчей через LLM
     llm_check_enabled: bool = False
     llm_api_key: str = ""
@@ -69,3 +71,6 @@ class AppState:
     before_after_data: List[dict] = field(default_factory=list)
     show_tour: bool = False
     tour_steps: List[dict] = field(default_factory=list)
+
+    show_update: bool = False
+    update_info: dict = field(default_factory=dict)

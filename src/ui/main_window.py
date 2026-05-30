@@ -11,7 +11,7 @@ from .components.log_panel import LogPanel
 from .components.status_bar import StatusBar
 from .components.file_tree import FileTree
 from .components.empty_state import EmptyState
-from .dialogs import AdvancedPreviewDialog, InteractiveTourDialog, EditFolderDialog
+from .dialogs import AdvancedPreviewDialog, InteractiveTourDialog, EditFolderDialog, UpdateDialog
 from .theme_manager import ThemeManager, theme_bus
 
 
@@ -34,6 +34,7 @@ class MainWindow(QMainWindow):
 
         self._preview_dialog = None
         self._tour_dialog = None
+        self._update_dialog = None
 
         self._init_ui()
         self._update_theme_metrics()
@@ -135,6 +136,22 @@ class MainWindow(QMainWindow):
         elif self._tour_dialog:
             self._tour_dialog.close()
             self._tour_dialog = None
+
+        if state.show_update:
+            if not self._update_dialog:
+                self._update_dialog = UpdateDialog(
+                    self,
+                    state.update_info,
+                    self.controller.close_update_dialog,
+                    self.controller
+                )
+                self._update_dialog.show()
+                self._update_dialog.raise_()
+            else:
+                self._update_dialog.update_data(state.update_info)
+        elif self._update_dialog:
+            self._update_dialog.close()
+            self._update_dialog = None
 
     def _on_ui_settings_change(self):
         s_data = self.sidebar.get_settings()

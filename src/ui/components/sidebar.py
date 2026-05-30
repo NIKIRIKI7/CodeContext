@@ -67,11 +67,16 @@ class Sidebar(QWidget):
         btn_tour.clicked.connect(self.controller.show_tour)
 
         version_str = _get_app_version()
-        lbl_version = QLabel(f"v{version_str} Qt Edition")
+        lbl_version = QLabel(f"v{version_str}")
         lbl_version.setProperty("cssClass", "muted")
+
+        btn_update = QPushButton("🔄 Обновления")
+        btn_update.setProperty("cssClass", "ghost")
+        btn_update.clicked.connect(self._check_updates)
 
         bottom_layout.addWidget(lbl_version)
         bottom_layout.addStretch()
+        bottom_layout.addWidget(btn_update)
         bottom_layout.addWidget(btn_tour)
         self.layout.addLayout(bottom_layout)
 
@@ -243,24 +248,12 @@ class Sidebar(QWidget):
         layout.addLayout(btn_ctx_layout)
 
         layout.addSpacing(10)
-        lbl_cli = QLabel("CLI Настройки:")
-        lbl_cli.setProperty("cssClass", "heading")
-        layout.addWidget(lbl_cli)
+        lbl_upd = QLabel("Настройки обновления:")
+        lbl_upd.setProperty("cssClass", "heading")
+        layout.addWidget(lbl_upd)
 
-        self.chk_cli_minify = QCheckBox("CLI Minify")
-        self.chk_cli_comments = QCheckBox("CLI Без комментариев")
-        self.chk_cli_tree = QCheckBox("CLI Включать дерево")
-
-        layout.addWidget(self.chk_cli_minify)
-        layout.addWidget(self.chk_cli_comments)
-        layout.addWidget(self.chk_cli_tree)
-
-        form_cli = QFormLayout()
-        form_cli.setContentsMargins(0, 0, 0, 0)
-        self.cmb_cli_format = QComboBox()
-        self.cmb_cli_format.addItems(["plain", "markdown", "xml"])
-        form_cli.addRow("Формат:", self.cmb_cli_format)
-        layout.addLayout(form_cli)
+        self.chk_prerelease = QCheckBox("Получать Pre-release версии")
+        layout.addWidget(self.chk_prerelease)
 
         layout.addStretch()
 
@@ -359,6 +352,11 @@ class Sidebar(QWidget):
                         self, "Ошибка патча",
                         "Не найдено валидных JSON-инструкций.\n\nУбедитесь, что ответ содержит массив объектов."
                     )
+
+    def _check_updates(self):
+        self.on_settings_change()
+        version = _get_app_version()
+        self.controller.check_for_updates(version)
 
     # --- Preset Management ---
 
@@ -557,10 +555,7 @@ class Sidebar(QWidget):
         self.entry_llm_key.setText(settings.llm_api_key)
         self.entry_llm_model.setText(settings.llm_model)
 
-        self.chk_cli_minify.setChecked(settings.cli_minify)
-        self.chk_cli_comments.setChecked(settings.cli_remove_comments)
-        self.chk_cli_tree.setChecked(settings.cli_include_tree)
-        self.cmb_cli_format.setCurrentText(settings.cli_format)
+        self.chk_prerelease.setChecked(settings.receive_prereleases)
 
     def get_settings(self):
         return {
@@ -575,8 +570,5 @@ class Sidebar(QWidget):
             'llm_base_url': self.entry_llm_url.text().strip(),
             'llm_api_key': self.entry_llm_key.text().strip(),
             'llm_model': self.entry_llm_model.text().strip(),
-            'cli_minify': self.chk_cli_minify.isChecked(),
-            'cli_remove_comments': self.chk_cli_comments.isChecked(),
-            'cli_include_tree': self.chk_cli_tree.isChecked(),
-            'cli_format': self.cmb_cli_format.currentText()
+            'receive_prereleases': self.chk_prerelease.isChecked()
         }

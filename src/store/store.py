@@ -40,6 +40,8 @@ class Store:
             UI_CLOSE_PREVIEW:     self._handle_close_preview,
             UI_SHOW_TOUR:         self._handle_show_tour,
             UI_CLOSE_TOUR:        self._handle_close_tour,
+            UI_SHOW_UPDATE:       self._handle_show_update,
+            UI_CLOSE_UPDATE:      self._handle_close_update,
 
             SETTINGS_LOADED:      self._handle_settings_loaded,
             SETTINGS_UPDATE:      self._handle_settings_update,
@@ -92,6 +94,14 @@ class Store:
     def _handle_close_tour(self, _):
         self._state.show_tour = False
         self._state.tour_steps = []
+
+    def _handle_show_update(self, payload: dict):
+        self._state.update_info = payload
+        self._state.show_update = True
+
+    def _handle_close_update(self, _):
+        self._state.show_update = False
+        self._state.update_info = {}
 
     def _handle_settings_loaded(self, payload: dict):
         valid_keys = set(AppSettings.__dataclass_fields__.keys())

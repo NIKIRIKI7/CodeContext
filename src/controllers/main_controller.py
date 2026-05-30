@@ -5,7 +5,8 @@ from PySide6.QtCore import QTimer
 from ..actions.action_types import (
     FOLDER_ADD, FOLDER_REMOVE, FOLDER_UPDATE, FOLDER_CLEAR,
     EXCLUSION_ADD, EXCLUSION_REMOVE, EXCLUSION_CLEAR,
-    UI_ADD_LOG, UI_CLOSE_PREVIEW, UI_SHOW_TOUR, UI_CLOSE_TOUR
+    UI_ADD_LOG, UI_UPDATE_STATUS, UI_CLOSE_PREVIEW, UI_SHOW_TOUR, UI_CLOSE_TOUR,
+    UI_CLOSE_UPDATE
 )
 from ..actions.dispatcher import Dispatcher
 from ..store.store import Store
@@ -15,6 +16,7 @@ from ..use_cases.process_use_case import ProcessWorkspaceUseCase
 from ..use_cases.github_use_case import GitHubUseCase
 from ..use_cases.settings_use_case import SettingsUseCase
 from ..use_cases.patch_use_case import PatchUseCase
+from ..use_cases.updater_use_case import UpdaterUseCase
 from ..utils.async_runtime import AsyncRuntime
 
 from ..services.integration_service import IntegrationService
@@ -34,6 +36,7 @@ class MainController:
         github_use_case: GitHubUseCase,
         settings_use_case: SettingsUseCase,
         patch_use_case: PatchUseCase,
+        updater_use_case: UpdaterUseCase,
         integration_service: IntegrationService,
         fs_repo: FileSystemRepository,
         tour_service: TourService,
@@ -48,6 +51,7 @@ class MainController:
         self._github_uc = github_use_case
         self._settings_uc = settings_use_case
         self._patch_uc = patch_use_case
+        self._updater_uc = updater_use_case
         self._integration = integration_service
         self._fs_repo = fs_repo
         self._tour_service = tour_service
@@ -224,6 +228,16 @@ class MainController:
 
     def generate_html_diff(self, source_text: str, target_text: str, colors: dict, fonts: dict) -> str:
         return self._format_service.generate_html_diff(source_text, target_text, colors, fonts)
+
+    def check_for_updates(self, current_version: str):
+        state = self._store.state
+        AsyncRuntime.run_coroutine(self._updater_uc.check_for_updates(state, current_version))
+
+    def apply_update(self, download_url: str):
+        AsyncRuntime.run_coroutine(self._updater_uc.apply_update(download_url))
+
+    def close_update_dialog(self):
+        self._dispatcher.dispatch(UI_CLOSE_UPDATE, None)
 
     @staticmethod
     def _normalize_path(path: str) -> str:

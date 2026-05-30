@@ -42,6 +42,15 @@ def main():
     app_logger.info("=" * 50)
     app_logger.info("🚀 CodeContext AI Started")
 
+    if getattr(sys, 'frozen', False):
+        exe_path = sys.executable
+        old_path = exe_path + ".old"
+        if os.path.exists(old_path):
+            try:
+                os.remove(old_path)
+            except Exception:
+                pass
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--cli", action="store_true")
     parser.add_argument("--path", type=str, help="Путь к проекту")
