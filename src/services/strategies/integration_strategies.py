@@ -79,87 +79,76 @@ class WindowsContextMenuStrategy(ContextMenuStrategy):
             return False, "🛡 Запрошены права администратора. Применится в фоновом режиме."
 
         winreg, _ = self._imports()
+
         try:
             if getattr(sys, 'frozen', False):
                 exe_path = sys.executable
-                command_base = f'"{exe_path}" --cli --path "%1"'
-                gui_command = f'"{exe_path}" --path "%1"'
+                command_base = f'"{exe_path}" --cli --path'
+                gui_command = f'"{exe_path}" --path'
                 icon_path = exe_path
             else:
                 if custom_python_path and os.path.exists(custom_python_path):
                     python_exe = custom_python_path
                 else:
                     python_exe = sys.executable
+
                 script_path = os.path.abspath(sys.argv[0])
                 if not script_path.endswith("main.py"):
                     possible = os.path.join(os.getcwd(), "main.py")
                     if os.path.exists(possible):
                         script_path = possible
-                command_base = f'"{python_exe}" "{script_path}" --cli --path "%1"'
-                gui_command = f'"{python_exe}" "{script_path}" --path "%1"'
+
+                command_base = f'"{python_exe}" "{script_path}" --cli --path'
+                gui_command = f'"{python_exe}" "{script_path}" --path'
                 icon_path = python_exe
 
-            # Папки
-            key_dir = winreg.CreateKey(winreg.HKEY_CLASSES_ROOT, r"Directory\shell\CodeContextAI")
-            winreg.SetValue(key_dir, "", winreg.REG_SZ, "CodeContext AI")
-            winreg.SetValueEx(key_dir, "Icon", 0, winreg.REG_SZ, icon_path)
-            winreg.SetValueEx(key_dir, "SubCommands", 0, winreg.REG_SZ, "")
+            # Универсальная функция-помощник для создания вложенного меню
+            def _add_menu(root_key, path, target_arg):
+                key = winreg.CreateKey(root_key, path)
+                winreg.SetValue(key, "", winreg.REG_SZ, "CodeContext AI")
+                winreg.SetValueEx(key, "MUIVerb", 0, winreg.REG_SZ, "CodeContext AI")
+                winreg.SetValueEx(key, "Icon", 0, winreg.REG_SZ, icon_path)
+                winreg.SetValueEx(key, "SubCommands", 0, winreg.REG_SZ, "")
 
-            sub_shell_dir = winreg.CreateKey(key_dir, "shell")
+                sub_shell = winreg.CreateKey(key, "shell")
 
-            sub_gui = winreg.CreateKey(sub_shell_dir, "cmd_gui")
-            winreg.SetValue(sub_gui, "", winreg.REG_SZ, "📂 Открыть в CodeContext AI")
-            winreg.SetValueEx(sub_gui, "Icon", 0, winreg.REG_SZ, icon_path)
-            cmd_gui = winreg.CreateKey(sub_gui, "command")
-            winreg.SetValue(cmd_gui, "", winreg.REG_SZ, gui_command)
-            winreg.CloseKey(cmd_gui)
-            winreg.CloseKey(sub_gui)
+                # 1. Запуск GUI
+                sub_gui = winreg.CreateKey(sub_shell, "cmd_gui")
+                winreg.SetValue(sub_gui, "", winreg.REG_SZ, "📂 Открыть UI")
+                winreg.SetValueEx(sub_gui, "Icon", 0, winreg.REG_SZ, icon_path)
+                cmd_gui = winreg.CreateKey(sub_gui, "command")
+                winreg.SetValue(cmd_gui, "", winreg.REG_SZ, f'{gui_command} "{target_arg}"')
+                winreg.CloseKey(cmd_gui)
+                winreg.CloseKey(sub_gui)
 
-            sub_silent = winreg.CreateKey(sub_shell_dir, "cmd_silent")
-            winreg.SetValue(sub_silent, "", winreg.REG_SZ, "📋 Копировать контекст (Без UI)")
-            winreg.SetValueEx(sub_silent, "Icon", 0, winreg.REG_SZ, icon_path)
-            cmd_silent = winreg.CreateKey(sub_silent, "command")
-            winreg.SetValue(cmd_silent, "", winreg.REG_SZ, f'{command_base} --silent')
-            winreg.CloseKey(cmd_silent)
-            winreg.CloseKey(sub_silent)
+                # 2. Опции быстрого сканирования (Без UI)
+                for k_name, k_label, mode in [
+                    ("cmd1", "📋 Скопировать (Без зависимостей)", "default"),
+                    ("cmd2", "📦 Скопировать (Shallow зависимости)", "shallow"),
+                    ("cmd3", "📦 Скопировать (Deep зависимости)", "deep"),
+                ]:
+                    sub = winreg.CreateKey(sub_shell, k_name)
+                    winreg.SetValue(sub, "", winreg.REG_SZ, k_label)
+                    winreg.SetValueEx(sub, "Icon", 0, winreg.REG_SZ, icon_path)
+                    cmd = winreg.CreateKey(sub, "command")
+                    winreg.SetValue(cmd, "", winreg.REG_SZ, f'{command_base} "{target_arg}" --mode {mode} --silent')
+                    winreg.CloseKey(cmd)
+                    winreg.CloseKey(sub)
 
-            winreg.CloseKey(sub_shell_dir)
-            winreg.CloseKey(key_dir)
+                winreg.CloseKey(sub_shell)
+                winreg.CloseKey(key)
 
-            # Файлы
-            key_file = winreg.CreateKey(winreg.HKEY_CLASSES_ROOT, r"*\shell\CodeContextAI")
-            winreg.SetValueEx(key_file, "MUIVerb", 0, winreg.REG_SZ, "CodeContext AI")
-            winreg.SetValueEx(key_file, "Icon", 0, winreg.REG_SZ, icon_path)
-            winreg.SetValueEx(key_file, "SubCommands", 0, winreg.REG_SZ, "")
+            # 1. Применяем для папок (клик ПКМ по самой папке)
+            _add_menu(winreg.HKEY_CLASSES_ROOT, r"Directory\shell\CodeContextAI", "%1")
 
-            sub_shell = winreg.CreateKey(key_file, "shell")
+            # 2. Применяем для фона папки (клик ПКМ по пустому месту внутри папки)
+            # В Windows для передачи пути фона используется аргумент "%V"
+            _add_menu(winreg.HKEY_CLASSES_ROOT, r"Directory\Background\shell\CodeContextAI", "%V")
 
-            sub_file_gui = winreg.CreateKey(sub_shell, "cmd_gui")
-            winreg.SetValue(sub_file_gui, "", winreg.REG_SZ, "📂 Открыть в CodeContext AI")
-            winreg.SetValueEx(sub_file_gui, "Icon", 0, winreg.REG_SZ, icon_path)
-            cmd_file_gui = winreg.CreateKey(sub_file_gui, "command")
-            winreg.SetValue(cmd_file_gui, "", winreg.REG_SZ, gui_command)
-            winreg.CloseKey(cmd_file_gui)
-            winreg.CloseKey(sub_file_gui)
-
-            for key_name, label, mode in [
-                ("cmd1", "Scan File Only (No Deps)", "default"),
-                ("cmd2", "Scan File + Shallow Deps", "shallow"),
-                ("cmd3", "Scan File + Deep Deps",    "deep"),
-            ]:
-                sub = winreg.CreateKey(sub_shell, key_name)
-                winreg.SetValue(sub, "", winreg.REG_SZ, label)
-                winreg.SetValueEx(sub, "Icon", 0, winreg.REG_SZ, icon_path)
-                cmd = winreg.CreateKey(sub, "command")
-                winreg.SetValue(cmd, "", winreg.REG_SZ, f"{command_base} --mode {mode} --silent")
-                winreg.CloseKey(cmd)
-                winreg.CloseKey(sub)
-
-            winreg.CloseKey(sub_shell)
-            winreg.CloseKey(key_file)
+            # 3. Применяем для файлов (клик ПКМ по файлу)
+            _add_menu(winreg.HKEY_CLASSES_ROOT, r"*\shell\CodeContextAI", "%1")
 
             return True, "Успешно! Пункты добавлены для папок и файлов."
-
         except Exception as exc:
             return False, f"Ошибка записи в реестр: {exc}"
 
@@ -170,7 +159,13 @@ class WindowsContextMenuStrategy(ContextMenuStrategy):
 
         winreg, _ = self._imports()
         err_msg = ""
-        for path in (r"Directory\shell\CodeContextAI", r"*\shell\CodeContextAI"):
+
+        # Очищаем все три ветки
+        for path in (
+            r"Directory\shell\CodeContextAI",
+            r"Directory\Background\shell\CodeContextAI",
+            r"*\shell\CodeContextAI"
+        ):
             try:
                 self._delete_registry_tree(winreg.HKEY_CLASSES_ROOT, path)
             except Exception as exc:
@@ -181,6 +176,7 @@ class WindowsContextMenuStrategy(ContextMenuStrategy):
             if "[WinError 5]" in err_msg:
                 return False, f"Ошибка доступа (запустите IDE от администратора): {err_msg}"
             return False, f"Ошибка удаления из реестра: {err_msg}"
+
         return True, "Успешно! Пункты меню удалены."
 
 

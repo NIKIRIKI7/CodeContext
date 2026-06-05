@@ -7,11 +7,13 @@ import re
 import platform
 import asyncio
 from typing import Optional, Tuple, Callable
+
 from ..utils.logger import app_logger
 
 
 class UpdaterService:
     """Сервис для проверки и загрузки обновлений с GitHub с полным логированием."""
+
     REPO_API_URL = "https://api.github.com/repos/NIKIRIKI7/CodeContext/releases"
 
     async def check_for_updates(self, current_version: str, include_prerelease: bool) -> Optional[dict]:
@@ -28,7 +30,6 @@ class UpdaterService:
                 }
             )
             app_logger.debug(f"[Updater] Отправка запроса к {self.REPO_API_URL}")
-
             with urllib.request.urlopen(req, timeout=10) as response:
                 releases = json.loads(response.read().decode('utf-8'))
 
@@ -40,10 +41,8 @@ class UpdaterService:
             for release in releases:
                 if release.get("prerelease") and not include_prerelease:
                     continue
-
                 rel_tuple = self._parse_version(release.get("tag_name", "v0.0.0"))
                 app_logger.debug(f"[Updater] Анализ релиза: {release.get('tag_name')} -> parsed: {rel_tuple}")
-
                 if rel_tuple > curr_tuple:
                     latest_release = release
                     break
@@ -54,8 +53,8 @@ class UpdaterService:
 
             sys_os = platform.system()
             asset_url = None
-
             app_logger.info(f"[Updater] Найдена новая версия: {latest_release.get('tag_name')}. Поиск ассетов под {sys_os}...")
+
             for asset in latest_release.get('assets', []):
                 name = asset['name'].lower()
                 app_logger.debug(f"[Updater] Проверка ассета: {name}")
@@ -95,15 +94,21 @@ class UpdaterService:
         return await asyncio.to_thread(self._download_sync, download_url, current_exe, old_exe, progress_cb)
 
     def _download_sync(self, url: str, target: str, old_target: str, cb: Callable[[float], None]) -> bool:
+        new_target = target + ".new"
         try:
-            if os.path.exists(target):
-                app_logger.info(f"[Updater] Переименование текущего файла {target} -> {old_target}")
-                os.rename(target, old_target)
+            # 1. Очищаем старые временные файлы (вдруг остались после прошлых сбоев)
+            for temp_file in (new_target, old_target):
+                if os.path.exists(temp_file):
+                    try:
+                        os.remove(temp_file)
+                    except OSError:
+                        pass
 
             req = urllib.request.Request(url, headers={"User-Agent": "CodeContextAI-App"})
-            app_logger.info("[Updater] Открытие стрима для скачивания файла...")
+            app_logger.info(f"[Updater] Скачивание во временный файл: {new_target}")
 
-            with urllib.request.urlopen(req, timeout=30) as response, open(target, 'wb') as out_file:
+            # 2. Скачиваем в .new файл. Мы не трогаем запущенный .exe, чтобы Windows и антивирусы не ругались.
+            with urllib.request.urlopen(req, timeout=30) as response, open(new_target, 'wb') as out_file:
                 total_size = int(response.info().get('Content-Length', 0))
                 app_logger.info(f"[Updater] Размер файла: {total_size / 1024 / 1024:.2f} MB")
 
@@ -126,19 +131,42 @@ class UpdaterService:
                         app_logger.debug(f"[Updater] Скачано: {current_mb} MB / {total_size / 1024 / 1024:.2f} MB")
                         last_log_mb = current_mb
 
+            app_logger.info("[Updater] Файл скачан. Выполняем безопасную подмену (Atomic Replace)...")
+
+            # 3. Безопасная подмена
+            if os.path.exists(target):
+                app_logger.info(f"[Updater] Перемещение запущенного файла: {target} -> {old_target}")
+                # os.replace атомарен и работает даже если файл old_target существует
+                os.replace(target, old_target)
+
+            app_logger.info(f"[Updater] Установка новой версии: {new_target} -> {target}")
+            os.replace(new_target, target)
+
             if platform.system() == "Linux":
                 app_logger.info("[Updater] Установка прав 755 для Linux")
                 os.chmod(target, 0o755)
 
-            app_logger.info("[Updater] Скачивание и подмена файла успешно завершены.")
+            app_logger.info("[Updater] Установка успешно завершена.")
             return True
+
         except Exception as e:
-            app_logger.error(f"[Updater] Ошибка при скачивании: {e}")
-            if os.path.exists(old_target):
+            app_logger.error(f"[Updater] Ошибка при скачивании/установке: {e}")
+
+            # Если скачивание упало на середине, удаляем битый .new файл
+            if os.path.exists(new_target):
+                try:
+                    os.remove(new_target)
+                except OSError:
+                    pass
+
+            # Пытаемся восстановить всё как было
+            if not os.path.exists(target) and os.path.exists(old_target):
                 app_logger.info("[Updater] Откат: восстановление старого исполняемого файла.")
-                if os.path.exists(target):
-                    os.remove(target)
-                os.rename(old_target, target)
+                try:
+                    os.replace(old_target, target)
+                except OSError as rollback_err:
+                    app_logger.error(f"Критическая ошибка отката: {rollback_err}")
+
             raise RuntimeError(f"Сбой загрузки: {e}")
 
     def _parse_version(self, v_str: str) -> Tuple[int, int, int, int, int]:
