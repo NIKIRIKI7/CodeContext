@@ -2,7 +2,7 @@ import asyncio
 import datetime
 from typing import Optional, List, Dict, Set
 from ..actions.action_types import (
-    UI_SET_LOADING, UI_ADD_LOG, UI_SHOW_PREVIEW,
+    UI_SET_LOADING, UI_ADD_LOG, UI_SHOW_PREVIEW, UI_SHOW_CHAT,
     PROCESSING_SUCCESS, FORMATTING_SUCCESS,
     WORKFLOW_STARTED, WORKFLOW_PROGRESS, WORKFLOW_FINISHED, WORKFLOW_ERROR,
     HISTORY_ADD, SET_BEFORE_AFTER
@@ -140,9 +140,11 @@ class ProcessWorkspaceUseCase:
     async def _export(self, target: str, text: str, save_path: Optional[str]):
         if target == 'clipboard':
             self._output_service.copy_to_clipboard(text)
-            self._dispatcher.dispatch(UI_ADD_LOG, "📋 Скопировано в буфер обмена")
         elif target == 'preview':
             self._dispatcher.dispatch(UI_SHOW_PREVIEW, text)
+        elif target == 'chat':
+            self._dispatcher.dispatch(UI_SHOW_CHAT, text)
+            self._dispatcher.dispatch(UI_ADD_LOG, "💬 Контекст загружен в чат")
         elif target == 'file' and save_path:
             self._output_service.save_to_file(text, save_path)
             self._dispatcher.dispatch(UI_ADD_LOG, f"💾 Сохранено в {save_path}")

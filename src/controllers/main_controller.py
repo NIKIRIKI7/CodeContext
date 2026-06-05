@@ -6,7 +6,7 @@ from ..actions.action_types import (
     FOLDER_ADD, FOLDER_REMOVE, FOLDER_UPDATE, FOLDER_CLEAR,
     EXCLUSION_ADD, EXCLUSION_REMOVE, EXCLUSION_CLEAR,
     UI_ADD_LOG, UI_UPDATE_STATUS, UI_CLOSE_PREVIEW, UI_SHOW_TOUR, UI_CLOSE_TOUR,
-    UI_CLOSE_UPDATE
+    UI_CLOSE_UPDATE, UI_SHOW_TOAST, UI_CLOSE_CHAT
 )
 from ..actions.dispatcher import Dispatcher
 from ..store.store import Store
@@ -176,6 +176,9 @@ class MainController:
     def close_preview(self):
         self._dispatcher.dispatch(UI_CLOSE_PREVIEW, None)
 
+    def close_chat(self):
+        self._dispatcher.dispatch(UI_CLOSE_CHAT, None)
+
     def prepare_llm_patch(self, json_str: str) -> list:
         folders = self._store.state.selected_folders
         return self._patch_uc.prepare_json_patch(json_str, folders)
@@ -221,7 +224,12 @@ class MainController:
 
     def copy_to_clipboard(self, text: str):
         self._output_service.copy_to_clipboard(text)
+        tokens = self._store.state.selected_tokens if self._store.state.selected_tokens > 0 else self._store.state.total_tokens
         self._dispatcher.dispatch(UI_ADD_LOG, "📋 Текст скопирован в буфер обмена")
+        self._dispatcher.dispatch(UI_SHOW_TOAST, f"📋 Скопировано ({tokens} токенов)")
+
+    def clear_toast(self):
+        self._dispatcher.dispatch(UI_SHOW_TOAST, "")
 
     def get_search_markers_for_preview(self, filepath: str) -> List[str]:
         return self._format_service.get_search_markers(filepath)

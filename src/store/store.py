@@ -42,6 +42,10 @@ class Store:
             UI_CLOSE_TOUR:        self._handle_close_tour,
             UI_SHOW_UPDATE:       self._handle_show_update,
             UI_CLOSE_UPDATE:      self._handle_close_update,
+            UI_SHOW_TOAST:        self._handle_show_toast,
+
+            UI_SHOW_CHAT:         self._handle_show_chat,
+            UI_CLOSE_CHAT:        self._handle_close_chat,
 
             SETTINGS_LOADED:      self._handle_settings_loaded,
             SETTINGS_UPDATE:      self._handle_settings_update,
@@ -57,10 +61,11 @@ class Store:
 
             SCAN_SUCCESS:         self._handle_scan_success,
             SCAN_FAILURE:         self._handle_scan_failure,
+            RECALCULATE_TOKENS:   self._handle_recalculate_tokens,
 
-            EXCLUSION_ADD:        lambda p: self._state.manual_exclusions.add(p),
-            EXCLUSION_REMOVE:     lambda p: self._state.manual_exclusions.discard(p),
-            EXCLUSION_CLEAR:      lambda _: self._state.__setattr__('manual_exclusions', set()),
+            EXCLUSION_ADD:        self._handle_exclusion_add,
+            EXCLUSION_REMOVE:     self._handle_exclusion_remove,
+            EXCLUSION_CLEAR:      self._handle_exclusion_clear,
 
             PROCESSING_SUCCESS:   lambda p: self._state.__setattr__('processed_files', p),
             FORMATTING_SUCCESS:   self._handle_formatting_success,
@@ -73,6 +78,17 @@ class Store:
             HISTORY_ADD:          self._handle_history_add,
             SET_BEFORE_AFTER:     lambda p: self._state.__setattr__('before_after_data', p),
         })
+
+    def _handle_show_toast(self, message: str):
+        self._state.toast_message = message
+
+    def _handle_show_chat(self, payload: str):
+        self._state.chat_context = payload
+        self._state.show_chat = True
+
+    def _handle_close_chat(self, _):
+        self._state.show_chat = False
+        self._state.chat_context = ""
 
     def _handle_update_status(self, payload: dict):
         if isinstance(payload, dict):
@@ -150,9 +166,11 @@ class Store:
         self._state.manual_exclusions.clear()
         self._state.final_output_text = ""
         self._state.total_tokens = 0
+        self._state.selected_tokens = 0
         self._state.status_message = "Рабочая область очищена"
         self._state.progress = 0.0
         self._state.logs.clear()
+        self._state.toast_message = ""
 
     def _handle_github_success(self, payload: dict):
         path = payload.get("path")
@@ -177,6 +195,7 @@ class Store:
         self._state.scanned_file_metadata = payload['metadata']
         self._state.manual_exclusions = set()
         self._state.status_message = f"Найдено файлов: {len(payload['paths'])}"
+        self._handle_recalculate_tokens(None)
 
     def _handle_scan_failure(self, error: str):
         self._state.scanned_files_paths.clear()
@@ -199,6 +218,25 @@ class Store:
         self._state.preview_history.insert(0, payload)
         if len(self._state.preview_history) > 20:
             self._state.preview_history.pop()
+
+    def _handle_exclusion_add(self, path):
+        self._state.manual_exclusions.add(path)
+        self._handle_recalculate_tokens(None)
+
+    def _handle_exclusion_remove(self, path):
+        self._state.manual_exclusions.discard(path)
+        self._handle_recalculate_tokens(None)
+
+    def _handle_exclusion_clear(self, _):
+        self._state.manual_exclusions.clear()
+        self._handle_recalculate_tokens(None)
+
+    def _handle_recalculate_tokens(self, _):
+        total = 0
+        for path, meta in self._state.scanned_file_metadata.items():
+            if path not in self._state.manual_exclusions:
+                total += meta.get("tokens", 0)
+        self._state.selected_tokens = total
 
     def _notify(self):
         snapshot = self.state

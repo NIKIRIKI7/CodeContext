@@ -23,6 +23,19 @@ QWidget {{
     font-family: {f_family};
     font-size: {f_size};
     color: {c_text};
+    background-color: transparent;
+}}
+
+QWidget#folder_container {{
+    background-color: transparent;
+}}
+
+QToolTip {{
+    background-color: {c_card};
+    color: {c_text};
+    border: 1px solid {c_border};
+    border-radius: {r_small};
+    padding: 4px;
 }}
 
 QMainWindow, QDialog {{
@@ -62,6 +75,65 @@ QLabel[cssClass="muted"] {{
     color: {c_text_muted};
 }}
 
+/* --- СЕМАНТИЧЕСКИЕ КЛАССЫ (ДАННЫЕ ИЗ JSON) --- */
+QLabel[cssClass="toast"] {{
+    background-color: {c_success};
+    color: {c_bg};
+    padding: {s_pad_btn};
+    border-radius: {r_small};
+    font-weight: bold;
+    font-size: {f_size};
+}}
+
+QLabel[cssClass="empty_icon"] {{
+    font-size: {f_icon_large};
+    background: transparent;
+    border: none;
+}}
+
+QLabel[cssClass="empty_title"] {{
+    font-size: {f_title};
+    font-weight: bold;
+    background: transparent;
+    border: none;
+    color: {c_text};
+}}
+
+QLabel[cssClass="empty_subtitle"] {{
+    font-size: {f_size};
+    background: transparent;
+    border: none;
+    color: {c_text_muted};
+}}
+
+QLabel[cssClass="recent_name"] {{
+    font-weight: bold;
+    background: transparent;
+    font-size: {f_size};
+    border: none;
+    color: {c_text};
+}}
+
+QLabel[cssClass="recent_path"] {{
+    background: transparent;
+    font-size: {f_small};
+    border: none;
+    color: {c_text_muted};
+}}
+
+QLabel[cssClass="tour_title"], QWidget[cssClass="tour_title"] {{
+    font-size: {f_title};
+    font-weight: bold;
+    color: {c_text};
+    background: transparent;
+    border: none;
+}}
+
+QPlainTextEdit[cssClass="textarea_small"], QTextEdit[cssClass="textarea_small"], QWidget[cssClass="chat_input"] {{
+    max-height: {sz_textarea_small};
+}}
+/* ------------------------------------------------ */
+
 QPushButton {{
     background-color: {c_primary};
     color: {c_primary_fg};
@@ -96,6 +168,10 @@ QPushButton[cssClass="success"] {{
 }}
 
 QPushButton[cssClass="icon"] {{
+    min-width: 28px;
+    max-width: 28px;
+    min-height: 28px;
+    max-height: 28px;
     background-color: transparent;
     color: {c_text_muted};
     padding: 0px;
@@ -153,7 +229,6 @@ QComboBox QAbstractItemView::item {{
     border-radius: {r_small};
 }}
 
-/* ИСПРАВЛЕНИЕ: Добавлен padding, чтобы текст и контент не наезжали на скругленные углы */
 QTreeView, QListWidget, QPlainTextEdit, QTextEdit, QScrollArea {{
     background-color: {c_card};
     color: {c_text};
@@ -165,7 +240,6 @@ QTreeView, QListWidget, QPlainTextEdit, QTextEdit, QScrollArea {{
     padding: 8px;
 }}
 
-/* ИСПРАВЛЕНИЕ: Убран border-radius из viewport, фон сделан прозрачным, чтобы углы не красились в белый/чёрный цвет */
 QScrollArea::viewport, QTreeView::viewport, QListWidget::viewport, QPlainTextEdit::viewport, QTextEdit::viewport {{
     background-color: transparent;
     border: none;
@@ -243,7 +317,6 @@ QSplitter::handle {{
     background-color: transparent;
 }}
 
-/* ИСПРАВЛЕНИЕ: Добавлен margin для скроллбаров, чтобы они не перекрывали скругленные углы карточек */
 QScrollBar:vertical {{
     border: none;
     background: transparent;
@@ -298,7 +371,6 @@ QProgressBar::chunk {{
     border-radius: {r_prog};
 }}
 
-/* Стилизация контекстного меню */
 QMenu {{
     background-color: {c_card};
     color: {c_text};
@@ -379,8 +451,8 @@ class ThemeManager:
 
         modes = theme.get("modes", {})
         selected_mode_colors = modes.get(cls._current_mode, modes.get("light", {}))
-
         defaults = theme.get("default_styles", {})
+
         radii = defaults.get("radii", {})
         fonts = defaults.get("fonts", {})
         spacing = defaults.get("spacing", {})
@@ -397,18 +469,18 @@ class ThemeManager:
 
         qss = QSS_TEMPLATE.format(
             c_bg=selected_mode_colors.get("bg", "#ffffff"),
-            c_card=selected_mode_colors.get("card", "#ffffff"),
+            c_card=selected_mode_colors.get("card", "#f9f9f9"),
             c_text=text_hex,
-            c_text_muted=selected_mode_colors.get("text_muted", "#777777"),
-            c_primary=selected_mode_colors.get("primary", "#000000"),
+            c_text_muted=selected_mode_colors.get("text_muted", "#888888"),
+            c_primary=selected_mode_colors.get("primary", "#0078D7"),
             c_primary_fg=primary_fg_hex,
             svg_check=_create_svg_url(svg_check_str),
             svg_down_arrow=_create_svg_url(svg_arrow_str),
-            c_secondary=selected_mode_colors.get("secondary", "#f0f0f0"),
+            c_secondary=selected_mode_colors.get("secondary", "#e0e0e0"),
             c_secondary_fg=selected_mode_colors.get("secondary_fg", "#000000"),
             c_border=selected_mode_colors.get("border", "#cccccc"),
-            c_success=selected_mode_colors.get("success", "#00aa00"),
-            c_danger=selected_mode_colors.get("danger", "#aa0000"),
+            c_success=selected_mode_colors.get("success", "#28a745"),
+            c_danger=selected_mode_colors.get("danger", "#dc3545"),
             c_input_bg=selected_mode_colors.get("input_bg", "#ffffff"),
 
             r_card=radii.get("card", "8px"),
@@ -422,6 +494,9 @@ class ThemeManager:
             f_family=f_family_with_emoji,
             f_size=fonts.get("size", "14px"),
             f_heading=fonts.get("heading_size", "18px"),
+            f_title=fonts.get("title_size", "24px"),
+            f_icon_large=fonts.get("icon_size_large", "64px"),
+            f_small=fonts.get("small_size", "11px"),
 
             s_pad_btn=spacing.get("padding_btn", "8px 16px"),
             s_pad_input=spacing.get("padding_input", "8px 12px"),
@@ -432,7 +507,8 @@ class ThemeManager:
             sz_chk=sizes.get("checkbox_size", "18px"),
             sz_scroll=sizes.get("scrollbar_width", "8px"),
             sz_prog=sizes.get("progress_height", "4px"),
-            sz_tree_ind=sizes.get("tree_indicator", "16px")
+            sz_tree_ind=sizes.get("tree_indicator", "16px"),
+            sz_textarea_small=sizes.get("textarea_small_height", "80px")
         )
 
         app.setStyleSheet(qss)

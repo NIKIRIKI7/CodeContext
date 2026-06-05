@@ -61,14 +61,19 @@ class AppState:
     processed_files: List[ProcessedFile] = field(default_factory=list)
     final_output_text: str = ""
     total_tokens: int = 0
+    selected_tokens: int = 0
     status_message: str = "Готов к работе"
     progress: float = 0.0
     is_loading: bool = False
     logs: List[str] = field(default_factory=list)
+    toast_message: str = ""
     preview_text: str = ""
     show_preview: bool = False
     preview_history: List[dict] = field(default_factory=list)
     before_after_data: List[dict] = field(default_factory=list)
+    show_chat: bool = False
+    chat_context: str = ""
+
     show_tour: bool = False
     tour_steps: List[dict] = field(default_factory=list)
 

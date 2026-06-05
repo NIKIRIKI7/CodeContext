@@ -6,6 +6,36 @@ import asyncio
 class LlmCheckerService:
     """Сервис для проверки и исправления кода через LLM (OpenAI-совместимый API)"""
 
+    async def send_chat_message(self, messages: list, settings) -> str:
+        """Отправляет произвольный набор сообщений в чат."""
+        if not settings.llm_base_url:
+            return "Ошибка: Не указан URL API в настройках (вкладка LLM & ОС)."
+
+        data = {
+            "model": settings.llm_model or "gpt-4o-mini",
+            "messages": messages,
+            "temperature": 0.7
+        }
+
+        url = f"{settings.llm_base_url.rstrip('/')}/chat/completions"
+        headers = {"Content-Type": "application/json"}
+        if settings.llm_api_key:
+            headers["Authorization"] = f"Bearer {settings.llm_api_key}"
+
+        def make_request():
+            req = urllib.request.Request(url, data=json.dumps(data).encode('utf-8'), headers=headers)
+            try:
+                with urllib.request.urlopen(req, timeout=60) as response:
+                    res = json.loads(response.read().decode('utf-8'))
+                    return res['choices'][0]['message']['content']
+            except urllib.error.URLError as e:
+                body = e.read().decode('utf-8') if hasattr(e, 'read') else str(e)
+                return f"API Error: {body}"
+            except Exception as e:
+                return f"System Error: {str(e)}"
+
+        return await asyncio.to_thread(make_request)
+
     async def check_patch(self, original_code: str, patched_code: str, settings) -> dict:
         """Возвращает словарь: {'status': str, 'reason': str, 'suggested_code': str | None}"""
         if not settings.llm_check_enabled:

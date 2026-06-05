@@ -8,6 +8,72 @@ from PySide6.QtGui import QSyntaxHighlighter, QTextCharFormat, QColor, QFont
 from .theme_manager import ThemeManager
 
 
+class ChatDialog(QDialog):
+    """Окно прямого общения с LLM, куда уже встроен контекст проекта"""
+    def __init__(self, parent, state, controller):
+        super().__init__(parent)
+        self.state = state
+        self.controller = controller
+        self.setWindowTitle("AI Chat (CodeContext)")
+        self.resize(850, 650)
+
+        layout = QVBoxLayout(self)
+
+        self.chat_history = QTextBrowser()
+        self.chat_history.setOpenExternalLinks(True)
+        layout.addWidget(self.chat_history, 4)
+
+        input_layout = QHBoxLayout()
+        self.input_field = QPlainTextEdit()
+        self.input_field.setProperty("cssClass", "chat_input")
+        self.input_field.setPlaceholderText("Напишите ваш запрос... (Например: 'Найди баг' или 'Оптимизируй этот файл')")
+
+        self.btn_send = QPushButton("Отправить")
+        self.btn_send.setProperty("cssClass", "success")
+        self.btn_send.clicked.connect(self._send_message)
+
+        input_layout.addWidget(self.input_field, 4)
+        input_layout.addWidget(self.btn_send, 1)
+        layout.addLayout(input_layout)
+
+        self.messages = []
+
+    def update_data(self, state):
+        if not self.messages:
+            self.messages.append({"role": "system", "content": state.chat_context})
+            self.chat_history.append("<b>Система:</b> Контекст проекта успешно загружен в память! Можете задавать вопросы.<br><br>")
+
+    def _send_message(self):
+        user_text = self.input_field.toPlainText().strip()
+        if not user_text:
+            return
+
+        self.input_field.clear()
+        self.messages.append({"role": "user", "content": user_text})
+        self.chat_history.append(f"<b>Вы:</b> {user_text}<br><br>")
+        self.btn_send.setEnabled(False)
+        self.btn_send.setText("⏳ Ожидание...")
+
+        async def fetch_reply():
+            reply = await self.controller._llm_checker.send_chat_message(self.messages, self.controller._store.state.settings)
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(0, lambda: self._on_reply(reply))
+
+        from ..utils.async_runtime import AsyncRuntime
+        AsyncRuntime.run_coroutine(fetch_reply())
+
+    def _on_reply(self, reply):
+        self.messages.append({"role": "assistant", "content": reply})
+        self.chat_history.append(f"<b>AI:</b> {reply}<br><br>")
+        self.btn_send.setEnabled(True)
+        self.btn_send.setText("Отправить")
+        self.chat_history.verticalScrollBar().setValue(self.chat_history.verticalScrollBar().maximum())
+
+    def closeEvent(self, event):
+        self.controller.close_chat()
+        super().closeEvent(event)
+
+
 class PreviewHighlighter(QSyntaxHighlighter):
     """Простая подсветка синтаксиса для Markdown и XML в окне предпросмотра"""
 
@@ -155,7 +221,7 @@ class InteractiveTourDialog(QDialog):
         self.resize(700, 500)
         layout = QVBoxLayout(self)
         self.lbl_title = QLabel()
-        self.lbl_title.setStyleSheet("font-size: 24px; font-weight: bold;")
+        self.lbl_title.setProperty("cssClass", "tour_title")
         self.txt_desc = QTextEdit()
         self.txt_desc.setReadOnly(True)
         btn_layout = QHBoxLayout()

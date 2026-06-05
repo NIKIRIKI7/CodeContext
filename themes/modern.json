@@ -1,63 +1,83 @@
 {
-  "name": "Modern (Shadcn)",
-  "modes": {
-    "light": {
-      "bg": "#ffffff",
-      "card": "#ffffff",
-      "text": "#09090b",
-      "text_muted": "#71717a",
-      "primary": "#18181b",
-      "primary_fg": "#fafafa",
-      "secondary": "#f4f4f5",
-      "secondary_fg": "#18181b",
-      "border": "#e4e4e7",
-      "success": "#16a34a",
-      "danger": "#ef4444",
-      "input_bg": "#ffffff",
-      "transparent": "transparent",
-      "diff_add": "#dcfce7",
-      "diff_sub": "#fee2e2",
-      "diff_chg": "#fef08a",
-      "diff_hdr": "#f4f4f5"
+    "name": "Modern (Shadcn)",
+    "modes": {
+        "light": {
+            "bg": "#ffffff",
+            "card": "#ffffff",
+            "text": "#09090b",
+            "text_muted": "#71717a",
+            "primary": "#18181b",
+            "primary_fg": "#fafafa",
+            "secondary": "#f4f4f5",
+            "secondary_fg": "#18181b",
+            "border": "#e4e4e7",
+            "success": "#16a34a",
+            "danger": "#ef4444",
+            "input_bg": "#ffffff",
+            "transparent": "transparent",
+            "diff_add": "#dcfce7",
+            "diff_sub": "#fee2e2",
+            "diff_chg": "#fef08a",
+            "diff_hdr": "#f4f4f5"
+        },
+        "dark": {
+            "bg": "#09090b",
+            "card": "#09090b",
+            "text": "#fafafa",
+            "text_muted": "#a1a1aa",
+            "primary": "#fafafa",
+            "primary_fg": "#18181b",
+            "secondary": "#27272a",
+            "secondary_fg": "#fafafa",
+            "border": "#27272a",
+            "success": "#22c55e",
+            "danger": "#ef4444",
+            "input_bg": "#09090b",
+            "transparent": "transparent",
+            "diff_add": "#052e16",
+            "diff_sub": "#450a0a",
+            "diff_chg": "#422006",
+            "diff_hdr": "#27272a"
+        }
     },
-    "dark": {
-      "bg": "#09090b",
-      "card": "#09090b",
-      "text": "#fafafa",
-      "text_muted": "#a1a1aa",
-      "primary": "#fafafa",
-      "primary_fg": "#18181b",
-      "secondary": "#27272a",
-      "secondary_fg": "#fafafa",
-      "border": "#27272a",
-      "success": "#22c55e",
-      "danger": "#ef4444",
-      "input_bg": "#09090b",
-      "transparent": "transparent",
-      "diff_add": "#052e16",
-      "diff_sub": "#450a0a",
-      "diff_chg": "#422006",
-      "diff_hdr": "#27272a"
+    "default_styles": {
+        "radii": {
+            "card": "8px",
+            "button": "6px",
+            "input": "6px",
+            "small": "4px",
+            "checkbox": "4px",
+            "scrollbar": "4px",
+            "progress": "2px"
+        },
+        "fonts": {
+            "family": "Inter, Segoe UI, -apple-system, Roboto, sans-serif",
+            "size": "13px",
+            "heading_size": "16px",
+            "title_size": "22px",
+            "icon_size_large": "56px",
+            "small_size": "10px"
+        },
+        "spacing": {
+            "padding_btn": "6px 14px",
+            "padding_input": "6px 10px",
+            "padding_item": "4px 6px",
+            "margin_tab": "2px",
+            "checkbox_spacing": "8px"
+        },
+        "sizes": {
+            "checkbox_size": "16px",
+            "scrollbar_width": "8px",
+            "progress_height": "4px",
+            "tree_indicator": "14px",
+            "textarea_small_height": "76px"
+        },
+        "layout": {
+            "main_margin": 12,
+            "main_spacing": 12,
+            "panel_margin": 16,
+            "panel_spacing": 12,
+            "sidebar_width": 300
+        }
     }
-  },
-  "default_styles": {
-    "radii": {
-      "card": "8px", "button": "6px", "input": "6px",
-      "small": "4px", "checkbox": "4px", "scrollbar": "4px", "progress": "2px"
-    },
-    "fonts": {
-      "family": "Inter, Segoe UI, -apple-system, Roboto, sans-serif",
-      "size": "13px", "heading_size": "16px"
-    },
-    "spacing": {
-      "padding_btn": "6px 14px", "padding_input": "6px 10px", "padding_item": "4px 6px",
-      "margin_tab": "2px", "checkbox_spacing": "8px"
-    },
-    "sizes": {
-      "checkbox_size": "16px", "scrollbar_width": "8px", "progress_height": "4px", "tree_indicator": "14px"
-    },
-    "layout": {
-      "main_margin": 12, "main_spacing": 12, "panel_margin": 16, "panel_spacing": 12, "sidebar_width": 300
-    }
-  }
 }

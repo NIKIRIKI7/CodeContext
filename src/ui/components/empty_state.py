@@ -19,11 +19,10 @@ class RecentCard(QFrame):
         layout.setSpacing(4)
 
         name_lbl = QLabel(os.path.basename(path) or path)
-        name_lbl.setStyleSheet("font-weight: bold; background: transparent; font-size: 14px; border: none;")
+        name_lbl.setProperty("cssClass", "recent_name")
 
         path_lbl = QLabel(path)
-        path_lbl.setProperty("cssClass", "muted")
-        path_lbl.setStyleSheet("background: transparent; font-size: 11px; border: none;")
+        path_lbl.setProperty("cssClass", "recent_path")
 
         layout.addWidget(name_lbl)
         layout.addWidget(path_lbl)
@@ -47,24 +46,21 @@ class EmptyState(QWidget):
         drop_layout.setAlignment(Qt.AlignCenter)
 
         icon_lbl = QLabel("📁")
-        icon_lbl.setStyleSheet("font-size: 64px; background: transparent; border: none;")
+        icon_lbl.setProperty("cssClass", "empty_icon")
         icon_lbl.setAlignment(Qt.AlignCenter)
 
         title_lbl = QLabel("Перетащите папку проекта сюда")
-        title_lbl.setProperty("cssClass", "heading")
-        title_lbl.setStyleSheet("font-size: 24px; background: transparent; border: none;")
+        title_lbl.setProperty("cssClass", "empty_title")
         title_lbl.setAlignment(Qt.AlignCenter)
 
         subtitle_lbl = QLabel("или выберите вручную, нажав кнопку ниже")
-        subtitle_lbl.setProperty("cssClass", "muted")
-        subtitle_lbl.setStyleSheet("font-size: 14px; background: transparent; border: none;")
+        subtitle_lbl.setProperty("cssClass", "empty_subtitle")
         subtitle_lbl.setAlignment(Qt.AlignCenter)
 
         btn_browse = QPushButton("Обзор файлов")
         btn_browse.setProperty("cssClass", "success")
         btn_browse.setCursor(Qt.PointingHandCursor)
         btn_browse.clicked.connect(self._browse)
-        btn_browse.setFixedWidth(200)
 
         drop_layout.addStretch()
         drop_layout.addWidget(icon_lbl)

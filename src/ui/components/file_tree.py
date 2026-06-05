@@ -1,5 +1,5 @@
 import os
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QTreeView, QLineEdit, QMenu
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTreeView, QLineEdit, QMenu, QPushButton
 from PySide6.QtGui import QStandardItemModel, QStandardItem
 from PySide6.QtCore import Qt
 from ..theme_manager import ThemeManager, theme_bus
@@ -15,18 +15,31 @@ class FileTree(QWidget):
         self.layout.setContentsMargins(0, 0, 0, 0)
 
         self.search = QLineEdit()
-        self.search.setPlaceholderText("🔍 Поиск файлов...")
+        self.search.setPlaceholderText("🔍 Поиск файлов (Ctrl+F)...")
+
+        btn_layout = QHBoxLayout()
+        btn_layout.setContentsMargins(0, 0, 0, 0)
+        self.btn_expand = QPushButton("Развернуть всё")
+        self.btn_collapse = QPushButton("Свернуть всё")
+        self.btn_expand.setProperty("cssClass", "ghost")
+        self.btn_collapse.setProperty("cssClass", "ghost")
+        btn_layout.addWidget(self.btn_expand)
+        btn_layout.addWidget(self.btn_collapse)
 
         self.tree = QTreeView()
         self.tree.setHeaderHidden(True)
         self.tree.setContextMenuPolicy(Qt.CustomContextMenu)
         self.tree.customContextMenuRequested.connect(self._show_context_menu)
 
+        self.btn_expand.clicked.connect(self.tree.expandAll)
+        self.btn_collapse.clicked.connect(self.tree.collapseAll)
+
         self.model = QStandardItemModel()
         self.tree.setModel(self.model)
         self.model.itemChanged.connect(self._on_item_changed)
 
         self.layout.addWidget(self.search)
+        self.layout.addLayout(btn_layout)
         self.layout.addWidget(self.tree)
         self.search.textChanged.connect(self._filter_tree)
 

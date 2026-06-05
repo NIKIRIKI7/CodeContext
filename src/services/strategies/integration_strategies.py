@@ -83,6 +83,7 @@ class WindowsContextMenuStrategy(ContextMenuStrategy):
             if getattr(sys, 'frozen', False):
                 exe_path = sys.executable
                 command_base = f'"{exe_path}" --cli --path "%1"'
+                gui_command = f'"{exe_path}" --path "%1"'
                 icon_path = exe_path
             else:
                 if custom_python_path and os.path.exists(custom_python_path):
@@ -95,23 +96,51 @@ class WindowsContextMenuStrategy(ContextMenuStrategy):
                     if os.path.exists(possible):
                         script_path = possible
                 command_base = f'"{python_exe}" "{script_path}" --cli --path "%1"'
+                gui_command = f'"{python_exe}" "{script_path}" --path "%1"'
                 icon_path = python_exe
 
-            # Для папок
+            # Папки
             key_dir = winreg.CreateKey(winreg.HKEY_CLASSES_ROOT, r"Directory\shell\CodeContextAI")
-            winreg.SetValue(key_dir, "", winreg.REG_SZ, "Scan with CodeContext AI")
+            winreg.SetValue(key_dir, "", winreg.REG_SZ, "CodeContext AI")
             winreg.SetValueEx(key_dir, "Icon", 0, winreg.REG_SZ, icon_path)
-            cmd_dir = winreg.CreateKey(key_dir, "command")
-            winreg.SetValue(cmd_dir, "", winreg.REG_SZ, command_base)
-            winreg.CloseKey(cmd_dir)
+            winreg.SetValueEx(key_dir, "SubCommands", 0, winreg.REG_SZ, "")
+
+            sub_shell_dir = winreg.CreateKey(key_dir, "shell")
+
+            sub_gui = winreg.CreateKey(sub_shell_dir, "cmd_gui")
+            winreg.SetValue(sub_gui, "", winreg.REG_SZ, "📂 Открыть в CodeContext AI")
+            winreg.SetValueEx(sub_gui, "Icon", 0, winreg.REG_SZ, icon_path)
+            cmd_gui = winreg.CreateKey(sub_gui, "command")
+            winreg.SetValue(cmd_gui, "", winreg.REG_SZ, gui_command)
+            winreg.CloseKey(cmd_gui)
+            winreg.CloseKey(sub_gui)
+
+            sub_silent = winreg.CreateKey(sub_shell_dir, "cmd_silent")
+            winreg.SetValue(sub_silent, "", winreg.REG_SZ, "📋 Копировать контекст (Без UI)")
+            winreg.SetValueEx(sub_silent, "Icon", 0, winreg.REG_SZ, icon_path)
+            cmd_silent = winreg.CreateKey(sub_silent, "command")
+            winreg.SetValue(cmd_silent, "", winreg.REG_SZ, f'{command_base} --silent')
+            winreg.CloseKey(cmd_silent)
+            winreg.CloseKey(sub_silent)
+
+            winreg.CloseKey(sub_shell_dir)
             winreg.CloseKey(key_dir)
 
-            # Для файлов (с подменю)
+            # Файлы
             key_file = winreg.CreateKey(winreg.HKEY_CLASSES_ROOT, r"*\shell\CodeContextAI")
             winreg.SetValueEx(key_file, "MUIVerb", 0, winreg.REG_SZ, "CodeContext AI")
             winreg.SetValueEx(key_file, "Icon", 0, winreg.REG_SZ, icon_path)
             winreg.SetValueEx(key_file, "SubCommands", 0, winreg.REG_SZ, "")
+
             sub_shell = winreg.CreateKey(key_file, "shell")
+
+            sub_file_gui = winreg.CreateKey(sub_shell, "cmd_gui")
+            winreg.SetValue(sub_file_gui, "", winreg.REG_SZ, "📂 Открыть в CodeContext AI")
+            winreg.SetValueEx(sub_file_gui, "Icon", 0, winreg.REG_SZ, icon_path)
+            cmd_file_gui = winreg.CreateKey(sub_file_gui, "command")
+            winreg.SetValue(cmd_file_gui, "", winreg.REG_SZ, gui_command)
+            winreg.CloseKey(cmd_file_gui)
+            winreg.CloseKey(sub_file_gui)
 
             for key_name, label, mode in [
                 ("cmd1", "Scan File Only (No Deps)", "default"),
@@ -122,12 +151,13 @@ class WindowsContextMenuStrategy(ContextMenuStrategy):
                 winreg.SetValue(sub, "", winreg.REG_SZ, label)
                 winreg.SetValueEx(sub, "Icon", 0, winreg.REG_SZ, icon_path)
                 cmd = winreg.CreateKey(sub, "command")
-                winreg.SetValue(cmd, "", winreg.REG_SZ, f"{command_base} --mode {mode}")
+                winreg.SetValue(cmd, "", winreg.REG_SZ, f"{command_base} --mode {mode} --silent")
                 winreg.CloseKey(cmd)
                 winreg.CloseKey(sub)
 
             winreg.CloseKey(sub_shell)
             winreg.CloseKey(key_file)
+
             return True, "Успешно! Пункты добавлены для папок и файлов."
 
         except Exception as exc:
@@ -166,19 +196,17 @@ class LinuxContextMenuStrategy(ContextMenuStrategy):
             python_exe = custom_python_path or sys.executable
             script_path = os.path.abspath(sys.argv[0])
 
-            # GTK (Nautilus, Nemo, Caja)
             action_dir = os.path.expanduser("~/.local/share/file-manager/actions")
             os.makedirs(action_dir, exist_ok=True)
             with open(os.path.join(action_dir, "codecontext_ai.desktop"), "w") as f:
                 f.write(
-                    f"[Desktop Entry]\nType=Action\nName=Scan with CodeContext AI\n"
+                    f"[Desktop Entry]\nType=Action\nName=Открыть в CodeContext AI\n"
                     f"Icon=utilities-terminal\nProfiles=profile-zero;\n\n"
                     f"[X-Action-Profile profile-zero]\n"
-                    f"Exec={python_exe} {script_path} --cli --path %f\n"
+                    f"Exec={python_exe} {script_path} --path %f\n"
                     f"Name=Default profile\n"
                 )
 
-            # KDE (Dolphin)
             kde_dir = os.path.expanduser("~/.local/share/kio/servicemenus")
             os.makedirs(kde_dir, exist_ok=True)
             with open(os.path.join(kde_dir, "codecontext_ai.desktop"), "w") as f:
@@ -186,10 +214,9 @@ class LinuxContextMenuStrategy(ContextMenuStrategy):
                     f"[Desktop Entry]\nType=Service\nServiceTypes=KonqPopupMenu/Plugin\n"
                     f"MimeType=all/allfiles;inode/directory;\nActions=ScanCodeContext;\n"
                     f"X-KDE-Priority=TopLevel\n\n"
-                    f"[Desktop Action ScanCodeContext]\nName=Scan with CodeContext AI\n"
-                    f"Icon=utilities-terminal\nExec={python_exe} {script_path} --cli --path %f\n"
+                    f"[Desktop Action ScanCodeContext]\nName=Открыть в CodeContext AI\n"
+                    f"Icon=utilities-terminal\nExec={python_exe} {script_path} --path %f\n"
                 )
-
             return True, "Успешно! Контекстное меню добавлено (KDE/GTK)."
         except Exception as exc:
             return False, f"Ошибка установки в Linux: {exc}"
@@ -213,10 +240,281 @@ class LinuxContextMenuStrategy(ContextMenuStrategy):
 # ===========================================================================
 
 class MacOSContextMenuStrategy(ContextMenuStrategy):
-    """Стратегия для macOS (Automator/Quick Actions — в разработке)."""
-
+    """Стратегия для macOS (Automator/Quick Actions)."""
     def install(self, custom_python_path: Optional[str] = None) -> Tuple[bool, str]:
-        return False, "Интеграция с Finder (macOS) пока в разработке."
+        import os, sys
+        python_exe = custom_python_path or sys.executable
+        script_path = os.path.abspath(sys.argv[0])
+        services_dir = os.path.expanduser("~/Library/Services")
+        os.makedirs(services_dir, exist_ok=True)
+        workflow_dir = os.path.join(services_dir, "CodeContextAI.workflow")
+        os.makedirs(os.path.join(workflow_dir, "Contents"), exist_ok=True)
+
+        info_plist = """<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>com.codecontext.workflow</string>
+    <key>CFBundleName</key>
+    <string>Открыть в CodeContext AI</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>NSServices</key>
+    <array>
+        <dict>
+            <key>NSMenuItem</key>
+            <dict>
+                <key>default</key>
+                <string>Открыть в CodeContext AI</string>
+            </dict>
+            <key>NSMessage</key>
+            <string>runWorkflowAsService</string>
+            <key>NSRequiredContext</key>
+            <dict>
+                <key>NSTextContent</key>
+                <string>FilePath</string>
+            </dict>
+            <key>NSSendTypes</key>
+            <array>
+                <string>public.item</string>
+            </array>
+        </dict>
+    </array>
+</dict>
+</plist>"""
+
+        script_content = f'''for f in "$@"
+do
+    "{python_exe}" "{script_path}" --path "$f"
+done'''
+
+        document_wflow = f"""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>AMApplicationBuild</key>
+    <string>523</string>
+    <key>AMApplicationVersion</key>
+    <string>2.10</string>
+    <key>AMDocumentVersion</key>
+    <string>2</string>
+    <key>actions</key>
+    <array>
+        <dict>
+            <key>action</key>
+            <dict>
+                <key>AMAccepts</key>
+                <dict>
+                    <key>Container</key>
+                    <string>List</string>
+                    <key>Optional</key>
+                    <true/>
+                    <key>Types</key>
+                    <array>
+                        <string>com.apple.cocoa.string</string>
+                    </array>
+                </dict>
+                <key>AMActionVersion</key>
+                <string>2.0.3</string>
+                <key>AMApplication</key>
+                <array>
+                    <string>Automator</string>
+                </array>
+                <key>AMParameterProperties</key>
+                <dict>
+                    <key>COMMANDString</key>
+                    <dict/>
+                    <key>CheckedForUserDefaultShell</key>
+                    <dict/>
+                    <key>inputMethod</key>
+                    <dict/>
+                    <key>shell</key>
+                    <dict/>
+                    <key>source</key>
+                    <dict/>
+                </dict>
+                <key>AMProvides</key>
+                <dict>
+                    <key>Container</key>
+                    <string>List</string>
+                    <key>Types</key>
+                    <array>
+                        <string>com.apple.cocoa.string</string>
+                    </array>
+                </dict>
+                <key>ActionBundlePath</key>
+                <string>/System/Library/Automator/Run Shell Script.action</string>
+                <key>ActionName</key>
+                <string>Run Shell Script</string>
+                <key>ActionParameters</key>
+                <dict>
+                    <key>COMMANDString</key>
+                    <string>{script_content}</string>
+                    <key>CheckedForUserDefaultShell</key>
+                    <true/>
+                    <key>inputMethod</key>
+                    <integer>1</integer>
+                    <key>shell</key>
+                    <string>/bin/bash</string>
+                    <key>source</key>
+                    <string></string>
+                </dict>
+                <key>BundleIdentifier</key>
+                <string>com.apple.RunShellScript</string>
+                <key>CFBundleVersion</key>
+                <string>2.0.3</string>
+                <key>CanShowSelectedItemsWhenRun</key>
+                <false/>
+                <key>CanShowWhenRun</key>
+                <true/>
+                <key>Category</key>
+                <array>
+                    <string>AMCategoryUtilities</string>
+                </array>
+                <key>Class Name</key>
+                <string>RunShellScriptAction</string>
+                <key>InputUUID</key>
+                <string>12345678-1234-1234-1234-123456789012</string>
+                <key>Keywords</key>
+                <array>
+                    <string>Shell</string>
+                    <string>Script</string>
+                    <string>Command</string>
+                    <string>Run</string>
+                    <string>Unix</string>
+                </array>
+                <key>OutputUUID</key>
+                <string>12345678-1234-1234-1234-123456789013</string>
+                <key>UUID</key>
+                <string>12345678-1234-1234-1234-123456789014</string>
+                <key>UnlocalizedApplications</key>
+                <array>
+                    <string>Automator</string>
+                </array>
+                <key>arguments</key>
+                <dict>
+                    <key>0</key>
+                    <dict>
+                        <key>default value</key>
+                        <integer>0</integer>
+                        <key>name</key>
+                        <string>inputMethod</string>
+                        <key>required</key>
+                        <string>0</string>
+                        <key>type</key>
+                        <string>0</string>
+                        <key>uuid</key>
+                        <string>0</string>
+                    </dict>
+                    <key>1</key>
+                    <dict>
+                        <key>default value</key>
+                        <false/>
+                        <key>name</key>
+                        <string>CheckedForUserDefaultShell</string>
+                        <key>required</key>
+                        <string>0</string>
+                        <key>type</key>
+                        <string>0</string>
+                        <key>uuid</key>
+                        <string>1</string>
+                    </dict>
+                    <key>2</key>
+                    <dict>
+                        <key>default value</key>
+                        <string></string>
+                        <key>name</key>
+                        <string>source</string>
+                        <key>required</key>
+                        <string>0</string>
+                        <key>type</key>
+                        <string>0</string>
+                        <key>uuid</key>
+                        <string>2</string>
+                    </dict>
+                    <key>3</key>
+                    <dict>
+                        <key>default value</key>
+                        <string></string>
+                        <key>name</key>
+                        <string>COMMANDString</string>
+                        <key>required</key>
+                        <string>0</string>
+                        <key>type</key>
+                        <string>0</string>
+                        <key>uuid</key>
+                        <string>3</string>
+                    </dict>
+                    <key>4</key>
+                    <dict>
+                        <key>default value</key>
+                        <string>/bin/sh</string>
+                        <key>name</key>
+                        <string>shell</string>
+                        <key>required</key>
+                        <string>0</string>
+                        <key>type</key>
+                        <string>0</string>
+                        <key>uuid</key>
+                        <string>4</string>
+                    </dict>
+                </dict>
+                <key>isViewVisible</key>
+                <integer>1</integer>
+                <key>location</key>
+                <string>309.000000:252.000000</string>
+                <key>nibPath</key>
+                <string>/System/Library/Automator/Run Shell Script.action/Contents/Resources/Base.lproj/main.nib</string>
+            </dict>
+            <key>isViewVisible</key>
+            <integer>1</integer>
+        </dict>
+    </array>
+    <key>connectors</key>
+    <dict/>
+    <key>workflowMetaData</key>
+    <dict>
+        <key>applicationBundleIDsByPath</key>
+        <dict/>
+        <key>applicationPaths</key>
+        <array/>
+        <key>inputTypeIdentifier</key>
+        <string>com.apple.Automator.fileSystemObject</string>
+        <key>outputTypeIdentifier</key>
+        <string>com.apple.Automator.nothing</string>
+        <key>presentationMode</key>
+        <integer>15</integer>
+        <key>processesInput</key>
+        <false/>
+        <key>serviceInputTypeIdentifier</key>
+        <string>com.apple.Automator.fileSystemObject</string>
+        <key>serviceOutputTypeIdentifier</key>
+        <string>com.apple.Automator.nothing</string>
+        <key>serviceProcessesInput</key>
+        <false/>
+        <key>systemImageName</key>
+        <string>NSTouchBarPlay</string>
+        <key>useAutomaticInputType</key>
+        <false/>
+        <key>workflowTypeIdentifier</key>
+        <string>com.apple.Automator.servicesMenu</string>
+    </dict>
+</dict>
+</plist>"""
+        with open(os.path.join(workflow_dir, "Contents", "Info.plist"), "w") as f:
+            f.write(info_plist)
+        with open(os.path.join(workflow_dir, "Contents", "document.wflow"), "w") as f:
+            f.write(document_wflow)
+
+        return True, "Успешно! Пункт добавлен в Quick Actions / Services (Finder)."
 
     def remove(self) -> Tuple[bool, str]:
-        return False, "Интеграция с Finder (macOS) пока в разработке."
+        import os, shutil
+        workflow_dir = os.path.expanduser("~/Library/Services/CodeContextAI.workflow")
+        if os.path.exists(workflow_dir):
+            shutil.rmtree(workflow_dir)
+            return True, "Успешно! Пункт удален из Quick Actions."
+        return False, "Интеграция не найдена."

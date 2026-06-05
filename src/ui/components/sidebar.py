@@ -135,13 +135,11 @@ class Sidebar(QWidget):
 
         btn_save_preset = QPushButton("💾")
         btn_save_preset.setProperty("cssClass", "icon")
-        btn_save_preset.setFixedSize(28, 28)
         btn_save_preset.setToolTip("Сохранить как пресет")
         btn_save_preset.clicked.connect(self._save_ext_preset)
 
         btn_del_preset = QPushButton("🗑")
         btn_del_preset.setProperty("cssClass", "icon")
-        btn_del_preset.setFixedSize(28, 28)
         btn_del_preset.setToolTip("Удалить выбранный кастомный пресет")
         btn_del_preset.clicked.connect(self._del_ext_preset)
 
@@ -153,14 +151,14 @@ class Sidebar(QWidget):
 
         layout.addWidget(QLabel("Расширения:"))
         self.entry_ext = QPlainTextEdit()
+        self.entry_ext.setProperty("cssClass", "textarea_small")
         self.entry_ext.setPlaceholderText("Например: .py .js .ts")
-        self.entry_ext.setMaximumHeight(80)
         layout.addWidget(self.entry_ext)
 
         layout.addWidget(QLabel("Игнорировать пути:"))
         self.entry_ign = QPlainTextEdit()
+        self.entry_ign.setProperty("cssClass", "textarea_small")
         self.entry_ign.setPlaceholderText("Например: node_modules, .git, build")
-        self.entry_ign.setMaximumHeight(80)
         layout.addWidget(self.entry_ign)
 
         self.chk_tree = QCheckBox("Включить дерево файлов")
@@ -180,13 +178,11 @@ class Sidebar(QWidget):
 
         btn_save_prompt = QPushButton("💾")
         btn_save_prompt.setProperty("cssClass", "icon")
-        btn_save_prompt.setFixedSize(28, 28)
         btn_save_prompt.setToolTip("Сохранить как пресет")
         btn_save_prompt.clicked.connect(self._save_prompt_preset)
 
         btn_del_prompt = QPushButton("🗑")
         btn_del_prompt.setProperty("cssClass", "icon")
-        btn_del_prompt.setFixedSize(28, 28)
         btn_del_prompt.setToolTip("Удалить выбранный кастомный пресет")
         btn_del_prompt.clicked.connect(self._del_prompt_preset)
 

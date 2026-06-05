@@ -1,6 +1,6 @@
 {
   "extensions": ".py .js .ts .vue .jsx .tsx .html .css .json .md .sql .xml .yaml .yml .sh .bat .go .java .cpp .kt .kts",
-  "ignored_paths": ".git, node_modules, .nuxt, __pycache__, dist, build, .idea, .vscode, venv, .venv, coverage, .next, target, bin, obj",
+  "ignored_paths": ".git, node_modules, .nuxt, __pycache__, dist, build, .idea, .vscode, venv, .venv, coverage, .next, target, bin, obj, tests",
   "minify": true,
   "remove_comments": true,
   "remove_secrets": false,
@@ -21,16 +21,18 @@
   "cli_use_gitignore": true,
   "cli_format": "plain",
   "python_interpreter": "C:/python",
+  "receive_prereleases": false,
   "llm_check_enabled": false,
   "llm_api_key": "",
   "llm_base_url": "https://api.openai.com/v1",
   "llm_model": "gpt-4o-mini",
   "recent_workspaces": [
-    "C:\\Users\\mcniki\\Documents\\Проекты\\Python\\Мое\\zapret",
+    "C:\\Users\\mcniki\\Documents\\Проекты\\Python\\Мое\\CodeContext",
+    "C:\\Users\\mcniki\\Documents\\Проекты\\Python\\Мое\\CodeContext\\docs",
     "C:\\Users\\mcniki\\Documents\\Проекты\\WEB\\fanfics-site",
+    "C:\\Users\\mcniki\\Documents\\Проекты\\Python\\Мое\\zapret",
     "C:\\Users\\mcniki\\Documents\\Works\\Chapa\\Avia",
-    "C:\\Users\\mcniki\\Documents\\Работа\\Chapa\\Avia",
-    "C:\\Users\\mcniki\\Documents\\Проекты\\Python\\Мое\\CodeContext"
+    "C:\\Users\\mcniki\\Documents\\Работа\\Chapa\\Avia"
   ],
   "custom_presets": {},
   "custom_prompt_presets": {}

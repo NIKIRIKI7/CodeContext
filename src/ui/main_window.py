@@ -1,6 +1,9 @@
 import os
-from PySide6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QFileDialog, QStackedWidget
-from PySide6.QtCore import Signal, QObject, Qt
+from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, 
+                               QSplitter, QFileDialog, QStackedWidget, QMessageBox, 
+                               QLabel, QGraphicsOpacityEffect)
+from PySide6.QtCore import Signal, QObject, Qt, QPropertyAnimation, QTimer
+from PySide6.QtGui import QKeySequence, QShortcut
 
 from ..store.store import Store
 from ..controllers.main_controller import MainController
@@ -15,6 +18,46 @@ from .dialogs import AdvancedPreviewDialog, InteractiveTourDialog, EditFolderDia
 from .theme_manager import ThemeManager, theme_bus
 
 
+class ToastNotification(QLabel):
+    """Кастомное всплывающее уведомление, появляющееся поверх всех окон"""
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.setProperty("cssClass", "toast")
+        self.setAlignment(Qt.AlignCenter)
+        self.hide()
+
+        self.opacity_effect = QGraphicsOpacityEffect(self)
+        self.setGraphicsEffect(self.opacity_effect)
+
+        self.animation = QPropertyAnimation(self.opacity_effect, b"opacity")
+        self.timer = QTimer()
+        self.timer.setSingleShot(True)
+        self.timer.timeout.connect(self.fade_out)
+
+    def show_message(self, message):
+        self.setText(message)
+        self.adjustSize()
+        self.resize(self.width() + 40, self.height() + 10)
+
+        parent_rect = self.parent().rect()
+        x = (parent_rect.width() - self.width()) // 2
+        y = parent_rect.height() - self.height() - 80
+        self.move(x, y)
+
+        self.opacity_effect.setOpacity(1.0)
+        self.show()
+        self.raise_()
+
+        self.timer.start(2000)
+
+    def fade_out(self):
+        self.animation.setDuration(500)
+        self.animation.setStartValue(1.0)
+        self.animation.setEndValue(0.0)
+        self.animation.finished.connect(self.hide)
+        self.animation.start()
+
+
 class UIBridge(QObject):
     state_changed = Signal(object)
 
@@ -25,8 +68,8 @@ class MainWindow(QMainWindow):
         self.store = store
         self.controller = controller
         self.setWindowTitle("CodeContext AI")
-        self.resize(1200, 850)
         self.setAcceptDrops(True)
+        self._apply_adaptive_size()
 
         self.bridge = UIBridge()
         self.bridge.state_changed.connect(self._on_store_changed)
@@ -35,11 +78,25 @@ class MainWindow(QMainWindow):
         self._preview_dialog = None
         self._tour_dialog = None
         self._update_dialog = None
+        self._chat_dialog = None
 
         self._init_ui()
         self._update_theme_metrics()
         theme_bus.theme_changed.connect(self._update_theme_metrics)
         self.controller.load_initial_settings()
+
+    def _apply_adaptive_size(self):
+        from PySide6.QtGui import QScreen
+        screen = QApplication.primaryScreen()
+        if screen:
+            rect = screen.availableGeometry()
+            w = min(int(rect.width() * 0.8), rect.width())
+            h = min(int(rect.height() * 0.8), rect.height())
+            w = max(w, 1024)
+            h = max(h, 700)
+        else:
+            w, h = 1200, 850
+        self.resize(w, h)
 
     def _init_ui(self):
         self.central_widget = QWidget()
@@ -73,6 +130,12 @@ class MainWindow(QMainWindow):
 
         self.right_stack.addWidget(right_panel)
         self.splitter.addWidget(self.right_stack)
+
+        self.toast = ToastNotification(self.central_widget)
+
+        QShortcut(QKeySequence("Ctrl+C"), self, activated=lambda: self._on_run('clipboard'))
+        QShortcut(QKeySequence("Ctrl+Return"), self, activated=lambda: self._on_run('preview'))
+        QShortcut(QKeySequence("Ctrl+F"), self, activated=self.file_tree.search.setFocus)
 
     def _update_theme_metrics(self):
         m = ThemeManager.get_layout("main_margin", 16)
@@ -114,7 +177,23 @@ class MainWindow(QMainWindow):
 
         self.action_panel.update_ui(state.settings)
         self.log_panel.update_logs(state.logs)
-        self.status_bar.update_ui(state.status_message, state.progress, state.total_tokens)
+        tokens_display = state.selected_tokens if state.selected_tokens > 0 else state.total_tokens
+        self.status_bar.update_ui(state.status_message, state.progress, tokens_display)
+
+        if state.toast_message:
+            self.toast.show_message(state.toast_message)
+            self.controller.clear_toast()
+
+        if state.show_chat:
+            if not self._chat_dialog:
+                from .dialogs import ChatDialog
+                self._chat_dialog = ChatDialog(self, state, self.controller)
+            self._chat_dialog.update_data(state)
+            self._chat_dialog.show()
+            self._chat_dialog.raise_()
+        elif self._chat_dialog:
+            self._chat_dialog.close()
+            self._chat_dialog = None
 
         if state.show_preview:
             if not self._preview_dialog:

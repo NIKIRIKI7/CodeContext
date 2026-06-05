@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QWidget, QHBoxLayout, QCheckBox, QComboBox, QPushButton, QFileDialog
+from PySide6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QCheckBox, QComboBox, QPushButton, QFileDialog
 from PySide6.QtCore import Qt
 from ..theme_manager import ThemeManager, theme_bus
 
@@ -9,11 +9,15 @@ class ActionPanel(QWidget):
         self.on_run = on_run_callback
         self._current_template_path = ""
 
-        # Разрешаем кастомному QWidget отрисовывать QSS фоны
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.setProperty("cssClass", "card")
 
-        self.layout = QHBoxLayout(self)
+        self.layout = QVBoxLayout(self)
+        self.layout.setSpacing(4)
+
+        # Row 1: checkboxes + format
+        row1 = QHBoxLayout()
+        row1.setSpacing(8)
 
         self.chk_minify = QCheckBox("Minify")
         self.chk_comments = QCheckBox("No Comments")
@@ -24,19 +28,23 @@ class ActionPanel(QWidget):
         self.cmb_format.addItems(["markdown", "xml", "plain", "custom"])
         self.cmb_format.currentTextChanged.connect(self._on_format_changed)
 
-        # Кнопка для выбора шаблона (показывается только при custom)
         self.btn_template = QPushButton("📁")
         self.btn_template.setToolTip("Выбрать Jinja2 шаблон")
         self.btn_template.setProperty("cssClass", "icon")
-        self.btn_template.setFixedSize(28, 28)
         self.btn_template.clicked.connect(self._pick_template)
         self.btn_template.hide()
 
-        format_layout = QHBoxLayout()
-        format_layout.setContentsMargins(0, 0, 0, 0)
-        format_layout.setSpacing(4)
-        format_layout.addWidget(self.cmb_format)
-        format_layout.addWidget(self.btn_template)
+        row1.addWidget(self.chk_minify)
+        row1.addWidget(self.chk_comments)
+        row1.addWidget(self.chk_secrets)
+        row1.addWidget(self.chk_skeleton)
+        row1.addWidget(self.cmb_format)
+        row1.addWidget(self.btn_template)
+        row1.addStretch()
+
+        # Row 2: action buttons
+        row2 = QHBoxLayout()
+        row2.setSpacing(8)
 
         btn_preview = QPushButton("👀 Предпросмотр")
         btn_preview.setProperty("cssClass", "ghost")
@@ -45,21 +53,22 @@ class ActionPanel(QWidget):
         btn_copy = QPushButton("📋 В Буфер обмена")
         btn_copy.clicked.connect(lambda: self.on_run("clipboard"))
 
-        btn_file = QPushButton("💾 Сохранить в Файл")
+        self.btn_chat = QPushButton("🚀 Отправить в ChatGPT / Claude")
+        self.btn_chat.setProperty("cssClass", "success")
+        self.btn_chat.clicked.connect(lambda: self.on_run("chat"))
+
+        btn_file = QPushButton("💾 В Файл")
         btn_file.setProperty("cssClass", "ghost")
         btn_file.clicked.connect(lambda: self.on_run("file"))
 
-        self.layout.addWidget(self.chk_minify)
-        self.layout.addWidget(self.chk_comments)
-        self.layout.addWidget(self.chk_secrets)
-        self.layout.addWidget(self.chk_skeleton)
-        self.layout.addLayout(format_layout)
+        row2.addWidget(btn_preview)
+        row2.addWidget(btn_copy)
+        row2.addWidget(self.btn_chat)
+        row2.addWidget(btn_file)
+        row2.addStretch()
 
-        self.layout.addStretch()
-
-        self.layout.addWidget(btn_preview)
-        self.layout.addWidget(btn_copy)
-        self.layout.addWidget(btn_file)
+        self.layout.addLayout(row1)
+        self.layout.addLayout(row2)
 
         self._update_metrics()
         theme_bus.theme_changed.connect(self._update_metrics)
@@ -67,8 +76,8 @@ class ActionPanel(QWidget):
     def _update_metrics(self):
         m = ThemeManager.get_layout("panel_margin", 20)
         s = ThemeManager.get_layout("panel_spacing", 16)
-        self.layout.setContentsMargins(m, int(m / 2), m, int(m / 2))
-        self.layout.setSpacing(s)
+        self.layout.setContentsMargins(m, 4, m, 4)
+        self.layout.setSpacing(4)
 
     def _on_format_changed(self, fmt):
         self.btn_template.setVisible(fmt == "custom")
