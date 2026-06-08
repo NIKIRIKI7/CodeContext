@@ -205,11 +205,13 @@ class WindowsContextMenuStrategy(ContextMenuStrategy):
             os.makedirs(bin_dir, exist_ok=True)
 
             bat_path = os.path.join(bin_dir, "codecontext.bat")
-            with open(bat_path, "w", encoding="utf-8") as f:
+            with open(bat_path, "w", encoding="utf-8-sig") as f:
+                f.write('@echo off\n')
+                f.write('chcp 65001 > nul\n')
                 if is_frozen:
-                    f.write(f'@echo off\n"{exe_path}" %*\n')
+                    f.write(f'"{exe_path}" %*\n')
                 else:
-                    f.write(f'@echo off\n"{python_exe}" "{script_path}" %*\n')
+                    f.write(f'"{python_exe}" "{script_path}" %*\n')
 
             key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment", 0, winreg.KEY_ALL_ACCESS)
             try:
