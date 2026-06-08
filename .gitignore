@@ -35,6 +35,13 @@ venv/
 env/
 ENV/
 
+# Coverage
+.coverage
+htmlcov/
+
+# Visual Studio
+.vs/
+
 # Logs
 *.log
 

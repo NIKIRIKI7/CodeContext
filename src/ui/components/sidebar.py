@@ -10,9 +10,18 @@ from PySide6.QtCore import Qt
 
 from ...utils.config import PRESETS, PROMPT_PRESETS, get_app_version
 from ..theme_manager import ThemeManager, theme_bus
+from ..dialogs import UICustomizationDialog
 
 
 class Sidebar(QWidget):
+    TAB_DEFS = [
+        ("sources", "\U0001F4E1 Источники", "_build_sources_tab"),
+        ("filters", "\U0001F3AF Фильтры", "_build_filters_tab"),
+        ("prompts", "\U0001F4DD Промпты", "_build_prompts_tab"),
+        ("llm_os", "LLM & ОС", "_build_llm_os_tab"),
+        ("appearance", "\U0001F3A8 Темы", "_build_appearance_tab"),
+    ]
+
     def __init__(self, controller, on_settings_change):
         super().__init__()
         self.controller = controller
@@ -30,26 +39,15 @@ class Sidebar(QWidget):
         self.tabs = QTabWidget()
         self.layout.addWidget(self.tabs)
 
-        self.tab_sources = QWidget()
-        self.tab_filters = QWidget()
-        self.tab_prompts = QWidget()
-        self.tab_llm_os = QWidget()
-        self.tab_appearance = QWidget()
-
-        self.tabs.addTab(self.tab_sources, "Источники")
-        self.tabs.addTab(self.tab_filters, "Фильтры")
-        self.tabs.addTab(self.tab_prompts, "Промпты")
-        self.tabs.addTab(self.tab_llm_os, "LLM & ОС")
-        self.tabs.addTab(self.tab_appearance, "Темы")
-
-        self._build_sources_tab()
-        self._build_filters_tab()
-        self._build_prompts_tab()
-        self._build_llm_os_tab()
-        self._build_appearance_tab()
+        self._rebuild_tabs(self.controller._store.state.settings.visible_tabs if hasattr(self.controller._store.state.settings, 'visible_tabs') else ["sources", "filters", "prompts", "llm_os", "appearance"])
 
         bottom_layout = QHBoxLayout()
-        btn_tour = QPushButton("Инструкция")
+        btn_ui_settings = QPushButton("\u2699")
+        btn_ui_settings.setProperty("cssClass", "icon")
+        btn_ui_settings.setToolTip("Настройка интерфейса")
+        btn_ui_settings.clicked.connect(self._open_ui_settings)
+
+        btn_tour = QPushButton("\U0001F4D6 Инструкция")
         btn_tour.setProperty("cssClass", "ghost")
         btn_tour.clicked.connect(self.controller.show_tour)
 
@@ -57,10 +55,11 @@ class Sidebar(QWidget):
         lbl_version = QLabel(f"v{version_str}")
         lbl_version.setProperty("cssClass", "muted")
 
-        btn_update = QPushButton("🔄 Обновления")
+        btn_update = QPushButton("\U0001F504 Обновления")
         btn_update.setProperty("cssClass", "ghost")
         btn_update.clicked.connect(self._check_updates)
 
+        bottom_layout.addWidget(btn_ui_settings)
         bottom_layout.addWidget(lbl_version)
         bottom_layout.addStretch()
         bottom_layout.addWidget(btn_update)
@@ -70,14 +69,37 @@ class Sidebar(QWidget):
         self._update_metrics()
         theme_bus.theme_changed.connect(self._update_metrics)
 
+    def _open_ui_settings(self):
+        settings = self.controller._store.state.settings
+        dialog = UICustomizationDialog(self, settings, self._on_ui_settings_saved)
+        dialog.exec()
+
+    def _on_ui_settings_saved(self, visible_tabs, visible_actions):
+        self.controller.update_settings({
+            'visible_tabs': visible_tabs,
+            'visible_actions': visible_actions,
+        })
+        self.controller.save_settings()
+        self._rebuild_tabs(visible_tabs)
+
+    def _rebuild_tabs(self, visible_tabs):
+        self.tabs.blockSignals(True)
+        self.tabs.clear()
+        for tab_id, label, method_name in self.TAB_DEFS:
+            if tab_id in visible_tabs:
+                tab = QWidget()
+                getattr(self, method_name)(tab)
+                self.tabs.addTab(tab, label)
+        self.tabs.blockSignals(False)
+
     def _update_metrics(self):
         m = ThemeManager.get_layout("panel_margin", 20)
         s = ThemeManager.get_layout("panel_spacing", 16)
         self.layout.setContentsMargins(m, m, m, m)
         self.layout.setSpacing(s)
 
-    def _build_sources_tab(self):
-        layout = QVBoxLayout(self.tab_sources)
+    def _build_sources_tab(self, tab):
+        layout = QVBoxLayout(tab)
         layout.setContentsMargins(0, 10, 0, 0)
 
         btn_layout = QHBoxLayout()
@@ -99,11 +121,11 @@ class Sidebar(QWidget):
         layout.addWidget(self.chk_gitignore)
 
         layout.addSpacing(10)
-        btn_scan = QPushButton("🔍 Сканировать файлы")
+        btn_scan = QPushButton("\U0001F50D Сканировать файлы")
         btn_scan.clicked.connect(self._trigger_scan)
         layout.addWidget(btn_scan)
 
-        btn_save_local = QPushButton("💾 Сохранить конфиг (.codecontextrc)")
+        btn_save_local = QPushButton("\U0001F4BE Сохранить конфиг (.codecontextrc)")
         btn_save_local.setProperty("cssClass", "ghost")
         btn_save_local.clicked.connect(self.controller.save_local_config)
         layout.addWidget(btn_save_local)
@@ -114,8 +136,8 @@ class Sidebar(QWidget):
         layout.addWidget(btn_clear)
         layout.addStretch()
 
-    def _build_filters_tab(self):
-        layout = QVBoxLayout(self.tab_filters)
+    def _build_filters_tab(self, tab):
+        layout = QVBoxLayout(tab)
         layout.setContentsMargins(0, 10, 0, 0)
 
         preset_layout = QHBoxLayout()
@@ -123,12 +145,12 @@ class Sidebar(QWidget):
         self.cmb_preset.setSizeAdjustPolicy(QComboBox.AdjustToContents)
         self.cmb_preset.currentTextChanged.connect(self._on_ext_preset_change)
 
-        btn_save_preset = QPushButton("💾")
+        btn_save_preset = QPushButton("\U0001F4BE")
         btn_save_preset.setProperty("cssClass", "icon")
         btn_save_preset.setToolTip("Сохранить как пресет")
         btn_save_preset.clicked.connect(self._save_ext_preset)
 
-        btn_del_preset = QPushButton("🗑")
+        btn_del_preset = QPushButton("\U0001F5D1")
         btn_del_preset.setProperty("cssClass", "icon")
         btn_del_preset.setToolTip("Удалить выбранный кастомный пресет")
         btn_del_preset.clicked.connect(self._del_ext_preset)
@@ -159,20 +181,20 @@ class Sidebar(QWidget):
         layout.addWidget(self.chk_mermaid)
         layout.addStretch()
 
-    def _build_prompts_tab(self):
-        layout = QVBoxLayout(self.tab_prompts)
+    def _build_prompts_tab(self, tab):
+        layout = QVBoxLayout(tab)
         layout.setContentsMargins(0, 10, 0, 0)
 
         preset_layout = QHBoxLayout()
         self.cmb_prompt = QComboBox()
         self.cmb_prompt.currentTextChanged.connect(self._on_prompt_preset_change)
 
-        btn_save_prompt = QPushButton("💾")
+        btn_save_prompt = QPushButton("\U0001F4BE")
         btn_save_prompt.setProperty("cssClass", "icon")
         btn_save_prompt.setToolTip("Сохранить как пресет")
         btn_save_prompt.clicked.connect(self._save_prompt_preset)
 
-        btn_del_prompt = QPushButton("🗑")
+        btn_del_prompt = QPushButton("\U0001F5D1")
         btn_del_prompt.setProperty("cssClass", "icon")
         btn_del_prompt.setToolTip("Удалить выбранный кастомный пресет")
         btn_del_prompt.clicked.connect(self._del_prompt_preset)
@@ -187,13 +209,13 @@ class Sidebar(QWidget):
         self.txt_system_prompt = QTextEdit()
         layout.addWidget(self.txt_system_prompt)
 
-        btn_patch = QPushButton("🧩 Применить JSON-патч от LLM")
+        btn_patch = QPushButton("\U0001F9E9 Применить JSON-патч от LLM")
         btn_patch.setProperty("cssClass", "success")
         btn_patch.clicked.connect(self._open_patch_dialog)
         layout.addWidget(btn_patch)
 
-    def _build_llm_os_tab(self):
-        layout = QVBoxLayout(self.tab_llm_os)
+    def _build_llm_os_tab(self, tab):
+        layout = QVBoxLayout(tab)
         layout.setContentsMargins(0, 10, 0, 0)
 
         lbl_llm = QLabel("LLM Validator (API):")
@@ -219,10 +241,10 @@ class Sidebar(QWidget):
         layout.addLayout(form_llm)
 
         llm_presets_layout = QHBoxLayout()
-        btn_ollama = QPushButton("🦙 Ollama")
+        btn_ollama = QPushButton("\U0001F999 Ollama")
         btn_ollama.setProperty("cssClass", "ghost")
         btn_ollama.clicked.connect(lambda: self._apply_llm_preset("http://localhost:11434/v1", "llama3"))
-        btn_lmstudio = QPushButton("🖥 LM Studio")
+        btn_lmstudio = QPushButton("\U0001F5A5 LM Studio")
         btn_lmstudio.setProperty("cssClass", "ghost")
         btn_lmstudio.clicked.connect(lambda: self._apply_llm_preset("http://localhost:1234/v1", "local-model"))
         llm_presets_layout.addWidget(btn_ollama)
@@ -283,8 +305,8 @@ class Sidebar(QWidget):
 
         layout.addStretch()
 
-    def _build_appearance_tab(self):
-        layout = QVBoxLayout(self.tab_appearance)
+    def _build_appearance_tab(self, tab):
+        layout = QVBoxLayout(tab)
         layout.setContentsMargins(0, 10, 0, 0)
 
         form = QFormLayout()
@@ -303,7 +325,7 @@ class Sidebar(QWidget):
         layout.addLayout(form)
 
         layout.addSpacing(20)
-        btn_themes_folder = QPushButton("📂 Открыть папку тем")
+        btn_themes_folder = QPushButton("\U0001F4C2 Открыть папку тем")
         btn_themes_folder.setProperty("cssClass", "ghost")
         btn_themes_folder.clicked.connect(self._open_themes_folder)
 
@@ -588,6 +610,9 @@ class Sidebar(QWidget):
         self.entry_llm_model.setText(settings.llm_model)
         self.entry_editor.setText(getattr(settings, 'external_editor', ''))
         self.chk_prerelease.setChecked(settings.receive_prereleases)
+
+        visible_tabs = getattr(settings, 'visible_tabs', ["sources", "filters", "prompts", "llm_os", "appearance"])
+        self._rebuild_tabs(visible_tabs)
 
     def get_settings(self):
         return {

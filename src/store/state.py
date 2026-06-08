@@ -39,6 +39,8 @@ class AppSettings:
     llm_base_url: str = "https://api.openai.com/v1"
     llm_model: str = "gpt-4o-mini"
     recent_workspaces: List[str] = field(default_factory=list)
+    visible_tabs: List[str] = field(default_factory=lambda: ["sources", "filters", "prompts", "llm_os", "appearance"])
+    visible_actions: List[str] = field(default_factory=lambda: ["preview", "clipboard", "chat", "editor", "file"])
     custom_presets: Dict[str, dict] = field(default_factory=dict)
     custom_prompt_presets: Dict[str, str] = field(default_factory=dict)
 

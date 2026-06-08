@@ -707,3 +707,70 @@ class CommandPaletteDialog(QDialog):
     def closeEvent(self, event):
         self.on_close()
         super().closeEvent(event)
+
+
+class UICustomizationDialog(QDialog):
+    def __init__(self, parent, settings, on_save):
+        super().__init__(parent)
+        self.on_save = on_save
+        self.setWindowTitle("Настройка интерфейса (Premiere Pro style)")
+        self.resize(420, 380)
+
+        layout = QVBoxLayout(self)
+
+        lbl_tabs = QLabel("Видимые вкладки в боковой панели:")
+        lbl_tabs.setProperty("cssClass", "heading")
+        layout.addWidget(lbl_tabs)
+
+        self.tab_checks = {}
+        tab_defs = [
+            ("sources", "Источники"),
+            ("filters", "Фильтры"),
+            ("prompts", "Промпты"),
+            ("llm_os", "LLM & ОС"),
+            ("appearance", "Темы"),
+        ]
+        for tab_id, tab_label in tab_defs:
+            chk = QCheckBox(tab_label)
+            chk.setChecked(tab_id in settings.visible_tabs)
+            self.tab_checks[tab_id] = chk
+            layout.addWidget(chk)
+
+        layout.addSpacing(10)
+        lbl_actions = QLabel("Видимые кнопки действий:")
+        lbl_actions.setProperty("cssClass", "heading")
+        layout.addWidget(lbl_actions)
+
+        self.action_checks = {}
+        action_defs = [
+            ("preview", "Предпросмотр"),
+            ("clipboard", "В Буфер обмена"),
+            ("chat", "Отправить в ChatGPT / Claude"),
+            ("editor", "В редактор"),
+            ("file", "В Файл"),
+        ]
+        for act_id, act_label in action_defs:
+            chk = QCheckBox(act_label)
+            chk.setChecked(act_id in settings.visible_actions)
+            self.action_checks[act_id] = chk
+            layout.addWidget(chk)
+
+        layout.addStretch()
+
+        btn_layout = QHBoxLayout()
+        btn_cancel = QPushButton("Отмена")
+        btn_cancel.setProperty("cssClass", "ghost")
+        btn_cancel.clicked.connect(self.reject)
+        btn_save = QPushButton("Сохранить")
+        btn_save.setProperty("cssClass", "success")
+        btn_save.clicked.connect(self._save)
+        btn_layout.addStretch()
+        btn_layout.addWidget(btn_cancel)
+        btn_layout.addWidget(btn_save)
+        layout.addLayout(btn_layout)
+
+    def _save(self):
+        visible_tabs = [tid for tid, chk in self.tab_checks.items() if chk.isChecked()]
+        visible_actions = [aid for aid, chk in self.action_checks.items() if chk.isChecked()]
+        self.on_save(visible_tabs, visible_actions)
+        self.accept()

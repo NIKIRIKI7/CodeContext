@@ -1,0 +1,30 @@
+# Maintainer: mcniki <gor_niki@vk.com>
+# Contributor: mcniki <gor_niki@vk.com>
+
+pkgname=codecontext-ai
+pkgver=1.14.0
+pkgrel=1
+pkgdesc="AI-powered tool to prepare your codebase for LLMs — scan, analyze, minify, and generate structured prompts"
+arch=('any')
+url="https://github.com/NIKIRIKI7/CodeContext"
+license=('MIT')
+depends=('python>=3.10' 'python-pyside6' 'python-pip' 'python-setuptools' 'git')
+makedepends=('python-build' 'python-wheel')
+source=("$pkgname-$pkgver.tar.gz::https://github.com/NIKIRIKI7/CodeContext/archive/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+package() {
+    cd "$srcdir/CodeContext-$pkgver"
+
+    install -Dm755 aur_build/codecontext.sh "$pkgdir/usr/bin/codecontext"
+    install -Dm644 aur_build/codecontext.desktop "$pkgdir/usr/share/applications/codecontext.desktop"
+    install -Dm644 assets/images/logo.png "$pkgdir/usr/share/pixmaps/codecontext-ai.png"
+
+    mkdir -p "$pkgdir/opt/codecontext-ai"
+    cp -r . "$pkgdir/opt/codecontext-ai/"
+
+    cd "$pkgdir/opt/codecontext-ai"
+    pip install --prefix="$pkgdir/usr" --no-deps -r requirements.txt 2>/dev/null || true
+
+    chmod +x "$pkgdir/opt/codecontext-ai/main.py"
+}

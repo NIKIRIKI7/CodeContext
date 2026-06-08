@@ -15,7 +15,6 @@ class ActionPanel(QWidget):
         self.layout = QVBoxLayout(self)
         self.layout.setSpacing(4)
 
-        # Row 1: checkboxes + format
         row1 = QHBoxLayout()
         row1.setSpacing(8)
 
@@ -28,7 +27,7 @@ class ActionPanel(QWidget):
         self.cmb_format.addItems(["markdown", "xml", "plain", "jsonl_chunk", "custom"])
         self.cmb_format.currentTextChanged.connect(self._on_format_changed)
 
-        self.btn_template = QPushButton("📁")
+        self.btn_template = QPushButton("\U0001F4C1")
         self.btn_template.setToolTip("Выбрать Jinja2 шаблон")
         self.btn_template.setProperty("cssClass", "icon")
         self.btn_template.clicked.connect(self._pick_template)
@@ -42,35 +41,42 @@ class ActionPanel(QWidget):
         row1.addWidget(self.btn_template)
         row1.addStretch()
 
-        # Row 2: action buttons
         row2 = QHBoxLayout()
         row2.setSpacing(8)
 
-        btn_preview = QPushButton("👀 Предпросмотр")
-        btn_preview.setProperty("cssClass", "ghost")
-        btn_preview.clicked.connect(lambda: self.on_run("preview"))
+        self.btn_preview = QPushButton("\U0001F440 Предпросмотр")
+        self.btn_preview.setProperty("cssClass", "ghost")
+        self.btn_preview.clicked.connect(lambda: self.on_run("preview"))
 
-        btn_copy = QPushButton("📋 В Буфер обмена")
-        btn_copy.clicked.connect(lambda: self.on_run("clipboard"))
+        self.btn_copy = QPushButton("\U0001F4CB В Буфер обмена")
+        self.btn_copy.clicked.connect(lambda: self.on_run("clipboard"))
 
-        self.btn_chat = QPushButton("🚀 Отправить в ChatGPT / Claude")
+        self.btn_chat = QPushButton("\U0001F680 Отправить в ChatGPT / Claude")
         self.btn_chat.setProperty("cssClass", "success")
         self.btn_chat.clicked.connect(lambda: self.on_run("chat"))
 
-        btn_editor = QPushButton("💻 В редактор")
-        btn_editor.setProperty("cssClass", "ghost")
-        btn_editor.setToolTip("Открыть результат в VS Code / Cursor")
-        btn_editor.clicked.connect(lambda: self.on_run("editor"))
+        self.btn_editor = QPushButton("\U0001F4BB В редактор")
+        self.btn_editor.setProperty("cssClass", "ghost")
+        self.btn_editor.setToolTip("Открыть результат в VS Code / Cursor")
+        self.btn_editor.clicked.connect(lambda: self.on_run("editor"))
 
-        btn_file = QPushButton("💾 В Файл")
-        btn_file.setProperty("cssClass", "ghost")
-        btn_file.clicked.connect(lambda: self.on_run("file"))
+        self.btn_file = QPushButton("\U0001F4BE В Файл")
+        self.btn_file.setProperty("cssClass", "ghost")
+        self.btn_file.clicked.connect(lambda: self.on_run("file"))
 
-        row2.addWidget(btn_preview)
-        row2.addWidget(btn_copy)
-        row2.addWidget(btn_editor)
+        self.action_buttons = {
+            "preview": self.btn_preview,
+            "clipboard": self.btn_copy,
+            "chat": self.btn_chat,
+            "editor": self.btn_editor,
+            "file": self.btn_file,
+        }
+
+        row2.addWidget(self.btn_preview)
+        row2.addWidget(self.btn_copy)
+        row2.addWidget(self.btn_editor)
         row2.addWidget(self.btn_chat)
-        row2.addWidget(btn_file)
+        row2.addWidget(self.btn_file)
         row2.addStretch()
 
         self.layout.addLayout(row1)
@@ -81,7 +87,6 @@ class ActionPanel(QWidget):
 
     def _update_metrics(self):
         m = ThemeManager.get_layout("panel_margin", 20)
-        s = ThemeManager.get_layout("panel_spacing", 16)
         self.layout.setContentsMargins(m, 4, m, 4)
         self.layout.setSpacing(4)
 
@@ -101,10 +106,13 @@ class ActionPanel(QWidget):
         self.chk_secrets.setChecked(settings.remove_secrets)
         self.chk_skeleton.setChecked(settings.skeleton_mode)
 
-        # Восстанавливаем сохраненный путь
         self._current_template_path = settings.template_path
         self.cmb_format.setCurrentText(settings.output_format)
         self.btn_template.setVisible(settings.output_format == "custom")
+
+        visible_actions = getattr(settings, 'visible_actions', ["preview", "clipboard", "chat", "editor", "file"])
+        for act_id, btn in self.action_buttons.items():
+            btn.setVisible(act_id in visible_actions)
 
     def get_settings(self):
         return {

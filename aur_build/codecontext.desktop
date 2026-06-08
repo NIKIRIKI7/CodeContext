@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=CodeContext AI
+Comment=AI-powered codebase analysis and prompt preparation tool
+Exec=/opt/codecontext-ai/main.py
+Icon=codecontext-ai
+Terminal=false
+Type=Application
+Categories=Development;Utility;AI;
+StartupNotify=true
