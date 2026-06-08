@@ -141,18 +141,10 @@ jobs:
           name: bin-windows
           path: build_output/*
 
-  # 4. Сборка для macOS (Intel + Apple Silicon)
+  # 4. Сборка для macOS (Apple Silicon / arm64)
   build-macos:
     needs: prepare
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: macos-13   # Intel (x86_64)
-            arch: x86_64
-          - os: macos-14   # Apple Silicon (arm64 / M1, M2, M3)
-            arch: arm64
-    runs-on: ${{ matrix.os }}
+    runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
 
@@ -170,7 +162,7 @@ jobs:
       - name: Build with PyInstaller
         shell: bash
         run: |
-          BIN_NAME="CodeContext-${{ needs.prepare.outputs.version }}-macos-${{ matrix.arch }}"
+          BIN_NAME="CodeContext-${{ needs.prepare.outputs.version }}-macos-arm64"
           
           pyinstaller --noconfirm --onefile --windowed --icon="assets/images/logo.png" --name "$BIN_NAME" --add-data "themes:themes" --add-data "assets:assets" --add-data "user_settings.json:." --add-data "VERSION.txt:." main.py
 
@@ -182,7 +174,7 @@ jobs:
       - name: Upload macOS Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: bin-macos-${{ matrix.arch }}
+          name: bin-macos-arm64
           path: build_output/*
 
   # 5. Публикация релиза
