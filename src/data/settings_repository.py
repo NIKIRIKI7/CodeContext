@@ -1,23 +1,13 @@
 import json
 import os
-import sys
 from typing import Dict, Any
-
+from ..utils.config import get_app_data_dir
 
 class SettingsRepository:
-    """Управление файлом настроек с защитой путей"""
+    """Управление файлом настроек в безопасной директории ОС"""
 
     def __init__(self, filename: str = "user_settings.json"):
-        # Определяем корневую директорию приложения
-        if getattr(sys, 'frozen', False):
-            # Если запущено как скомпилированный EXE
-            base_dir = os.path.dirname(sys.executable)
-        else:
-            # Если запущено как скрипт, берем директорию main.py (entry point)
-            # sys.argv[0] надежнее __file__ при запуске из других директорий
-            base_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
-
-        self.filepath = os.path.join(base_dir, filename)
+        self.filepath = os.path.join(get_app_data_dir(), filename)
 
     def load(self) -> Dict[str, Any]:
         """Загрузка настроек из JSON"""

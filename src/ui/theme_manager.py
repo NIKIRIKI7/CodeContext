@@ -407,19 +407,24 @@ class ThemeManager:
     _current_mode = "light"
 
     @classmethod
-    def load_themes(cls, themes_dir: str):
-        if not os.path.exists(themes_dir):
-            return
-        for filename in os.listdir(themes_dir):
-            if filename.endswith(".json"):
-                path = os.path.join(themes_dir, filename)
-                try:
-                    with open(path, 'r', encoding='utf-8') as f:
-                        data = json.load(f)
-                        theme_id = filename.replace(".json", "")
-                        cls._themes[theme_id] = data
-                except Exception as e:
-                    print(f"Error loading theme {filename}: {e}")
+    def load_themes(cls, built_in_dir: str, user_dir: str = None):
+        directories = [built_in_dir]
+        if user_dir:
+            directories.append(user_dir)
+
+        for d in directories:
+            if not os.path.exists(d):
+                continue
+            for filename in os.listdir(d):
+                if filename.endswith(".json"):
+                    path = os.path.join(d, filename)
+                    try:
+                        with open(path, 'r', encoding='utf-8') as f:
+                            data = json.load(f)
+                            theme_id = filename.replace(".json", "")
+                            cls._themes[theme_id] = data
+                    except Exception as e:
+                        print(f"Error loading theme {filename} from {d}: {e}")
 
         if cls._themes and cls._current_theme not in cls._themes:
             cls._current_theme = list(cls._themes.keys())[0]

@@ -25,14 +25,8 @@ def setup_logger(name: str = "CodeContext") -> logging.Logger:
     logger.addHandler(console_handler)
 
     # 2. Вывод в файл (DEBUG и выше - логируем всё)
-    if getattr(sys, 'frozen', False):
-        # Если запущено как .exe (PyInstaller)
-        base_dir = os.path.dirname(sys.executable)
-    else:
-        # Если запущено как скрипт (поднимаемся на 3 уровня вверх от utils/logger.py к корню)
-        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-    logs_dir = os.path.join(base_dir, "logs")
+    from .config import get_app_data_dir
+    logs_dir = os.path.join(get_app_data_dir(), "logs")
 
     try:
         os.makedirs(logs_dir, exist_ok=True)

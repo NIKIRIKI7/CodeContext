@@ -5,15 +5,10 @@ import asyncio
 from pathlib import Path
 from typing import List, Set, Optional, Any
 
-
 class FileSystemRepository:
-    """
-    Низкоуровневая работа с файловой системой и Git.
-    Использует asyncio.to_thread для блокирующих операций.
-    """
+    """Низкоуровневая работа с файловой системой и Git."""
 
     async def read_file_async(self, path: str) -> Optional[str]:
-        """Асинхронное чтение файла"""
         return await asyncio.to_thread(self._read_file_sync, path)
 
     def _read_file_sync(self, path: str) -> Optional[str]:
@@ -30,27 +25,24 @@ class FileSystemRepository:
         if not os.path.exists(gitignore_path):
             return []
         try:
-            with open(gitignore_path, 'r', encoding='utf-8') as f:
+            with open(gitignore_path, 'r', encoding='utf-8', errors='replace') as f:
                 return f.readlines()
-        except (OSError, UnicodeDecodeError):
+        except OSError:
             return []
 
     async def delete_directory_async(self, path: str):
-        """Асинхронное удаление директории"""
         await asyncio.to_thread(self._delete_directory_sync, path)
 
     @staticmethod
     def _delete_directory_sync(path: str):
         if not os.path.exists(path):
             return
-
         def on_rm_error(func: Any, p: str, exc_info: Any) -> None:
             try:
                 os.chmod(p, stat.S_IWRITE)
                 os.unlink(p)
             except OSError:
                 pass
-
         try:
             shutil.rmtree(path, onerror=on_rm_error)
         except OSError as e:
@@ -68,7 +60,6 @@ class FileSystemRepository:
         return False
 
     async def walk_directory_async(self, path: str, ignored_dirs: Set[str], extensions: List[str]) -> List[str]:
-        """Асинхронный обход директории (через поток)"""
         return await asyncio.to_thread(self._walk_directory_sync, path, ignored_dirs, extensions)
 
     @staticmethod
@@ -82,30 +73,26 @@ class FileSystemRepository:
         return result
 
     @staticmethod
-    async def get_git_changed_files_async(repo_path: str, extensions: List[str], ignored_substrings: Set[str]) -> List[
-        str]:
-        """Асинхронное получение Git changes через asyncio.subprocess"""
+    async def get_git_changed_files_async(repo_path: str, extensions: List[str], ignored_substrings: Set[str]) -> List[str]:
         repo = Path(repo_path)
         if not (repo / ".git").exists():
             return []
         try:
             proc_diff = await asyncio.create_subprocess_exec(
-                "git", "diff", "HEAD", "--name-only",
-                cwd=repo_path,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
+                "git", "-c", "core.quotepath=false", "diff", "HEAD", "--name-only",
+                cwd=repo_path, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
             )
             out_diff, _ = await proc_diff.communicate()
 
             proc_untracked = await asyncio.create_subprocess_exec(
-                "git", "ls-files", "--others", "--exclude-standard",
-                cwd=repo_path,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
+                "git", "-c", "core.quotepath=false", "ls-files", "--others", "--exclude-standard",
+                cwd=repo_path, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
             )
             out_untracked, _ = await proc_untracked.communicate()
 
-            all_raw = out_diff.decode().splitlines() + out_untracked.decode().splitlines()
+            all_raw = out_diff.decode('utf-8', errors='replace').splitlines() + \
+                      out_untracked.decode('utf-8', errors='replace').splitlines()
+
             files = set()
             for f in all_raw:
                 p = repo / f
@@ -118,29 +105,25 @@ class FileSystemRepository:
                 files.add(str(p))
             return list(files)
         except (OSError, ValueError):
-            print(f"Git async error in {repo_path}")
             return []
 
     @staticmethod
     async def get_git_status_async(repo_path: str) -> dict:
-        """Асинхронно получает статус файлов из Git (Porcelain)"""
         status_map = {}
         if not Path(repo_path, ".git").exists():
             return status_map
         try:
             proc = await asyncio.create_subprocess_exec(
-                "git", "status", "--porcelain",
-                cwd=repo_path,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
+                "git", "-c", "core.quotepath=false", "status", "--porcelain",
+                cwd=repo_path, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
             )
             out, _ = await proc.communicate()
-            for line in out.decode('utf-8').splitlines():
+
+            for line in out.decode('utf-8', errors='replace').splitlines():
                 if len(line) > 3:
                     state = line[:2]
                     file_path = line[3:].strip().strip('"')
                     full_path = str(Path(repo_path) / file_path)
-
                     if 'A' in state or '?' in state:
                         status_map[full_path] = "added"
                     elif 'M' in state:

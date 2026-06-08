@@ -63,3 +63,18 @@ def get_font_path():
     return None
 
 FONT_PATH = get_font_path()
+
+
+def get_app_data_dir() -> str:
+    """Возвращает безопасную системную директорию для хранения данных (Настройки, Логи, Темы)"""
+    system = platform.system()
+    if system == "Windows":
+        base = os.environ.get("LOCALAPPDATA", os.path.expanduser("~\\AppData\\Local"))
+    elif system == "Darwin":
+        base = os.path.expanduser("~/Library/Application Support")
+    else:
+        base = os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config"))
+
+    app_dir = os.path.join(base, "CodeContextAI")
+    os.makedirs(app_dir, exist_ok=True)
+    return app_dir

@@ -434,16 +434,14 @@ class Sidebar(QWidget):
 
     # --- Themes Management ---
 
-    def _get_themes_dir(self):
-        if getattr(sys, 'frozen', False):
-            base_dir = os.path.dirname(sys.executable)
-        else:
-            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        return os.path.join(base_dir, "themes")
+    def _get_user_themes_dir(self):
+        from ...utils.config import get_app_data_dir
+        path = os.path.join(get_app_data_dir(), "themes")
+        os.makedirs(path, exist_ok=True)
+        return path
 
     def _open_themes_folder(self):
-        themes_dir = self._get_themes_dir()
-        os.makedirs(themes_dir, exist_ok=True)
+        themes_dir = self._get_user_themes_dir()
         system = platform.system()
         try:
             if system == "Windows":
@@ -460,13 +458,19 @@ class Sidebar(QWidget):
     def _import_theme(self):
         path, _ = QFileDialog.getOpenFileName(self, "Импорт темы", "", "JSON Files (*.json)")
         if path:
-            themes_dir = self._get_themes_dir()
-            os.makedirs(themes_dir, exist_ok=True)
+            themes_dir = self._get_user_themes_dir()
             filename = os.path.basename(path)
             dest = os.path.join(themes_dir, filename)
             try:
                 shutil.copy2(path, dest)
-                ThemeManager.load_themes(themes_dir)
+
+                from ...utils.config import get_app_data_dir
+                if getattr(sys, 'frozen', False):
+                    built_in = os.path.join(sys._MEIPASS, "themes")
+                else:
+                    built_in = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "themes")
+
+                ThemeManager.load_themes(built_in, themes_dir)
                 self._refresh_themes()
                 self.cmb_theme.setCurrentText(filename.replace(".json", ""))
                 QMessageBox.information(self, "Успех", f"Тема {filename} импортирована!")
