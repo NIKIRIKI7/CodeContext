@@ -77,6 +77,9 @@ class Store:
 
             HISTORY_ADD:          self._handle_history_add,
             SET_BEFORE_AFTER:     lambda p: self._state.__setattr__('before_after_data', p),
+
+            UI_SHOW_COMMAND_PALETTE: lambda _: self._state.__setattr__('show_command_palette', True),
+            UI_CLOSE_COMMAND_PALETTE: lambda _: self._state.__setattr__('show_command_palette', False),
         })
 
     def _handle_show_toast(self, message: str):

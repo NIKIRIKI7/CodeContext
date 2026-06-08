@@ -570,3 +570,90 @@ class UpdateDialog(QDialog):
     def closeEvent(self, event):
         self.on_close()
         super().closeEvent(event)
+
+
+class CommandPaletteDialog(QDialog):
+    def __init__(self, parent, commands, on_close):
+        super().__init__(parent)
+        self.commands = commands
+        self.on_close = on_close
+
+        self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.resize(600, 400)
+
+        self.container = QWidget(self)
+        self.container.setProperty("cssClass", "card")
+        self.container.resize(self.width(), self.height())
+
+        layout = QVBoxLayout(self.container)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(5)
+
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Введите команду (например, 'Предпросмотр')...")
+        self.search_input.textChanged.connect(self._filter_commands)
+        self.search_input.returnPressed.connect(self._execute_selected)
+
+        self.list_widget = QListWidget()
+        self.list_widget.itemClicked.connect(self._execute_selected)
+
+        layout.addWidget(self.search_input)
+        layout.addWidget(self.list_widget)
+
+        self._populate_list()
+
+    def _populate_list(self):
+        self.list_widget.clear()
+        for cmd_name in self.commands.keys():
+            item = QListWidgetItem(f"⚡ {cmd_name}")
+            item.setData(Qt.UserRole, cmd_name)
+            self.list_widget.addItem(item)
+        if self.list_widget.count() > 0:
+            self.list_widget.setCurrentRow(0)
+
+    def _filter_commands(self, text):
+        query = text.lower()
+        has_visible = False
+        for i in range(self.list_widget.count()):
+            item = self.list_widget.item(i)
+            match = query in item.text().lower()
+            item.setHidden(not match)
+            if match and not has_visible:
+                self.list_widget.setCurrentItem(item)
+                has_visible = True
+
+    def _execute_selected(self):
+        item = self.list_widget.currentItem()
+        if item and not item.isHidden():
+            cmd_name = item.data(Qt.UserRole)
+            action = self.commands.get(cmd_name)
+            if action:
+                self.close()
+                action()
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Down:
+            row = self.list_widget.currentRow()
+            while row < self.list_widget.count() - 1:
+                row += 1
+                if not self.list_widget.item(row).isHidden():
+                    self.list_widget.setCurrentRow(row)
+                    break
+            return
+        elif event.key() == Qt.Key_Up:
+            row = self.list_widget.currentRow()
+            while row > 0:
+                row -= 1
+                if not self.list_widget.item(row).isHidden():
+                    self.list_widget.setCurrentRow(row)
+                    break
+            return
+        elif event.key() == Qt.Key_Escape:
+            self.close()
+            return
+        super().keyPressEvent(event)
+
+    def closeEvent(self, event):
+        self.on_close()
+        super().closeEvent(event)

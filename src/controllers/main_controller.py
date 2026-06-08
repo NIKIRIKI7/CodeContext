@@ -85,6 +85,9 @@ class MainController:
         clean = self._normalize_path(path)
         if clean and os.path.exists(clean):
             self._dispatcher.dispatch(FOLDER_ADD, clean)
+
+            self._settings_uc.load_local_config(clean)
+
             recent = list(self._store.state.settings.recent_workspaces)
             if clean in recent:
                 recent.remove(clean)
@@ -102,6 +105,8 @@ class MainController:
             self._dispatcher.dispatch(FOLDER_UPDATE, {'old': old_path, 'new': clean})
 
     def clear_folders(self):
+        self._settings_uc.load_initial()
+
         temp = self._store.state.temp_folders
         if temp:
             self._dispatcher.dispatch(UI_ADD_LOG, "Очистка временных файлов...")

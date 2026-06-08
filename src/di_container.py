@@ -92,6 +92,7 @@ class DIContainer:
             dispatcher=self.dispatcher,
             store=self.store,
             settings_repo=self.settings_repo,
+            fs_repo=self.fs_repo,
         )
         self.patch_use_case = PatchUseCase(
             dispatcher=self.dispatcher,

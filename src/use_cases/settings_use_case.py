@@ -2,12 +2,14 @@
 SettingsUseCase — сценарии работы с настройками.
 """
 import json
+import os
 from typing import Optional
 from ..actions.action_types import (
     SETTINGS_LOADED, SETTINGS_UPDATE, WORKSPACE_LOADED, UI_ADD_LOG,
 )
 from ..actions.dispatcher import Dispatcher
 from ..data.settings_repository import SettingsRepository
+from ..data.file_system_repository import FileSystemRepository
 from ..store.store import Store
 from ..utils.config import PRESETS, DEFAULT_SYSTEM_PROMPT
 
@@ -44,10 +46,12 @@ class SettingsUseCase:
         dispatcher: Dispatcher,
         store: Store,
         settings_repo: SettingsRepository,
+        fs_repo: FileSystemRepository = None,
     ):
         self._dispatcher = dispatcher
         self._store = store
         self._settings_repo = settings_repo
+        self._fs_repo = fs_repo
 
     def load_initial(self) -> None:
         """Загружает настройки из файла или применяет дефолтные."""
@@ -69,6 +73,30 @@ class SettingsUseCase:
         self._dispatcher.dispatch(SETTINGS_UPDATE, _DEFAULT_SETTINGS.copy())
         self._settings_repo.save(_DEFAULT_SETTINGS)
         self._dispatcher.dispatch(UI_ADD_LOG, "Настройки сброшены")
+
+    def load_local_config(self, folder_path: str) -> None:
+        """Ищет .codecontextrc.json в папке и применяет локальные настройки."""
+        if not self._fs_repo:
+            return
+
+        config_path = os.path.join(folder_path, ".codecontextrc.json")
+        fallback_path = os.path.join(folder_path, ".codecontextrc")
+
+        target_path = config_path if os.path.exists(config_path) else (fallback_path if os.path.exists(fallback_path) else None)
+
+        if not target_path:
+            return
+
+        try:
+            content = self._fs_repo._read_file_sync(target_path)
+            if content:
+                local_settings = json.loads(content)
+                self._dispatcher.dispatch(SETTINGS_UPDATE, local_settings)
+                self._dispatcher.dispatch(UI_ADD_LOG, f"⚙️ Применены локальные настройки из: {os.path.basename(target_path)}")
+        except json.JSONDecodeError as exc:
+            self._dispatcher.dispatch(UI_ADD_LOG, f"⚠️ Ошибка парсинга {os.path.basename(target_path)}: {exc}")
+        except Exception as exc:
+            self._dispatcher.dispatch(UI_ADD_LOG, f"⚠️ Не удалось прочитать локальный конфиг: {exc}")
 
     def apply_preset(self, preset_name: str) -> None:
         """Применяет пресет расширений/игнора."""

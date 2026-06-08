@@ -79,6 +79,7 @@ class MainWindow(QMainWindow):
         self._tour_dialog = None
         self._update_dialog = None
         self._chat_dialog = None
+        self._command_palette = None
 
         self._init_ui()
         self._update_theme_metrics()
@@ -136,6 +137,7 @@ class MainWindow(QMainWindow):
         QShortcut(QKeySequence("Ctrl+C"), self, activated=lambda: self._on_run('clipboard'))
         QShortcut(QKeySequence("Ctrl+Return"), self, activated=lambda: self._on_run('preview'))
         QShortcut(QKeySequence("Ctrl+F"), self, activated=self.file_tree.search.setFocus)
+        QShortcut(QKeySequence("Ctrl+Shift+P"), self, activated=lambda: self.store.dispatch('UI_SHOW_COMMAND_PALETTE'))
 
     def _update_theme_metrics(self):
         m = ThemeManager.get_layout("main_margin", 16)
@@ -231,6 +233,38 @@ class MainWindow(QMainWindow):
         elif self._update_dialog:
             self._update_dialog.close()
             self._update_dialog = None
+
+        if state.show_command_palette:
+            if not self._command_palette:
+                commands = {
+                    "Сгенерировать: Скопировать в буфер": lambda: self._on_run('clipboard'),
+                    "Сгенерировать: Предпросмотр (Safety Diff)": lambda: self._on_run('preview'),
+                    "Сгенерировать: Отправить в AI Чат": lambda: self._on_run('chat'),
+                    "Сгенерировать: Сохранить в файл": lambda: self._on_run('file'),
+                    "Опции: Включить/Выключить Minify": lambda: self.action_panel.chk_minify.setChecked(not self.action_panel.chk_minify.isChecked()),
+                    "Опции: Включить/Выключить Skeleton ☠️": lambda: self.action_panel.chk_skeleton.setChecked(not self.action_panel.chk_skeleton.isChecked()),
+                    "Действие: Очистить рабочую область": self.controller.clear_folders,
+                    "Действие: Применить JSON патч от LLM": self.sidebar._open_patch_dialog,
+                    "Настройки: Переключить Светлую/Темную тему": lambda: ThemeManager.apply_theme(mode="dark" if ThemeManager._current_mode == "light" else "light"),
+                    "Система: Проверить обновления": lambda: self.controller.check_for_updates("1.6.0"),
+                }
+                from .dialogs import CommandPaletteDialog
+                self._command_palette = CommandPaletteDialog(
+                    self,
+                    commands,
+                    lambda: self.store.dispatch('UI_CLOSE_COMMAND_PALETTE'),
+                )
+                parent_geo = self.geometry()
+                x = parent_geo.x() + (parent_geo.width() - self._command_palette.width()) // 2
+                y = parent_geo.y() + (parent_geo.height() - self._command_palette.height()) // 2 - 50
+                self._command_palette.move(x, y)
+
+            self._command_palette.show()
+            self._command_palette.raise_()
+            self._command_palette.search_input.setFocus()
+        elif self._command_palette:
+            self._command_palette.close()
+            self._command_palette = None
 
     def _on_ui_settings_change(self):
         s_data = self.sidebar.get_settings()

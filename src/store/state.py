@@ -79,3 +79,5 @@ class AppState:
 
     show_update: bool = False
     update_info: dict = field(default_factory=dict)
+
+    show_command_palette: bool = False
