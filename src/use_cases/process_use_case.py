@@ -142,9 +142,11 @@ class ProcessWorkspaceUseCase:
             self._output_service.copy_to_clipboard(text)
         elif target == 'stdout':
             import sys
-            sys.stdout.write(text)
-            sys.stdout.write("\n")
-            sys.stdout.flush()
+            out = sys.__stdout__
+            out.reconfigure(encoding='utf-8')
+            out.write(text)
+            out.write("\n")
+            out.flush()
         elif target == 'preview':
             self._dispatcher.dispatch(UI_SHOW_PREVIEW, text)
         elif target == 'chat':

@@ -38,7 +38,8 @@ class CliController:
 
         silent = kwargs.get('silent', False)
         if silent:
-            sys.stdout = open(os.devnull, 'w')
+            sys.stdout = open(os.devnull, 'w', encoding='utf-8')
+        sys.stdout.reconfigure(encoding='utf-8')
 
         mode = kwargs.get('mode', 'default')
         app_logger.info(f"🖥️ CLI Run Triggered | Mode: {mode} | Target: {target_path}")

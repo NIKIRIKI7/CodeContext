@@ -12,6 +12,13 @@ def setup_logger(name: str = "CodeContext") -> logging.Logger:
     if logger.hasHandlers():
         return logger
 
+    # Предотвращаем краш при записи emoji в cp1251-терминал
+    try:
+        sys.stdout.reconfigure(errors='replace')
+        sys.stderr.reconfigure(errors='replace')
+    except Exception:
+        pass
+
     logger.setLevel(logging.DEBUG)  # Перехватываем всё, фильтруем в хендлерах
 
     # Форматы логов

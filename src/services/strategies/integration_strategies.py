@@ -202,16 +202,24 @@ class WindowsContextMenuStrategy(ContextMenuStrategy):
 
             from ...utils.config import get_app_data_dir
             bin_dir = os.path.join(get_app_data_dir(), "bin")
-            os.makedirs(bin_dir, exist_ok=True)
 
-            bat_path = os.path.join(bin_dir, "codecontext.bat")
-            with open(bat_path, "w", encoding="utf-8-sig") as f:
+            def _get_short_path(long_path: str) -> str:
+                buf = ctypes.create_unicode_buffer(260)
+                ctypes.windll.kernel32.GetShortPathNameW(long_path, buf, 260)
+                return buf.value or long_path
+
+            short_bin = _get_short_path(bin_dir)
+            os.makedirs(short_bin, exist_ok=True)
+
+            bat_path = os.path.join(short_bin, "codecontext.bat")
+            with open(bat_path, "w", encoding="utf-8") as f:
                 f.write('@echo off\n')
                 f.write('chcp 65001 > nul\n')
+                f.write('set PYTHONIOENCODING=utf-8\n')
                 if is_frozen:
-                    f.write(f'"{exe_path}" %*\n')
+                    f.write(f'"{_get_short_path(exe_path)}" %*\n')
                 else:
-                    f.write(f'"{python_exe}" "{script_path}" %*\n')
+                    f.write(f'"{_get_short_path(python_exe)}" "{_get_short_path(script_path)}" %*\n')
 
             key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment", 0, winreg.KEY_ALL_ACCESS)
             try:
