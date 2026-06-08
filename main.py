@@ -77,6 +77,8 @@ def main():
     parser.add_argument("--format", type=str, choices=["markdown", "xml", "plain"], help="Формат вывода")
     parser.add_argument("--dry-run", action="store_true", help="Оценить токены без генерации (только CLI)")
     parser.add_argument("--silent", action="store_true", help="Тихий режим: без логов, скопировать сразу в буфер (только CLI)")
+    parser.add_argument("--stdout", action="store_true", help="Вывести результат в stdout вместо буфера обмена (только CLI)")
+    parser.add_argument("--fail-if-exceeds", type=int, metavar="N", help="Вернуть код 1, если токенов больше N (CI/CD Gate)")
 
     args, _ = parser.parse_known_args()
     container = DIContainer()
@@ -98,7 +100,9 @@ def main():
             'skeleton': args.skeleton,
             'format': args.format,
             'dry_run': args.dry_run,
-            'silent': args.silent
+            'silent': args.silent,
+            'stdout': args.stdout,
+            'fail_if_exceeds': args.fail_if_exceeds
         }
         if args.patch:
             container.cli_controller.run_patch(args.path, args.patch)

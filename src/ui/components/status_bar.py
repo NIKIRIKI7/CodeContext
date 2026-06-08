@@ -1,5 +1,4 @@
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QLabel, QProgressBar
-
 from ..theme_manager import ThemeManager, theme_bus
 
 
@@ -29,7 +28,9 @@ class StatusBar(QWidget):
         s = ThemeManager.get_layout("main_spacing", 12)
         self.layout.setSpacing(s)
 
-    def update_ui(self, msg, prog, tokens):
+    def update_ui(self, msg: str, prog: float, tokens: int, cost: float = 0.0):
         self.lbl_status.setText(msg)
         self.progress.setValue(int(prog * 100))
-        self.lbl_tokens.setText(f"Tokens: {tokens}")
+
+        cost_str = f" (~${cost:.4f})" if cost > 0 else " (Локальная модель/Free)"
+        self.lbl_tokens.setText(f"Tokens: {tokens}{cost_str}")

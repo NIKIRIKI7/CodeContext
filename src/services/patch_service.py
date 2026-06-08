@@ -1,5 +1,6 @@
 import os
 import re
+import difflib
 from typing import Tuple, List, Dict
 
 
@@ -55,6 +56,7 @@ class PatchService:
             new_content = file_content
             success = False
             msg = ""
+            fuzzy_marker = 0.0
 
             if action == 'append':
                 new_content = file_content + ("\n" if not file_content.endswith("\n") else "") + content_text
@@ -68,7 +70,7 @@ class PatchService:
                 if not search_text:
                     success, msg = False, "Пустой 'search'"
                 else:
-                    start_idx, end_idx = self._find_match_indices(file_content, search_text)
+                    start_idx, end_idx, fuzzy_marker = self._find_match_indices(file_content, search_text)
                     if start_idx == -1:
                         success, msg = False, "Строка поиска не найдена."
                     else:
@@ -85,6 +87,8 @@ class PatchService:
             else:
                 success, msg = False, f"Неизвестный action: '{action}'"
 
+            if fuzzy_marker:
+                msg += f" (нечёткое совпадение: {fuzzy_marker:.0%})"
             prepared.append({
                 'success': success, 'action': action, 'file_target': file_target,
                 'actual_path': actual_path, 'original_content': file_content,
@@ -114,12 +118,12 @@ class PatchService:
                 logs.append(f"❌ Ошибка {p['file_target']}: {e}")
         return applied_count, logs
 
-    def _find_match_indices(self, content: str, search_text: str) -> Tuple[int, int]:
+    def _find_match_indices(self, content: str, search_text: str) -> Tuple[int, int, float]:
         if not search_text.strip():
-            return -1, -1
+            return -1, -1, 0.0
         idx = content.find(search_text)
         if idx != -1:
-            return idx, idx + len(search_text)
+            return idx, idx + len(search_text), 0.0
 
         tokens = re.split(r'(\s+)', search_text.strip())
         pattern_parts = []
@@ -131,8 +135,24 @@ class PatchService:
         pattern = "".join(pattern_parts)
         match = re.search(pattern, content)
         if match:
-            return match.start(), match.end()
-        return -1, -1
+            return match.start(), match.end(), 0.0
+
+        search_len = len(search_text)
+        threshold = 0.85
+        best_ratio = 0.0
+        best_pos = (-1, -1)
+        step = max(1, search_len // 10)
+        for start in range(0, max(len(content) - search_len + 1, 1), step):
+            window = content[start:start + search_len]
+            ratio = difflib.SequenceMatcher(None, search_text, window).ratio()
+            if ratio > best_ratio:
+                best_ratio = ratio
+                best_pos = (start, start + search_len)
+            if best_ratio >= 0.95:
+                break
+        if best_ratio >= threshold:
+            return best_pos[0], best_pos[1], best_ratio
+        return -1, -1, 0.0
 
     def _resolve_existing_file(self, target_name: str, folders: List[str]) -> str:
         target_norm = os.path.normpath(target_name)

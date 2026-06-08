@@ -4,17 +4,15 @@ import asyncio
 import time
 import traceback
 import difflib
-import json
-import urllib.request
+
 from ..store.store import Store
 from ..actions.dispatcher import Dispatcher
 from ..data.settings_repository import SettingsRepository
 from ..use_cases.scan_use_case import ScanWorkspaceUseCase
 from ..use_cases.process_use_case import ProcessWorkspaceUseCase
 from ..use_cases.patch_use_case import PatchUseCase
-from ..utils.config import PRESETS, DEFAULT_SYSTEM_PROMPT
+from ..utils.config import PRESETS, DEFAULT_SYSTEM_PROMPT, PricingManager
 from ..utils.logger import app_logger
-
 
 class CliController:
     """CLI-точка входа. Инициализирует Store и вызывает Use Cases."""
@@ -37,14 +35,13 @@ class CliController:
 
     def run(self, target_path: str, **kwargs) -> None:
         target_path = self._normalize_path(target_path)
+
         silent = kwargs.get('silent', False)
-        
         if silent:
             sys.stdout = open(os.devnull, 'w')
 
         mode = kwargs.get('mode', 'default')
         app_logger.info(f"🖥️ CLI Run Triggered | Mode: {mode} | Target: {target_path}")
-        
         print(f"\n🚀 CodeContext AI: Запуск (Mode: {mode})...")
         print(f"🎯 Цель: {target_path}")
 
@@ -64,10 +61,9 @@ class CliController:
         finally:
             if not silent:
                 self._keep_window_open()
-                
-        if silent:
-            sys.stdout.close()
-            sys.stdout = sys.__stdout__
+            if silent:
+                sys.stdout.close()
+                sys.stdout = sys.__stdout__
 
     def run_patch(self, target_path: str, patch_file: str) -> None:
         """Интерактивный режим применения JSON-патчей с подтверждением."""
@@ -89,7 +85,6 @@ class CliController:
             patch_str = f.read()
 
         prepared_patches = self._patch_uc.prepare_json_patch(patch_str, [target_path])
-
         if not prepared_patches:
             print("⚠️ Патчи не найдены или JSON не валиден.")
             return
@@ -132,7 +127,6 @@ class CliController:
         print(f"✅ Успешно применено: {applied}")
 
     def _print_unified_diff(self, original: str, patched: str, filename: str):
-        """Отрисовывает цветной Diff прямо в терминале."""
         GREEN = '\033[92m'
         RED = '\033[91m'
         CYAN = '\033[96m'
@@ -142,11 +136,8 @@ class CliController:
         patched_lines = patched.splitlines(keepends=True) if patched else []
 
         diff = list(difflib.unified_diff(
-            orig_lines,
-            patched_lines,
-            fromfile=f"a/{filename}",
-            tofile=f"b/{filename}",
-            n=3
+            orig_lines, patched_lines,
+            fromfile=f"a/{filename}", tofile=f"b/{filename}", n=3
         ))
 
         if not diff:
@@ -167,7 +158,7 @@ class CliController:
         extensions = config.get('extensions', PRESETS['Default']['ext'])
         if not extensions or not extensions.strip():
             extensions = PRESETS['Default']['ext']
-            
+
         minify = kwargs.get('minify') == 'true' if kwargs.get('minify') else config.get('minify', True)
         skeleton = kwargs.get('skeleton') == 'true' if kwargs.get('skeleton') else config.get('skeleton_mode', False)
         out_fmt = kwargs.get('format') if kwargs.get('format') else config.get('output_format', 'plain')
@@ -194,48 +185,6 @@ class CliController:
         self._dispatcher.dispatch(SETTINGS_LOADED, settings_dict)
         self._dispatcher.dispatch(FOLDER_ADD, target_path)
 
-    async def _fetch_pricing_data(self, model_query: str) -> dict:
-        """Получает актуальные цены с OpenRouter API в отдельном потоке"""
-        def fetch():
-            try:
-                url = "https://openrouter.ai/api/v1/models"
-                req = urllib.request.Request(url, headers={"User-Agent": "CodeContextAI-App"})
-                with urllib.request.urlopen(req, timeout=5) as response:
-                    data = json.loads(response.read().decode('utf-8'))
-                models = data.get('data', [])
-                for m in models:
-                    m_id = m.get('id', '').lower()
-                    if m_id == model_query.lower() or m_id.split('/')[-1] == model_query.lower():
-                        return m
-                for m in models:
-                    if model_query.lower() in m.get('id', '').lower():
-                        return m
-            except Exception as e:
-                app_logger.warning(f"OpenRouter API error: {e}")
-            return None
-
-        model_info = await asyncio.to_thread(fetch)
-
-        default_prices = {
-            "gpt-4o-mini": 0.00000015,
-            "gpt-4o": 0.0000025,
-            "claude-3-5-sonnet": 0.000003,
-            "gpt-4-turbo": 0.00001
-        }
-
-        if model_info:
-            try:
-                price = float(model_info.get('pricing', {}).get('prompt', 0))
-                return {"name": model_info.get('name', model_query), "price": price}
-            except (ValueError, TypeError):
-                pass
-
-        for k, v in default_prices.items():
-            if k in model_query.lower():
-                return {"name": f"{k} (offline)", "price": v}
-
-        return {"name": model_query, "price": 0.0}
-
     async def _pipeline(self, kwargs: dict) -> None:
         await self._scan_uc.execute(self._store.state)
         current_state = self._store.state
@@ -244,6 +193,12 @@ class CliController:
             app_logger.warning("CLI: Файлы не найдены.")
             print("⚠️ Файлы не найдены.")
             return
+
+        limit = kwargs.get('fail_if_exceeds')
+        if limit and current_state.selected_tokens > limit:
+            import sys
+            print(f"\n❌ Ошибка (CI/CD Gate): Проект занимает {current_state.selected_tokens} токенов, что превышает лимит в {limit}.", file=sys.stderr)
+            sys.exit(1)
 
         if kwargs.get('dry_run', False):
             tokens = current_state.selected_tokens
@@ -256,20 +211,24 @@ class CliController:
             print(f"⚖️ Примерный объем: {tokens} токенов")
             print("⏳ Получение актуальных цен из API...")
 
-            price_data = await self._fetch_pricing_data(model)
+            def fetch_and_get():
+                PricingManager.fetch_prices_sync()
+                return PricingManager.get_price(model)
 
-            if price_data['price'] > 0:
-                cost = tokens * price_data['price']
-                print(f"💰 Оценка ({price_data['name']}): ~${cost:.6f} USD")
+            price = await asyncio.to_thread(fetch_and_get)
+
+            if price > 0:
+                cost = tokens * price
+                print(f"💰 Оценка ({model}): ~${cost:.6f} USD")
             else:
-                print(f"💰 Оценка ({price_data['name']}): Бесплатно или локальная модель")
-
+                print(f"💰 Оценка ({model}): Бесплатно или локальная модель")
             print("==================================")
             return
 
-        await self._process_uc.execute(current_state, target='clipboard')
+        target = 'stdout' if kwargs.get('stdout') else 'clipboard'
+        await self._process_uc.execute(current_state, target=target)
 
-        if kwargs.get('silent', False):
+        if kwargs.get('silent', False) and not kwargs.get('stdout'):
             self._trigger_native_notification(current_state.selected_tokens)
 
     @staticmethod
@@ -290,8 +249,7 @@ class CliController:
 
     @staticmethod
     def _normalize_path(path: str) -> str:
-        if not path:
-            return ""
+        if not path: return ""
         return os.path.abspath(path.strip('"\''))
 
     @staticmethod

@@ -1,6 +1,6 @@
 import os
-from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, 
-                               QSplitter, QFileDialog, QStackedWidget, QMessageBox, 
+from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
+                               QSplitter, QFileDialog, QStackedWidget, QMessageBox,
                                QLabel, QGraphicsOpacityEffect)
 from PySide6.QtCore import Signal, QObject, Qt, QPropertyAnimation, QTimer
 from PySide6.QtGui import QKeySequence, QShortcut
@@ -14,12 +14,11 @@ from .components.log_panel import LogPanel
 from .components.status_bar import StatusBar
 from .components.file_tree import FileTree
 from .components.empty_state import EmptyState
-from .dialogs import AdvancedPreviewDialog, InteractiveTourDialog, EditFolderDialog, UpdateDialog
+from .dialogs import AdvancedPreviewDialog, InteractiveTourDialog, EditFolderDialog, UpdateDialog, CommandPaletteDialog
 from .theme_manager import ThemeManager, theme_bus
-
+from ..utils.config import PricingManager, get_app_version
 
 class ToastNotification(QLabel):
-    """Кастомное всплывающее уведомление, появляющееся поверх всех окон"""
     def __init__(self, parent):
         super().__init__(parent)
         self.setProperty("cssClass", "toast")
@@ -28,8 +27,8 @@ class ToastNotification(QLabel):
 
         self.opacity_effect = QGraphicsOpacityEffect(self)
         self.setGraphicsEffect(self.opacity_effect)
-
         self.animation = QPropertyAnimation(self.opacity_effect, b"opacity")
+
         self.timer = QTimer()
         self.timer.setSingleShot(True)
         self.timer.timeout.connect(self.fade_out)
@@ -47,7 +46,6 @@ class ToastNotification(QLabel):
         self.opacity_effect.setOpacity(1.0)
         self.show()
         self.raise_()
-
         self.timer.start(2000)
 
     def fade_out(self):
@@ -57,16 +55,15 @@ class ToastNotification(QLabel):
         self.animation.finished.connect(self.hide)
         self.animation.start()
 
-
 class UIBridge(QObject):
     state_changed = Signal(object)
-
 
 class MainWindow(QMainWindow):
     def __init__(self, store: Store, controller: MainController):
         super().__init__()
         self.store = store
         self.controller = controller
+
         self.setWindowTitle("CodeContext AI")
         self.setAcceptDrops(True)
         self._apply_adaptive_size()
@@ -84,6 +81,9 @@ class MainWindow(QMainWindow):
         self._init_ui()
         self._update_theme_metrics()
         theme_bus.theme_changed.connect(self._update_theme_metrics)
+
+        PricingManager.fetch_prices_background()
+
         self.controller.load_initial_settings()
 
     def _apply_adaptive_size(self):
@@ -103,8 +103,8 @@ class MainWindow(QMainWindow):
         self.central_widget = QWidget()
         self.central_widget.setObjectName("centralwidget")
         self.setCentralWidget(self.central_widget)
-        self.main_layout = QHBoxLayout(self.central_widget)
 
+        self.main_layout = QHBoxLayout(self.central_widget)
         self.splitter = QSplitter(Qt.Horizontal)
         self.main_layout.addWidget(self.splitter)
 
@@ -112,11 +112,13 @@ class MainWindow(QMainWindow):
         self.splitter.addWidget(self.sidebar)
 
         self.right_stack = QStackedWidget()
+
         self.empty_state = EmptyState(self.controller.add_folder)
         self.right_stack.addWidget(self.empty_state)
 
         right_panel = QWidget()
         self.right_layout = QVBoxLayout(right_panel)
+
         self.folder_list = FolderList(self._on_edit_folder, self.controller.remove_folder)
         self.file_tree = FileTree(self.controller.toggle_file_exclusion, self.controller.copy_file_with_dependencies)
         self.action_panel = ActionPanel(self._on_run)
@@ -179,12 +181,47 @@ class MainWindow(QMainWindow):
 
         self.action_panel.update_ui(state.settings)
         self.log_panel.update_logs(state.logs)
+
         tokens_display = state.selected_tokens if state.selected_tokens > 0 else state.total_tokens
-        self.status_bar.update_ui(state.status_message, state.progress, tokens_display)
+        model = state.settings.llm_model
+        estimated_cost = tokens_display * PricingManager.get_price(model)
+
+        self.status_bar.update_ui(state.status_message, state.progress, tokens_display, estimated_cost)
 
         if state.toast_message:
             self.toast.show_message(state.toast_message)
             self.controller.clear_toast()
+
+        if getattr(state, 'show_command_palette', False):
+            if not self._command_palette:
+                commands = {
+                    "Сгенерировать: Скопировать в буфер": lambda: self._on_run('clipboard'),
+                    "Сгенерировать: Предпросмотр (Safety Diff)": lambda: self._on_run('preview'),
+                    "Сгенерировать: Отправить в AI Чат": lambda: self._on_run('chat'),
+                    "Сгенерировать: Сохранить в файл": lambda: self._on_run('file'),
+                    "Опции: Включить/Выключить Minify": lambda: self.action_panel.chk_minify.setChecked(not self.action_panel.chk_minify.isChecked()),
+                    "Опции: Включить/Выключить Skeleton ☠️": lambda: self.action_panel.chk_skeleton.setChecked(not self.action_panel.chk_skeleton.isChecked()),
+                    "Действие: Очистить рабочую область": self.controller.clear_folders,
+                    "Действие: Применить JSON патч от LLM": self.sidebar._open_patch_dialog,
+                    "Настройки: Переключить Светлую/Темную тему": lambda: ThemeManager.apply_theme(mode="dark" if ThemeManager._current_mode == "light" else "light"),
+                    "Система: Проверить обновления": lambda: self.controller.check_for_updates(get_app_version()),
+                }
+                self._command_palette = CommandPaletteDialog(
+                    self,
+                    commands,
+                    lambda: self.store.dispatch('UI_CLOSE_COMMAND_PALETTE'),
+                )
+                parent_geo = self.geometry()
+                x = parent_geo.x() + (parent_geo.width() - self._command_palette.width()) // 2
+                y = parent_geo.y() + (parent_geo.height() - self._command_palette.height()) // 2 - 50
+                self._command_palette.move(x, y)
+
+            self._command_palette.show()
+            self._command_palette.raise_()
+            self._command_palette.search_input.setFocus()
+        elif self._command_palette:
+            self._command_palette.close()
+            self._command_palette = None
 
         if state.show_chat:
             if not self._chat_dialog:
@@ -199,9 +236,7 @@ class MainWindow(QMainWindow):
 
         if state.show_preview:
             if not self._preview_dialog:
-                # ВАЖНО: Теперь передаем контроллер в диалог
-                self._preview_dialog = AdvancedPreviewDialog(self, state, self.controller.close_preview,
-                                                             self.controller)
+                self._preview_dialog = AdvancedPreviewDialog(self, state, self.controller.close_preview, self.controller)
             self._preview_dialog.update_data(state)
             self._preview_dialog.show()
             self._preview_dialog.raise_()
@@ -220,12 +255,7 @@ class MainWindow(QMainWindow):
 
         if state.show_update:
             if not self._update_dialog:
-                self._update_dialog = UpdateDialog(
-                    self,
-                    state.update_info,
-                    self.controller.close_update_dialog,
-                    self.controller
-                )
+                self._update_dialog = UpdateDialog(self, state.update_info, self.controller.close_update_dialog, self.controller)
                 self._update_dialog.show()
                 self._update_dialog.raise_()
             else:
@@ -233,38 +263,6 @@ class MainWindow(QMainWindow):
         elif self._update_dialog:
             self._update_dialog.close()
             self._update_dialog = None
-
-        if state.show_command_palette:
-            if not self._command_palette:
-                commands = {
-                    "Сгенерировать: Скопировать в буфер": lambda: self._on_run('clipboard'),
-                    "Сгенерировать: Предпросмотр (Safety Diff)": lambda: self._on_run('preview'),
-                    "Сгенерировать: Отправить в AI Чат": lambda: self._on_run('chat'),
-                    "Сгенерировать: Сохранить в файл": lambda: self._on_run('file'),
-                    "Опции: Включить/Выключить Minify": lambda: self.action_panel.chk_minify.setChecked(not self.action_panel.chk_minify.isChecked()),
-                    "Опции: Включить/Выключить Skeleton ☠️": lambda: self.action_panel.chk_skeleton.setChecked(not self.action_panel.chk_skeleton.isChecked()),
-                    "Действие: Очистить рабочую область": self.controller.clear_folders,
-                    "Действие: Применить JSON патч от LLM": self.sidebar._open_patch_dialog,
-                    "Настройки: Переключить Светлую/Темную тему": lambda: ThemeManager.apply_theme(mode="dark" if ThemeManager._current_mode == "light" else "light"),
-                    "Система: Проверить обновления": lambda: self.controller.check_for_updates("1.6.0"),
-                }
-                from .dialogs import CommandPaletteDialog
-                self._command_palette = CommandPaletteDialog(
-                    self,
-                    commands,
-                    lambda: self.store.dispatch('UI_CLOSE_COMMAND_PALETTE'),
-                )
-                parent_geo = self.geometry()
-                x = parent_geo.x() + (parent_geo.width() - self._command_palette.width()) // 2
-                y = parent_geo.y() + (parent_geo.height() - self._command_palette.height()) // 2 - 50
-                self._command_palette.move(x, y)
-
-            self._command_palette.show()
-            self._command_palette.raise_()
-            self._command_palette.search_input.setFocus()
-        elif self._command_palette:
-            self._command_palette.close()
-            self._command_palette = None
 
     def _on_ui_settings_change(self):
         s_data = self.sidebar.get_settings()

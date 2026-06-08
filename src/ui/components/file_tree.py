@@ -26,6 +26,18 @@ class FileTree(QWidget):
         btn_layout.addWidget(self.btn_expand)
         btn_layout.addWidget(self.btn_collapse)
 
+        btn_layout_smart = QHBoxLayout()
+        btn_layout_smart.setContentsMargins(0, 0, 0, 0)
+        self.btn_exclude_tests = QPushButton("🚫 Без тестов")
+        self.btn_git_modified = QPushButton("🟢 Измененные (Git)")
+        self.btn_exclude_tests.setProperty("cssClass", "ghost")
+        self.btn_git_modified.setProperty("cssClass", "ghost")
+        btn_layout_smart.addWidget(self.btn_exclude_tests)
+        btn_layout_smart.addWidget(self.btn_git_modified)
+
+        self.btn_exclude_tests.clicked.connect(self._exclude_tests)
+        self.btn_git_modified.clicked.connect(self._select_git_modified)
+
         self.tree = QTreeView()
         self.tree.setHeaderHidden(True)
         self.tree.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -40,6 +52,7 @@ class FileTree(QWidget):
 
         self.layout.addWidget(self.search)
         self.layout.addLayout(btn_layout)
+        self.layout.addLayout(btn_layout_smart)
         self.layout.addWidget(self.tree)
         self.search.textChanged.connect(self._filter_tree)
 
@@ -241,6 +254,20 @@ class FileTree(QWidget):
         self._propagate_check_recursive(parent_item, False)
         parent_item.setCheckState(Qt.Unchecked)
         self._is_updating = False
+
+    def _exclude_tests(self):
+        self._is_updating = True
+        test_keywords = ('test', 'spec', '__tests__', 'pytest')
+        for item, full_path in self._all_items:
+            path_lower = full_path.lower()
+            is_test = any(kw in path_lower for kw in test_keywords)
+            if is_test:
+                item.setCheckState(Qt.Unchecked)
+                self.on_toggle(full_path, False)
+        self._is_updating = False
+
+    def _select_git_modified(self):
+        pass
 
     def clear(self):
         self._is_updating = True

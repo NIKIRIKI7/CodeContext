@@ -7,22 +7,9 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QTabWidget, QFormLayout,
                                QPushButton, QHBoxLayout, QLabel, QFileDialog,
                                QInputDialog, QMessageBox, QPlainTextEdit)
 from PySide6.QtCore import Qt
-from ...utils.config import PRESETS, PROMPT_PRESETS
-from ..theme_manager import ThemeManager, theme_bus
 
-def _get_app_version() -> str:
-    try:
-        if getattr(sys, 'frozen', False):
-            base_dir = sys._MEIPASS
-        else:
-            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-        version_file = os.path.join(base_dir, "VERSION.txt")
-        if os.path.exists(version_file):
-            with open(version_file, "r", encoding="utf-8") as f:
-                return f.read().strip()
-    except Exception:
-        pass
-    return "1.0.0"
+from ...utils.config import PRESETS, PROMPT_PRESETS, get_app_version
+from ..theme_manager import ThemeManager, theme_bus
 
 
 class Sidebar(QWidget):
@@ -66,7 +53,7 @@ class Sidebar(QWidget):
         btn_tour.setProperty("cssClass", "ghost")
         btn_tour.clicked.connect(self.controller.show_tour)
 
-        version_str = _get_app_version()
+        version_str = get_app_version()
         lbl_version = QLabel(f"v{version_str}")
         lbl_version.setProperty("cssClass", "muted")
 
@@ -98,11 +85,9 @@ class Sidebar(QWidget):
         btn_add = QPushButton("+ Папка ПК")
         btn_add.setProperty("cssClass", "ghost")
         btn_add.clicked.connect(self._add_folder)
-
         btn_gh = QPushButton("+ GitHub")
         btn_gh.setProperty("cssClass", "success")
         btn_gh.clicked.connect(self._add_github)
-
         btn_layout.addWidget(btn_add)
         btn_layout.addWidget(btn_gh)
         layout.addLayout(btn_layout)
@@ -121,7 +106,6 @@ class Sidebar(QWidget):
         btn_clear.setProperty("cssClass", "ghost")
         btn_clear.clicked.connect(self.controller.clear_folders)
         layout.addWidget(btn_clear)
-
         layout.addStretch()
 
     def _build_filters_tab(self):
@@ -165,7 +149,6 @@ class Sidebar(QWidget):
         self.chk_dependencies = QCheckBox("Включить карту зависимостей")
         layout.addWidget(self.chk_tree)
         layout.addWidget(self.chk_dependencies)
-
         layout.addStretch()
 
     def _build_prompts_tab(self):
@@ -236,9 +219,11 @@ class Sidebar(QWidget):
         self.btn_install_ctx = QPushButton("В меню проводника")
         self.btn_install_ctx.setProperty("cssClass", "success")
         self.btn_install_ctx.clicked.connect(self._install_context_menu)
+
         self.btn_remove_ctx = QPushButton("Удалить из меню")
         self.btn_remove_ctx.setProperty("cssClass", "ghost")
         self.btn_remove_ctx.clicked.connect(self._remove_context_menu)
+
         btn_ctx_layout.addWidget(self.btn_install_ctx)
         btn_ctx_layout.addWidget(self.btn_remove_ctx)
         layout.addLayout(btn_ctx_layout)
@@ -247,7 +232,6 @@ class Sidebar(QWidget):
         lbl_upd = QLabel("Настройки обновления:")
         lbl_upd.setProperty("cssClass", "heading")
         layout.addWidget(lbl_upd)
-
         self.chk_prerelease = QCheckBox("Получать Pre-release версии")
         layout.addWidget(self.chk_prerelease)
 
@@ -273,7 +257,6 @@ class Sidebar(QWidget):
         layout.addLayout(form)
 
         layout.addSpacing(20)
-
         btn_themes_folder = QPushButton("📂 Открыть папку тем")
         btn_themes_folder.setProperty("cssClass", "ghost")
         btn_themes_folder.clicked.connect(self._open_themes_folder)
@@ -286,16 +269,13 @@ class Sidebar(QWidget):
         layout.addWidget(btn_import_theme)
         layout.addStretch()
 
-    # --- Actions Methods ---
-
     def _add_folder(self):
         path = QFileDialog.getExistingDirectory(self, "Выберите папку")
         if path:
             self.controller.add_folder(path)
 
     def _add_github(self):
-        url, ok = QInputDialog.getText(self, "GitHub",
-            "Введите URL репозитория (например, https://github.com/user/repo):")
+        url, ok = QInputDialog.getText(self, "GitHub", "Введите URL репозитория (например, https://github.com/user/repo):")
         if ok and url:
             reply = QMessageBox.question(
                 self, "Сохранение",
@@ -343,18 +323,13 @@ class Sidebar(QWidget):
                         selected = diff_dialog.get_selected()
                         if selected:
                             self.controller.apply_prepared_patches(selected)
-                else:
-                    QMessageBox.warning(
-                        self, "Ошибка патча",
-                        "Не найдено валидных JSON-инструкций.\n\nУбедитесь, что ответ содержит массив объектов."
-                    )
+                        else:
+                            QMessageBox.warning(self, "Ошибка патча", "Не найдено валидных JSON-инструкций.\n\nУбедитесь, что ответ содержит массив объектов.")
 
     def _check_updates(self):
         self.on_settings_change()
-        version = _get_app_version()
+        version = get_app_version()
         self.controller.check_for_updates(version)
-
-    # --- Preset Management ---
 
     def _on_ext_preset_change(self, text):
         if not text: return
@@ -375,7 +350,6 @@ class Sidebar(QWidget):
                 return
             ext = self.entry_ext.toPlainText().replace('\n', ' ').strip()
             ign = self.entry_ign.toPlainText().replace('\n', ', ').strip()
-
             custom = self.controller._store.state.settings.custom_presets.copy()
             custom[name] = {"ext": ext, "ign": ign}
             self.controller.update_settings({'custom_presets': custom})
@@ -432,8 +406,6 @@ class Sidebar(QWidget):
             self.controller.save_settings()
             self._refresh_prompt_presets()
 
-    # --- Themes Management ---
-
     def _get_user_themes_dir(self):
         from ...utils.config import get_app_data_dir
         path = os.path.join(get_app_data_dir(), "themes")
@@ -463,21 +435,17 @@ class Sidebar(QWidget):
             dest = os.path.join(themes_dir, filename)
             try:
                 shutil.copy2(path, dest)
-
                 from ...utils.config import get_app_data_dir
                 if getattr(sys, 'frozen', False):
                     built_in = os.path.join(sys._MEIPASS, "themes")
                 else:
                     built_in = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "themes")
-
                 ThemeManager.load_themes(built_in, themes_dir)
                 self._refresh_themes()
                 self.cmb_theme.setCurrentText(filename.replace(".json", ""))
                 QMessageBox.information(self, "Успех", f"Тема {filename} импортирована!")
             except Exception as e:
                 QMessageBox.warning(self, "Ошибка", f"Не удалось импортировать тему:\n{e}")
-
-    # --- UI Updates ---
 
     def _refresh_ext_presets(self):
         current = self.cmb_preset.currentText()
@@ -488,7 +456,6 @@ class Sidebar(QWidget):
         if custom:
             self.cmb_preset.insertSeparator(self.cmb_preset.count())
             self.cmb_preset.addItems(list(custom.keys()))
-
         idx = self.cmb_preset.findText(current)
         if idx >= 0:
             self.cmb_preset.setCurrentIndex(idx)
@@ -505,7 +472,6 @@ class Sidebar(QWidget):
         if custom:
             self.cmb_prompt.insertSeparator(self.cmb_prompt.count())
             self.cmb_prompt.addItems(list(custom.keys()))
-
         idx = self.cmb_prompt.findText(current)
         if idx >= 0:
             self.cmb_prompt.setCurrentIndex(idx)
@@ -542,19 +508,15 @@ class Sidebar(QWidget):
 
         self.entry_ext.setPlainText(settings.extensions.replace(' ', '\n'))
         self.entry_ign.setPlainText(settings.ignored_paths.replace(', ', '\n').replace(',', '\n'))
-
         self.chk_tree.setChecked(settings.include_tree)
         self.chk_dependencies.setChecked(settings.include_dependencies)
         self.chk_git.setChecked(settings.use_git)
         self.chk_gitignore.setChecked(settings.use_gitignore)
-
         self.txt_system_prompt.setText(settings.system_prompt)
-
         self.chk_llm_check.setChecked(settings.llm_check_enabled)
         self.entry_llm_url.setText(settings.llm_base_url)
         self.entry_llm_key.setText(settings.llm_api_key)
         self.entry_llm_model.setText(settings.llm_model)
-
         self.chk_prerelease.setChecked(settings.receive_prereleases)
 
     def get_settings(self):

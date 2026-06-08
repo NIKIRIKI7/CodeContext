@@ -140,6 +140,11 @@ class ProcessWorkspaceUseCase:
     async def _export(self, target: str, text: str, save_path: Optional[str]):
         if target == 'clipboard':
             self._output_service.copy_to_clipboard(text)
+        elif target == 'stdout':
+            import sys
+            sys.stdout.write(text)
+            sys.stdout.write("\n")
+            sys.stdout.flush()
         elif target == 'preview':
             self._dispatcher.dispatch(UI_SHOW_PREVIEW, text)
         elif target == 'chat':
