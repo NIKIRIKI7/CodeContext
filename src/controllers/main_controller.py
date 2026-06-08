@@ -223,10 +223,14 @@ class MainController:
         self._dispatcher.dispatch(UI_CLOSE_TOUR, None)
 
     def copy_to_clipboard(self, text: str):
-        self._output_service.copy_to_clipboard(text)
-        tokens = self._store.state.selected_tokens if self._store.state.selected_tokens > 0 else self._store.state.total_tokens
-        self._dispatcher.dispatch(UI_ADD_LOG, "📋 Текст скопирован в буфер обмена")
-        self._dispatcher.dispatch(UI_SHOW_TOAST, f"📋 Скопировано ({tokens} токенов)")
+        try:
+            self._output_service.copy_to_clipboard(text)
+            tokens = self._store.state.selected_tokens if self._store.state.selected_tokens > 0 else self._store.state.total_tokens
+            self._dispatcher.dispatch(UI_ADD_LOG, "📋 Текст скопирован в буфер обмена")
+            self._dispatcher.dispatch(UI_SHOW_TOAST, f"📋 Скопировано ({tokens} токенов)")
+        except Exception as e:
+            self._dispatcher.dispatch(UI_ADD_LOG, f"❌ {str(e)}")
+            self._dispatcher.dispatch(UI_SHOW_TOAST, "❌ Ошибка буфера обмена")
 
     def clear_toast(self):
         self._dispatcher.dispatch(UI_SHOW_TOAST, "")

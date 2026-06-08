@@ -46,6 +46,20 @@ def get_font_path():
         path = os.path.join(os.environ.get("WINDIR", "C:\\Windows"), "Fonts", "arial.ttf")
         if os.path.exists(path):
             return path
+    elif system == "Darwin":
+        path = "/Library/Fonts/Arial.ttf"
+        if os.path.exists(path):
+            return path
+    else:
+        paths = [
+            "/usr/share/fonts/truetype/msttcorefonts/Arial.ttf",
+            "/usr/share/fonts/TTF/Arial.ttf",
+            "/usr/share/fonts/liberation/LiberationSans-Regular.ttf",
+            "/usr/share/fonts/gnu-free/FreeSans.ttf"
+        ]
+        for p in paths:
+            if os.path.exists(p):
+                return p
     return None
 
 FONT_PATH = get_font_path()

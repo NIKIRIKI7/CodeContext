@@ -1,6 +1,7 @@
 import argparse
 import os
 import sys
+import platform
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
@@ -39,12 +40,25 @@ def main():
 
     if getattr(sys, 'frozen', False):
         exe_path = sys.executable
-        old_path = exe_path + ".old"
-        if os.path.exists(old_path):
-            try:
-                os.remove(old_path)
-            except Exception:
-                pass
+        if platform.system() == "Darwin":
+            parts = exe_path.split(os.sep)
+            if "Contents" in parts and "MacOS" in parts:
+                app_idx = parts.index("Contents") - 1
+                app_path = os.sep.join(parts[:app_idx+1])
+                old_app = app_path + ".old"
+                if os.path.exists(old_app):
+                    import shutil
+                    try:
+                        shutil.rmtree(old_app, ignore_errors=True)
+                    except Exception:
+                        pass
+        else:
+            old_path = exe_path + ".old"
+            if os.path.exists(old_path):
+                try:
+                    os.remove(old_path)
+                except Exception:
+                    pass
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--cli", action="store_true", help="Запуск в режиме командной строки")

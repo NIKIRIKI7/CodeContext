@@ -1,4 +1,5 @@
 import pyperclip
+import platform
 from fpdf import FPDF
 from ..utils.config import FONT_PATH
 
@@ -8,7 +9,12 @@ class OutputService:
 
     @staticmethod
     def copy_to_clipboard(text: str):
-        pyperclip.copy(text)
+        try:
+            pyperclip.copy(text)
+        except Exception as e:
+            if platform.system() == "Linux":
+                raise RuntimeError("Для работы буфера обмена на Linux установите утилиту 'xclip' или 'wl-clipboard'.") from e
+            raise RuntimeError(f"Ошибка копирования в буфер обмена: {e}") from e
 
     @staticmethod
     def save_to_file(text: str, path: str):
@@ -28,7 +34,6 @@ class OutputService:
                 pdf.set_font("CustomFont", size=10)
                 font_loaded = True
             except Exception:
-                print(Exception)
                 pass
 
         if not font_loaded:
