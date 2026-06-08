@@ -1,5 +1,9 @@
+import os
+import sys
 import pyperclip
 import platform
+import tempfile
+import subprocess
 from fpdf import FPDF
 from ..utils.config import FONT_PATH
 
@@ -20,6 +24,23 @@ class OutputService:
     def save_to_file(text: str, path: str):
         with open(path, 'w', encoding='utf-8') as f:
             f.write(text)
+
+    @staticmethod
+    def open_in_editor(text: str, editor_cmd: str):
+        fd, tmp_path = tempfile.mkstemp(suffix=".md", prefix="codecontext_")
+        with os.fdopen(fd, 'w', encoding='utf-8') as f:
+            f.write(text)
+        try:
+            if editor_cmd:
+                subprocess.Popen([editor_cmd, tmp_path])
+            elif platform.system() == "Windows":
+                os.startfile(tmp_path)
+            elif platform.system() == "Darwin":
+                subprocess.Popen(["open", tmp_path])
+            else:
+                subprocess.Popen(["xdg-open", tmp_path])
+        except Exception as e:
+            raise RuntimeError(f"Не удалось открыть редактор '{editor_cmd}': {e}")
 
     @staticmethod
     def save_to_pdf(text: str, path: str):

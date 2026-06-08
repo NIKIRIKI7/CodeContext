@@ -85,8 +85,9 @@ class Sidebar(QWidget):
         btn_add = QPushButton("+ Папка ПК")
         btn_add.setProperty("cssClass", "ghost")
         btn_add.clicked.connect(self._add_folder)
-        btn_gh = QPushButton("+ GitHub")
+        btn_gh = QPushButton("+ GitHub / PR")
         btn_gh.setProperty("cssClass", "success")
+        btn_gh.setToolTip("Вставьте ссылку на репозиторий или Pull Request")
         btn_gh.clicked.connect(self._add_github)
         btn_layout.addWidget(btn_add)
         btn_layout.addWidget(btn_gh)
@@ -152,8 +153,10 @@ class Sidebar(QWidget):
 
         self.chk_tree = QCheckBox("Включить дерево файлов")
         self.chk_dependencies = QCheckBox("Включить карту зависимостей")
+        self.chk_mermaid = QCheckBox("Включить Mermaid-граф архитектуры")
         layout.addWidget(self.chk_tree)
         layout.addWidget(self.chk_dependencies)
+        layout.addWidget(self.chk_mermaid)
         layout.addStretch()
 
     def _build_prompts_tab(self):
@@ -215,6 +218,18 @@ class Sidebar(QWidget):
         form_llm.addRow("Модель:", self.entry_llm_model)
         layout.addLayout(form_llm)
 
+        llm_presets_layout = QHBoxLayout()
+        btn_ollama = QPushButton("🦙 Ollama")
+        btn_ollama.setProperty("cssClass", "ghost")
+        btn_ollama.clicked.connect(lambda: self._apply_llm_preset("http://localhost:11434/v1", "llama3"))
+        btn_lmstudio = QPushButton("🖥 LM Studio")
+        btn_lmstudio.setProperty("cssClass", "ghost")
+        btn_lmstudio.clicked.connect(lambda: self._apply_llm_preset("http://localhost:1234/v1", "local-model"))
+        llm_presets_layout.addWidget(btn_ollama)
+        llm_presets_layout.addWidget(btn_lmstudio)
+        llm_presets_layout.addStretch()
+        layout.addLayout(llm_presets_layout)
+
         layout.addSpacing(10)
         lbl_os = QLabel(f"Интеграция с ОС ({platform.system()}):")
         lbl_os.setProperty("cssClass", "heading")
@@ -251,6 +266,13 @@ class Sidebar(QWidget):
         btn_cli_layout.addWidget(self.btn_install_cli)
         btn_cli_layout.addWidget(self.btn_remove_cli)
         layout.addLayout(btn_cli_layout)
+
+        layout.addSpacing(10)
+        editor_form = QFormLayout()
+        self.entry_editor = QLineEdit()
+        self.entry_editor.setPlaceholderText("code, cursor, idea (пусто = по умолчанию)")
+        editor_form.addRow("Редактор:", self.entry_editor)
+        layout.addLayout(editor_form)
 
         layout.addSpacing(10)
         lbl_upd = QLabel("Настройки обновления:")
@@ -298,8 +320,15 @@ class Sidebar(QWidget):
         if path:
             self.controller.add_folder(path)
 
+    def _apply_llm_preset(self, url: str, model: str):
+        self.entry_llm_url.setText(url)
+        self.entry_llm_key.setText("not-needed")
+        self.entry_llm_model.setText(model)
+        self.chk_llm_check.setChecked(True)
+        self.on_settings_change()
+
     def _add_github(self):
-        url, ok = QInputDialog.getText(self, "GitHub", "Введите URL репозитория (например, https://github.com/user/repo):")
+        url, ok = QInputDialog.getText(self, "GitHub", "Введите URL репозитория ИЛИ ссылку на Pull Request (например, https://github.com/user/repo/pull/123):")
         if ok and url:
             reply = QMessageBox.question(
                 self, "Сохранение",
@@ -549,6 +578,7 @@ class Sidebar(QWidget):
         self.entry_ign.setPlainText(settings.ignored_paths.replace(', ', '\n').replace(',', '\n'))
         self.chk_tree.setChecked(settings.include_tree)
         self.chk_dependencies.setChecked(settings.include_dependencies)
+        self.chk_mermaid.setChecked(getattr(settings, 'include_mermaid', False))
         self.chk_git.setChecked(settings.use_git)
         self.chk_gitignore.setChecked(settings.use_gitignore)
         self.txt_system_prompt.setText(settings.system_prompt)
@@ -556,6 +586,7 @@ class Sidebar(QWidget):
         self.entry_llm_url.setText(settings.llm_base_url)
         self.entry_llm_key.setText(settings.llm_api_key)
         self.entry_llm_model.setText(settings.llm_model)
+        self.entry_editor.setText(getattr(settings, 'external_editor', ''))
         self.chk_prerelease.setChecked(settings.receive_prereleases)
 
     def get_settings(self):
@@ -564,6 +595,7 @@ class Sidebar(QWidget):
             'ignored_paths': self.entry_ign.toPlainText().replace('\n', ', ').strip(),
             'include_tree': self.chk_tree.isChecked(),
             'include_dependencies': self.chk_dependencies.isChecked(),
+            'include_mermaid': self.chk_mermaid.isChecked(),
             'use_git': self.chk_git.isChecked(),
             'use_gitignore': self.chk_gitignore.isChecked(),
             'system_prompt': self.txt_system_prompt.toPlainText().strip(),
@@ -571,5 +603,6 @@ class Sidebar(QWidget):
             'llm_base_url': self.entry_llm_url.text().strip(),
             'llm_api_key': self.entry_llm_key.text().strip(),
             'llm_model': self.entry_llm_model.text().strip(),
+            'external_editor': self.entry_editor.text().strip(),
             'receive_prereleases': self.chk_prerelease.isChecked()
         }

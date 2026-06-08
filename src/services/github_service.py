@@ -1,9 +1,11 @@
 import os
+import json
 import asyncio
 import tempfile
 import subprocess
 import shutil
 import functools
+import urllib.request
 
 class GitHubService:
     """Сервис для работы с GitHub репозиториями (Async)"""
@@ -50,3 +52,23 @@ class GitHubService:
                 except OSError:
                     pass
             raise e
+
+    @staticmethod
+    async def fetch_pr_files_async(url: str) -> list:
+        parts = url.rstrip('/').split('/')
+        if "pull" not in parts:
+            return []
+        try:
+            pr_index = parts.index("pull")
+            owner = parts[pr_index - 2]
+            repo = parts[pr_index - 1]
+            pr_num = parts[pr_index + 1]
+            api_url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{pr_num}/files"
+            def _fetch():
+                req = urllib.request.Request(api_url, headers={"User-Agent": "CodeContextAI"})
+                with urllib.request.urlopen(req, timeout=15) as response:
+                    data = json.loads(response.read().decode('utf-8'))
+                    return [f_obj['filename'] for f_obj in data]
+            return await asyncio.to_thread(_fetch)
+        except Exception as e:
+            raise RuntimeError(f"GitHub API error: {e}")

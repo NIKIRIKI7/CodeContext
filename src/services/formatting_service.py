@@ -25,12 +25,14 @@ class FormattingService:
                       include_tree: bool,
                       system_prompt: str,
                       dependency_map: Optional[Dict[str, Set[str]]] = None,
-                      template_path: str = "") -> str:
+                      template_path: str = "",
+                      include_mermaid: bool = False) -> str:
         if fmt == 'jsonl_chunk':
             return self._to_jsonl_chunks(files)
 
         tree_text = self._generate_tree([f.path for f in files]) if include_tree else ""
         dep_text = self._format_dependency_graph(dependency_map) if dependency_map else ""
+        mermaid_text = self._format_mermaid_graph(dependency_map) if (dependency_map and include_mermaid) else ""
 
         if fmt == 'custom':
             if not JINJA_AVAILABLE:
@@ -67,6 +69,8 @@ class FormattingService:
             if dep_text:
                 if fmt == 'markdown':
                     output.append(f"### DEPENDENCY GRAPH\n```text\n{dep_text}\n```\n")
+                    if mermaid_text:
+                        output.append(f"### ARCHITECTURE DIAGRAM\n{mermaid_text}\n")
                 elif fmt == 'xml':
                     output.append(f"<dependencies>\n{html.escape(dep_text)}\n</dependencies>")
                 else:
@@ -161,6 +165,22 @@ class FormattingService:
             return template.render(**context)
         except Exception as e:
             return f"Error rendering template: {str(e)}"
+
+    @staticmethod
+    def _format_mermaid_graph(dep_map: Dict[str, Set[str]]) -> str:
+        if not dep_map:
+            return ""
+        lines = ["```mermaid", "graph TD;"]
+        for file_path, imports in dep_map.items():
+            if not imports:
+                continue
+            file_name = os.path.basename(file_path)
+            for imp in sorted(list(imports)):
+                safe_name = file_name.replace('"', "'")
+                safe_imp = imp.replace('"', "'")
+                lines.append(f'  "{safe_name}" --> "{safe_imp}";')
+        lines.append("```\n")
+        return "\n".join(lines)
 
     @staticmethod
     def _format_dependency_graph(dep_map: Dict[str, Set[str]]) -> str:

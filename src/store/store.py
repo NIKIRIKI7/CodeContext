@@ -80,6 +80,8 @@ class Store:
 
             UI_SHOW_COMMAND_PALETTE: lambda _: self._state.__setattr__('show_command_palette', True),
             UI_CLOSE_COMMAND_PALETTE: lambda _: self._state.__setattr__('show_command_palette', False),
+
+            SET_PR_TARGET_FILES: self._handle_set_pr_target_files,
         })
 
     def _handle_show_toast(self, message: str):
@@ -167,6 +169,7 @@ class Store:
         self._state.scanned_file_metadata.clear()
         self._state.processed_files.clear()
         self._state.manual_exclusions.clear()
+        self._state.pr_target_files.clear()
         self._state.final_output_text = ""
         self._state.total_tokens = 0
         self._state.selected_tokens = 0
@@ -233,6 +236,9 @@ class Store:
     def _handle_exclusion_clear(self, _):
         self._state.manual_exclusions.clear()
         self._handle_recalculate_tokens(None)
+
+    def _handle_set_pr_target_files(self, payload: list):
+        self._state.pr_target_files = payload
 
     def _handle_recalculate_tokens(self, _):
         total = 0

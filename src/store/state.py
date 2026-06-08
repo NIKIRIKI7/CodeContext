@@ -12,6 +12,7 @@ class AppSettings:
     remove_secrets: bool = True
     include_tree: bool = True
     include_dependencies: bool = False
+    include_mermaid: bool = False
     skeleton_mode: bool = False
     use_git: bool = False
     use_gitignore: bool = True
@@ -28,6 +29,7 @@ class AppSettings:
 
     cli_format: str = "plain"
     python_interpreter: str = ""
+    external_editor: str = ""
 
     receive_prereleases: bool = False
 
@@ -59,6 +61,7 @@ class AppState:
     scanned_file_metadata: Dict[str, dict] = field(default_factory=dict)
     manual_exclusions: Set[str] = field(default_factory=set)
     processed_files: List[ProcessedFile] = field(default_factory=list)
+    pr_target_files: List[str] = field(default_factory=list)
     final_output_text: str = ""
     total_tokens: int = 0
     selected_tokens: int = 0

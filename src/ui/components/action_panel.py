@@ -57,12 +57,18 @@ class ActionPanel(QWidget):
         self.btn_chat.setProperty("cssClass", "success")
         self.btn_chat.clicked.connect(lambda: self.on_run("chat"))
 
+        btn_editor = QPushButton("💻 В редактор")
+        btn_editor.setProperty("cssClass", "ghost")
+        btn_editor.setToolTip("Открыть результат в VS Code / Cursor")
+        btn_editor.clicked.connect(lambda: self.on_run("editor"))
+
         btn_file = QPushButton("💾 В Файл")
         btn_file.setProperty("cssClass", "ghost")
         btn_file.clicked.connect(lambda: self.on_run("file"))
 
         row2.addWidget(btn_preview)
         row2.addWidget(btn_copy)
+        row2.addWidget(btn_editor)
         row2.addWidget(self.btn_chat)
         row2.addWidget(btn_file)
         row2.addStretch()

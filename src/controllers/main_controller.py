@@ -6,7 +6,7 @@ from ..actions.action_types import (
     FOLDER_ADD, FOLDER_REMOVE, FOLDER_UPDATE, FOLDER_CLEAR,
     EXCLUSION_ADD, EXCLUSION_REMOVE, EXCLUSION_CLEAR,
     UI_ADD_LOG, UI_UPDATE_STATUS, UI_CLOSE_PREVIEW, UI_SHOW_TOUR, UI_CLOSE_TOUR,
-    UI_CLOSE_UPDATE, UI_SHOW_TOAST, UI_CLOSE_CHAT
+    UI_CLOSE_UPDATE, UI_SHOW_TOAST, UI_CLOSE_CHAT, SET_PR_TARGET_FILES,
 )
 from ..actions.dispatcher import Dispatcher
 from ..store.store import Store
@@ -124,7 +124,10 @@ class MainController:
             self._dispatcher.dispatch(UI_ADD_LOG, "⚠️ Выберите папки для сканирования")
             return
         state = self._store.state
-        AsyncRuntime.run_coroutine(self._scan_uc.execute(state))
+        async def _scan_and_filter():
+            await self._scan_uc.execute(state)
+            self._apply_pr_filter()
+        AsyncRuntime.run_coroutine(_scan_and_filter())
 
     def start_processing(self, target: str, save_path: Optional[str] = None) -> Tuple[bool, str]:
         if not self._store.state.selected_folders:
@@ -139,6 +142,7 @@ class MainController:
     async def _scan_then_process(self, target: str, save_path: Optional[str]):
         state = self._store.state
         await self._scan_uc.execute(state)
+        self._apply_pr_filter()
         state = self._store.state
         if state.scanned_files_paths:
             await self._process_uc.execute(state, target, save_path)
@@ -250,6 +254,18 @@ class MainController:
         except Exception as e:
             self._dispatcher.dispatch(UI_ADD_LOG, f"❌ {str(e)}")
             self._dispatcher.dispatch(UI_SHOW_TOAST, "❌ Ошибка буфера обмена")
+
+    def _apply_pr_filter(self):
+        state = self._store.state
+        if not state.pr_target_files or not state.scanned_files_paths:
+            return
+        self._dispatcher.dispatch(EXCLUSION_CLEAR, None)
+        pr_files_norm = [p.replace('/', os.sep) for p in state.pr_target_files]
+        for p in state.scanned_files_paths:
+            if not any(p.endswith(pr_f) for pr_f in pr_files_norm):
+                self._dispatcher.dispatch(EXCLUSION_ADD, p)
+        self._dispatcher.dispatch(UI_ADD_LOG, f"🐙 Применен фильтр Pull Request. Оставлено {len(state.pr_target_files)} файлов.")
+        self._dispatcher.dispatch(SET_PR_TARGET_FILES, [])
 
     def clear_toast(self):
         self._dispatcher.dispatch(UI_SHOW_TOAST, "")

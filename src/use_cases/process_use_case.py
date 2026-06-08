@@ -135,10 +135,15 @@ class ProcessWorkspaceUseCase:
             system_prompt=settings.system_prompt,
             dependency_map=dep_map,
             template_path=settings.template_path,
+            include_mermaid=getattr(settings, 'include_mermaid', False),
         )
 
     async def _export(self, target: str, text: str, save_path: Optional[str]):
-        if target == 'clipboard':
+        if target == 'editor':
+            external_cmd = getattr(self._dispatcher._store.state.settings, 'external_editor', '')
+            await asyncio.to_thread(self._output_service.open_in_editor, text, external_cmd)
+            self._dispatcher.dispatch(UI_ADD_LOG, "💻 Промпт открыт во внешнем редакторе")
+        elif target == 'clipboard':
             self._output_service.copy_to_clipboard(text)
         elif target == 'stdout':
             import sys
