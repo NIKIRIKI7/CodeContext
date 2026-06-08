@@ -4,27 +4,30 @@
 pkgname=codecontext-ai
 pkgver=1.14.0
 pkgrel=1
-pkgdesc="AI-powered tool to prepare your codebase for LLMs — scan, analyze, minify, and generate structured prompts"
+pkgdesc="AI-powered codebase analysis and prompt preparation tool for LLMs (ChatGPT, Claude, Cursor)"
 arch=('any')
 url="https://github.com/NIKIRIKI7/CodeContext"
 license=('MIT')
-depends=('python>=3.10' 'python-pyside6' 'python-pip' 'python-setuptools' 'git')
-makedepends=('python-build' 'python-wheel')
-source=("$pkgname-$pkgver.tar.gz::https://github.com/NIKIRIKI7/CodeContext/archive/v$pkgver.tar.gz")
-sha256sums=('SKIP')
+depends=('python' 'python-pyside6' 'python-tiktoken' 'python-fpdf2' 'python-pyperclip' 'python-pathspec' 'python-jinja')
+makedepends=('git')
+source=("$pkgname-$pkgver.tar.gz::https://github.com/NIKIRIKI7/CodeContext/archive/refs/tags/v${pkgver}.tar.gz"
+        "codecontext.desktop")
+sha256sums=('SKIP'
+            'SKIP')
 
 package() {
     cd "$srcdir/CodeContext-$pkgver"
 
-    install -Dm755 aur_build/codecontext.sh "$pkgdir/usr/bin/codecontext"
-    install -Dm644 aur_build/codecontext.desktop "$pkgdir/usr/share/applications/codecontext.desktop"
-    install -Dm644 assets/images/logo.png "$pkgdir/usr/share/pixmaps/codecontext-ai.png"
+    install -dm755 "$pkgdir/opt/$pkgname"
+    cp -a . "$pkgdir/opt/$pkgname/"
 
-    mkdir -p "$pkgdir/opt/codecontext-ai"
-    cp -r . "$pkgdir/opt/codecontext-ai/"
+    install -dm755 "$pkgdir/usr/bin"
+    cat <<EOF > "$pkgdir/usr/bin/codecontext"
+#!/bin/sh
+exec python /opt/$pkgname/main.py "\$@"
+EOF
+    chmod +x "$pkgdir/usr/bin/codecontext"
 
-    cd "$pkgdir/opt/codecontext-ai"
-    pip install --prefix="$pkgdir/usr" --no-deps -r requirements.txt 2>/dev/null || true
-
-    chmod +x "$pkgdir/opt/codecontext-ai/main.py"
+    install -Dm644 "$srcdir/codecontext.desktop" "$pkgdir/usr/share/applications/$pkgname.desktop"
+    install -Dm644 assets/images/logo.png "$pkgdir/usr/share/pixmaps/$pkgname.png"
 }
