@@ -18,8 +18,10 @@ from ..services.token_service import TokenService
 from ..store.state import AppState, ProcessedFile
 from ..utils.pipeline_utils import PipelineUtils
 
+
 class ProcessWorkspaceUseCase:
-    """Оркестрирует чтение → очистку → форматирование → экспорт."""
+    """Оркестрирует чтение — очистку — форматирование — экспорт."""
+
     def __init__(
         self,
         dispatcher: Dispatcher,
@@ -56,6 +58,7 @@ class ProcessWorkspaceUseCase:
                 p for p in state.scanned_files_paths
                 if p not in state.manual_exclusions
             ]
+
             if not files_to_process:
                 self._dispatcher.dispatch(UI_ADD_LOG, "⚠️ Нет файлов для обработки (все исключены?)")
                 return
@@ -63,10 +66,11 @@ class ProcessWorkspaceUseCase:
             self._dispatcher.dispatch(WORKFLOW_PROGRESS, {
                 'message': f"Чтение {len(files_to_process)} файлов...", 'progress': 0.3
             })
+
             raw_files = await self._process_service.read_files_async(files_to_process)
 
             dependency_map: Optional[Dict[str, Set[str]]] = None
-            if state.settings.include_dependencies:
+            if state.settings.include_dependencies or state.settings.include_mermaid:
                 self._dispatcher.dispatch(WORKFLOW_PROGRESS, {
                     'message': "Анализ зависимостей...", 'progress': 0.5
                 })
@@ -75,19 +79,22 @@ class ProcessWorkspaceUseCase:
             self._dispatcher.dispatch(WORKFLOW_PROGRESS, {
                 'message': "Обработка и минификация...", 'progress': 0.6
             })
+
             processed: List[ProcessedFile] = await asyncio.to_thread(
                 self._run_processing, raw_files, state.settings
             )
+
             self._dispatcher.dispatch(PROCESSING_SUCCESS, processed)
 
             self._dispatcher.dispatch(WORKFLOW_PROGRESS, {
                 'message': "Форматирование...", 'progress': 0.85
             })
+
             text_result: str = await asyncio.to_thread(
                 self._run_formatting, processed, state.settings, dependency_map
             )
 
-            total_tokens = sum(f.tokens for f in processed)
+            final_tokens = await asyncio.to_thread(self._token_service.count_tokens, text_result)
 
             before_after = []
             for r, p in zip(raw_files, processed):
@@ -97,20 +104,21 @@ class ProcessWorkspaceUseCase:
 
             timestamp = datetime.datetime.now().strftime("%H:%M:%S")
             self._dispatcher.dispatch(HISTORY_ADD, {
-                "time": timestamp, "text": text_result, "tokens": total_tokens
+                "time": timestamp, "text": text_result, "tokens": final_tokens
             })
 
             self._dispatcher.dispatch(FORMATTING_SUCCESS, {
-                'text': text_result, 'tokens': total_tokens
+                'text': text_result, 'tokens': final_tokens
             })
 
             self._dispatcher.dispatch(WORKFLOW_PROGRESS, {
                 'message': "Сохранение...", 'progress': 0.95
             })
+
             await self._export(target, text_result, save_path)
 
             self._dispatcher.dispatch(WORKFLOW_FINISHED, None)
-            self._dispatcher.dispatch(UI_ADD_LOG, f"✅ Готово. Токенов: ~{total_tokens}")
+            self._dispatcher.dispatch(UI_ADD_LOG, f"✅ Готово. Итоговых токенов: {final_tokens}")
 
         except Exception as exc:
             self._dispatcher.dispatch(WORKFLOW_ERROR, str(exc))
@@ -135,12 +143,12 @@ class ProcessWorkspaceUseCase:
             system_prompt=settings.system_prompt,
             dependency_map=dep_map,
             template_path=settings.template_path,
-            include_mermaid=getattr(settings, 'include_mermaid', False),
+            include_mermaid=settings.include_mermaid
         )
 
     async def _export(self, target: str, text: str, save_path: Optional[str]):
         if target == 'editor':
-            external_cmd = getattr(self._dispatcher._store.state.settings, 'external_editor', '')
+            external_cmd = self._dispatcher._store.state.settings.external_editor
             await asyncio.to_thread(self._output_service.open_in_editor, text, external_cmd)
             self._dispatcher.dispatch(UI_ADD_LOG, "💻 Промпт открыт во внешнем редакторе")
         elif target == 'clipboard':

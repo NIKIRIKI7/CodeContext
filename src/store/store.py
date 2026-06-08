@@ -6,6 +6,7 @@ from typing import List, Callable, Any, Dict
 from .state import AppState, AppSettings
 from ..actions.action_types import *
 
+
 class Store:
     """Центральное хранилище состояния."""
     def __init__(self):
@@ -16,20 +17,17 @@ class Store:
 
     @property
     def state(self) -> AppState:
-        """Всегда возвращает глубокую копию — защита от внешних мутаций."""
         return copy.deepcopy(self._state)
 
     def subscribe(self, listener: Callable[[AppState], None]) -> Callable:
-        """Подписка на изменения. Возвращает функцию отписки."""
         self._listeners.append(listener)
         return lambda: self._listeners.remove(listener)
 
     def dispatch(self, action_type: str, payload: Any = None):
-        """Изменение состояния через зарегистрированный обработчик."""
         handler = self._handlers.get(action_type)
         if handler:
             handler(payload)
-        self._notify()
+            self._notify()
 
     def _register_handlers(self):
         self._handlers.update({
@@ -43,46 +41,38 @@ class Store:
             UI_SHOW_UPDATE:       self._handle_show_update,
             UI_CLOSE_UPDATE:      self._handle_close_update,
             UI_SHOW_TOAST:        self._handle_show_toast,
-
             UI_SHOW_CHAT:         self._handle_show_chat,
             UI_CLOSE_CHAT:        self._handle_close_chat,
-
             SETTINGS_LOADED:      self._handle_settings_loaded,
             SETTINGS_UPDATE:      self._handle_settings_update,
             WORKSPACE_LOADED:     self._handle_workspace_loaded,
-
             FOLDER_ADD:           self._handle_folder_add,
             FOLDER_REMOVE:        self._handle_folder_remove,
             FOLDER_UPDATE:        self._handle_folder_update,
             FOLDER_CLEAR:         self._handle_folder_clear,
-
             GITHUB_CLONE_SUCCESS: self._handle_github_success,
             GITHUB_CLONE_FAILURE: self._handle_github_failure,
-
             SCAN_SUCCESS:         self._handle_scan_success,
             SCAN_FAILURE:         self._handle_scan_failure,
             RECALCULATE_TOKENS:   self._handle_recalculate_tokens,
-
             EXCLUSION_ADD:        self._handle_exclusion_add,
             EXCLUSION_REMOVE:     self._handle_exclusion_remove,
             EXCLUSION_CLEAR:      self._handle_exclusion_clear,
-
             PROCESSING_SUCCESS:   lambda p: self._state.__setattr__('processed_files', p),
             FORMATTING_SUCCESS:   self._handle_formatting_success,
-
             WORKFLOW_STARTED:     self._handle_update_status,
             WORKFLOW_PROGRESS:    self._handle_update_status,
             WORKFLOW_FINISHED:    lambda _: self._handle_update_status({'message': 'Готово', 'progress': 1.0}),
             WORKFLOW_ERROR:       self._handle_workflow_error,
-
             HISTORY_ADD:          self._handle_history_add,
             SET_BEFORE_AFTER:     lambda p: self._state.__setattr__('before_after_data', p),
-
             UI_SHOW_COMMAND_PALETTE: lambda _: self._state.__setattr__('show_command_palette', True),
             UI_CLOSE_COMMAND_PALETTE: lambda _: self._state.__setattr__('show_command_palette', False),
-
-            SET_PR_TARGET_FILES: self._handle_set_pr_target_files,
+            SET_PR_TARGET_FILES:  self._handle_set_pr_target_files,
         })
+
+    def _handle_set_pr_target_files(self, payload: list):
+        self._state.pr_target_files = payload
 
     def _handle_show_toast(self, message: str):
         self._state.toast_message = message
@@ -181,14 +171,10 @@ class Store:
     def _handle_github_success(self, payload: dict):
         path = payload.get("path")
         is_temp = payload.get("is_temp", True)
-
         if path and path not in self._state.selected_folders:
             self._state.selected_folders.append(path)
-
-        # Добавляем во временные только если пользователь не выбрал свою папку
         if path and is_temp and path not in self._state.temp_folders:
             self._state.temp_folders.append(path)
-
         self._state.status_message = "Репозиторий загружен"
         self._state.logs.append(f"GitHub Repo Cloned: {path}")
 
@@ -227,18 +213,18 @@ class Store:
 
     def _handle_exclusion_add(self, path):
         self._state.manual_exclusions.add(path)
+        self._state.final_output_text = ""
         self._handle_recalculate_tokens(None)
 
     def _handle_exclusion_remove(self, path):
         self._state.manual_exclusions.discard(path)
+        self._state.final_output_text = ""
         self._handle_recalculate_tokens(None)
 
     def _handle_exclusion_clear(self, _):
         self._state.manual_exclusions.clear()
+        self._state.final_output_text = ""
         self._handle_recalculate_tokens(None)
-
-    def _handle_set_pr_target_files(self, payload: list):
-        self._state.pr_target_files = payload
 
     def _handle_recalculate_tokens(self, _):
         total = 0

@@ -7,6 +7,7 @@ from PySide6.QtGui import QKeySequence, QShortcut
 
 from ..store.store import Store
 from ..controllers.main_controller import MainController
+
 from .components.sidebar import Sidebar
 from .components.folder_list import FolderList
 from .components.action_panel import ActionPanel
@@ -15,9 +16,11 @@ from .components.status_bar import StatusBar
 from .components.file_tree import FileTree
 from .components.empty_state import EmptyState
 from .components.analytics_panel import AnalyticsPanel
+
 from .dialogs import AdvancedPreviewDialog, InteractiveTourDialog, EditFolderDialog, UpdateDialog, CommandPaletteDialog
 from .theme_manager import ThemeManager, theme_bus
 from ..utils.config import PricingManager, get_app_version
+
 
 class ToastNotification(QLabel):
     def __init__(self, parent):
@@ -25,11 +28,9 @@ class ToastNotification(QLabel):
         self.setProperty("cssClass", "toast")
         self.setAlignment(Qt.AlignCenter)
         self.hide()
-
         self.opacity_effect = QGraphicsOpacityEffect(self)
         self.setGraphicsEffect(self.opacity_effect)
         self.animation = QPropertyAnimation(self.opacity_effect, b"opacity")
-
         self.timer = QTimer()
         self.timer.setSingleShot(True)
         self.timer.timeout.connect(self.fade_out)
@@ -38,12 +39,10 @@ class ToastNotification(QLabel):
         self.setText(message)
         self.adjustSize()
         self.resize(self.width() + 40, self.height() + 10)
-
         parent_rect = self.parent().rect()
         x = (parent_rect.width() - self.width()) // 2
         y = parent_rect.height() - self.height() - 80
         self.move(x, y)
-
         self.opacity_effect.setOpacity(1.0)
         self.show()
         self.raise_()
@@ -56,15 +55,16 @@ class ToastNotification(QLabel):
         self.animation.finished.connect(self.hide)
         self.animation.start()
 
+
 class UIBridge(QObject):
     state_changed = Signal(object)
+
 
 class MainWindow(QMainWindow):
     def __init__(self, store: Store, controller: MainController):
         super().__init__()
         self.store = store
         self.controller = controller
-
         self.setWindowTitle("CodeContext AI")
         self.setAcceptDrops(True)
         self._apply_adaptive_size()
@@ -82,7 +82,6 @@ class MainWindow(QMainWindow):
         self._init_ui()
         self._update_theme_metrics()
         theme_bus.theme_changed.connect(self._update_theme_metrics)
-
         PricingManager.fetch_prices_background()
 
         self.controller.load_initial_settings()
@@ -190,10 +189,9 @@ class MainWindow(QMainWindow):
         self.action_panel.update_ui(state.settings)
         self.log_panel.update_logs(state.logs)
 
-        tokens_display = state.selected_tokens if state.selected_tokens > 0 else state.total_tokens
+        tokens_display = state.total_tokens if state.final_output_text else state.selected_tokens
         model = state.settings.llm_model
         estimated_cost = tokens_display * PricingManager.get_price(model)
-
         self.status_bar.update_ui(state.status_message, state.progress, tokens_display, estimated_cost)
 
         if state.toast_message:
@@ -204,11 +202,13 @@ class MainWindow(QMainWindow):
             if not self._command_palette:
                 commands = {
                     "Сгенерировать: Скопировать в буфер": lambda: self._on_run('clipboard'),
+                    "Сгенерировать: Открыть в Редакторе (VS Code)": lambda: self._on_run('editor'),
                     "Сгенерировать: Предпросмотр (Safety Diff)": lambda: self._on_run('preview'),
                     "Сгенерировать: Отправить в AI Чат": lambda: self._on_run('chat'),
                     "Сгенерировать: Сохранить в файл": lambda: self._on_run('file'),
                     "Опции: Включить/Выключить Minify": lambda: self.action_panel.chk_minify.setChecked(not self.action_panel.chk_minify.isChecked()),
                     "Опции: Включить/Выключить Skeleton ☠️": lambda: self.action_panel.chk_skeleton.setChecked(not self.action_panel.chk_skeleton.isChecked()),
+                    "Опции: Включить/Выключить Mermaid": lambda: self.sidebar.chk_mermaid.setChecked(not self.sidebar.chk_mermaid.isChecked()),
                     "Действие: Очистить рабочую область": self.controller.clear_folders,
                     "Действие: Применить JSON патч от LLM": self.sidebar._open_patch_dialog,
                     "Настройки: Переключить Светлую/Темную тему": lambda: ThemeManager.apply_theme(mode="dark" if ThemeManager._current_mode == "light" else "light"),
@@ -223,10 +223,9 @@ class MainWindow(QMainWindow):
                 x = parent_geo.x() + (parent_geo.width() - self._command_palette.width()) // 2
                 y = parent_geo.y() + (parent_geo.height() - self._command_palette.height()) // 2 - 50
                 self._command_palette.move(x, y)
-
-            self._command_palette.show()
-            self._command_palette.raise_()
-            self._command_palette.search_input.setFocus()
+                self._command_palette.show()
+                self._command_palette.raise_()
+                self._command_palette.search_input.setFocus()
         elif self._command_palette:
             self._command_palette.close()
             self._command_palette = None
@@ -235,9 +234,9 @@ class MainWindow(QMainWindow):
             if not self._chat_dialog:
                 from .dialogs import ChatDialog
                 self._chat_dialog = ChatDialog(self, state, self.controller)
-            self._chat_dialog.update_data(state)
-            self._chat_dialog.show()
-            self._chat_dialog.raise_()
+                self._chat_dialog.update_data(state)
+                self._chat_dialog.show()
+                self._chat_dialog.raise_()
         elif self._chat_dialog:
             self._chat_dialog.close()
             self._chat_dialog = None
@@ -245,9 +244,9 @@ class MainWindow(QMainWindow):
         if state.show_preview:
             if not self._preview_dialog:
                 self._preview_dialog = AdvancedPreviewDialog(self, state, self.controller.close_preview, self.controller)
-            self._preview_dialog.update_data(state)
-            self._preview_dialog.show()
-            self._preview_dialog.raise_()
+                self._preview_dialog.update_data(state)
+                self._preview_dialog.show()
+                self._preview_dialog.raise_()
         elif self._preview_dialog:
             self._preview_dialog.close()
             self._preview_dialog = None
@@ -255,8 +254,8 @@ class MainWindow(QMainWindow):
         if state.show_tour:
             if not self._tour_dialog:
                 self._tour_dialog = InteractiveTourDialog(self, state.tour_steps, self.controller.close_tour)
-            self._tour_dialog.show()
-            self._tour_dialog.raise_()
+                self._tour_dialog.show()
+                self._tour_dialog.raise_()
         elif self._tour_dialog:
             self._tour_dialog.close()
             self._tour_dialog = None
