@@ -11,6 +11,7 @@ from src.utils.logger import app_logger
 from PySide6.QtWidgets import QApplication
 from PySide6.QtGui import QIcon, QImage, QPainter, QColor, QFont, QPen
 from PySide6.QtCore import Qt
+from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from src.ui.theme_manager import ThemeManager
 from src.ui.main_window import MainWindow
 
@@ -30,10 +31,10 @@ def create_default_logo(path: str):
     img.fill(Qt.transparent)
     painter = QPainter(img)
     painter.setRenderHint(QPainter.Antialiasing)
-    painter.setBrush(QColor("#0a84ff"))
+    painter.setBrush(QColor("#0071e3"))
     painter.setPen(Qt.NoPen)
     painter.drawRoundedRect(12, 12, 232, 232, 48, 48)
-    painter.setBrush(QColor("#000000"))
+    painter.setBrush(QColor("#0a84ff"))
     painter.drawRoundedRect(24, 24, 208, 208, 36, 36)
     painter.setPen(QPen(Qt.white, 16))
     font = QFont("Consolas", 64, QFont.Bold)
@@ -41,6 +42,16 @@ def create_default_logo(path: str):
     painter.drawText(img.rect(), Qt.AlignCenter, "{ C }")
     painter.end()
     img.save(path, "PNG")
+
+def send_to_existing_instance(path: str) -> bool:
+    socket = QLocalSocket()
+    socket.connectToServer("CodeContextAI_IPC")
+    if socket.waitForConnected(500):
+        socket.write(path.encode('utf-8'))
+        socket.waitForBytesWritten(500)
+        socket.disconnectFromServer()
+        return True
+    return False
 
 
 def main():
@@ -69,16 +80,16 @@ def main():
     parser.add_argument("--cli", action="store_true", help="Запуск в режиме командной строки")
     parser.add_argument("--path", type=str, help="Путь к проекту")
     parser.add_argument("--patch", type=str, help="Путь к JSON-файлу с патчами от LLM")
-    parser.add_argument("--mode", type=str, default="default", help="Режим сбора зависимостей (default/shallow/deep)")
+    parser.add_argument("--mode", type=str, default="default", help="Режим сбора зависимостей")
     parser.add_argument("--install-context", action="store_true", help="Установить интеграцию с ОС")
     parser.add_argument("--remove-context", action="store_true", help="Удалить интеграцию с ОС")
     parser.add_argument("--minify", type=str, choices=["true", "false"], help="Включить/выключить Minify")
     parser.add_argument("--skeleton", type=str, choices=["true", "false"], help="Включить/выключить Skeleton")
-    parser.add_argument("--format", type=str, choices=["markdown", "xml", "plain"], help="Формат вывода")
+    parser.add_argument("--format", type=str, choices=["markdown", "xml", "plain", "jsonl_chunk"], help="Формат вывода")
     parser.add_argument("--dry-run", action="store_true", help="Оценить токены без генерации (только CLI)")
-    parser.add_argument("--silent", action="store_true", help="Тихий режим: без логов, скопировать сразу в буфер (только CLI)")
-    parser.add_argument("--stdout", action="store_true", help="Вывести результат в stdout вместо буфера обмена (только CLI)")
-    parser.add_argument("--fail-if-exceeds", type=int, metavar="N", help="Вернуть код 1, если токенов больше N (CI/CD Gate)")
+    parser.add_argument("--silent", action="store_true", help="Тихий режим (только CLI)")
+    parser.add_argument("--stdout", action="store_true", help="Вывод в stdout")
+    parser.add_argument("--fail-if-exceeds", type=int, help="Limit Gate Guard")
 
     args, _ = parser.parse_known_args()
     container = DIContainer()
@@ -91,7 +102,7 @@ def main():
         container.integration_service.remove_context_menu()
         sys.exit(0)
 
-    if args.cli or args.silent or args.dry_run:
+    if args.cli or args.silent or args.dry_run or args.stdout:
         if not args.path:
             args.path = os.getcwd()
         kwargs = {
@@ -100,7 +111,7 @@ def main():
             'skeleton': args.skeleton,
             'format': args.format,
             'dry_run': args.dry_run,
-            'silent': args.silent,
+            'silent': args.silent or args.stdout,
             'stdout': args.stdout,
             'fail_if_exceeds': args.fail_if_exceeds
         }
@@ -109,6 +120,12 @@ def main():
         else:
             container.cli_controller.run(args.path, **kwargs)
         sys.exit(0)
+
+    if args.path and os.path.exists(args.path):
+        abs_path = os.path.abspath(args.path)
+        if send_to_existing_instance(abs_path):
+            app_logger.info("Отправлено в уже открытое окно. Завершение работы.")
+            sys.exit(0)
 
     app_logger.info("Starting GUI Mode (PySide6)...")
 
@@ -144,12 +161,29 @@ def main():
     if os.path.exists(logo_path):
         window.setWindowIcon(QIcon(logo_path))
 
+    ipc_server = QLocalServer()
+    ipc_server.removeServer("CodeContextAI_IPC")
+    ipc_server.listen("CodeContextAI_IPC")
+
+    def on_new_connection():
+        socket = ipc_server.nextPendingConnection()
+        if socket.waitForReadyRead(500):
+            received_path = socket.readAll().data().decode('utf-8')
+            if received_path and os.path.exists(received_path):
+                app_logger.info(f"IPC Received: {received_path}")
+                container.main_controller.add_folder(received_path)
+                window.activateWindow()
+                window.raise_()
+
+    ipc_server.newConnection.connect(on_new_connection)
+
     if args.path and os.path.exists(args.path):
         container.main_controller.add_folder(os.path.abspath(args.path))
 
     window.show()
     exit_code = app.exec()
 
+    ipc_server.close()
     AsyncRuntime.stop()
     sys.exit(exit_code)
 

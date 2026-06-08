@@ -25,7 +25,7 @@ class ActionPanel(QWidget):
         self.chk_skeleton = QCheckBox("Skeleton")
 
         self.cmb_format = QComboBox()
-        self.cmb_format.addItems(["markdown", "xml", "plain", "custom"])
+        self.cmb_format.addItems(["markdown", "xml", "plain", "jsonl_chunk", "custom"])
         self.cmb_format.currentTextChanged.connect(self._on_format_changed)
 
         self.btn_template = QPushButton("📁")

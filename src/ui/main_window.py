@@ -1,7 +1,7 @@
 import os
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
                                QSplitter, QFileDialog, QStackedWidget, QMessageBox,
-                               QLabel, QGraphicsOpacityEffect)
+                               QLabel, QGraphicsOpacityEffect, QTabWidget)
 from PySide6.QtCore import Signal, QObject, Qt, QPropertyAnimation, QTimer
 from PySide6.QtGui import QKeySequence, QShortcut
 
@@ -14,6 +14,7 @@ from .components.log_panel import LogPanel
 from .components.status_bar import StatusBar
 from .components.file_tree import FileTree
 from .components.empty_state import EmptyState
+from .components.analytics_panel import AnalyticsPanel
 from .dialogs import AdvancedPreviewDialog, InteractiveTourDialog, EditFolderDialog, UpdateDialog, CommandPaletteDialog
 from .theme_manager import ThemeManager, theme_bus
 from ..utils.config import PricingManager, get_app_version
@@ -125,8 +126,13 @@ class MainWindow(QMainWindow):
         self.log_panel = LogPanel()
         self.status_bar = StatusBar()
 
+        self.tree_tabs = QTabWidget()
+        self.tree_tabs.addTab(self.file_tree, "📂 Дерево файлов")
+        self.analytics_panel = AnalyticsPanel()
+        self.tree_tabs.addTab(self.analytics_panel, "📊 Аналитика токенов")
+
         self.right_layout.addWidget(self.folder_list, 1)
-        self.right_layout.addWidget(self.file_tree, 4)
+        self.right_layout.addWidget(self.tree_tabs, 4)
         self.right_layout.addWidget(self.action_panel, 0)
         self.right_layout.addWidget(self.log_panel, 1)
         self.right_layout.addWidget(self.status_bar, 0)
@@ -176,8 +182,10 @@ class MainWindow(QMainWindow):
 
         if state.scanned_files_paths:
             self.file_tree.populate(state.scanned_files_paths, state.scanned_file_metadata, state.manual_exclusions)
+            self.analytics_panel.populate(state.scanned_file_metadata, state.manual_exclusions)
         else:
             self.file_tree.clear()
+            self.analytics_panel.table.setRowCount(0)
 
         self.action_panel.update_ui(state.settings)
         self.log_panel.update_logs(state.logs)

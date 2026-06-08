@@ -1,4 +1,5 @@
 import html
+import json
 import os
 import difflib
 from pathlib import Path
@@ -25,6 +26,9 @@ class FormattingService:
                       system_prompt: str,
                       dependency_map: Optional[Dict[str, Set[str]]] = None,
                       template_path: str = "") -> str:
+        if fmt == 'jsonl_chunk':
+            return self._to_jsonl_chunks(files)
+
         tree_text = self._generate_tree([f.path for f in files]) if include_tree else ""
         dep_text = self._format_dependency_graph(dependency_map) if dependency_map else ""
 
@@ -173,6 +177,27 @@ class FormattingService:
                 lines.append(f"  -> {imp}")
             lines.append("")
         return "\n".join(lines)
+
+    @staticmethod
+    def _to_jsonl_chunks(files: List[ProcessedFile]) -> str:
+        lines_out = []
+        chunk_line_limit = 150
+        for f in files:
+            content_lines = f.content.splitlines()
+            if not content_lines:
+                continue
+            for i in range(0, len(content_lines), chunk_line_limit):
+                chunk_str = "\n".join(content_lines[i:i + chunk_line_limit])
+                tokens_approx = len(chunk_str) // 4
+                chunk_data = {
+                    "file_path": f.path,
+                    "chunk_index": i // chunk_line_limit,
+                    "total_chunks": (len(content_lines) // chunk_line_limit) + 1,
+                    "tokens_approx": tokens_approx,
+                    "content": chunk_str
+                }
+                lines_out.append(json.dumps(chunk_data, ensure_ascii=False))
+        return "\n".join(lines_out)
 
     @staticmethod
     def _generate_tree(paths: List[str]) -> str:
