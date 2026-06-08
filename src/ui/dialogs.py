@@ -2,7 +2,7 @@ import re
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QTextEdit,
                                QPushButton, QTabWidget, QWidget, QLabel, QLineEdit,
                                QListWidget, QListWidgetItem, QTextBrowser, QSplitter,
-                               QPlainTextEdit)
+                               QPlainTextEdit, QComboBox)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QSyntaxHighlighter, QTextCharFormat, QColor, QFont
 from .theme_manager import ThemeManager
@@ -110,6 +110,7 @@ class AdvancedPreviewDialog(QDialog):
         self.on_close = on_close
         self.state = state
         self.controller = controller
+
         self.setWindowTitle("Предпросмотр (CodeContext AI)")
         self.resize(1100, 700)
 
@@ -118,7 +119,7 @@ class AdvancedPreviewDialog(QDialog):
         layout.addWidget(self.tabs)
 
         self.tab_preview = QWidget()
-        self.tabs.addTab(self.tab_preview, "📝 Контекст")
+        self.tabs.addTab(self.tab_preview, "📝 Итоговый промпт")
         preview_layout = QVBoxLayout(self.tab_preview)
 
         self.splitter = QSplitter(Qt.Horizontal)
@@ -144,7 +145,6 @@ class AdvancedPreviewDialog(QDialog):
         toolbar_layout = QHBoxLayout()
         self.btn_copy_all = QPushButton("📋 Копировать всё")
         self.btn_copy_all.clicked.connect(self._copy_all)
-
         self.btn_copy_file = QPushButton("✂️ Скопировать только этот файл")
         self.btn_copy_file.setProperty("cssClass", "ghost")
         self.btn_copy_file.setEnabled(False)
@@ -166,25 +166,55 @@ class AdvancedPreviewDialog(QDialog):
         colors = ThemeManager.get_current_colors()
         self.highlighter = PreviewHighlighter(self.txt_preview.document(), colors)
 
+        self.tab_diff = QWidget()
+        self.tabs.addTab(self.tab_diff, "🔍 До/После (Оптимизация)")
+        diff_layout = QVBoxLayout(self.tab_diff)
+
+        diff_top_layout = QHBoxLayout()
+        diff_top_layout.addWidget(QLabel("Выберите файл для сравнения:"))
+        self.cmb_diff_files = QComboBox()
+        self.cmb_diff_files.setSizeAdjustPolicy(QComboBox.AdjustToContents)
+        self.cmb_diff_files.currentTextChanged.connect(self._on_diff_file_changed)
+        diff_top_layout.addWidget(self.cmb_diff_files, 1)
+
+        self.lbl_savings = QLabel("Экономия: 0 токенов (0%)")
+        self.lbl_savings.setProperty("cssClass", "heading")
+        self.lbl_savings.setStyleSheet("color: #16a34a;")
+        diff_top_layout.addWidget(self.lbl_savings)
+
+        diff_layout.addLayout(diff_top_layout)
+        self.diff_browser = QTextBrowser()
+        self.diff_browser.setOpenExternalLinks(False)
+        diff_layout.addWidget(self.diff_browser)
+
     def update_data(self, state):
         self.state = state
         self.txt_preview.setPlainText(state.preview_text)
 
         self.list_toc.clear()
+        self.cmb_diff_files.blockSignals(True)
+        self.cmb_diff_files.clear()
+
         for f in state.processed_files:
             self.list_toc.addItem(f.path)
+
+        for d in state.before_after_data:
+            self.cmb_diff_files.addItem(d["path"])
+
+        self.cmb_diff_files.blockSignals(False)
+
+        if state.before_after_data:
+            self.cmb_diff_files.setCurrentIndex(0)
+            self._on_diff_file_changed(state.before_after_data[0]["path"])
 
     def _on_toc_selected(self, idx):
         if idx < 0 or idx >= len(self.state.processed_files):
             self.btn_copy_file.setEnabled(False)
             return
-
         self.btn_copy_file.setEnabled(True)
         selected_file = self.state.processed_files[idx]
 
-        # Делегируем логику определения маркеров контроллеру
         search_strs = self.controller.get_search_markers_for_preview(selected_file.path)
-
         cursor = self.txt_preview.textCursor()
         cursor.setPosition(0)
         self.txt_preview.setTextCursor(cursor)
@@ -194,8 +224,29 @@ class AdvancedPreviewDialog(QDialog):
                 self.txt_preview.centerCursor()
                 break
 
+    def _on_diff_file_changed(self, path):
+        if not path:
+            return
+        data = next((d for d in self.state.before_after_data if d["path"] == path), None)
+        if not data:
+            return
+
+        original = data["original"]
+        processed = data["processed"]
+
+        t_orig = len(original) // 4
+        t_proc = len(processed) // 4
+        saved = t_orig - t_proc
+        percent = (saved / t_orig * 100) if t_orig > 0 else 0
+
+        self.lbl_savings.setText(f"Было: {t_orig} ➡️ Стало: {t_proc} (Сжато на {percent:.1f}%)")
+
+        colors = ThemeManager.get_current_colors()
+        fonts = ThemeManager.get_font_settings()
+        html_diff = self.controller.generate_html_diff(original, processed, colors, fonts)
+        self.diff_browser.setHtml(html_diff)
+
     def _copy_all(self):
-        # Делегируем буфер обмена контроллеру
         self.controller.copy_to_clipboard(self.txt_preview.toPlainText())
 
     def _copy_selected_file(self):
@@ -203,7 +254,6 @@ class AdvancedPreviewDialog(QDialog):
         if idx < 0 or idx >= len(self.state.processed_files):
             return
         selected_file = self.state.processed_files[idx]
-        # Делегируем буфер обмена контроллеру
         self.controller.copy_to_clipboard(selected_file.content)
 
     def closeEvent(self, event):

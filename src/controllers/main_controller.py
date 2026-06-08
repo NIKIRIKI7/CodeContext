@@ -171,6 +171,13 @@ class MainController:
     def add_github_repo(self, url: str, dest_path: str = ""):
         AsyncRuntime.run_coroutine(self._github_uc.execute(url, dest_path))
 
+    def save_local_config(self):
+        state = self._store.state
+        if state.selected_folders:
+            self._settings_uc.save_local_config(state.selected_folders[0])
+        else:
+            self._dispatcher.dispatch(UI_ADD_LOG, "⚠️ Нет добавленных папок для сохранения конфига.")
+
     def install_context_menu(self) -> Tuple[bool, str]:
         python_path = self._store.state.settings.python_interpreter
         return self._integration.install_context_menu(python_path)

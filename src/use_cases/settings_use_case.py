@@ -98,6 +98,22 @@ class SettingsUseCase:
         except Exception as exc:
             self._dispatcher.dispatch(UI_ADD_LOG, f"⚠️ Не удалось прочитать локальный конфиг: {exc}")
 
+    def save_local_config(self, folder_path: str) -> None:
+        if not folder_path or not os.path.exists(folder_path):
+            self._dispatcher.dispatch(UI_ADD_LOG, "❌ Ошибка: Папка проекта не выбрана.")
+            return
+
+        config_path = os.path.join(folder_path, ".codecontextrc.json")
+        try:
+            data = self._store.state.settings.__dict__.copy()
+            for key in ['recent_workspaces', 'python_interpreter', 'custom_presets', 'custom_prompt_presets', 'llm_api_key']:
+                data.pop(key, None)
+            with open(config_path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=4)
+            self._dispatcher.dispatch(UI_ADD_LOG, f"✅ Локальный конфиг сохранен: {config_path}")
+        except Exception as exc:
+            self._dispatcher.dispatch(UI_ADD_LOG, f"❌ Ошибка сохранения локального конфига: {exc}")
+
     def apply_preset(self, preset_name: str) -> None:
         """Применяет пресет расширений/игнора."""
         preset = PRESETS.get(preset_name)

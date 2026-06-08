@@ -124,17 +124,19 @@ class WindowsContextMenuStrategy(ContextMenuStrategy):
                 winreg.CloseKey(cmd_gui)
                 winreg.CloseKey(sub_gui)
 
-                # 2. Опции быстрого сканирования (Без UI)
-                for k_name, k_label, mode in [
-                    ("cmd1", "📋 Скопировать (Без зависимостей)", "default"),
-                    ("cmd2", "📦 Скопировать (Shallow зависимости)", "shallow"),
-                    ("cmd3", "📦 Скопировать (Deep зависимости)", "deep"),
-                ]:
+                # 2. Быстрые команды (Без UI)
+                commands = [
+                    ("cmd1", "📋 Скопировать (Default)", f'--silent'),
+                    ("cmd2", "📦 Скопировать (Deep Deps)", f'--mode deep --silent'),
+                    ("cmd3", "📄 Скопировать как XML", f'--format xml --silent'),
+                    ("cmd4", "☠️ Скопировать Skeleton", f'--skeleton true --silent')
+                ]
+                for k_name, k_label, flags in commands:
                     sub = winreg.CreateKey(sub_shell, k_name)
                     winreg.SetValue(sub, "", winreg.REG_SZ, k_label)
                     winreg.SetValueEx(sub, "Icon", 0, winreg.REG_SZ, icon_path)
                     cmd = winreg.CreateKey(sub, "command")
-                    winreg.SetValue(cmd, "", winreg.REG_SZ, f'{command_base} "{target_arg}" --mode {mode} --silent')
+                    winreg.SetValue(cmd, "", winreg.REG_SZ, f'{command_base} "{target_arg}" {flags}')
                     winreg.CloseKey(cmd)
                     winreg.CloseKey(sub)
 
@@ -195,26 +197,25 @@ class LinuxContextMenuStrategy(ContextMenuStrategy):
             python_exe = custom_python_path or sys.executable
             script_path = os.path.abspath(sys.argv[0])
 
-            action_dir = os.path.expanduser("~/.local/share/file-manager/actions")
-            os.makedirs(action_dir, exist_ok=True)
-            with open(os.path.join(action_dir, "codecontext_ai.desktop"), "w") as f:
-                f.write(
-                    f"[Desktop Entry]\nType=Action\nName=Открыть в CodeContext AI\n"
-                    f"Icon=utilities-terminal\nProfiles=profile-zero;\n\n"
-                    f"[X-Action-Profile profile-zero]\n"
-                    f"Exec={python_exe} {script_path} --path %f\n"
-                    f"Name=Default profile\n"
-                )
-
             kde_dir = os.path.expanduser("~/.local/share/kio/servicemenus")
             os.makedirs(kde_dir, exist_ok=True)
             with open(os.path.join(kde_dir, "codecontext_ai.desktop"), "w") as f:
                 f.write(
                     f"[Desktop Entry]\nType=Service\nServiceTypes=KonqPopupMenu/Plugin\n"
-                    f"MimeType=all/allfiles;inode/directory;\nActions=ScanCodeContext;\n"
-                    f"X-KDE-Priority=TopLevel\n\n"
-                    f"[Desktop Action ScanCodeContext]\nName=Открыть в CodeContext AI\n"
-                    f"Icon=utilities-terminal\nExec={python_exe} {script_path} --path %f\n"
+                    f"MimeType=all/allfiles;inode/directory;\n"
+                    f"Actions=OpenGUI;CopyXML;CopySkeleton;\n"
+                    f"X-KDE-Priority=TopLevel\n"
+                    f"X-KDE-Submenu=CodeContext AI\n"
+                    f"Icon=utilities-terminal\n\n"
+
+                    f"[Desktop Action OpenGUI]\nName=📂 Открыть UI\n"
+                    f"Icon=utilities-terminal\nExec={python_exe} {script_path} --path %f\n\n"
+
+                    f"[Desktop Action CopyXML]\nName=📄 Скопировать как XML\n"
+                    f"Icon=edit-copy\nExec={python_exe} {script_path} --cli --path %f --format xml --silent\n\n"
+
+                    f"[Desktop Action CopySkeleton]\nName=☠️ Скопировать Skeleton\n"
+                    f"Icon=edit-copy\nExec={python_exe} {script_path} --cli --path %f --skeleton true --silent\n"
                 )
             return True, "Успешно! Контекстное меню добавлено (KDE/GTK)."
         except Exception as exc:

@@ -102,6 +102,11 @@ class Sidebar(QWidget):
         btn_scan.clicked.connect(self._trigger_scan)
         layout.addWidget(btn_scan)
 
+        btn_save_local = QPushButton("💾 Сохранить конфиг (.codecontextrc)")
+        btn_save_local.setProperty("cssClass", "ghost")
+        btn_save_local.clicked.connect(self.controller.save_local_config)
+        layout.addWidget(btn_save_local)
+
         btn_clear = QPushButton("Очистить проект")
         btn_clear.setProperty("cssClass", "ghost")
         btn_clear.clicked.connect(self.controller.clear_folders)
