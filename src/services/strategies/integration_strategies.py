@@ -105,7 +105,10 @@ class WindowsContextMenuStrategy(ContextMenuStrategy):
             # Универсальная функция-помощник для создания вложенного меню
             def _add_menu(root_key, path, target_arg):
                 key = winreg.CreateKey(root_key, path)
-                winreg.SetValue(key, "", winreg.REG_SZ, "CodeContext AI")
+                try:
+                    winreg.DeleteValue(key, "")
+                except OSError:
+                    pass
                 winreg.SetValueEx(key, "MUIVerb", 0, winreg.REG_SZ, "CodeContext AI")
                 winreg.SetValueEx(key, "Icon", 0, winreg.REG_SZ, icon_path)
                 winreg.SetValueEx(key, "SubCommands", 0, winreg.REG_SZ, "")
