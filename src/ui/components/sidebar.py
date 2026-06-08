@@ -234,6 +234,25 @@ class Sidebar(QWidget):
         layout.addLayout(btn_ctx_layout)
 
         layout.addSpacing(10)
+
+        lbl_cli = QLabel("Глобальный CLI (Терминал):")
+        lbl_cli.setProperty("cssClass", "heading")
+        layout.addWidget(lbl_cli)
+
+        btn_cli_layout = QHBoxLayout()
+        self.btn_install_cli = QPushButton("Добавить в PATH")
+        self.btn_install_cli.setProperty("cssClass", "success")
+        self.btn_install_cli.clicked.connect(self._install_cli)
+
+        self.btn_remove_cli = QPushButton("Удалить из PATH")
+        self.btn_remove_cli.setProperty("cssClass", "ghost")
+        self.btn_remove_cli.clicked.connect(self._remove_cli)
+
+        btn_cli_layout.addWidget(self.btn_install_cli)
+        btn_cli_layout.addWidget(self.btn_remove_cli)
+        layout.addLayout(btn_cli_layout)
+
+        layout.addSpacing(10)
         lbl_upd = QLabel("Настройки обновления:")
         lbl_upd.setProperty("cssClass", "heading")
         layout.addWidget(lbl_upd)
@@ -312,6 +331,21 @@ class Sidebar(QWidget):
         success, msg = self.controller.remove_context_menu()
         if success or "запрошены права" in msg.lower():
             QMessageBox.information(self, "Интеграция", msg)
+        else:
+            QMessageBox.warning(self, "Ошибка", msg)
+
+    def _install_cli(self):
+        self.on_settings_change()
+        success, msg = self.controller.install_cli()
+        if success:
+            QMessageBox.information(self, "CLI Интеграция", msg)
+        else:
+            QMessageBox.warning(self, "Ошибка", msg)
+
+    def _remove_cli(self):
+        success, msg = self.controller.remove_cli()
+        if success:
+            QMessageBox.information(self, "CLI Интеграция", msg)
         else:
             QMessageBox.warning(self, "Ошибка", msg)
 

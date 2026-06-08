@@ -185,6 +185,13 @@ class MainController:
     def remove_context_menu(self) -> Tuple[bool, str]:
         return self._integration.remove_context_menu()
 
+    def install_cli(self) -> Tuple[bool, str]:
+        python_path = self._store.state.settings.python_interpreter
+        return self._integration.install_cli(python_path)
+
+    def remove_cli(self) -> Tuple[bool, str]:
+        return self._integration.remove_cli()
+
     def close_preview(self):
         self._dispatcher.dispatch(UI_CLOSE_PREVIEW, None)
 

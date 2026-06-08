@@ -44,3 +44,9 @@ class IntegrationService:
 
     def remove_context_menu(self) -> Tuple[bool, str]:
         return self._strategy.remove()
+
+    def install_cli(self, custom_python_path: Optional[str] = None) -> Tuple[bool, str]:
+        return self._strategy.install_cli(custom_python_path)
+
+    def remove_cli(self) -> Tuple[bool, str]:
+        return self._strategy.remove_cli()
