@@ -1,10 +1,10 @@
 <input type="radio" name="lang" id="lang_ru" checked hidden>
 <input type="radio" name="lang" id="lang_en" hidden>
 
-<div align="center">
+<div align="center" class="lang-header">
 
-<label for="lang_ru" class="lang-label">🇷🇺 Русский</label>
-<label for="lang_en" class="lang-label">🇬🇧 English</label>
+<label for="lang_ru" class="lang-btn">🇷🇺 Русский</label>
+<label for="lang_en" class="lang-btn">🇬🇧 English</label>
 
 <br><br>
 
@@ -26,410 +26,326 @@
 
 <div class="lang-ru">
 
-## 🌟 О проекте
+<h2>🌟 О проекте</h2>
 
-**CodeContext AI** — мощный десктопный инструмент для подготовки кодовой базы к работе с большими языковыми моделями (LLM). Сканирует папки проекта, анализирует структуру, строит граф зависимостей и генерирует единый структурированный промпт.
+<p><b>CodeContext AI</b> — мощный десктопный инструмент для подготовки кодовой базы к работе с большими языковыми моделями (LLM). Сканирует папки проекта, анализирует структуру, строит граф зависимостей и генерирует единый структурированный промпт.</p>
 
-### ❓ Зачем?
+<h3>❓ Зачем?</h3>
+<p>При работе с ИИ разработчики упираются в лимит токенов — нейросеть «теряет» архитектуру проекта, когда код копируется частями. <b>CodeContext AI решает это</b>: в пару кликов собирает ВЕСЬ проект в один промпт, экономя до 80% токенов.</p>
 
-При работе с ИИ разработчики упираются в лимит токенов — нейросеть «теряет» архитектуру проекта, когда код копируется частями. **CodeContext AI решает это**: в пару кликов собирает ВЕСЬ проект в один промпт, экономя до 80% токенов.
+<hr>
 
----
+<h2>🚀 Возможности</h2>
 
-## 🚀 Возможности
+<table>
+<thead><tr><th>Возможность</th><th>CodeContext AI</th><th>Вручную</th></tr></thead>
+<tbody>
+<tr><td>🗜️ Minify + Skeleton</td><td><b>До 80%</b> экономии токенов</td><td>Копировать вручную</td></tr>
+<tr><td>🧩 LLM Patcher</td><td>Предпросмотр и JSON-патчи</td><td>Нет</td></tr>
+<tr><td>✅ LLM Checker</td><td>Авто-проверка кода перед записью</td><td>Нет</td></tr>
+<tr><td>🔗 AST-граф</td><td>Python, JS/TS, Vue</td><td>Только файлы</td></tr>
+<tr><td>🖱️ Контекстное меню</td><td>Windows / Linux</td><td>Нет</td></tr>
+<tr><td>🎨 Темы</td><td>Apple, Modern, кастомные</td><td>Фиксированный UI</td></tr>
+<tr><td>⚙️ Кастомизация (v1.14+)</td><td>Premiere Pro-style</td><td>Фиксированный UI</td></tr>
+</tbody>
+</table>
 
-| Возможность | CodeContext AI | Вручную |
-|---|---|---|
-| 🗜️ Minify + Skeleton | **До 80%** экономии токенов | Копировать вручную |
-| 🧩 LLM Patcher | Предпросмотр и JSON-патчи | Нет |
-| ✅ LLM Checker | Авто-проверка кода перед записью | Нет |
-| 🔗 AST-граф | Python, JS/TS, Vue | Только файлы |
-| 🖱️ Контекстное меню | Windows / Linux | Нет |
-| 🎨 Темы | Apple, Modern, кастомные | Фиксированный UI |
-| ⚙️ Кастомизация (v1.14+) | Premiere Pro-style | Фиксированный UI |
+<hr>
 
----
+<h2>📥 Установка</h2>
 
-## 📥 Установка
+<p><b>Требования:</b> Python 3.10+, Git</p>
 
-**Требования:** Python 3.10+, Git
-
-```bash
-git clone https://github.com/NIKIRIKI7/CodeContext.git
+<pre>git clone https://github.com/NIKIRIKI7/CodeContext.git
 cd CodeContext
 python -m venv venv
 # Windows:
 venv\Scripts\activate
 # Linux/macOS:
 source venv/bin/activate
-pip install -r requirements.txt
-```
+pip install -r requirements.txt</pre>
 
-### Arch Linux (AUR)
+<h3>Arch Linux (AUR)</h3>
+<pre>yay -S codecontext-ai</pre>
 
-```bash
-yay -S codecontext-ai
-```
+<h3>Windows .exe</h3>
+<pre>pip install pyinstaller
+pyinstaller --windowed --onefile --icon=assets/images/logo.ico --name "CodeContext AI" main.py</pre>
 
-### Windows .exe
+<hr>
 
-```bash
-pip install pyinstaller
-pyinstaller --windowed --onefile --icon=assets/images/logo.ico --name "CodeContext AI" main.py
-```
+<h2>💻 Работа в GUI-режиме</h2>
+<pre>python main.py</pre>
 
----
+<h3>1. Обзор интерфейса</h3>
+<p>Окно разделено на три зоны:</p>
+<ul>
+<li><b>Левая панель (вкладки)</b> — настройки сканирования, фильтры, промпты, LLM, темы</li>
+<li><b>Центральная область</b> — список папок, дерево файлов, аналитика токенов</li>
+<li><b>Верхняя панель (Action Panel)</b> — опции Minify/No Comments/Skeleton и кнопки действий</li>
+</ul>
 
-## 💻 Работа в GUI-режиме
+<h3>2. Добавление проекта</h3>
+<table>
+<thead><tr><th>Действие</th><th>Как сделать</th></tr></thead>
+<tbody>
+<tr><td>Перетащить папку</td><td>Просто перетащите папку проекта в окно</td></tr>
+<tr><td>Выбрать через диалог</td><td>Кнопка «+ Папка ПК» на вкладке <b>Источники</b></td></tr>
+<tr><td>GitHub репозиторий</td><td>Кнопка «+ GitHub / PR» — вставьте URL репозитория или Pull Request</td></tr>
+<tr><td>Сохранить конфиг</td><td>Кнопка «💾 Сохранить конфиг» — создаст <code>.codecontextrc</code></td></tr>
+</tbody>
+</table>
 
-```bash
-python main.py
-```
+<p><b>Режимы загрузки GitHub:</b></p>
+<ul>
+<li><b>Сохранить навсегда</b> — клонирует репозиторий в выбранную папку на диске</li>
+<li><b>Временная загрузка</b> — клонирует во временную папку (удаляется при закрытии программы)</li>
+</ul>
 
-### 1. Обзор интерфейса
+<h3>3. Настройка сканирования</h3>
 
-Окно разделено на три зоны:
-- **Левая панель (вкладки)** — настройки сканирования, фильтры, промпты, LLM, темы
-- **Центральная область** — список папок, дерево файлов, аналитика токенов
-- **Верхняя панель (Action Panel)** — опции Minify/No Comments/Skeleton и кнопки действий
+<h4>Вкладка «📡 Источники»</h4>
+<table>
+<thead><tr><th>Опция</th><th>Описание</th></tr></thead>
+<tbody>
+<tr><td>☑ Только Git Changes</td><td>Включить в результат только файлы, изменённые в последнем коммите</td></tr>
+<tr><td>☑ Учитывать .gitignore</td><td>Автоматически исключать файлы из <code>.gitignore</code></td></tr>
+<tr><td>🔍 Сканировать файлы</td><td>Запустить сканирование — построить дерево файлов с метаданными</td></tr>
+</tbody>
+</table>
 
-### 2. Добавление проекта
+<h4>Вкладка «🎯 Фильтры»</h4>
+<table>
+<thead><tr><th>Опция</th><th>Описание</th></tr></thead>
+<tbody>
+<tr><td><b>Пресеты расширений</b></td><td>Быстрое переключение между наборами расширений (Python, Web, Golang, Rust, C# и др.)</td></tr>
+<tr><td><b>Расширения</b></td><td>Кастомный список расширений файлов для включения</td></tr>
+<tr><td><b>Игнорировать пути</b></td><td>Список папок/файлов для исключения (node_modules, .git, build, dist и т.д.)</td></tr>
+<tr><td>☑ Включить дерево файлов</td><td>Добавляет структуру папок в начало промпта</td></tr>
+<tr><td>☑ Включить карту зависимостей</td><td>AST-анализ импортов для Python/JS/TS — показывает связи между файлами</td></tr>
+<tr><td>☑ Включить Mermaid-граф</td><td>Генерирует архитектурную диаграмму в формате Mermaid</td></tr>
+</tbody>
+</table>
 
-| Действие | Как сделать |
-|---|---|
-| Перетащить папку | Просто перетащите папку проекта в окно |
-| Выбрать через диалог | Кнопка «+ Папка ПК» на вкладке **Источники** |
-| GitHub репозиторий | Кнопка «+ GitHub / PR» — вставьте URL репозитория или Pull Request |
-| Сохранить конфиг | Кнопка «💾 Сохранить конфиг» — создаст `.codecontextrc` для повторного использования |
+<p>💡 <b>Сохранение кастомных пресетов:</b> настройте фильтры, нажмите 💾, введите имя — пресет появится в выпадающем списке.</p>
 
-**Режимы загрузки GitHub:**
-- **Сохранить навсегда** — клонирует репозиторий в выбранную папку на диске
-- **Временная загрузка** — клонирует во временную папку (удаляется при закрытии программы)
+<h4>Вкладка «📝 Промпты»</h4>
+<table>
+<thead><tr><th>Опция</th><th>Описание</th></tr></thead>
+<tbody>
+<tr><td><b>Пресеты промптов</b></td><td>Быстрая смена системного промпта (Code Review, Bug Hunter, Refactoring, Security Audit и др.)</td></tr>
+<tr><td><b>Системный промпт</b></td><td>Текстовое поле для кастомного промпта. Именно этот текст будет отправлен LLM как system-контекст</td></tr>
+<tr><td><b>🧩 Применить JSON-патч</b></td><td>Вставьте JSON-ответ от LLM с изменениями — программа покажет Diff и даст применить файлы на диск</td></tr>
+</tbody>
+</table>
 
-### 3. Настройка сканирования
+<p><b>Использование JSON-патча:</b></p>
+<ol>
+<li>Попросите LLM вернуть JSON-массив с изменениями: <code>[{"action": "replace", "file": "main.py", "search": "...", "content": "..."}]</code></li>
+<li>Вставьте JSON в диалог и нажмите <b>«Далее»</b></li>
+<li>Откроется <b>Safety Diff Viewer</b> — для каждого файла показаны изменения ДО/ПОСЛЕ</li>
+<li>Отметьте нужные файлы галочками (или снимите, если изменение некорректно)</li>
+<li>Нажмите <b>«🤖 Проверить через LLM»</b> — нейросеть проверит патч на ошибки</li>
+<li>Если LLM предлагает улучшенную версию — появится панель с Diff между вашим патчем и вариантом ИИ</li>
+<li>Нажмите <b>«💾 Сохранить выбранные на диск»</b></li>
+</ol>
 
-#### Вкладка «📡 Источники»
+<h3>4. Настройка формата вывода</h3>
+<table>
+<thead><tr><th>Опция</th><th>Описание</th></tr></thead>
+<tbody>
+<tr><td>☑ Minify</td><td>Удаляет лишние пробелы и пустые строки</td></tr>
+<tr><td>☑ No Comments</td><td>Вырезает все комментарии из кода</td></tr>
+<tr><td>☑ No Secrets</td><td>Маскирует потенциальные секреты (ключи API, пароли, токены)</td></tr>
+<tr><td>☑ Skeleton ☠️</td><td><b>Удаляет тела функций</b>, оставляя только названия и структуру классов — макс. экономия токенов</td></tr>
+<tr><td>Формат</td><td>Markdown, XML, Plain, JSONL Chunks, Custom (Jinja2)</td></tr>
+<tr><td>📁 шаблон</td><td>Выбор Jinja2-шаблона (активно при формате Custom)</td></tr>
+</tbody>
+</table>
 
-| Опция | Описание |
-|---|---|
-| ☑ Только Git Changes | Включить в результат только файлы, изменённые в последнем коммите |
-| ☑ Учитывать .gitignore | Автоматически исключать файлы из `.gitignore` |
-| 🔍 Сканировать файлы | Запустить сканирование — построить дерево файлов с метаданными |
+<p><b>Skeleton Mode:</b> удаляет реализацию функций (<code>def func_name(...):  # ... implementation ...</code>), оставляя все классы и методы — LLM видит архитектуру гигантского проекта, тратя минимум токенов.</p>
 
-#### Вкладка «🎯 Фильтры»
+<h3>5. Действия с результатом</h3>
+<table>
+<thead><tr><th>Кнопка</th><th>Действие</th></tr></thead>
+<tbody>
+<tr><td>👀 Предпросмотр</td><td>Открывает <b>Advanced Preview Dialog</b> (вкладки: «Итоговый промпт» + «До/После»)</td></tr>
+<tr><td>📋 В Буфер обмена</td><td>Копирует результат в буфер обмена — вставьте в ChatGPT / Claude</td></tr>
+<tr><td>🚀 Отправить в ChatGPT / Claude</td><td>Автоматически открывает веб-версию чата и вставляет контекст</td></tr>
+<tr><td>💻 В редактор</td><td>Открывает результат в VS Code / Cursor (настраивается в LLM & ОС)</td></tr>
+<tr><td>💾 В Файл</td><td>Сохраняет результат в файл на диске</td></tr>
+</tbody>
+</table>
 
-| Опция | Описание |
-|---|---|
-| **Пресеты расширений** | Быстрое переключение между наборами расширений (Python, Web, Golang, Rust, C# и др.) |
-| **Расширения** | Кастомный список расширений файлов для включения (через пробел или с новой строки) |
-| **Игнорировать пути** | Список папок/файлов для исключения (node_modules, .git, build, dist и т.д.) |
-| ☑ Включить дерево файлов | Добавляет структуру папок в начало промпта |
-| ☑ Включить карту зависимостей | AST-анализ импортов для Python/JS/TS — показывает связи между файлами |
-| ☑ Включить Mermaid-граф | Генерирует архитектурную диаграмму в формате Mermaid |
+<h3>6. Advanced Preview Dialog</h3>
+<p><b>Вкладка «📝 Итоговый промпт»:</b> слева — список файлов, справа — полный текст с подсветкой. Кнопки «📋 Копировать всё» / «✂️ Скопировать только этот файл».</p>
+<p><b>Вкладка «🔍 До/После»:</b> выберите файл — цветной Diff между оригиналом и оптимизацией. Счётчик: <code>Было: 1500 → Стало: 300 (80%)</code>.</p>
 
-**Сохранение кастомных пресетов:** настройте фильтры и нажмите 💾 — введите имя. Пресет появится в выпадающем списке.
+<h3>7. LLM & ОС</h3>
+<table>
+<thead><tr><th colspan="2">LLM Checker</th></tr></thead>
+<tbody>
+<tr><td>☑ Включить проверку</td><td>Автоматическая LLM-верификация патчей перед применением</td></tr>
+<tr><td>URL / Ключ / Модель</td><td>API эндпоинт (по умолч. OpenAI), ключ, модель</td></tr>
+<tr><td>🦙 Ollama</td><td><code>http://localhost:11434/v1</code> / <code>llama3</code></td></tr>
+<tr><td>🖥 LM Studio</td><td><code>http://localhost:1234/v1</code> / <code>local-model</code></td></tr>
+</tbody>
+</table>
 
-#### Вкладка «📝 Промпты»
+<table>
+<thead><tr><th colspan="2">Интеграция с ОС</th></tr></thead>
+<tbody>
+<tr><td>В меню проводника</td><td>Добавляет «Open with CodeContext AI» в контекстное меню</td></tr>
+<tr><td>Добавить в PATH</td><td>Глобальная команда <code>codecontext</code> из терминала</td></tr>
+<tr><td>Редактор</td><td><code>code</code>, <code>cursor</code>, <code>idea</code>, <code>vim</code></td></tr>
+</tbody>
+</table>
 
-| Опция | Описание |
-|---|---|
-| **Пресеты промптов** | Быстрая смена системного промпта (Code Review, Bug Hunter, Refactoring, Security Audit и др.) |
-| **Системный промпт** | Текстовое поле для кастомного промпта. Именно этот текст будет отправлен LLM как system-контекст |
-| **🧩 Применить JSON-патч** | Вставьте JSON-ответ от LLM с изменениями — программа покажет Diff и даст применить файлы на диск |
+<h3>8. Темы</h3>
+<ul>
+<li><b>Тема:</b> Apple, Modern — <b>Режим:</b> светлая / тёмная</li>
+<li>📂 Открыть папку тем / ➕ Импортировать тему (.json)</li>
+</ul>
 
-**Использование JSON-патча:**
-1. Попросите LLM вернуть JSON-массив с изменениями по формату:
-   ```json
-   [
-     {"action": "replace", "file": "main.py", "search": "def old():", "content": "def new():"}
-   ]
-   ```
-2. Вставьте JSON в диалог и нажмите **«Далее»**
-3. Откроется **Safety Diff Viewer** — для каждого файла показаны изменения ДО/ПОСЛЕ
-4. Отметьте нужные файлы галочками (или снимите, если изменение некорректно)
-5. При желании нажмите **«🤖 Проверить через LLM»** — нейросеть проверит патч на ошибки
-6. Если LLM предлагает улучшенную версию — появится панель с Diff между вашим патчем и вариантом ИИ
-7. Нажмите **«💾 Сохранить выбранные на диск»**
+<h3>9. 📊 Аналитика токенов</h3>
+<p>Таблица со сканированными файлами: путь, токены (tiktoken), сжатие, экономия %, стоимость в $ для модели.</p>
 
-### 4. Настройка формата вывода
+<h3>10. 🎛️ Кастомизация интерфейса (v1.14+)</h3>
+<p>Нажмите <b>⚙</b> рядом с версией — диалог «Настройка интерфейса (Premiere Pro style)». Включайте/выключайте вкладки (Источники, Фильтры, Промпты, LLM & ОС, Темы) и кнопки действий (Предпросмотр, Буфер, ChatGPT, Редактор, Файл).</p>
 
-Верхняя панель (Action Panel):
+<h3>11. Командная палитра</h3>
+<p><code>Ctrl+Shift+P</code> — быстрый доступ ко всем действиям без мыши.</p>
 
-| Опция | Описание |
-|---|---|
-| ☑ Minify | Удаляет лишние пробелы и пустые строки |
-| ☑ No Comments | Вырезает все комментарии из кода |
-| ☑ No Secrets | Маскирует потенциальные секреты (ключи API, пароли, токены) |
-| ☑ Skeleton ☠️ | **Удаляет тела функций**, оставляя только названия и структуру классов — максимальная экономия токенов |
-| Формат | Markdown (по умолчанию), XML, Plain, JSONL Chunks, Custom (Jinja2) |
-| 📁 (шаблон) | Выбор Jinja2-шаблона (активно при формате Custom) |
+<hr>
 
-**Skeleton Mode** подробно:
-- Удаляет реализацию функций, сохраняя только `def func_name(...):`
-- Оставляет все классы с их методами и полями (но без тел методов)
-- Позволяет LLM «понять» архитектуру огромного проекта, потратив минимум токенов
-- Пример: `def calculate_total(price, tax):` → `# ... implementation ...`
+<h2>💻 Работа в CLI-режиме</h2>
+<pre>python main.py --cli --path /путь/к/проекту [опции]</pre>
+<pre>python main.py --help</pre>
 
-### 5. Действия с результатом
+<table>
+<thead><tr><th>Параметр</th><th>Тип</th><th>Описание</th><th>Пример</th></tr></thead>
+<tbody>
+<tr><td><code>--cli</code></td><td>флаг</td><td>CLI-режим (без GUI)</td><td><code>--cli</code></td></tr>
+<tr><td><code>--path</code></td><td>сп.</td><td>Путь к проекту</td><td><code>--path ./app</code></td></tr>
+<tr><td><code>--ext</code></td><td>стр.</td><td>Расширения</td><td><code>--ext ".py .js"</code></td></tr>
+<tr><td><code>--ignore</code></td><td>стр.</td><td>Игнорируемые пути</td><td><code>--ignore "node_modules"</code></td></tr>
+<tr><td><code>--mode</code></td><td>выб.</td><td>none / default / shallow / deep</td><td><code>--mode deep</code></td></tr>
+<tr><td><code>--format</code></td><td>выб.</td><td>markdown / xml / plain / jsonl_chunk</td><td><code>--format xml</code></td></tr>
+<tr><td><code>--minify</code></td><td>флаг</td><td>Minify</td><td><code>--minify</code></td></tr>
+<tr><td><code>--no-comments</code></td><td>флаг</td><td>Без комментариев</td><td><code>--no-comments</code></td></tr>
+<tr><td><code>--no-secrets</code></td><td>флаг</td><td>Без секретов</td><td><code>--no-secrets</code></td></tr>
+<tr><td><code>--skeleton</code></td><td>флаг</td><td>Skeleton-режим</td><td><code>--skeleton</code></td></tr>
+<tr><td><code>--output</code></td><td>стр.</td><td>Файл результата</td><td><code>--output out.txt</code></td></tr>
+<tr><td><code>--stdout</code></td><td>флаг</td><td>Вывод в консоль</td><td><code>--stdout</code></td></tr>
+<tr><td><code>--git</code></td><td>флаг</td><td>Только Git-изменения</td><td><code>--git</code></td></tr>
+<tr><td><code>--gitignore</code></td><td>флаг</td><td>Учитывать .gitignore</td><td><code>--gitignore</code></td></tr>
+<tr><td><code>--tree</code></td><td>флаг</td><td>Дерево файлов</td><td><code>--tree</code></td></tr>
+<tr><td><code>--mermaid</code></td><td>флаг</td><td>Mermaid-граф</td><td><code>--mermaid</code></td></tr>
+<tr><td><code>--dependencies</code></td><td>флаг</td><td>Карта зависимостей</td><td><code>--dependencies</code></td></tr>
+<tr><td><code>--patch</code></td><td>стр.</td><td>JSON-патч от LLM</td><td><code>--patch patch.json</code></td></tr>
+<tr><td><code>--template</code></td><td>стр.</td><td>Jinja2-шаблон</td><td><code>--template my.j2</code></td></tr>
+<tr><td><code>--system-prompt</code></td><td>стр.</td><td>Кастомный промпт</td><td><code>--system-prompt "Review"</code></td></tr>
+</tbody>
+</table>
 
-| Кнопка | Действие |
-|---|---|
-| 👀 Предпросмотр | Открывает **Advanced Preview Dialog** с двумя вкладками: «Итоговый промпт» и «До/После» |
-| 📋 В Буфер обмена | Копирует результат в буфер обмена — вставьте в ChatGPT / Claude |
-| 🚀 Отправить в ChatGPT / Claude | Автоматически открывает веб-версию чата и вставляет контекст |
-| 💻 В редактор | Открывает результат в VS Code / Cursor (настраивается в LLM & ОС) |
-| 💾 В Файл | Сохраняет результат в файл на диске |
-
-### 6. Advanced Preview Dialog
-
-**Вкладка «📝 Итоговый промпт»:**
-- **Слева:** список файлов, включённых в промпт — кликните, чтобы перейти к файлу
-- **Справа:** полный текст промпта с подсветкой синтаксиса (Markdown/XML)
-- **Кнопки:** «📋 Копировать всё» / «✂️ Скопировать только этот файл»
-
-**Вкладка «🔍 До/После (Оптимизация)»:**
-- Выберите файл из выпадающего списка
-- Показывает цветной Diff между оригиналом и оптимизированной версией
-- Счётчик экономии токенов: `Было: 1500 → Стало: 300 (Сжато на 80.0%)`
-
-### 7. LLM & ОС (вкладка настроек)
-
-#### LLM Checker
-
-| Опция | Описание |
-|---|---|
-| ☑ Включить проверку | Включает автоматическую LLM-верификацию патчей перед их применением |
-| URL | Адрес API (по умолчанию `https://api.openai.com/v1`) |
-| Ключ | API-ключ (сохраняется в настройках) |
-| Модель | Имя модели (`gpt-4o-mini`, `claude-3-haiku`, `llama3` и т.д.) |
-
-**Быстрые пресеты:**
-- 🦙 **Ollama** — `http://localhost:11434/v1`, модель `llama3`
-- 🖥 **LM Studio** — `http://localhost:1234/v1`, модель `local-model`
-
-#### Интеграция с ОС
-
-| Кнопка | Описание |
-|---|---|
-| В меню проводника | Добавляет пункт «Open with CodeContext AI» в контекстное меню проводника |
-| Удалить из меню | Удаляет пункт из контекстного меню |
-| Добавить в PATH | Устанавливает глобальную команду `codecontext` для вызова из терминала |
-| Удалить из PATH | Удаляет глобальную команду |
-| **Редактор** | Укажите редактор: `code`, `cursor`, `idea`, `vim` (пусто — системный) |
-
-#### Обновления
-
-| Опция | Описание |
-|---|---|
-| ☑ Получать Pre-release | Подписаться на pre-release версии |
-| 🔄 Обновления | Проверить наличие новой версии и скачать/установить автоматически |
-
-### 8. Темы (вкладка настроек)
-
-| Опция | Описание |
-|---|---|
-| **Тема** | Выбор темы оформления (Apple, Modern) |
-| **Режим** | Светлая / тёмная тема |
-| 📂 Открыть папку тем | Открывает папку, куда можно добавить свои JSON-темы |
-| ➕ Импортировать тему | Загрузить `.json`-тему из файла |
-
-Импортированные темы появляются в выпадающем списке автоматически.
-
-### 9. Аналитика токенов
-
-Вкладка **«📊 Аналитика токенов»** показывает таблицу со сканированными файлами:
-- Путь к файлу
-- Размер в токенах (через `tiktoken`, алгоритмы OpenAI)
-- Размер после сжатия
-- Процент экономии
-- Стоимость в $ для выбранной LLM-модели (цены с сервера обновляются автоматически)
-
-### 10. 🎛️ Кастомизация интерфейса (v1.14+)
-
-Нажмите **⚙** рядом с версией в левой панели — откроется диалог «Настройка интерфейса (Premiere Pro style)».
-
-**Можно включить/выключить вкладки:**
-- 📡 Источники · 🎯 Фильтры · 📝 Промпты · LLM & ОС · 🎨 Темы
-
-**Можно включить/выключить кнопки действий:**
-- 👀 Предпросмотр · 📋 Буфер · 🚀 ChatGPT · 💻 Редактор · 💾 Файл
-
-Изменения сохраняются и применяются сразу.
-
-### 11. Командная палитра
-
-`Ctrl+Shift+P` — быстрый доступ ко всем действиям без мыши:
-
-| Команда | Описание |
-|---|---|
-| Сгенерировать: Копировать в буфер | Запустить обработку и скопировать в буфер обмена |
-| Сгенерировать: Предпросмотр | Открыть Advanced Preview Dialog |
-| Опции: Minify / Skeleton / Mermaid | Включить/выключить соответствующие опции |
-| Действие: Применить JSON-патч | Открыть диалог JSON-патча |
-| Настройки: Переключить тему | Переключить светлую/тёмную тему |
-| Система: Проверить обновления | Проверить наличие новой версии |
-
----
-
-## 💻 Работа в CLI-режиме
-
-```bash
-python main.py --cli --path /путь/к/проекту [опции]
-```
-
-### Справка по всем параметрам
-
-```bash
-python main.py --help
-```
-
-### Основные параметры
-
-| Параметр | Тип | Описание | Пример |
-|---|---|---|---|
-| `--cli` | флаг | Включить CLI-режим (без GUI) | `--cli` |
-| `--path` | сп. | Путь к проекту (можно несколько) | `--path ./app ./lib` |
-| `--ext` | стр. | Расширения через пробел | `--ext ".py .js .ts"` |
-| `--ignore` | стр. | Игнорируемые пути через `,` | `--ignore "node_modules,.git"` |
-| `--mode` | выб. | Режим зависимостей: `none`, `default`, `shallow`, `deep` | `--mode deep` |
-| `--format` | выб. | Формат: `markdown`, `xml`, `plain`, `jsonl_chunk` | `--format xml` |
-| `--minify` | флаг | Включить Minify | `--minify` |
-| `--no-comments` | флаг | Удалить комментарии | `--no-comments` |
-| `--no-secrets` | флаг | Маскировать секреты | `--no-secrets` |
-| `--skeleton` | флаг | Режим Skeleton | `--skeleton` |
-| `--output` | стр. | Путь для сохранения результата | `--output result.txt` |
-| `--stdout` | флаг | Вывести результат в консоль | `--stdout` |
-| `--git` | флаг | Только Git-изменённые файлы | `--git` |
-| `--gitignore` | флаг | Учитывать .gitignore | `--gitignore` |
-| `--tree` | флаг | Включить дерево файлов | `--tree` |
-| `--mermaid` | флаг | Включить Mermaid-граф | `--mermaid` |
-| `--dependencies` | флаг | Включить карту зависимостей | `--dependencies` |
-| `--patch` | стр. | Применить JSON-патч от LLM | `--patch patch.json` |
-| `--template` | стр. | Путь к Jinja2-шаблону | `--template my.j2` |
-| `--system-prompt` | стр. | Кастомный системный промпт | `--system-prompt "Рецензия"` |
-| `--no-banner` | флаг | Не выводить баннер при старте | `--no-banner` |
-
-### Примеры использования
-
-```bash
-# Минимальный запуск — результат в stdout
+<h3>Примеры</h3>
+<pre># Минимальный запуск
 python main.py --cli --path ./myapp --stdout
 
-# Полный анализ с XML-выводом в файл
+# Полный анализ с XML
 python main.py --cli --path ./myapp --ext ".py .js .ts" --ignore "node_modules,.git,__pycache__" --mode deep --mermaid --tree --dependencies --minify --no-comments --skeleton --format xml --output analysis.xml
 
-# Сравнение через Git — только изменённые файлы
+# Git diff
 python main.py --cli --path ./myapp --git --gitignore --stdout
 
-# Применить JSON-патч от ChatGPT/Claude
+# JSON-патч
 python main.py --cli --path ./myapp --patch llm_response.json
 
-# Кастомный Jinja2-шаблон
-python main.py --cli --path ./myapp --template custom_template.j2 --stdout
+# Кастомный шаблон
+python main.py --cli --path ./myapp --template my.j2 --stdout
 
-# Глубокий анализ с Mermaid-диаграммой
+# Mermaid-диаграмма
 python main.py --cli --path ./myapp --mode deep --mermaid --output with_mermaid.md
 
-# Быстрое копирование в буфер (Linux)
-python main.py --cli --path ./myapp --minify --no-comments --stdout | xclip -selection clipboard
+# Несколько путей
+python main.py --cli --path ./frontend ./backend --format xml --output combined.xml</pre>
 
-# Через глобальный CLI (Linux)
-codecontext --cli --path ./myapp --stdout
+<hr>
 
-# Множественные пути
-python main.py --cli --path ./frontend ./backend --format xml --output combined.xml
-```
+<h2>🏗️ Стек технологий</h2>
+<table>
+<thead><tr><th>Компонент</th><th>Технология</th></tr></thead>
+<tbody>
+<tr><td>Язык</td><td>Python 3.10+</td></tr>
+<tr><td>GUI</td><td>PySide6 (Qt 6)</td></tr>
+<tr><td>Архитектура</td><td>Clean Architecture + Redux-like</td></tr>
+<tr><td>Токенизация</td><td>tiktoken (OpenAI)</td></tr>
+<tr><td>Шаблоны</td><td>jinja2 (11 встроенных)</td></tr>
+<tr><td>AST-парсеры</td><td>ast (Python), tree-sitter (JS/TS/Go/Rust)</td></tr>
+<tr><td>Дистрибуция</td><td>PyInstaller, AUR</td></tr>
+</tbody>
+</table>
 
----
+<hr>
 
-## 🏗️ Стек технологий
-
-| Компонент | Технология |
-|---|---|
-| Язык | Python 3.10+ |
-| GUI | PySide6 (Qt 6) |
-| Архитектура | Clean Architecture + Redux-like (Store → Controller → UI) |
-| Токенизация | `tiktoken` (OpenAI) |
-| Шаблоны | `jinja2` (11 встроенных шаблонов) |
-| Асинхронность | `asyncio` |
-| AST-парсеры | `ast` (Python), `tree-sitter` (JS/TS/Go/Rust) |
-| Дистрибуция | PyInstaller (Windows .exe), AUR (Arch Linux) |
-
----
-
-## 📁 Структура проекта
-
-```
-CodeContext/
-├── main.py                  # Точка входа приложения
-├── VERSION.txt              # Версия (читается при запуске)
-├── requirements.txt         # Python-зависимости
-├── assets/
-│   └── images/logo.png      # Логотип
-├── aur_build/               # AUR-пакет для Arch Linux
+<h2>📁 Структура проекта</h2>
+<pre>CodeContext/
+├── main.py                  # Точка входа
+├── VERSION.txt              # Версия
+├── requirements.txt         # Зависимости
+├── assets/images/logo.png   # Логотип
+├── aur_build/               # AUR-пакет
 │   ├── PKGBUILD
 │   ├── codecontext.desktop
 │   └── codecontext.sh
-├── themes/                  # JSON-файлы встроенных тем
+├── themes/                  # JSON-темы
 └── src/
-    ├── main_app.py          # Загрузчик: инициализация Store, Controller, окна
-    ├── store/               # Redux-like управление состоянием
-    │   ├── state.py         # Data classes: AppSettings, AppState, ProcessedFile
-    │   └── store.py         # Store с подпиской (subscribe/dispatch)
-    ├── controllers/         # Бизнес-логика и оркестрация
-    │   └── main_controller.py
-    ├── ui/                  # Слой PySide6 (все визуальные компоненты)
-    │   ├── main_window.py   # Главное окно с QSplitter
-    │   ├── dialogs.py       # Все диалоговые окна
-    │   ├── theme_manager.py # Загрузка/применение тем
+    ├── main_app.py          # Загрузчик
+    ├── store/               # Redux-like (state.py, store.py)
+    ├── controllers/         # Бизнес-логика
+    ├── ui/                  # PySide6
+    │   ├── main_window.py
+    │   ├── dialogs.py
+    │   ├── theme_manager.py
     │   └── components/
-    │       ├── sidebar.py       # Левая панель (5 вкладок с настройками)
-    │       ├── action_panel.py  # Верхняя панель (чекбоксы + кнопки)
-    │       ├── folder_list.py   # Список добавленных папок
-    │       ├── file_tree.py     # Дерево файлов с чекбоксами исключений
-    │       ├── log_panel.py     # Панель логов (слева-внизу)
-    │       ├── status_bar.py    # Строка состояния (токены, стоимость, прогресс)
-    │       ├── empty_state.py   # Пустое состояние с Drag & Drop
-    │       └── analytics_panel.py # Таблица токенов и стоимости
+    │       ├── sidebar.py, action_panel.py, folder_list.py
+    │       ├── file_tree.py, log_panel.py, status_bar.py
+    │       ├── empty_state.py, analytics_panel.py
     └── utils/
-        ├── config.py        # Пресеты, версия, пути, PricingManager
-        ├── async_runtime.py # Мост asyncio → Qt event loop
-        └── ...
-```
+        ├── config.py, async_runtime.py</pre>
 
----
+<hr>
 
-## 🗺️ Roadmap
+<h2>🗺️ Roadmap</h2>
+<ul>
+<li>🍎 macOS Finder context menu</li>
+<li>🤖 Прямая отправка в OpenAI/Anthropic API</li>
+<li>🏛️ Hexagonal Architecture анализ</li>
+<li>🔌 Плагинная система</li>
+<li>🌐 i18n интерфейса</li>
+</ul>
 
-- [ ] 🍎 Интеграция с контекстным меню macOS (Finder/Automator)
-- [ ] 🤖 Прямая отправка в OpenAI/Anthropic API (без буфера обмена)
-- [ ] 🏛️ Анализ Hexagonal Architecture
-- [ ] 🔌 Плагинная система для анализаторов и экспортёров
-- [ ] 🌐 i18n — переключение языка интерфейса внутри приложения
+<hr>
 
----
+<h2>👨‍💻 Команда</h2>
+<p><b>Разработчик:</b> mcniki · <a href="https://vk.com/gor_niki">VK: gor_niki</a> · Issues & PRs на GitHub</p>
 
-## 👨‍💻 Команда
+<hr>
 
-**Разработчик:** mcniki · [VK: gor_niki](https://vk.com/gor_niki) · Issues & PRs на GitHub
+<h2>🤝 Как помочь?</h2>
+<ol>
+<li>Форкните репозиторий</li>
+<li>Ветка: <code>git checkout -b feature/AmazingFeature</code></li>
+<li>Коммит: <code>git commit -m 'Add AmazingFeature'</code></li>
+<li>Пуш: <code>git push origin feature/AmazingFeature</code></li>
+<li>Pull Request</li>
+</ol>
+<p>Соблюдайте SOLID-принципы (см. <code>docs/ARCHITECTURE.md</code>).</p>
 
----
+<hr>
 
-## 🤝 Как помочь проекту?
-
-1. **Форкните** репозиторий
-2. Создайте ветку: `git checkout -b feature/AmazingFeature`
-3. Закоммитьте: `git commit -m 'Add AmazingFeature'`
-4. Запушьте: `git push origin feature/AmazingFeature`
-5. Откройте **Pull Request**
-
-Пожалуйста, соблюдайте SOLID-принципы и архитектурные паттерны (см. `docs/ARCHITECTURE.md`).
-
----
-
-## 📄 Лицензия
-
-Проект распространяется под лицензией MIT. Подробности — в файле `LICENSE`.
+<h2>📄 Лицензия</h2>
+<p>MIT. Подробности в <code>LICENSE</code>.</p>
 
 </div>
 
@@ -437,416 +353,328 @@ CodeContext/
 
 <div class="lang-en">
 
-## 🌟 About
+<h2>🌟 About</h2>
 
-**CodeContext AI** is a powerful desktop tool for preparing your codebase to work with Large Language Models (LLMs). It scans project folders, analyzes structure, builds dependency graphs, and generates a single, perfectly structured prompt — optimized for token consumption and architectural clarity.
+<p><b>CodeContext AI</b> is a powerful desktop tool for preparing your codebase to work with Large Language Models (LLMs). It scans project folders, analyzes structure, builds dependency graphs, and generates a single, perfectly structured prompt — optimized for token consumption and architectural clarity.</p>
 
-### ❓ Why?
+<h3>❓ Why?</h3>
+<p>When working with AI, developers face context window token limits — LLMs "lose" architectural coherence when code is copied in parts. <b>CodeContext AI solves this</b>: collect your entire project into one structured prompt in a few clicks, saving up to 80% on tokens.</p>
 
-When working with AI, developers face context window token limits — LLMs "lose" architectural coherence when code is copied in parts. **CodeContext AI solves this**: collect your entire project into one structured prompt in a few clicks, saving up to 80% on tokens.
+<hr>
 
----
+<h2>🚀 Features</h2>
 
-## 🚀 Features
+<table>
+<thead><tr><th>Feature</th><th>CodeContext AI</th><th>Manual</th></tr></thead>
+<tbody>
+<tr><td>🗜️ Minify + Skeleton</td><td><b>Up to 80%</b> token reduction</td><td>Manual copy-paste</td></tr>
+<tr><td>🧩 LLM Patcher</td><td>Preview & apply JSON patches</td><td>Not available</td></tr>
+<tr><td>✅ LLM Checker</td><td>Auto-verify code before saving</td><td>Not available</td></tr>
+<tr><td>🔗 AST dependency graph</td><td>Python, JS/TS, Vue</td><td>File listing only</td></tr>
+<tr><td>🖱️ Context menu</td><td>Windows / Linux</td><td>None</td></tr>
+<tr><td>🎨 Themes</td><td>Apple, Modern, custom JSON</td><td>Fixed UI</td></tr>
+<tr><td>⚙️ UI customization (v1.14+)</td><td>Premiere Pro-style</td><td>Fixed UI</td></tr>
+</tbody>
+</table>
 
-| Feature | CodeContext AI | Manual |
-|---|---|---|
-| 🗜️ Minify + Skeleton | **Up to 80%** token reduction | Manual copy-paste |
-| 🧩 LLM Patcher | Preview & apply JSON patches | Not available |
-| ✅ LLM Checker | Auto-verify code before saving | Not available |
-| 🔗 AST dependency graph | Python, JS/TS, Vue | File listing only |
-| 🖱️ Context menu | Windows / Linux | None |
-| 🎨 Themes | Apple, Modern, custom JSON | Fixed UI |
-| ⚙️ UI customization (v1.14+) | Premiere Pro-style | Fixed UI |
+<hr>
 
----
+<h2>📥 Installation</h2>
 
-## 📥 Installation
+<p><b>Prerequisites:</b> Python 3.10+, Git</p>
 
-**Prerequisites:** Python 3.10+, Git
-
-```bash
-git clone https://github.com/NIKIRIKI7/CodeContext.git
+<pre>git clone https://github.com/NIKIRIKI7/CodeContext.git
 cd CodeContext
 python -m venv venv
 # Windows:
 venv\Scripts\activate
 # Linux/macOS:
 source venv/bin/activate
-pip install -r requirements.txt
-```
+pip install -r requirements.txt</pre>
 
-### Arch Linux (AUR)
+<h3>Arch Linux (AUR)</h3>
+<pre>yay -S codecontext-ai</pre>
 
-```bash
-yay -S codecontext-ai
-```
+<h3>Windows .exe</h3>
+<pre>pip install pyinstaller
+pyinstaller --windowed --onefile --icon=assets/images/logo.ico --name "CodeContext AI" main.py</pre>
 
-### Windows .exe
+<hr>
 
-```bash
-pip install pyinstaller
-pyinstaller --windowed --onefile --icon=assets/images/logo.ico --name "CodeContext AI" main.py
-```
+<h2>💻 GUI Mode</h2>
+<pre>python main.py</pre>
 
----
+<h3>1. Interface Overview</h3>
+<p>The window is split into three zones:</p>
+<ul>
+<li><b>Left sidebar (tabs)</b> — scan settings, filters, prompts, LLM config, themes</li>
+<li><b>Center area</b> — folder list, file tree, token analytics</li>
+<li><b>Top action bar</b> — Minify/No Comments/Skeleton toggles, output format, action buttons</li>
+</ul>
 
-## 💻 GUI Mode
+<h3>2. Adding a Project</h3>
+<table>
+<thead><tr><th>Action</th><th>How</th></tr></thead>
+<tbody>
+<tr><td>Drag & drop</td><td>Just drag a project folder into the window</td></tr>
+<tr><td>Browse dialog</td><td>Click "+ Папка ПК" on the <b>Sources</b> tab</td></tr>
+<tr><td>GitHub repo</td><td>Click "+ GitHub / PR" — paste a repo or Pull Request URL</td></tr>
+<tr><td>Save config</td><td>Click "💾 Save config" — creates <code>.codecontextrc</code></td></tr>
+</tbody>
+</table>
 
-```bash
-python main.py
-```
+<p><b>GitHub loading modes:</b></p>
+<ul>
+<li><b>Save permanently</b> — clones to a folder on your disk</li>
+<li><b>Temporary</b> — clones to a temp folder (deleted on app close)</li>
+</ul>
 
-### 1. Interface Overview
+<h3>3. Scan Configuration</h3>
 
-The window is split into three zones:
-- **Left sidebar (tabs)** — scan settings, filters, prompts, LLM config, themes
-- **Center area** — folder list, file tree, token analytics
-- **Top action bar** — Minify/No Comments/Skeleton toggles, output format, action buttons
+<h4>Sources Tab</h4>
+<table>
+<thead><tr><th>Option</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>☑ Git Changes Only</td><td>Include only files changed in the last commit</td></tr>
+<tr><td>☑ Respect .gitignore</td><td>Auto-exclude files from <code>.gitignore</code></td></tr>
+<tr><td>🔍 Scan Files</td><td>Build the file tree with metadata</td></tr>
+</tbody>
+</table>
 
-### 2. Adding a Project
+<h4>Filters Tab</h4>
+<table>
+<thead><tr><th>Option</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><b>Extension presets</b></td><td>Quick switch between language sets (Python, Web, Golang, Rust, C#, etc.)</td></tr>
+<tr><td><b>Extensions</b></td><td>Custom file extension whitelist</td></tr>
+<tr><td><b>Ignored paths</b></td><td>Skip folders/files (node_modules, .git, build, dist, etc.)</td></tr>
+<tr><td>☑ Include file tree</td><td>Prepends folder structure to the prompt</td></tr>
+<tr><td>☑ Include dependency map</td><td>AST-based import analysis for Python/JS/TS</td></tr>
+<tr><td>☑ Include Mermaid graph</td><td>Architecture diagram in Mermaid format</td></tr>
+</tbody>
+</table>
 
-| Action | How |
-|---|---|
-| Drag & drop | Just drag a project folder into the window |
-| Browse dialog | Click "+ Папка ПК" on the **Sources** tab |
-| GitHub repo | Click "+ GitHub / PR" — paste a repository or Pull Request URL |
-| Save config | Click "💾 Save config" — creates `.codecontextrc` for reuse |
+<p>💡 <b>Saving custom presets:</b> configure filters, click 💾, enter a name.</p>
 
-**GitHub loading modes:**
-- **Save permanently** — clones the repo to a folder on your disk
-- **Temporary** — clones to a temp folder (deleted on app close)
+<h4>Prompts Tab</h4>
+<table>
+<thead><tr><th>Option</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><b>Prompt presets</b></td><td>Quick change of system prompt (Code Review, Bug Hunter, Refactoring, etc.)</td></tr>
+<tr><td><b>System prompt</b></td><td>Custom prompt — sent to LLM as system context</td></tr>
+<tr><td><b>🧩 Apply JSON patch</b></td><td>Paste LLM JSON response — preview diff and apply to disk</td></tr>
+</tbody>
+</table>
 
-### 3. Scan Configuration
+<p><b>Using JSON patches:</b></p>
+<ol>
+<li>Ask LLM for a JSON array: <code>[{"action": "replace", "file": "main.py", "search": "...", "content": "..."}]</code></li>
+<li>Paste JSON, click <b>"Next"</b> → <b>Safety Diff Viewer</b> opens</li>
+<li>Check/uncheck files, optionally click <b>"🤖 Check via LLM"</b></li>
+<li>Click <b>"💾 Save selected to disk"</b></li>
+</ol>
 
-#### Sources Tab
+<h3>4. Output Format Settings</h3>
+<table>
+<thead><tr><th>Option</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>☑ Minify</td><td>Strips whitespace and blank lines</td></tr>
+<tr><td>☑ No Comments</td><td>Removes all comments</td></tr>
+<tr><td>☑ No Secrets</td><td>Masks API keys, passwords, tokens</td></tr>
+<tr><td>☑ Skeleton ☠️</td><td><b>Strips function bodies</b> — maximum token savings</td></tr>
+<tr><td>Format</td><td>Markdown, XML, Plain, JSONL Chunks, Custom (Jinja2)</td></tr>
+<tr><td>📁 template</td><td>Jinja2 template picker</td></tr>
+</tbody>
+</table>
 
-| Option | Description |
-|---|---|
-| ☑ Git Changes Only | Include only files changed in the last commit |
-| ☑ Respect .gitignore | Auto-exclude files from `.gitignore` |
-| 🔍 Scan Files | Build the file tree with metadata |
+<p><b>Skeleton Mode:</b> removes function implementations (<code>def func_name(...):  # ... implementation ...</code>), preserving all classes — lets LLM understand massive projects with minimal tokens.</p>
 
-#### Filters Tab
+<h3>5. Action Buttons</h3>
+<table>
+<thead><tr><th>Button</th><th>Action</th></tr></thead>
+<tbody>
+<tr><td>👀 Preview</td><td><b>Advanced Preview Dialog</b> — "Final Prompt" + "Before/After" tabs</td></tr>
+<tr><td>📋 Copy to Clipboard</td><td>Copy result — paste into ChatGPT / Claude</td></tr>
+<tr><td>🚀 Send to ChatGPT / Claude</td><td>Opens web chat and pastes context</td></tr>
+<tr><td>💻 Open in Editor</td><td>Opens in VS Code / Cursor</td></tr>
+<tr><td>💾 Save to File</td><td>Save result to disk</td></tr>
+</tbody>
+</table>
 
-| Option | Description |
-|---|---|
-| **Extension presets** | Quick switch between language sets (Python, Web, Golang, Rust, C#, etc.) |
-| **Extensions** | Custom file extension whitelist (space-separated or one per line) |
-| **Ignored paths** | Skip these folders/files (node_modules, .git, build, dist, etc.) |
-| ☑ Include file tree | Prepends folder structure to the prompt |
-| ☑ Include dependency map | AST-based import analysis for Python/JS/TS |
-| ☑ Include Mermaid graph | Generates an architecture diagram in Mermaid format |
+<h3>6. Advanced Preview Dialog</h3>
+<p><b>"📝 Final Prompt" tab:</b> file list (left) + full text with highlighting (right). Copy All / Copy File.</p>
+<p><b>"🔍 Before/After" tab:</b> colored diff between original and optimized. Counter: <code>Before: 1500 → After: 300 (80%)</code>.</p>
 
-**Saving custom presets:** configure filters, click 💾, enter a name. It appears in the dropdown.
+<h3>7. LLM & OS</h3>
+<table>
+<thead><tr><th colspan="2">LLM Checker</th></tr></thead>
+<tbody>
+<tr><td>☑ Enable verification</td><td>Auto LLM patch verification before applying</td></tr>
+<tr><td>URL / Key / Model</td><td>API endpoint (default OpenAI), key, model</td></tr>
+<tr><td>🦙 Ollama</td><td><code>http://localhost:11434/v1</code> / <code>llama3</code></td></tr>
+<tr><td>🖥 LM Studio</td><td><code>http://localhost:1234/v1</code> / <code>local-model</code></td></tr>
+</tbody>
+</table>
 
-#### Prompts Tab
+<table>
+<thead><tr><th colspan="2">OS Integration</th></tr></thead>
+<tbody>
+<tr><td>Install context menu</td><td>"Open with CodeContext AI" in right-click menu</td></tr>
+<tr><td>Add to PATH</td><td>Global <code>codecontext</code> CLI command</td></tr>
+<tr><td>Editor</td><td><code>code</code>, <code>cursor</code>, <code>idea</code>, <code>vim</code></td></tr>
+</tbody>
+</table>
 
-| Option | Description |
-|---|---|
-| **Prompt presets** | Quick change of system prompt (Code Review, Bug Hunter, Refactoring, Security Audit, etc.) |
-| **System prompt** | Custom prompt editor. This text is sent to the LLM as system context |
-| **🧩 Apply JSON patch** | Paste an LLM JSON response with code changes — preview diff and apply to disk |
+<h3>8. Themes</h3>
+<ul>
+<li><b>Theme:</b> Apple, Modern — <b>Mode:</b> light / dark</li>
+<li>📂 Open themes folder / ➕ Import theme (.json)</li>
+</ul>
 
-**Using JSON patches:**
-1. Ask the LLM to return a JSON array of changes:
-   ```json
-   [
-     {"action": "replace", "file": "main.py", "search": "def old():", "content": "def new():"}
-   ]
-   ```
-2. Paste the JSON and click **"Next"**
-3. **Safety Diff Viewer** opens — shows BEFORE/AFTER for each file
-4. Check/uncheck files you want to apply
-5. Optionally click **"🤖 Check via LLM"** — the neural net validates the patch
-6. If the LLM suggests an improved version, a diff panel appears comparing your patch vs the AI version
-7. Click **"💾 Save selected to disk"**
+<h3>9. 📊 Token Analytics</h3>
+<p>Table: file path, tokens (tiktoken), compression, savings %, cost for model.</p>
 
-### 4. Output Format Settings
+<h3>10. 🎛️ UI Customization (v1.14+)</h3>
+<p>Click <b>⚙</b> next to version — "Interface Settings (Premiere Pro style)" dialog. Toggle tabs (Sources, Filters, Prompts, LLM & OS, Themes) and action buttons (Preview, Clipboard, ChatGPT, Editor, File).</p>
 
-Action Panel (top bar):
+<h3>11. Command Palette</h3>
+<p><code>Ctrl+Shift+P</code> — mouse-free access to all actions.</p>
 
-| Option | Description |
-|---|---|
-| ☑ Minify | Strips extra whitespace and blank lines |
-| ☑ No Comments | Removes all comments from the code |
-| ☑ No Secrets | Masks potential secrets (API keys, passwords, tokens) |
-| ☑ Skeleton ☠️ | **Strips function bodies**, keeping only names and class structure — maximum token savings |
-| Format | Markdown (default), XML, Plain, JSONL Chunks, Custom (Jinja2) |
-| 📁 (template) | Select a Jinja2 template (active when format is Custom) |
+<hr>
 
-**Skeleton Mode details:**
-- Removes function implementations, keeps `def func_name(...):`
-- Preserves all classes with methods and fields (but no method bodies)
-- Lets the LLM "understand" a massive project's architecture with minimal tokens
-- Example: `def calculate_total(price, tax):` → `# ... implementation ...`
+<h2>💻 CLI Mode</h2>
+<pre>python main.py --cli --path /path/to/project [options]</pre>
+<pre>python main.py --help</pre>
 
-### 5. Action Buttons
+<table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Description</th><th>Example</th></tr></thead>
+<tbody>
+<tr><td><code>--cli</code></td><td>flag</td><td>CLI mode (no GUI)</td><td><code>--cli</code></td></tr>
+<tr><td><code>--path</code></td><td>list</td><td>Project path</td><td><code>--path ./app</code></td></tr>
+<tr><td><code>--ext</code></td><td>str</td><td>Extensions</td><td><code>--ext ".py .js"</code></td></tr>
+<tr><td><code>--ignore</code></td><td>str</td><td>Ignored paths</td><td><code>--ignore "node_modules"</code></td></tr>
+<tr><td><code>--mode</code></td><td>enum</td><td>none / default / shallow / deep</td><td><code>--mode deep</code></td></tr>
+<tr><td><code>--format</code></td><td>enum</td><td>markdown / xml / plain / jsonl_chunk</td><td><code>--format xml</code></td></tr>
+<tr><td><code>--minify</code></td><td>flag</td><td>Enable minification</td><td><code>--minify</code></td></tr>
+<tr><td><code>--no-comments</code></td><td>flag</td><td>Strip comments</td><td><code>--no-comments</code></td></tr>
+<tr><td><code>--no-secrets</code></td><td>flag</td><td>Mask secrets</td><td><code>--no-secrets</code></td></tr>
+<tr><td><code>--skeleton</code></td><td>flag</td><td>Skeleton mode</td><td><code>--skeleton</code></td></tr>
+<tr><td><code>--output</code></td><td>str</td><td>Output file</td><td><code>--output out.txt</code></td></tr>
+<tr><td><code>--stdout</code></td><td>flag</td><td>Print to stdout</td><td><code>--stdout</code></td></tr>
+<tr><td><code>--git</code></td><td>flag</td><td>Git changes only</td><td><code>--git</code></td></tr>
+<tr><td><code>--gitignore</code></td><td>flag</td><td>Respect .gitignore</td><td><code>--gitignore</code></td></tr>
+<tr><td><code>--tree</code></td><td>flag</td><td>File tree</td><td><code>--tree</code></td></tr>
+<tr><td><code>--mermaid</code></td><td>flag</td><td>Mermaid graph</td><td><code>--mermaid</code></td></tr>
+<tr><td><code>--dependencies</code></td><td>flag</td><td>Dependency map</td><td><code>--dependencies</code></td></tr>
+<tr><td><code>--patch</code></td><td>str</td><td>LLM JSON patch</td><td><code>--patch patch.json</code></td></tr>
+<tr><td><code>--template</code></td><td>str</td><td>Jinja2 template</td><td><code>--template my.j2</code></td></tr>
+<tr><td><code>--system-prompt</code></td><td>str</td><td>Custom system prompt</td><td><code>--system-prompt "Review"</code></td></tr>
+</tbody>
+</table>
 
-| Button | Action |
-|---|---|
-| 👀 Preview | Opens **Advanced Preview Dialog** with two tabs: "Final Prompt" and "Before/After" |
-| 📋 Copy to Clipboard | Copies to clipboard — paste into ChatGPT / Claude |
-| 🚀 Send to ChatGPT / Claude | Opens the web chat and pastes context automatically |
-| 💻 Open in Editor | Opens in VS Code / Cursor (configurable in LLM & OS tab) |
-| 💾 Save to File | Saves result to a file on disk |
-
-### 6. Advanced Preview Dialog
-
-**"📝 Final Prompt" tab:**
-- **Left:** list of files in the prompt — click to jump to that file in the text
-- **Right:** full prompt text with syntax highlighting (Markdown/XML)
-- **Buttons:** "📋 Copy All" / "✂️ Copy This File Only"
-
-**"🔍 Before/After (Optimization)" tab:**
-- Select a file from the dropdown
-- Shows a colored diff between original and optimized version
-- Token savings counter: `Before: 1500 → After: 300 (Compressed 80.0%)`
-
-### 7. LLM & OS Settings Tab
-
-#### LLM Checker
-
-| Option | Description |
-|---|---|
-| ☑ Enable verification | Activates automatic LLM patch verification before applying |
-| URL | API endpoint (default `https://api.openai.com/v1`) |
-| Key | API key (persisted in settings) |
-| Model | Model name (`gpt-4o-mini`, `claude-3-haiku`, `llama3`, etc.) |
-
-**Quick presets:**
-- 🦙 **Ollama** — `http://localhost:11434/v1`, model `llama3`
-- 🖥 **LM Studio** — `http://localhost:1234/v1`, model `local-model`
-
-#### OS Integration
-
-| Button | Description |
-|---|---|
-| Install context menu | Adds "Open with CodeContext AI" to the right-click menu |
-| Remove context menu | Removes the context menu entry |
-| Add to PATH | Installs the global `codecontext` CLI command |
-| Remove from PATH | Removes the global CLI command |
-| **Editor** | Specify editor: `code`, `cursor`, `idea`, `vim` (blank = system default) |
-
-#### Updates
-
-| Option | Description |
-|---|---|
-| ☑ Receive pre-releases | Opt in to pre-release versions |
-| 🔄 Check updates | Check for new version and download/install automatically |
-
-### 8. Themes Tab
-
-| Option | Description |
-|---|---|
-| **Theme** | Select a theme (Apple, Modern) |
-| **Mode** | Light / Dark |
-| 📂 Open themes folder | Opens the folder where you can add custom JSON themes |
-| ➕ Import theme | Load a `.json` theme from a file |
-
-Imported themes appear in the dropdown automatically.
-
-### 9. Token Analytics
-
-The **"📊 Token Analytics"** tab shows a table of scanned files:
-- File path
-- Token count (via `tiktoken`, OpenAI algorithms)
-- Post-compression size
-- Savings percentage
-- Cost in USD for the selected LLM model (prices auto-update from server)
-
-### 10. 🎛️ UI Customization (v1.14+)
-
-Click **⚙** next to the version label in the sidebar — the "Interface Settings (Premiere Pro style)" dialog opens.
-
-**Toggle sidebar tabs:**
-- 📡 Sources · 🎯 Filters · 📝 Prompts · LLM & OS · 🎨 Themes
-
-**Toggle action buttons:**
-- 👀 Preview · 📋 Clipboard · 🚀 ChatGPT · 💻 Editor · 💾 File
-
-Changes are saved and applied immediately.
-
-### 11. Command Palette
-
-`Ctrl+Shift+P` — mouse-free access to all actions:
-
-| Command | Description |
-|---|---|
-| Generate: Copy to clipboard | Process and copy result to clipboard |
-| Generate: Open in Editor | Process and open in VS Code / Cursor |
-| Generate: Preview | Open Advanced Preview Dialog |
-| Options: Toggle Minify / Skeleton / Mermaid | Toggle corresponding options |
-| Actions: Apply JSON patch | Open JSON patch dialog |
-| Settings: Toggle Dark/Light theme | Switch between light and dark mode |
-| System: Check for updates | Check for new version |
-
----
-
-## 💻 CLI Mode
-
-```bash
-python main.py --cli --path /path/to/project [options]
-```
-
-### Full parameter reference
-
-```bash
-python main.py --help
-```
-
-### Parameters
-
-| Parameter | Type | Description | Example |
-|---|---|---|---|
-| `--cli` | flag | Enable CLI mode (no GUI) | `--cli` |
-| `--path` | list | Project path(s) | `--path ./app ./lib` |
-| `--ext` | str | Extensions (space-separated) | `--ext ".py .js .ts"` |
-| `--ignore` | str | Ignored paths (comma-separated) | `--ignore "node_modules,.git"` |
-| `--mode` | enum | Dependency mode: `none`, `default`, `shallow`, `deep` | `--mode deep` |
-| `--format` | enum | Output format: `markdown`, `xml`, `plain`, `jsonl_chunk` | `--format xml` |
-| `--minify` | flag | Enable minification | `--minify` |
-| `--no-comments` | flag | Strip comments | `--no-comments` |
-| `--no-secrets` | flag | Mask secrets | `--no-secrets` |
-| `--skeleton` | flag | Skeleton mode | `--skeleton` |
-| `--output` | str | Output file path | `--output result.txt` |
-| `--stdout` | flag | Print result to stdout | `--stdout` |
-| `--git` | flag | Changed files only (Git) | `--git` |
-| `--gitignore` | flag | Respect .gitignore | `--gitignore` |
-| `--tree` | flag | Include file tree | `--tree` |
-| `--mermaid` | flag | Include Mermaid graph | `--mermaid` |
-| `--dependencies` | flag | Include dependency map | `--dependencies` |
-| `--patch` | str | Apply LLM JSON patch | `--patch patch.json` |
-| `--template` | str | Jinja2 template path | `--template my.j2` |
-| `--system-prompt` | str | Custom system prompt | `--system-prompt "Review"` |
-| `--no-banner` | flag | Suppress startup banner | `--no-banner` |
-
-### Usage examples
-
-```bash
-# Minimal run — output to stdout
+<h3>Examples</h3>
+<pre># Minimal run
 python main.py --cli --path ./myapp --stdout
 
-# Full analysis with XML output to file
+# Full analysis with XML
 python main.py --cli --path ./myapp --ext ".py .js .ts" --ignore "node_modules,.git,__pycache__" --mode deep --mermaid --tree --dependencies --minify --no-comments --skeleton --format xml --output analysis.xml
 
-# Git diff mode — only changed files
+# Git diff
 python main.py --cli --path ./myapp --git --gitignore --stdout
 
-# Apply LLM JSON patch
+# LLM JSON patch
 python main.py --cli --path ./myapp --patch llm_response.json
 
 # Custom Jinja2 template
-python main.py --cli --path ./myapp --template custom_template.j2 --stdout
+python main.py --cli --path ./myapp --template my.j2 --stdout
 
-# Deep analysis with Mermaid diagram
+# Mermaid diagram
 python main.py --cli --path ./myapp --mode deep --mermaid --output with_mermaid.md
 
-# Pipe to clipboard (Linux)
-python main.py --cli --path ./myapp --minify --no-comments --stdout | xclip -selection clipboard
+# Multiple paths
+python main.py --cli --path ./frontend ./backend --format xml --output combined.xml</pre>
 
-# Using global CLI command (Linux)
-codecontext --cli --path ./myapp --stdout
+<hr>
 
-# Multiple project paths
-python main.py --cli --path ./frontend ./backend --format xml --output combined.xml
-```
+<h2>🏗️ Tech Stack</h2>
+<table>
+<thead><tr><th>Component</th><th>Technology</th></tr></thead>
+<tbody>
+<tr><td>Language</td><td>Python 3.10+</td></tr>
+<tr><td>GUI Framework</td><td>PySide6 (Qt 6)</td></tr>
+<tr><td>Architecture</td><td>Clean Architecture + Redux-like</td></tr>
+<tr><td>Tokenization</td><td>tiktoken (OpenAI)</td></tr>
+<tr><td>Templating</td><td>jinja2 (11 built-in)</td></tr>
+<tr><td>AST parsers</td><td>ast (Python), tree-sitter (JS/TS/Go/Rust)</td></tr>
+<tr><td>Distribution</td><td>PyInstaller, AUR</td></tr>
+</tbody>
+</table>
 
----
+<hr>
 
-## 🏗️ Tech Stack
-
-| Component | Technology |
-|---|---|
-| Language | Python 3.10+ |
-| GUI Framework | PySide6 (Qt 6) |
-| Architecture | Clean Architecture + Redux-like (Store → Controller → UI) |
-| Tokenization | `tiktoken` (OpenAI) |
-| Templating | `jinja2` (11 built-in templates) |
-| Async | `asyncio` |
-| AST parsers | `ast` (Python), `tree-sitter` (JS/TS/Go/Rust) |
-| Distribution | PyInstaller (Windows .exe), AUR (Arch Linux) |
-
----
-
-## 📁 Project Structure
-
-```
-CodeContext/
-├── main.py                  # Application entry point
-├── VERSION.txt              # Read at startup for version display
-├── requirements.txt         # Python dependencies
-├── assets/
-│   └── images/logo.png      # App logo
-├── aur_build/               # AUR package for Arch Linux
+<h2>📁 Project Structure</h2>
+<pre>CodeContext/
+├── main.py                  # Entry point
+├── VERSION.txt              # Version
+├── requirements.txt         # Dependencies
+├── assets/images/logo.png   # Logo
+├── aur_build/               # AUR package
 │   ├── PKGBUILD
 │   ├── codecontext.desktop
 │   └── codecontext.sh
-├── themes/                  # Built-in JSON theme files
+├── themes/                  # JSON themes
 └── src/
-    ├── main_app.py          # Bootstrap: init Store, Controller, Window
-    ├── store/               # Redux-like state management
-    │   ├── state.py         # Data classes: AppSettings, AppState, ProcessedFile
-    │   └── store.py         # Store with subscribe/dispatch pattern
-    ├── controllers/         # Business logic & orchestration
-    │   └── main_controller.py
-    ├── ui/                  # PySide6 layer (all visual components)
-    │   ├── main_window.py   # Main window with QSplitter layout
-    │   ├── dialogs.py       # All modal dialogs
-    │   ├── theme_manager.py # Theme load/apply engine
+    ├── main_app.py          # Bootstrap
+    ├── store/               # Redux-like (state.py, store.py)
+    ├── controllers/         # Business logic
+    ├── ui/                  # PySide6
+    │   ├── main_window.py
+    │   ├── dialogs.py
+    │   ├── theme_manager.py
     │   └── components/
-    │       ├── sidebar.py       # Left panel (5 settings tabs)
-    │       ├── action_panel.py  # Top bar (checkboxes + action buttons)
-    │       ├── folder_list.py   # Added folders list
-    │       ├── file_tree.py     # File tree with exclusion checkboxes
-    │       ├── log_panel.py     # Log panel (bottom-left)
-    │       ├── status_bar.py    # Status bar (tokens, cost, progress)
-    │       ├── empty_state.py   # Empty state with Drag & Drop hint
-    │       └── analytics_panel.py # Token & cost analytics table
+    │       ├── sidebar.py, action_panel.py, folder_list.py
+    │       ├── file_tree.py, log_panel.py, status_bar.py
+    │       ├── empty_state.py, analytics_panel.py
     └── utils/
-        ├── config.py        # Presets, version, paths, PricingManager
-        ├── async_runtime.py # asyncio → Qt event loop bridge
-        └── ...
-```
+        ├── config.py, async_runtime.py</pre>
 
----
+<hr>
 
-## 🗺️ Roadmap
+<h2>🗺️ Roadmap</h2>
+<ul>
+<li>🍎 macOS Finder context menu</li>
+<li>🤖 Direct OpenAI/Anthropic API integration</li>
+<li>🏛️ Hexagonal Architecture analysis</li>
+<li>🔌 Plugin system</li>
+<li>🌐 In-app i18n</li>
+</ul>
 
-- [ ] 🍎 macOS Finder context menu (Automator)
-- [ ] 🤖 Direct OpenAI/Anthropic API integration (no clipboard)
-- [ ] 🏛️ Hexagonal Architecture analysis strategy
-- [ ] 🔌 Plugin system for custom analyzers and exporters
-- [ ] 🌐 i18n — in-app language switching
+<hr>
 
----
+<h2>👨‍💻 Team</h2>
+<p><b>Developer:</b> mcniki · <a href="https://vk.com/gor_niki">VK: gor_niki</a> · Issues & PRs on GitHub</p>
 
-## 👨‍💻 Team
+<hr>
 
-**Developer:** mcniki · [VK: gor_niki](https://vk.com/gor_niki) · Issues & PRs on GitHub
+<h2>🤝 Contributing</h2>
+<ol>
+<li>Fork the repository</li>
+<li>Branch: <code>git checkout -b feature/AmazingFeature</code></li>
+<li>Commit: <code>git commit -m 'Add AmazingFeature'</code></li>
+<li>Push: <code>git push origin feature/AmazingFeature</code></li>
+<li>Pull Request</li>
+</ol>
+<p>Follow SOLID principles (see <code>docs/ARCHITECTURE.md</code>).</p>
 
----
+<hr>
 
-## 🤝 Contributing
-
-1. **Fork** the repository
-2. Create a feature branch: `git checkout -b feature/AmazingFeature`
-3. Commit: `git commit -m 'Add AmazingFeature'`
-4. Push: `git push origin feature/AmazingFeature`
-5. Open a **Pull Request**
-
-Please follow SOLID principles and project architectural patterns (see `docs/ARCHITECTURE.md`).
-
----
-
-## 📄 License
-
-Distributed under the MIT License. See `LICENSE` for details.
+<h2>📄 License</h2>
+<p>MIT. See <code>LICENSE</code> for details.</p>
 
 </div>
 
 <style>
-  .lang-label {
+  .lang-btn {
     display: inline-block;
     padding: 8px 28px;
     margin: 0 6px;
@@ -860,31 +688,23 @@ Distributed under the MIT License. See `LICENSE` for details.
     color: #656d76;
     user-select: none;
   }
-  .lang-label:hover {
+  .lang-btn:hover {
     transform: translateY(-1px);
     box-shadow: 0 3px 10px rgba(0,0,0,0.12);
     border-color: #0969da;
     color: #0969da;
   }
-  .lang-ru, .lang-en {
-    display: none;
-  }
-  #lang_ru:checked ~ div[align="center"] label[for="lang_ru"] {
+  .lang-ru, .lang-en { display: none; }
+
+  /* Default: show Russian */
+  #lang_ru:checked ~ .lang-header .lang-btn[for="lang_ru"],
+  #lang_en:checked ~ .lang-header .lang-btn[for="lang_en"] {
     background: #0969da;
     border-color: #0969da;
     color: #fff;
     box-shadow: 0 3px 10px rgba(9,105,218,0.35);
   }
-  #lang_en:checked ~ div[align="center"] label[for="lang_en"] {
-    background: #0969da;
-    border-color: #0969da;
-    color: #fff;
-    box-shadow: 0 3px 10px rgba(9,105,218,0.35);
-  }
-  #lang_ru:checked ~ .lang-ru {
-    display: block;
-  }
-  #lang_en:checked ~ .lang-en {
-    display: block;
-  }
+
+  #lang_ru:checked ~ .lang-ru { display: block; }
+  #lang_en:checked ~ .lang-en { display: block; }
 </style>
