@@ -194,7 +194,7 @@ jobs:
       - name: Create GitVerse Release
         uses: actions/create-release@v1
         with:
-          api_key: ${{ secrets.GITVERSE_API_KEY }}
+          api_key: ${{ secrets.GITVERSE }}
           title: CodeContext ${{ needs.prepare.outputs.tag_name }}
           body: |
             ## Changes
