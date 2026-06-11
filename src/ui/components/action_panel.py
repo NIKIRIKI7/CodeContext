@@ -55,6 +55,13 @@ class ActionPanel(QWidget):
         row_opt.addStretch()
         self.layout.addLayout(row_opt)
 
+        self.checkbox_buttons = {
+            "dedup": self.chk_dedup,
+            "aggressive": self.chk_aggressive,
+            "checkpoints": self.chk_checkpoints,
+            "watch": self.chk_watch,
+        }
+
         row2 = QHBoxLayout()
         row2.setSpacing(8)
 
@@ -131,6 +138,10 @@ class ActionPanel(QWidget):
         visible_actions = getattr(settings, 'visible_actions', ["preview", "clipboard", "chat", "editor", "file"])
         for act_id, btn in self.action_buttons.items():
             btn.setVisible(act_id in visible_actions)
+
+        visible_checkboxes = getattr(settings, 'visible_checkboxes', ["dedup", "aggressive", "checkpoints", "watch"])
+        for cb_id, chk in self.checkbox_buttons.items():
+            chk.setVisible(cb_id in visible_checkboxes)
 
     def retranslate_ui(self):
         self.chk_minify.setText(tr("action_panel.chk_minify"))

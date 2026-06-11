@@ -156,10 +156,11 @@ class Sidebar(QWidget):
         dialog = BugReportDialog(self, self.controller)
         dialog.exec()
 
-    def _on_ui_settings_saved(self, visible_tabs, visible_actions):
+    def _on_ui_settings_saved(self, visible_tabs, visible_actions, visible_checkboxes):
         self.controller.update_settings({
             'visible_tabs': visible_tabs,
             'visible_actions': visible_actions,
+            'visible_checkboxes': visible_checkboxes,
         })
         self.controller.save_settings()
 

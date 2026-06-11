@@ -121,6 +121,11 @@
   "dialogs.ui_customization.action_chat": "💬 Чат",
   "dialogs.ui_customization.action_editor": "📝 Редактор",
   "dialogs.ui_customization.action_file": "💾 Файл",
+  "dialogs.ui_customization.visible_checkboxes": "Видимые опции обработки:",
+  "dialogs.ui_customization.checkbox_dedup": "☑ Дедупликация",
+  "dialogs.ui_customization.checkbox_aggressive": "☑ Агрессивная",
+  "dialogs.ui_customization.checkbox_checkpoints": "☑ Контр. точки",
+  "dialogs.ui_customization.checkbox_watch": "☑ Авто-слежка",
   "dialogs.ui_customization.cancel": "Отмена",
   "dialogs.ui_customization.save": "💾 Сохранить",
 

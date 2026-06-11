@@ -724,7 +724,7 @@ class UICustomizationDialog(QDialog):
         super().__init__(parent)
         self.on_save = on_save
         self.setWindowTitle(tr("dialogs.ui_customization.title"))
-        self.resize(420, 380)
+        self.resize(420, 480)
 
         layout = QVBoxLayout(self)
 
@@ -765,6 +765,24 @@ class UICustomizationDialog(QDialog):
             self.action_checks[act_id] = chk
             layout.addWidget(chk)
 
+        layout.addSpacing(10)
+        lbl_checkboxes = QLabel(tr("dialogs.ui_customization.visible_checkboxes"))
+        lbl_checkboxes.setProperty("cssClass", "heading")
+        layout.addWidget(lbl_checkboxes)
+
+        self.checkbox_checks = {}
+        checkbox_defs = [
+            ("dedup", tr("dialogs.ui_customization.checkbox_dedup")),
+            ("aggressive", tr("dialogs.ui_customization.checkbox_aggressive")),
+            ("checkpoints", tr("dialogs.ui_customization.checkbox_checkpoints")),
+            ("watch", tr("dialogs.ui_customization.checkbox_watch")),
+        ]
+        for cb_id, cb_label in checkbox_defs:
+            chk = QCheckBox(cb_label)
+            chk.setChecked(cb_id in settings.visible_checkboxes)
+            self.checkbox_checks[cb_id] = chk
+            layout.addWidget(chk)
+
         layout.addStretch()
 
         btn_layout = QHBoxLayout()
@@ -782,7 +800,8 @@ class UICustomizationDialog(QDialog):
     def _save(self):
         visible_tabs = [tid for tid, chk in self.tab_checks.items() if chk.isChecked()]
         visible_actions = [aid for aid, chk in self.action_checks.items() if chk.isChecked()]
-        self.on_save(visible_tabs, visible_actions)
+        visible_checkboxes = [cid for cid, chk in self.checkbox_checks.items() if chk.isChecked()]
+        self.on_save(visible_tabs, visible_actions, visible_checkboxes)
         self.accept()
 
 

@@ -122,6 +122,11 @@
   "dialogs.ui_customization.action_chat": "💬 دردشة",
   "dialogs.ui_customization.action_editor": "📝 محرر",
   "dialogs.ui_customization.action_file": "💾 ملف",
+  "dialogs.ui_customization.visible_checkboxes": "Visible processing options:",
+  "dialogs.ui_customization.checkbox_dedup": "☑ Dedup",
+  "dialogs.ui_customization.checkbox_aggressive": "☑ Aggressive",
+  "dialogs.ui_customization.checkbox_checkpoints": "☑ Checkpoints",
+  "dialogs.ui_customization.checkbox_watch": "☑ Auto-Watch",
   "dialogs.ui_customization.cancel": "إلغاء",
   "dialogs.ui_customization.save": "💾 حفظ",
 

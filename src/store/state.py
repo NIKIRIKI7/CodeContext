@@ -42,6 +42,7 @@ class AppSettings:
     recent_workspaces: List[str] = field(default_factory=list)
     visible_tabs: List[str] = field(default_factory=lambda: ["sources", "filters", "prompts", "llm_os", "appearance"])
     visible_actions: List[str] = field(default_factory=lambda: ["preview", "clipboard", "chat", "editor", "file"])
+    visible_checkboxes: List[str] = field(default_factory=lambda: ["dedup", "aggressive", "checkpoints", "watch"])
     custom_presets: Dict[str, dict] = field(default_factory=dict)
     custom_prompt_presets: Dict[str, str] = field(default_factory=dict)
     language: str = ""
