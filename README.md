@@ -70,13 +70,20 @@ pip install -r requirements.txt</pre>
 pyinstaller --windowed --onefile --icon=assets/images/logo.ico --name "CodeContext AI" main.py</pre>
 
 <h3>Arch Linux (AUR)</h3>
-<pre>yay -S codecontext-ai</pre>
-<p><b>yay</b> — AUR-хелпер для Arch Linux. Если yay ещё не установлен:</p>
+<table>
+<thead><tr><th>Действие</th><th>Команда</th></tr></thead>
+<tbody>
+<tr><td>Установка</td><td><code>yay -S codecontext-ai</code></td></tr>
+<tr><td>Поиск</td><td><code>yay -Ss codecontext</code></td></tr>
+<tr><td>Обновление</td><td><code>yay -Syu</code></td></tr>
+<tr><td>Удаление</td><td><code>sudo pacman -Rns codecontext-ai</code></td></tr>
+</tbody>
+</table>
+<p>Если <b>yay</b> не установлен:</p>
 <pre>sudo pacman -S --needed git base-devel
 git clone https://aur.archlinux.org/yay.git
 cd yay && makepkg -si</pre>
-<p>Обновление: <code>yay -Syu</code> · Поиск: <code>yay -Ss codecontext</code> · Удаление: <code>sudo pacman -Rns codecontext-ai</code></p>
-<p>Доступен также через <b>paru</b>: <code>paru -S codecontext-ai</code></p>
+<p>Альтернативы: <code>paru -S codecontext-ai</code></p>
 
 <hr>
 
@@ -375,13 +382,20 @@ pip install -r requirements.txt</pre>
 pyinstaller --windowed --onefile --icon=assets/images/logo.ico --name "CodeContext AI" main.py</pre>
 
 <h3>Arch Linux (AUR)</h3>
-<pre>yay -S codecontext-ai</pre>
-<p><b>yay</b> is an AUR helper for Arch Linux. To install yay first:</p>
+<table>
+<thead><tr><th>Action</th><th>Command</th></tr></thead>
+<tbody>
+<tr><td>Install</td><td><code>yay -S codecontext-ai</code></td></tr>
+<tr><td>Search</td><td><code>yay -Ss codecontext</code></td></tr>
+<tr><td>Update</td><td><code>yay -Syu</code></td></tr>
+<tr><td>Remove</td><td><code>sudo pacman -Rns codecontext-ai</code></td></tr>
+</tbody>
+</table>
+<p>If <b>yay</b> is not installed:</p>
 <pre>sudo pacman -S --needed git base-devel
 git clone https://aur.archlinux.org/yay.git
 cd yay && makepkg -si</pre>
-<p>Update: <code>yay -Syu</code> · Search: <code>yay -Ss codecontext</code> · Remove: <code>sudo pacman -Rns codecontext-ai</code></p>
-<p>Also available via <b>paru</b>: <code>paru -S codecontext-ai</code></p>
+<p>Alternative: <code>paru -S codecontext-ai</code></p>
 
 <hr>
 
