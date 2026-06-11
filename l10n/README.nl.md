@@ -11,7 +11,7 @@
 **AI-gestuurde codebase-analyse & prompt-voorbereidingstool**
 
 [![AUR](https://img.shields.io/aur/version/codecontext-ai?style=flat-square&logo=archlinux&label=AUR)](https://aur.archlinux.org/packages/codecontext-ai)
-[![Version](https://img.shields.io/badge/version-1.21.0-blue?style=flat-square)](../VERSION.txt)
+[![Version](https://img.shields.io/badge/version-1.23.1-blue?style=flat-square)](../VERSION.txt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](../LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square&logo=python)](https://www.python.org/downloads/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20|%20Linux%20|%20macOS-lightgrey?style=flat-square)]()
@@ -40,6 +40,10 @@
 <tr><td>🎨 Thema's</td><td>Apple, Modern, aangepaste JSON</td><td>Vaste UI</td></tr>
 <tr><td>⚙️ UI-aanpassing (v1.14+)</td><td>Premiere Pro-stijl</td><td>Vaste UI</td></tr>
 <tr><td>🌐 i18n (v1.17+)</td><td>15 languages, system auto-detect</td><td>Single language</td></tr>
+<tr><td>♻️ Dedup (v1.23+)</td><td>Auto-remove duplicate files</td><td>Manual check</td></tr>
+<tr><td>⚡ Aggressive minify (v1.23+)</td><td>Strips all blank lines</td><td>Manual delete</td></tr>
+<tr><td>📌 Checkpoints (v1.23+)</td><td>Save intermediate results</td><td>Not available</td></tr>
+<tr><td>👁️ Auto-Watch (v1.23+)</td><td>Auto-reprocess on file changes</td><td>Not available</td></tr>
 </tbody>
 </table>
 
@@ -161,6 +165,10 @@ cd yay && makepkg -si</pre>
 <tr><td>☑ Geen opmerkingen</td><td>Verwijdert alle opmerkingen</td></tr>
 <tr><td>☑ Geen geheimen</td><td>Maskeert API-sleutels, wachtwoorden, tokens</td></tr>
 <tr><td>☑ Skelet ☠️</td><td><b>Verwijdert functielichamen</b> — maximale tokenbesparing</td></tr>
+<tr><td>☑ Dedup</td><td>Removes duplicate files with identical content</td></tr>
+<tr><td>☑ Aggressive</td><td>Aggressive minification — strips all blank lines</td></tr>
+<tr><td>☑ Checkpoints</td><td>Saves intermediate processing checkpoints</td></tr>
+<tr><td>☑ Auto-Watch</td><td>Auto-reprocess on file changes</td></tr>
 <tr><td>Formaat</td><td>Markdown, XML, Plain, JSONL Chunks, Aangepast (Jinja2)</td></tr>
 <tr><td>📁 sjabloon</td><td>Jinja2-sjabloonkiezer</td></tr>
 </tbody>

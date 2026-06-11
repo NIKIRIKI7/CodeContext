@@ -11,7 +11,7 @@
 **AI-powered codebase analysis & prompt preparation tool**
 
 [![AUR](https://img.shields.io/aur/version/codecontext-ai?style=flat-square&logo=archlinux&label=AUR)](https://aur.archlinux.org/packages/codecontext-ai)
-[![Version](https://img.shields.io/badge/version-1.21.0-blue?style=flat-square)](../VERSION.txt)
+[![Version](https://img.shields.io/badge/version-1.23.1-blue?style=flat-square)](../VERSION.txt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](../LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square&logo=python)](https://www.python.org/downloads/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20|%20Linux%20|%20macOS-lightgrey?style=flat-square)]()
@@ -40,6 +40,10 @@
 <tr><td>🎨 Темы</td><td>Apple, Modern, кастомные</td><td>Фиксированный UI</td></tr>
 <tr><td>⚙️ Кастомизация (v1.14+)</td><td>Premiere Pro-style</td><td>Фиксированный UI</td></tr>
 <tr><td>🌐 i18n (v1.17+)</td><td>15 языков, автоопределение системы</td><td>Один язык</td></tr>
+<tr><td>♻️ Дедупликация (v1.23+)</td><td>Авто-удаление дубликатов</td><td>Вручную</td></tr>
+<tr><td>⚡ Агрессивная миниф. (v1.23+)</td><td>Удаляет все пустые строки</td><td>Вручную</td></tr>
+<tr><td>📌 Контр. точки (v1.23+)</td><td>Сохранение промежуточных результатов</td><td>Нет</td></tr>
+<tr><td>👁️ Авто-слежка (v1.23+)</td><td>Авто-перезапуск при изменении файлов</td><td>Нет</td></tr>
 </tbody>
 </table>
 
@@ -164,6 +168,10 @@ cd yay && makepkg -si</pre>
 <tr><td>☑ No Comments</td><td>Вырезает все комментарии из кода</td></tr>
 <tr><td>☑ No Secrets</td><td>Маскирует потенциальные секреты (ключи API, пароли, токены)</td></tr>
 <tr><td>☑ Skeleton ☠️</td><td><b>Удаляет тела функций</b>, оставляя только названия и структуру классов — макс. экономия токенов</td></tr>
+<tr><td>☑ Дедупликация</td><td>Удаляет файлы-дубликаты с одинаковым содержимым</td></tr>
+<tr><td>☑ Агрессивная</td><td>Агрессивная минификация — удаляет все пустые строки</td></tr>
+<tr><td>☑ Контр. точки</td><td>Сохраняет промежуточные результаты обработки</td></tr>
+<tr><td>☑ Авто-слежка</td><td>Автоматически перезапускает обработку при изменении файлов</td></tr>
 <tr><td>Формат</td><td>Markdown, XML, Plain, JSONL Chunks, Custom (Jinja2)</td></tr>
 <tr><td>📁 шаблон</td><td>Выбор Jinja2-шаблона (активно при формате Custom)</td></tr>
 </tbody>
