@@ -22,7 +22,7 @@
         },
         "dark": {
             "bg": "#09090b",
-            "card": "#09090b",
+            "card": "#18181b",
             "text": "#fafafa",
             "text_muted": "#a1a1aa",
             "primary": "#fafafa",
@@ -32,7 +32,7 @@
             "border": "#27272a",
             "success": "#22c55e",
             "danger": "#ef4444",
-            "input_bg": "#09090b",
+            "input_bg": "#1c1c1e",
             "transparent": "transparent",
             "diff_add": "#052e16",
             "diff_sub": "#450a0a",
