@@ -1,6 +1,6 @@
 <div align="center">
 
-[🇷🇺 Русский](l10n/README.ru.md)
+[🇷🇺 Русский](l10n/README.ru.md) · [🇫🇷 Français](l10n/README.fr.md) · [🇩🇪 Deutsch](l10n/README.de.md) · [🇨🇳 中文](l10n/README.zh.md)
 
 <br>
 
