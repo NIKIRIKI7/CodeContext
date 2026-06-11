@@ -73,6 +73,8 @@ class MainWindow(QMainWindow):
         self.bridge = UIBridge()
         self.bridge.state_changed.connect(self._on_store_changed)
         self.unsubscribe = self.store.subscribe(self.bridge.state_changed.emit)
+        self._last_scanned_paths = []
+        self._last_manual_exclusions = set()
 
         self._preview_dialog = None
         self._tour_dialog = None
@@ -186,11 +188,24 @@ class MainWindow(QMainWindow):
         self.folder_list.update_ui(state.selected_folders, state.temp_folders)
 
         if state.scanned_files_paths:
-            self.file_tree.populate(state.scanned_files_paths, state.scanned_file_metadata, state.manual_exclusions)
-            self.analytics_panel.populate(state.scanned_file_metadata, state.manual_exclusions)
+            paths_changed = self._last_scanned_paths != state.scanned_files_paths
+            exclusions_changed = self._last_manual_exclusions != state.manual_exclusions
+
+            if paths_changed:
+                self.file_tree.populate(state.scanned_files_paths, state.scanned_file_metadata, state.manual_exclusions)
+                self.analytics_panel.populate(state.scanned_file_metadata, state.manual_exclusions)
+                self._last_scanned_paths = list(state.scanned_files_paths)
+                self._last_manual_exclusions = set(state.manual_exclusions)
+            elif exclusions_changed:
+                self.file_tree.update_exclusions(state.manual_exclusions)
+                self.analytics_panel.populate(state.scanned_file_metadata, state.manual_exclusions)
+                self._last_manual_exclusions = set(state.manual_exclusions)
         else:
-            self.file_tree.clear()
-            self.analytics_panel.table.setRowCount(0)
+            if self._last_scanned_paths:
+                self.file_tree.clear()
+                self.analytics_panel.table.setRowCount(0)
+                self._last_scanned_paths = []
+                self._last_manual_exclusions = set()
 
         self.action_panel.update_ui(state.settings)
         self.log_panel.update_logs(state.logs)

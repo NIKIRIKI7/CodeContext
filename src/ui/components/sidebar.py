@@ -68,9 +68,15 @@ class Sidebar(QWidget):
         btn_update.setProperty("cssClass", "ghost")
         btn_update.clicked.connect(self._check_updates)
 
+        btn_bug = QPushButton("\U0001F41E")
+        btn_bug.setProperty("cssClass", "icon")
+        btn_bug.setToolTip(tr("sidebar.bug_report.tooltip"))
+        btn_bug.clicked.connect(self._open_bug_report)
+
         bottom_layout.addWidget(btn_ui_settings)
         bottom_layout.addWidget(lbl_version)
         bottom_layout.addStretch()
+        bottom_layout.addWidget(btn_bug)
         bottom_layout.addWidget(btn_update)
         bottom_layout.addWidget(btn_tour)
         self.layout.addLayout(bottom_layout)
@@ -81,6 +87,11 @@ class Sidebar(QWidget):
     def _open_ui_settings(self):
         settings = self.controller._store.state.settings
         dialog = UICustomizationDialog(self, settings, self._on_ui_settings_saved)
+        dialog.exec()
+
+    def _open_bug_report(self):
+        from ..dialogs import BugReportDialog
+        dialog = BugReportDialog(self, self.controller)
         dialog.exec()
 
     def _on_ui_settings_saved(self, visible_tabs, visible_actions):
@@ -465,6 +476,9 @@ class Sidebar(QWidget):
             self.entry_ext.setPlainText(custom[text]['ext'].replace(' ', '\n'))
             self.entry_ign.setPlainText(custom[text]['ign'].replace(', ', '\n').replace(',', '\n'))
         self.on_settings_change()
+
+        if self.controller._store.state.selected_folders:
+            self.controller.scan_only()
 
     def _save_ext_preset(self):
         name, ok = QInputDialog.getText(self, tr("sidebar.new_preset.title"), tr("sidebar.new_preset.prompt"))

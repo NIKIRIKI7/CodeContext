@@ -63,6 +63,16 @@ class FileTree(QWidget):
         self._update_metrics()
         theme_bus.theme_changed.connect(self._update_metrics)
 
+    def update_exclusions(self, manual_exclusions):
+        if self._is_updating:
+            return
+        self._is_updating = True
+        for item, full_path in self._all_items:
+            state = Qt.Unchecked if full_path in manual_exclusions else Qt.Checked
+            if item.checkState() != state:
+                item.setCheckState(state)
+        self._is_updating = False
+
     def _update_metrics(self):
         s = ThemeManager.get_layout("panel_spacing", 16)
         self.layout.setSpacing(s)

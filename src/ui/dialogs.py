@@ -2,7 +2,7 @@ import re
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QTextEdit,
                                QPushButton, QTabWidget, QWidget, QLabel, QLineEdit,
                                QListWidget, QListWidgetItem, QTextBrowser, QSplitter,
-                                QPlainTextEdit, QComboBox, QCheckBox)
+                               QPlainTextEdit, QComboBox, QCheckBox, QMessageBox)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QSyntaxHighlighter, QTextCharFormat, QColor, QFont
 from .theme_manager import ThemeManager
@@ -770,4 +770,118 @@ class UICustomizationDialog(QDialog):
         visible_tabs = [tid for tid, chk in self.tab_checks.items() if chk.isChecked()]
         visible_actions = [aid for aid, chk in self.action_checks.items() if chk.isChecked()]
         self.on_save(visible_tabs, visible_actions)
+        self.accept()
+
+
+class BugReportDialog(QDialog):
+    def __init__(self, parent, controller):
+        super().__init__(parent)
+        self.controller = controller
+        self.setWindowTitle(tr("dialogs.bug_report.title"))
+        self.resize(600, 450)
+
+        layout = QVBoxLayout(self)
+
+        lbl_desc = QLabel(tr("dialogs.bug_report.description"))
+        lbl_desc.setProperty("cssClass", "heading")
+        layout.addWidget(lbl_desc)
+
+        self.txt_desc = QTextEdit()
+        self.txt_desc.setPlaceholderText(tr("dialogs.bug_report.placeholder"))
+        layout.addWidget(self.txt_desc)
+
+        lbl_logs = QLabel(tr("dialogs.bug_report.logs_label"))
+        lbl_logs.setProperty("cssClass", "heading")
+        layout.addWidget(lbl_logs)
+
+        self.cmb_logs = QComboBox()
+        self.cmb_logs.addItems([
+            tr("dialogs.bug_report.logs_today"),
+            tr("dialogs.bug_report.logs_all"),
+            tr("dialogs.bug_report.logs_none")
+        ])
+        layout.addWidget(self.cmb_logs)
+
+        btn_layout = QHBoxLayout()
+        btn_cancel = QPushButton(tr("dialogs.diff.cancel"))
+        btn_cancel.setProperty("cssClass", "ghost")
+        btn_cancel.clicked.connect(self.reject)
+
+        btn_send = QPushButton(tr("dialogs.bug_report.send"))
+        btn_send.setProperty("cssClass", "success")
+        btn_send.clicked.connect(self._prepare_and_send)
+
+        btn_layout.addStretch()
+        btn_layout.addWidget(btn_cancel)
+        btn_layout.addWidget(btn_send)
+        layout.addLayout(btn_layout)
+
+    def _get_logs(self, mode_idx):
+        if mode_idx == 2:
+            return ""
+
+        from src.utils.config import get_app_data_dir
+        import os, datetime, re
+
+        log_file = os.path.join(get_app_data_dir(), "logs", "app.log")
+        if not os.path.exists(log_file):
+            return "Log file not found."
+
+        try:
+            with open(log_file, "r", encoding="utf-8", errors="replace") as f:
+                lines = f.readlines()
+        except Exception as e:
+            return f"Error reading logs: {e}"
+
+        if mode_idx == 1:
+            return "".join(lines[-500:])
+
+        today_str = datetime.datetime.now().strftime("%Y-%m-%d")
+        filtered = []
+        for line in lines:
+            if re.match(r'^\d{4}-\d{2}-\d{2}', line):
+                if line.startswith(today_str):
+                    filtered.append(line)
+            else:
+                if filtered and not line.startswith(today_str):
+                    filtered.append(line)
+
+        return "".join(filtered[-500:])
+
+    def _prepare_and_send(self):
+        import pyperclip
+        import platform as pf
+        from src.utils.config import get_app_version
+        from PySide6.QtGui import QDesktopServices
+        from PySide6.QtCore import QUrl
+
+        desc = self.txt_desc.toPlainText().strip()
+        if not desc:
+            QMessageBox.warning(self, tr("sidebar.error.title"), tr("dialogs.bug_report.empty_desc"))
+            return
+
+        logs = self._get_logs(self.cmb_logs.currentIndex())
+        sys_info = f"OS: {pf.system()} {pf.release()}\nVersion: {get_app_version()}"
+
+        issue_body = (
+            f"### Description\n{desc}\n\n"
+            f"### Environment\n```text\n{sys_info}\n```\n"
+        )
+        if logs:
+            issue_body += f"\n### Logs\n<details><summary>Click to expand</summary>\n\n```text\n{logs}\n```\n</details>\n"
+
+        try:
+            pyperclip.copy(issue_body)
+        except Exception as e:
+            QMessageBox.warning(self, tr("sidebar.error.title"), f"Clipboard error: {e}")
+            return
+
+        QMessageBox.information(
+            self,
+            tr("dialogs.bug_report.copied_title"),
+            tr("dialogs.bug_report.copied_msg")
+        )
+
+        url = "https://github.com/NIKIRIKI7/CodeContext/issues/new"
+        QDesktopServices.openUrl(QUrl(url))
         self.accept()
