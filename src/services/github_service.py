@@ -7,6 +7,10 @@ import shutil
 import functools
 import urllib.request
 
+from src.i18n import tr
+from ..utils.logger import app_logger
+
+
 class GitHubService:
     """Сервис для работы с GitHub репозиториями (Async)"""
 
@@ -18,7 +22,7 @@ class GitHubService:
         Возвращает путь к папке репозитория.
         """
         if not url.startswith("http"):
-            raise ValueError("Некорректный URL")
+            raise ValueError(tr("github_service.invalid_url"))
 
         is_temp = False
         if not dest_path:
@@ -45,7 +49,7 @@ class GitHubService:
 
             return dest_path
         except Exception as e:
-            # Удаляем неудачный клон только если папка была временной
+            app_logger.error(f"[GitHubService] Clone failed: {e}")
             if is_temp:
                 try:
                     await asyncio.to_thread(functools.partial(shutil.rmtree, dest_path, ignore_errors=True))
@@ -71,4 +75,5 @@ class GitHubService:
                     return [f_obj['filename'] for f_obj in data]
             return await asyncio.to_thread(_fetch)
         except Exception as e:
+            app_logger.error(f"[GitHubService] PR files fetch failed: {e}")
             raise RuntimeError(f"GitHub API error: {e}")

@@ -54,7 +54,7 @@ def load_translations(lang: str | None = None) -> None:
             return
     if path in _loaded:
         return
-    with open(path, encoding="utf-8") as f:
+    with open(path, encoding="utf-8-sig") as f:
         _translations.update(json.load(f))
     _loaded.add(path)
 

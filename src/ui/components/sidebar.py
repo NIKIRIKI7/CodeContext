@@ -372,14 +372,14 @@ class Sidebar(QWidget):
     def _install_context_menu(self):
         self.on_settings_change()
         success, msg = self.controller.install_context_menu()
-        if success or "запрошены права" in msg.lower():
+        if success:
             QMessageBox.information(self, tr("sidebar.integration.title"), msg)
         else:
             QMessageBox.warning(self, tr("sidebar.error.title"), msg)
 
     def _remove_context_menu(self):
         success, msg = self.controller.remove_context_menu()
-        if success or "запрошены права" in msg.lower():
+        if success:
             QMessageBox.information(self, tr("sidebar.integration.title"), msg)
         else:
             QMessageBox.warning(self, tr("sidebar.error.title"), msg)

@@ -2,7 +2,7 @@ import re
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QTextEdit,
                                QPushButton, QTabWidget, QWidget, QLabel, QLineEdit,
                                QListWidget, QListWidgetItem, QTextBrowser, QSplitter,
-                               QPlainTextEdit, QComboBox)
+                                QPlainTextEdit, QComboBox, QCheckBox)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QSyntaxHighlighter, QTextCharFormat, QColor, QFont
 from .theme_manager import ThemeManager

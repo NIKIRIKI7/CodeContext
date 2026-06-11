@@ -8,6 +8,7 @@ from ..actions.action_types import (
     SETTINGS_LOADED, SETTINGS_UPDATE, WORKSPACE_LOADED, UI_ADD_LOG,
 )
 from ..actions.dispatcher import Dispatcher
+from src.i18n import tr
 from ..data.settings_repository import SettingsRepository
 from ..data.file_system_repository import FileSystemRepository
 from ..store.store import Store
@@ -72,7 +73,7 @@ class SettingsUseCase:
         """Сбрасывает настройки на дефолтные и сохраняет."""
         self._dispatcher.dispatch(SETTINGS_UPDATE, _DEFAULT_SETTINGS.copy())
         self._settings_repo.save(_DEFAULT_SETTINGS)
-        self._dispatcher.dispatch(UI_ADD_LOG, "Настройки сброшены")
+        self._dispatcher.dispatch(UI_ADD_LOG, tr("settings_use_case.reset"))
 
     def load_local_config(self, folder_path: str) -> None:
         """Ищет .codecontextrc.json в папке и применяет локальные настройки."""
@@ -92,15 +93,15 @@ class SettingsUseCase:
             if content:
                 local_settings = json.loads(content)
                 self._dispatcher.dispatch(SETTINGS_UPDATE, local_settings)
-                self._dispatcher.dispatch(UI_ADD_LOG, f"⚙️ Применены локальные настройки из: {os.path.basename(target_path)}")
+                self._dispatcher.dispatch(UI_ADD_LOG, tr("settings_use_case.local_config_applied", path=os.path.basename(target_path)))
         except json.JSONDecodeError as exc:
-            self._dispatcher.dispatch(UI_ADD_LOG, f"⚠️ Ошибка парсинга {os.path.basename(target_path)}: {exc}")
+            self._dispatcher.dispatch(UI_ADD_LOG, tr("settings_use_case.config_parse_error", path=os.path.basename(target_path), error=exc))
         except Exception as exc:
-            self._dispatcher.dispatch(UI_ADD_LOG, f"⚠️ Не удалось прочитать локальный конфиг: {exc}")
+            self._dispatcher.dispatch(UI_ADD_LOG, tr("settings_use_case.config_read_error", error=exc))
 
     def save_local_config(self, folder_path: str) -> None:
         if not folder_path or not os.path.exists(folder_path):
-            self._dispatcher.dispatch(UI_ADD_LOG, "❌ Ошибка: Папка проекта не выбрана.")
+            self._dispatcher.dispatch(UI_ADD_LOG, tr("settings_use_case.no_folder_selected"))
             return
 
         config_path = os.path.join(folder_path, ".codecontextrc.json")
@@ -110,9 +111,9 @@ class SettingsUseCase:
                 data.pop(key, None)
             with open(config_path, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=4)
-            self._dispatcher.dispatch(UI_ADD_LOG, f"✅ Локальный конфиг сохранен: {config_path}")
+            self._dispatcher.dispatch(UI_ADD_LOG, tr("settings_use_case.config_saved", path=config_path))
         except Exception as exc:
-            self._dispatcher.dispatch(UI_ADD_LOG, f"❌ Ошибка сохранения локального конфига: {exc}")
+            self._dispatcher.dispatch(UI_ADD_LOG, tr("settings_use_case.config_save_error", error=exc))
 
     def apply_preset(self, preset_name: str) -> None:
         """Применяет пресет расширений/игнора."""
@@ -133,9 +134,9 @@ class SettingsUseCase:
         try:
             with open(path, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=4)
-            self._dispatcher.dispatch(UI_ADD_LOG, f"Workspace сохранён: {path}")
+            self._dispatcher.dispatch(UI_ADD_LOG, tr("settings_use_case.workspace_saved", path=path))
         except OSError as exc:
-            self._dispatcher.dispatch(UI_ADD_LOG, f"Ошибка сохранения Workspace: {exc}")
+            self._dispatcher.dispatch(UI_ADD_LOG, tr("settings_use_case.workspace_save_error", error=exc))
 
     def load_workspace(self, path: str) -> Optional[dict]:
         """Загружает workspace из JSON-файла и публикует в Store."""
@@ -143,8 +144,8 @@ class SettingsUseCase:
             with open(path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
             self._dispatcher.dispatch(WORKSPACE_LOADED, data)
-            self._dispatcher.dispatch(UI_ADD_LOG, f"Workspace загружен: {path}")
+            self._dispatcher.dispatch(UI_ADD_LOG, tr("settings_use_case.workspace_loaded", path=path))
             return data
         except (OSError, json.JSONDecodeError) as exc:
-            self._dispatcher.dispatch(UI_ADD_LOG, f"Ошибка загрузки Workspace: {exc}")
+            self._dispatcher.dispatch(UI_ADD_LOG, tr("settings_use_case.workspace_load_error", error=exc))
             return None

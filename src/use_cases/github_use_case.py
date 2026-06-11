@@ -6,6 +6,7 @@ from ..actions.action_types import (
 )
 from ..actions.dispatcher import Dispatcher
 from ..services.github_service import GitHubService
+from src.i18n import tr
 
 
 class GitHubUseCase:
@@ -26,7 +27,7 @@ class GitHubUseCase:
 
         self._dispatcher.dispatch(UI_SET_LOADING, True)
         self._dispatcher.dispatch(UI_UPDATE_STATUS, {
-            'message': "Подготовка GitHub...", 'progress': 0.0
+            'message': tr("github_use_case.preparing"), 'progress': 0.0
         })
 
         pr_files = []
@@ -35,15 +36,15 @@ class GitHubUseCase:
 
         try:
             if is_pr:
-                self._dispatcher.dispatch(UI_ADD_LOG, "🐙 Обнаружен Pull Request. Получение списка файлов...")
+                self._dispatcher.dispatch(UI_ADD_LOG, tr("github_use_case.pr_detected"))
                 pr_files = await self._github_service.fetch_pr_files_async(url)
-                self._dispatcher.dispatch(UI_ADD_LOG, f"Получено {len(pr_files)} файлов из PR.")
+                self._dispatcher.dispatch(UI_ADD_LOG, tr("github_use_case.pr_files_count", count=len(pr_files)))
                 clone_url = re.sub(r'/pull/\d+.*$', '', url)
 
             self._dispatcher.dispatch(UI_UPDATE_STATUS, {
-                'message': "Клонирование репозитория...", 'progress': 0.3
+                'message': tr("github_use_case.cloning"), 'progress': 0.3
             })
-            self._dispatcher.dispatch(UI_ADD_LOG, f"GitHub: клонирование {clone_url}")
+            self._dispatcher.dispatch(UI_ADD_LOG, tr("github_use_case.cloning_url", url=clone_url))
 
             target_path = None
             is_temp = True
@@ -65,13 +66,13 @@ class GitHubUseCase:
                 "path": final_path,
                 "is_temp": is_temp
             })
-            self._dispatcher.dispatch(UI_ADD_LOG, f"✅ Репозиторий загружен: {final_path}")
+            self._dispatcher.dispatch(UI_ADD_LOG, tr("github_use_case.repo_loaded", path=final_path))
 
         except Exception as exc:
             self._dispatcher.dispatch(GITHUB_CLONE_FAILURE, str(exc))
-            self._dispatcher.dispatch(UI_ADD_LOG, f"❌ GitHub Error: {exc}")
+            self._dispatcher.dispatch(UI_ADD_LOG, tr("github_use_case.github_error", error=exc))
         finally:
             self._dispatcher.dispatch(UI_SET_LOADING, False)
             self._dispatcher.dispatch(UI_UPDATE_STATUS, {
-                'message': "Готово", 'progress': 0.0
+                'message': tr("store.status.done"), 'progress': 0.0
             })

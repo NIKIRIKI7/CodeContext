@@ -8,6 +8,8 @@ from ..actions.dispatcher import Dispatcher
 from ..data.file_system_repository import FileSystemRepository
 from ..services.file_service import FileService
 from ..store.state import AppState
+from src.i18n import tr
+from ..utils.logger import app_logger
 
 
 class ScanWorkspaceUseCase:
@@ -20,8 +22,8 @@ class ScanWorkspaceUseCase:
 
     async def execute(self, state: AppState) -> None:
         self._dispatcher.dispatch(UI_SET_LOADING, True)
-        self._dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Сканирование...", 'progress': 0.0})
-        self._dispatcher.dispatch(UI_ADD_LOG, "Начало сканирования...")
+        self._dispatcher.dispatch(UI_UPDATE_STATUS, {'message': tr("scan_use_case.scanning"), 'progress': 0.0})
+        self._dispatcher.dispatch(UI_ADD_LOG, tr("scan_use_case.scan_started"))
 
         try:
             file_paths = await self._file_service.scan_folders_async(
@@ -33,10 +35,10 @@ class ScanWorkspaceUseCase:
             )
 
             if not file_paths:
-                self._dispatcher.dispatch(SCAN_FAILURE, "Файлы не найдены")
-                self._dispatcher.dispatch(UI_ADD_LOG, "⚠️ Файлы не найдены")
+                self._dispatcher.dispatch(SCAN_FAILURE, tr("scan_use_case.no_files"))
+                self._dispatcher.dispatch(UI_ADD_LOG, tr("scan_use_case.no_files"))
             else:
-                self._dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Анализ токенов и Git...", 'progress': 0.5})
+                self._dispatcher.dispatch(UI_UPDATE_STATUS, {'message': tr("scan_use_case.analyzing"), 'progress': 0.5})
 
                 git_statuses = {}
                 for folder in state.selected_folders:
@@ -48,6 +50,7 @@ class ScanWorkspaceUseCase:
                     try:
                         tokens = os.path.getsize(path) // 4
                     except OSError:
+                        app_logger.warning(f"[Scan] Cannot get file size: {path}")
                         tokens = 0
 
                     status = git_statuses.get(path, "")
@@ -62,14 +65,14 @@ class ScanWorkspaceUseCase:
                     }
 
                 self._dispatcher.dispatch(SCAN_SUCCESS, {'paths': file_paths, 'metadata': metadata})
-                self._dispatcher.dispatch(UI_ADD_LOG, f"Найдено файлов: {len(file_paths)}")
+                self._dispatcher.dispatch(UI_ADD_LOG, tr("store.status.files_found", count=len(file_paths)))
 
         except Exception as exc:
             self._dispatcher.dispatch(SCAN_FAILURE, str(exc))
-            self._dispatcher.dispatch(UI_ADD_LOG, f"Ошибка сканирования: {exc}")
+            self._dispatcher.dispatch(UI_ADD_LOG, tr("store.status.scan_error", error=exc))
         finally:
             self._dispatcher.dispatch(UI_SET_LOADING, False)
-            self._dispatcher.dispatch(UI_UPDATE_STATUS, {'message': "Сканирование завершено", 'progress': 0.0})
+            self._dispatcher.dispatch(UI_UPDATE_STATUS, {'message': tr("scan_use_case.scan_complete"), 'progress': 0.0})
 
     @staticmethod
     def _determine_file_category(path: str, tokens: int) -> str:
