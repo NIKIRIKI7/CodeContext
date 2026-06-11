@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import os
 from typing import Optional, List, Dict, Set
 from ..actions.action_types import (
     UI_SET_LOADING, UI_ADD_LOG, UI_SHOW_PREVIEW, UI_SHOW_CHAT,
@@ -81,6 +82,11 @@ class ProcessWorkspaceUseCase:
                 'message': tr("process_use_case.workflow.processing_minifying"), 'progress': 0.6
             })
 
+            if target == 'file' and save_path:
+                await self._stream_to_file(files_to_process, state.settings, save_path)
+                self._dispatcher.dispatch(WORKFLOW_FINISHED, None)
+                return
+
             processed: List[ProcessedFile] = await asyncio.to_thread(
                 self._run_processing, raw_files, state.settings
             )
@@ -128,13 +134,40 @@ class ProcessWorkspaceUseCase:
             self._dispatcher.dispatch(UI_SET_LOADING, False)
 
     def _run_processing(self, raw_files, settings) -> List[ProcessedFile]:
-        return PipelineUtils.process_files_batch(
+        return PipelineUtils.process_files_batch_parallel(
             raw_files=raw_files,
             options=settings,
-            cleaner_service=self._cleaner_service,
-            skeleton_service=self._skeleton_service,
-            token_service=self._token_service,
         )
+
+    async def _stream_to_file(self, file_paths: list, settings, save_path: str) -> int:
+        header_text = await asyncio.to_thread(
+            self._format_service.format_output,
+            [], settings.output_format,
+            settings.include_tree, settings.system_prompt, None,
+            settings.template_path, settings.include_mermaid
+        )
+        total_tokens = self._token_service.count_tokens(header_text)
+        with open(save_path, 'w', encoding='utf-8') as f:
+            f.write(header_text + "\n")
+            for path in file_paths:
+                content = self._process_service.repo._read_file_sync(path)
+                if not content:
+                    continue
+                ext = os.path.splitext(path)[1].lower()
+                cleaned = self._cleaner_service.clean(content, ext, settings)
+                if settings.skeleton_mode:
+                    cleaned = self._skeleton_service.make_skeleton(cleaned, ext)
+                import datetime
+                timestamp = datetime.datetime.now().strftime("%H:%M:%S")
+                self._dispatcher.dispatch(WORKFLOW_PROGRESS, {
+                    'message': tr("process_use_case.workflow.writing", path=os.path.basename(path)),
+                    'progress': 0.6 + (0.3 * (file_paths.index(path) + 1) / len(file_paths))
+                })
+                file_chunk = f"{'='*50}\nFILE: {path}\n{'='*50}\n{cleaned}\n"
+                total_tokens += self._token_service.count_tokens(file_chunk)
+                f.write(file_chunk + "\n")
+        self._dispatcher.dispatch(UI_ADD_LOG, tr("process_use_case.export.saved", path=save_path))
+        return total_tokens
 
     def _run_formatting(self, processed, settings, dep_map) -> str:
         return self._format_service.format_output(

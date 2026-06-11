@@ -33,32 +33,37 @@ class FileService:
                     all_files.extend(files)
                     continue
 
-                files = await self.repo.walk_directory_async(path, ign, exts)
+                spec = None
                 if use_gitignore:
-                    files = await asyncio.to_thread(self._filter_by_gitignore, path, files)
+                    patterns = self.repo.read_gitignore(path)
+                    if patterns:
+                        spec = pathspec.PathSpec.from_lines('gitwildmatch', patterns)
+
+                files = await asyncio.to_thread(self._fast_scandir, path, path, ign, exts, spec)
                 all_files.extend(files)
 
         return sorted(list(set(all_files)))
 
-    def _filter_by_gitignore(self, root_folder: str, files: List[str]) -> List[str]:
-        patterns = self.repo.read_gitignore(root_folder)
-        if not patterns:
-            return files
+    def _fast_scandir(self, root_path: str, current_path: str, ign: set, exts: list, spec: pathspec.PathSpec = None) -> List[str]:
+        result = []
         try:
-            spec = pathspec.PathSpec.from_lines('gitwildmatch', patterns)
-            kept_files = []
-            for file_abs_path in files:
-                try:
-                    rel_path = os.path.relpath(file_abs_path, root_folder)
-                    if not spec.match_file(rel_path):
-                        kept_files.append(file_abs_path)
-                except ValueError:
-                    app_logger.warning(f"[FileService] relpath failed for: {file_abs_path}")
-                    kept_files.append(file_abs_path)
-            return kept_files
-        except Exception as e:
-            app_logger.error(f"[FileService] Error processing .gitignore in {root_folder}: {e}")
-            return files
+            with os.scandir(current_path) as it:
+                for entry in it:
+                    if entry.name in ign or entry.name == '.git':
+                        continue
+                    rel_path = os.path.relpath(entry.path, root_path)
+                    if entry.is_dir(follow_symlinks=False):
+                        if spec and spec.match_file(rel_path + "/"):
+                            continue
+                        result.extend(self._fast_scandir(root_path, entry.path, ign, exts, spec))
+                    elif entry.is_file(follow_symlinks=False):
+                        if any(entry.name.lower().endswith(ext) for ext in exts):
+                            if spec and spec.match_file(rel_path):
+                                continue
+                            result.append(entry.path)
+        except PermissionError:
+            pass
+        return result
 
     def find_project_root(self, file_path: str) -> str:
         """

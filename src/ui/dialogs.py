@@ -111,6 +111,7 @@ class AdvancedPreviewDialog(QDialog):
         self.on_close = on_close
         self.state = state
         self.controller = controller
+        self._diff_cache = {}
 
         self.setWindowTitle(tr("dialogs.preview.title"))
         self.resize(1100, 700)
@@ -242,10 +243,25 @@ class AdvancedPreviewDialog(QDialog):
 
         self.lbl_savings.setText(tr("dialogs.preview.savings", original=t_orig, processed=t_proc, percent=percent))
 
+        if path in self._diff_cache:
+            self.diff_browser.setHtml(self._diff_cache[path])
+            return
+
         colors = ThemeManager.get_current_colors()
         fonts = ThemeManager.get_font_settings()
-        html_diff = self.controller.generate_html_diff(original, processed, colors, fonts)
-        self.diff_browser.setHtml(html_diff)
+        self.diff_browser.setHtml("<div style='padding:20px;'>Generating diff...</div>")
+
+        async def _generate_diff_bg():
+            import asyncio
+            html_diff = await asyncio.to_thread(
+                self.controller.generate_html_diff, original, processed, colors, fonts
+            )
+            self._diff_cache[path] = html_diff
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(0, lambda: self.diff_browser.setHtml(html_diff))
+
+        from src.utils.async_runtime import AsyncRuntime
+        AsyncRuntime.run_coroutine(_generate_diff_bg())
 
     def _copy_all(self):
         self.controller.copy_to_clipboard(self.txt_preview.toPlainText())

@@ -1,4 +1,5 @@
 import os
+import json
 
 from ..actions.action_types import (
     UI_SET_LOADING, UI_UPDATE_STATUS, UI_ADD_LOG,
@@ -10,6 +11,7 @@ from ..services.file_service import FileService
 from ..store.state import AppState
 from src.i18n import tr
 from ..utils.logger import app_logger
+from ..utils.config import get_app_data_dir
 
 
 class ScanWorkspaceUseCase:
@@ -19,6 +21,24 @@ class ScanWorkspaceUseCase:
         self._dispatcher = dispatcher
         self._file_service = file_service
         self._fs_repo = fs_repo
+
+    def _load_cache(self) -> dict:
+        cache_path = os.path.join(get_app_data_dir(), "scan_cache.json")
+        try:
+            if os.path.exists(cache_path):
+                with open(cache_path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+        except Exception:
+            pass
+        return {}
+
+    def _save_cache(self, cache: dict):
+        cache_path = os.path.join(get_app_data_dir(), "scan_cache.json")
+        try:
+            with open(cache_path, 'w', encoding='utf-8') as f:
+                json.dump(cache, f)
+        except Exception:
+            pass
 
     async def execute(self, state: AppState) -> None:
         self._dispatcher.dispatch(UI_SET_LOADING, True)
@@ -45,17 +65,24 @@ class ScanWorkspaceUseCase:
                     folder_status = await self._fs_repo.get_git_status_async(folder)
                     git_statuses.update(folder_status)
 
+                token_cache = self._load_cache()
+                new_cache = {}
                 metadata = {}
+
                 for path in file_paths:
                     try:
-                        tokens = os.path.getsize(path) // 4
+                        stat = os.stat(path)
+                        cache_key = f"{path}_{stat.st_size}_{stat.st_mtime}"
+                        if cache_key in token_cache:
+                            tokens = token_cache[cache_key]
+                        else:
+                            tokens = stat.st_size // 4
+                        new_cache[cache_key] = tokens
                     except OSError:
                         app_logger.warning(f"[Scan] Cannot get file size: {path}")
                         tokens = 0
 
                     status = git_statuses.get(path, "")
-
-                    # 💡 Бизнес-логика: определяем категорию "тяжести" или "типа" файла
                     category = self._determine_file_category(path, tokens)
 
                     metadata[path] = {
@@ -63,6 +90,8 @@ class ScanWorkspaceUseCase:
                         "git_status": status,
                         "category": category
                     }
+
+                self._save_cache(new_cache)
 
                 self._dispatcher.dispatch(SCAN_SUCCESS, {'paths': file_paths, 'metadata': metadata})
                 self._dispatcher.dispatch(UI_ADD_LOG, tr("store.status.files_found", count=len(file_paths)))

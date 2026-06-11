@@ -12,13 +12,18 @@ class Store:
     """Центральное хранилище состояния."""
     def __init__(self):
         self._state = AppState()
+        self._cached_state = None
+        self._is_dirty = True
         self._listeners: List[Callable[[AppState], None]] = []
         self._handlers: Dict[str, Callable[[Any], None]] = {}
         self._register_handlers()
 
     @property
     def state(self) -> AppState:
-        return copy.deepcopy(self._state)
+        if self._is_dirty:
+            self._cached_state = copy.deepcopy(self._state)
+            self._is_dirty = False
+        return self._cached_state
 
     def subscribe(self, listener: Callable[[AppState], None]) -> Callable:
         self._listeners.append(listener)
@@ -27,6 +32,7 @@ class Store:
     def dispatch(self, action_type: str, payload: Any = None):
         handler = self._handlers.get(action_type)
         if handler:
+            self._is_dirty = True
             handler(payload)
             self._notify()
 
