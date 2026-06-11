@@ -30,6 +30,8 @@
   "main_window.command.check_updates": "🔄 Controleren op updates",
   "main_window.save_file.title": "Bestand opslaan",
 
+  "dialogs.ai_chat_title": "AI-chat (CodeContext)",
+
   "dialogs.chat.placeholder": "Stel een vraag over de code...",
   "dialogs.chat.send": "Verzenden",
   "dialogs.chat.system_loaded": "📎 Systeemcontext geladen. U kunt een vraag stellen.",
@@ -45,6 +47,19 @@
   "dialogs.preview.select_file": "Bestand:",
   "dialogs.preview.savings_initial": "📊 Originele en gecomprimeerde versie vergelijken",
   "dialogs.preview.savings": "Besparing: {original} → {processed} tokens ({percent:.1f}%)",
+
+  "dialogs.bug_report.title": "Bug melden",
+  "dialogs.bug_report.description": "Beschrijf de bug die je tegenkwam:",
+  "dialogs.bug_report.placeholder": "Stappen om te reproduceren, verwacht gedrag, enz...",
+  "dialogs.bug_report.logs_label": "Logs bijvoegen:",
+  "dialogs.bug_report.logs_today": "Logs van vandaag (Aanbevolen)",
+  "dialogs.bug_report.logs_all": "Alle logs (laatste 500 regels)",
+  "dialogs.bug_report.logs_none": "Geen logs bijvoegen",
+  "dialogs.bug_report.send": "Kopiëren en GitHub openen",
+  "dialogs.bug_report.empty_desc": "Beschrijf de bug alstublieft.",
+  "dialogs.bug_report.copied_title": "Gekopieerd naar klembord",
+  "dialogs.bug_report.copied_msg": "Issue-sjabloon gekopieerd. Plak het in de GitHub Issue-body.",
+  "sidebar.bug_report.tooltip": "Bug gevonden? Naar Issue sturen",
 
   "dialogs.tour.title": "🎓 Interactieve rondleiding",
   "dialogs.tour.prev": "← Terug",
@@ -186,6 +201,11 @@
   "sidebar.import_theme.success": "Thema \"{filename}\" succesvol geïmporteerd.",
   "sidebar.import_theme.error": "Fout bij importeren thema: {error}",
 
+  "action_panel.minify": "Minimaliseren",
+  "action_panel.no_comments": "Geen opmerkingen",
+  "action_panel.no_secrets": "Geen geheimen",
+  "action_panel.skeleton": "Skelet",
+
   "action_panel.template.tooltip": "📁 Jinja2-sjabloon selecteren",
   "action_panel.preview.button": "👁 Voorbeeld",
   "action_panel.clipboard.button": "📋 Kopiëren",
@@ -200,6 +220,9 @@
   "empty_state.browse.button": "📂 Map bladeren",
   "empty_state.recent.title": "🕐 Recente projecten",
   "empty_state.browse.dialog_title": "📂 Projectmap selecteren",
+
+  "status_bar.idle": "Inactief",
+  "status_bar.tokens_count": "Tokens: {tokens}",
 
   "status_bar.local_model": " (lokaal model)",
 

@@ -30,6 +30,8 @@
   "main_window.command.check_updates": "🔄 التحقق من التحديثات",
   "main_window.save_file.title": "حفظ ملف",
 
+  "dialogs.ai_chat_title": "الدردشة الذكية (CodeContext)",
+
   "dialogs.chat.placeholder": "اسأل سؤالاً عن الكود...",
   "dialogs.chat.send": "إرسال",
   "dialogs.chat.system_loaded": "📎 تم تحميل سياق النظام. يمكنك طرح سؤال.",
@@ -45,6 +47,19 @@
   "dialogs.preview.select_file": "الملف:",
   "dialogs.preview.savings_initial": "📊 مقارنة النسخة الأصلية والنسخة المضغوطة",
   "dialogs.preview.savings": "التوفير: {original} ← {processed} رمز ({percent:.1f}%)",
+
+  "dialogs.bug_report.title": "الإبلاغ عن خطأ",
+  "dialogs.bug_report.description": "صف الخطأ الذي واجهته:",
+  "dialogs.bug_report.placeholder": "خطوات إعادة الإنتاج، السلوك المتوقع، إلخ...",
+  "dialogs.bug_report.logs_label": "تضمين السجلات:",
+  "dialogs.bug_report.logs_today": "سجلات اليوم (موصى به)",
+  "dialogs.bug_report.logs_all": "جميع السجلات (آخر 500 سطر)",
+  "dialogs.bug_report.logs_none": "لا تضمّن السجلات",
+  "dialogs.bug_report.send": "نسخ وفتح GitHub",
+  "dialogs.bug_report.empty_desc": "الرجاء وصف الخطأ.",
+  "dialogs.bug_report.copied_title": "تم النسخ إلى الحافظة",
+  "dialogs.bug_report.copied_msg": "تم نسخ قالب Issue. الصقه في نص Issue على GitHub.",
+  "sidebar.bug_report.tooltip": "وجدت خطأ؟ أرسل إلى Issue",
 
   "dialogs.tour.title": "🎓 جولة تفاعلية",
   "dialogs.tour.prev": "← رجوع",
@@ -186,6 +201,11 @@
   "sidebar.import_theme.success": "تم استيراد السمة \"{filename}\" بنجاح.",
   "sidebar.import_theme.error": "خطأ في استيراد السمة: {error}",
 
+  "action_panel.minify": "تصغير",
+  "action_panel.no_comments": "بدون تعليقات",
+  "action_panel.no_secrets": "بدون أسرار",
+  "action_panel.skeleton": "هيكل",
+
   "action_panel.template.tooltip": "📁 تحديد قالب Jinja2",
   "action_panel.preview.button": "👁 معاينة",
   "action_panel.clipboard.button": "📋 نسخ",
@@ -200,6 +220,9 @@
   "empty_state.browse.button": "📂 تصفح المجلد",
   "empty_state.recent.title": "🕐 المشاريع الأخيرة",
   "empty_state.browse.dialog_title": "📂 تحديد مجلد المشروع",
+
+  "status_bar.idle": "خامل",
+  "status_bar.tokens_count": "الرموز: {tokens}",
 
   "status_bar.local_model": " (نموذج محلي)",
 

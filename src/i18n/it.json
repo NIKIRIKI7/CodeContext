@@ -30,6 +30,8 @@
   "main_window.command.check_updates": "🔄 Verifica aggiornamenti",
   "main_window.save_file.title": "Salva file",
 
+  "dialogs.ai_chat_title": "Chat IA (CodeContext)",
+
   "dialogs.chat.placeholder": "Fai una domanda sul codice...",
   "dialogs.chat.send": "Invia",
   "dialogs.chat.system_loaded": "📎 Contesto di sistema caricato. Puoi fare una domanda.",
@@ -45,6 +47,19 @@
   "dialogs.preview.select_file": "File:",
   "dialogs.preview.savings_initial": "📊 Confronta versione originale e compressa",
   "dialogs.preview.savings": "Risparmio: {original} → {processed} token ({percent:.1f}%)",
+
+  "dialogs.bug_report.title": "Segnala bug",
+  "dialogs.bug_report.description": "Descrivi il bug che hai incontrato:",
+  "dialogs.bug_report.placeholder": "Passi per riprodurre, comportamento atteso, ecc...",
+  "dialogs.bug_report.logs_label": "Includi log:",
+  "dialogs.bug_report.logs_today": "Log di oggi (Consigliato)",
+  "dialogs.bug_report.logs_all": "Tutti i log (ultime 500 righe)",
+  "dialogs.bug_report.logs_none": "Non includere log",
+  "dialogs.bug_report.send": "Copia e apri GitHub",
+  "dialogs.bug_report.empty_desc": "Per favore descrivi il bug.",
+  "dialogs.bug_report.copied_title": "Copiato negli appunti",
+  "dialogs.bug_report.copied_msg": "Template Issue copiato. Incollalo nel corpo dell'Issue GitHub.",
+  "sidebar.bug_report.tooltip": "Trovato un bug? Invia a Issue",
 
   "dialogs.tour.title": "🎓 Tour interattivo",
   "dialogs.tour.prev": "← Indietro",
@@ -186,6 +201,11 @@
   "sidebar.import_theme.success": "Tema \"{filename}\" importato con successo.",
   "sidebar.import_theme.error": "Errore durante l'importazione del tema: {error}",
 
+  "action_panel.minify": "Minimizza",
+  "action_panel.no_comments": "Nessun commento",
+  "action_panel.no_secrets": "Nessun segreto",
+  "action_panel.skeleton": "Scheletro",
+
   "action_panel.template.tooltip": "📁 Seleziona template Jinja2",
   "action_panel.preview.button": "👁 Anteprima",
   "action_panel.clipboard.button": "📋 Copia",
@@ -200,6 +220,9 @@
   "empty_state.browse.button": "📂 Sfoglia cartelle",
   "empty_state.recent.title": "🕐 Progetti recenti",
   "empty_state.browse.dialog_title": "📂 Seleziona cartella del progetto",
+
+  "status_bar.idle": "Inattivo",
+  "status_bar.tokens_count": "Token: {tokens}",
 
   "status_bar.local_model": " (modello locale)",
 

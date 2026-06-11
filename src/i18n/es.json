@@ -30,6 +30,8 @@
   "main_window.command.check_updates": "🔄 Buscar actualizaciones",
   "main_window.save_file.title": "Guardar archivo",
 
+  "dialogs.ai_chat_title": "Chat IA (CodeContext)",
+
   "dialogs.chat.placeholder": "Haz una pregunta sobre el código...",
   "dialogs.chat.send": "Enviar",
   "dialogs.chat.system_loaded": "📎 Contexto del sistema cargado. Puedes hacer una pregunta.",
@@ -45,6 +47,19 @@
   "dialogs.preview.select_file": "Archivo:",
   "dialogs.preview.savings_initial": "📊 Comparar versión original y comprimida",
   "dialogs.preview.savings": "Ahorro: {original} → {processed} tokens ({percent:.1f}%)",
+
+  "dialogs.bug_report.title": "Informe de error",
+  "dialogs.bug_report.description": "Describe el error que encontraste:",
+  "dialogs.bug_report.placeholder": "Pasos para reproducir, comportamiento esperado, etc...",
+  "dialogs.bug_report.logs_label": "Incluir registros:",
+  "dialogs.bug_report.logs_today": "Registros de hoy (Recomendado)",
+  "dialogs.bug_report.logs_all": "Todos los registros (últimas 500 líneas)",
+  "dialogs.bug_report.logs_none": "No incluir registros",
+  "dialogs.bug_report.send": "Copiar y abrir GitHub",
+  "dialogs.bug_report.empty_desc": "Por favor describe el error.",
+  "dialogs.bug_report.copied_title": "Copiado al portapapeles",
+  "dialogs.bug_report.copied_msg": "Plantilla de Issue copiada. Pégala en el cuerpo del Issue de GitHub.",
+  "sidebar.bug_report.tooltip": "¿Encontraste un error? Enviar a Issue",
 
   "dialogs.tour.title": "🎓 Tour interactivo",
   "dialogs.tour.prev": "← Atrás",
@@ -186,6 +201,11 @@
   "sidebar.import_theme.success": "Tema \"{filename}\" importado exitosamente.",
   "sidebar.import_theme.error": "Error al importar el tema: {error}",
 
+  "action_panel.minify": "Minificar",
+  "action_panel.no_comments": "Sin comentarios",
+  "action_panel.no_secrets": "Sin secretos",
+  "action_panel.skeleton": "Esqueleto",
+
   "action_panel.template.tooltip": "📁 Seleccionar plantilla Jinja2",
   "action_panel.preview.button": "👁 Vista previa",
   "action_panel.clipboard.button": "📋 Copiar",
@@ -200,6 +220,9 @@
   "empty_state.browse.button": "📂 Examinar carpeta",
   "empty_state.recent.title": "🕐 Proyectos recientes",
   "empty_state.browse.dialog_title": "📂 Seleccionar carpeta del proyecto",
+
+  "status_bar.idle": "Inactivo",
+  "status_bar.tokens_count": "Tokens: {tokens}",
 
   "status_bar.local_model": " (modelo local)",
 

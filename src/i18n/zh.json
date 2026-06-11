@@ -30,6 +30,8 @@
   "main_window.command.check_updates": "🔄 检查更新",
   "main_window.save_file.title": "保存文件",
 
+  "dialogs.ai_chat_title": "AI 聊天 (CodeContext)",
+
   "dialogs.chat.placeholder": "询问关于代码的问题...",
   "dialogs.chat.send": "发送",
   "dialogs.chat.system_loaded": "📎 系统上下文已加载。您可以提问了。",
@@ -45,6 +47,19 @@
   "dialogs.preview.select_file": "文件：",
   "dialogs.preview.savings_initial": "📊 比较原始版本和压缩版本",
   "dialogs.preview.savings": "节省：{original} → {processed} 个令牌（{percent:.1f}%）",
+
+  "dialogs.bug_report.title": "错误报告",
+  "dialogs.bug_report.description": "描述您遇到的错误：",
+  "dialogs.bug_report.placeholder": "重现步骤、预期行为等...",
+  "dialogs.bug_report.logs_label": "包含日志：",
+  "dialogs.bug_report.logs_today": "今日日志（推荐）",
+  "dialogs.bug_report.logs_all": "所有日志（最近500行）",
+  "dialogs.bug_report.logs_none": "不包含日志",
+  "dialogs.bug_report.send": "复制并打开 GitHub",
+  "dialogs.bug_report.empty_desc": "请描述该错误。",
+  "dialogs.bug_report.copied_title": "已复制到剪贴板",
+  "dialogs.bug_report.copied_msg": "Issue 模板已复制。请粘贴到 GitHub Issue 正文中。",
+  "sidebar.bug_report.tooltip": "发现错误？提交 Issue",
 
   "dialogs.tour.title": "🎓 交互式导览",
   "dialogs.tour.prev": "← 上一步",
@@ -186,6 +201,11 @@
   "sidebar.import_theme.success": "主题 \"{filename}\" 导入成功。",
   "sidebar.import_theme.error": "导入主题时出错：{error}",
 
+  "action_panel.minify": "压缩",
+  "action_panel.no_comments": "无注释",
+  "action_panel.no_secrets": "无密钥",
+  "action_panel.skeleton": "骨架",
+
   "action_panel.template.tooltip": "📁 选择 Jinja2 模板",
   "action_panel.preview.button": "👁 预览",
   "action_panel.clipboard.button": "📋 复制",
@@ -200,6 +220,9 @@
   "empty_state.browse.button": "📂 浏览文件夹",
   "empty_state.recent.title": "🕐 最近的项目",
   "empty_state.browse.dialog_title": "📂 选择项目文件夹",
+
+  "status_bar.idle": "空闲",
+  "status_bar.tokens_count": "令牌: {tokens}",
 
   "status_bar.local_model": "（本地模型）",
 

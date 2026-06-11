@@ -30,6 +30,8 @@
   "main_window.command.check_updates": "🔄 Verificar Atualizações",
   "main_window.save_file.title": "Salvar Arquivo",
 
+  "dialogs.ai_chat_title": "Chat IA (CodeContext)",
+
   "dialogs.chat.placeholder": "Faça uma pergunta sobre o código...",
   "dialogs.chat.send": "Enviar",
   "dialogs.chat.system_loaded": "📎 Contexto do sistema carregado. Você pode fazer uma pergunta.",
@@ -45,6 +47,19 @@
   "dialogs.preview.select_file": "Arquivo:",
   "dialogs.preview.savings_initial": "📊 Comparar versão original e compactada",
   "dialogs.preview.savings": "Economia: {original} → {processed} tokens ({percent:.1f}%)",
+
+  "dialogs.bug_report.title": "Relatório de bug",
+  "dialogs.bug_report.description": "Descreva o bug que você encontrou:",
+  "dialogs.bug_report.placeholder": "Passos para reproduzir, comportamento esperado, etc...",
+  "dialogs.bug_report.logs_label": "Incluir logs:",
+  "dialogs.bug_report.logs_today": "Logs de hoje (Recomendado)",
+  "dialogs.bug_report.logs_all": "Todos os logs (últimas 500 linhas)",
+  "dialogs.bug_report.logs_none": "Não incluir logs",
+  "dialogs.bug_report.send": "Copiar e abrir GitHub",
+  "dialogs.bug_report.empty_desc": "Por favor descreva o bug.",
+  "dialogs.bug_report.copied_title": "Copiado para a área de transferência",
+  "dialogs.bug_report.copied_msg": "Modelo de Issue copiado. Cole no corpo da Issue do GitHub.",
+  "sidebar.bug_report.tooltip": "Encontrou um bug? Enviar para Issue",
 
   "dialogs.tour.title": "🎓 Tour Interativo",
   "dialogs.tour.prev": "← Voltar",
@@ -186,6 +201,11 @@
   "sidebar.import_theme.success": "Tema \"{filename}\" importado com sucesso.",
   "sidebar.import_theme.error": "Erro ao importar tema: {error}",
 
+  "action_panel.minify": "Minificar",
+  "action_panel.no_comments": "Sem comentários",
+  "action_panel.no_secrets": "Sem segredos",
+  "action_panel.skeleton": "Esqueleto",
+
   "action_panel.template.tooltip": "📁 Selecionar template Jinja2",
   "action_panel.preview.button": "👁 Visualizar",
   "action_panel.clipboard.button": "📋 Copiar",
@@ -200,6 +220,9 @@
   "empty_state.browse.button": "📂 Procurar Pasta",
   "empty_state.recent.title": "🕐 Projetos Recentes",
   "empty_state.browse.dialog_title": "📂 Selecionar pasta do projeto",
+
+  "status_bar.idle": "Ocioso",
+  "status_bar.tokens_count": "Tokens: {tokens}",
 
   "status_bar.local_model": " (modelo local)",
 

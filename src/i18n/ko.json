@@ -30,6 +30,8 @@
   "main_window.command.check_updates": "🔄 업데이트 확인",
   "main_window.save_file.title": "파일 저장",
 
+  "dialogs.ai_chat_title": "AI 채팅 (CodeContext)",
+
   "dialogs.chat.placeholder": "코드에 대해 질문하세요...",
   "dialogs.chat.send": "보내기",
   "dialogs.chat.system_loaded": "📎 시스템 컨텍스트가 로드되었습니다. 질문할 수 있습니다.",
@@ -45,6 +47,19 @@
   "dialogs.preview.select_file": "파일:",
   "dialogs.preview.savings_initial": "📊 원본과 압축 버전 비교",
   "dialogs.preview.savings": "절약: {original} → {processed} 토큰 ({percent:.1f}%)",
+
+  "dialogs.bug_report.title": "버그 신고",
+  "dialogs.bug_report.description": "발생한 버그를 설명해주세요:",
+  "dialogs.bug_report.placeholder": "재현 단계, 예상 동작 등...",
+  "dialogs.bug_report.logs_label": "로그 포함:",
+  "dialogs.bug_report.logs_today": "오늘 로그 (권장)",
+  "dialogs.bug_report.logs_all": "모든 로그 (최근 500줄)",
+  "dialogs.bug_report.logs_none": "로그 포함 안 함",
+  "dialogs.bug_report.send": "복사 및 GitHub 열기",
+  "dialogs.bug_report.empty_desc": "버그를 설명해주세요.",
+  "dialogs.bug_report.copied_title": "클립보드에 복사됨",
+  "dialogs.bug_report.copied_msg": "Issue 템플릿이 복사되었습니다. GitHub Issue 본문에 붙여넣으세요.",
+  "sidebar.bug_report.tooltip": "버그를 찾으셨나요? Issue로 보내기",
 
   "dialogs.tour.title": "🎓 대화형 둘러보기",
   "dialogs.tour.prev": "← 뒤로",
@@ -186,6 +201,11 @@
   "sidebar.import_theme.success": "테마 \"{filename}\"을(를) 성공적으로 가져왔습니다.",
   "sidebar.import_theme.error": "테마 가져오기 오류: {error}",
 
+  "action_panel.minify": "최소화",
+  "action_panel.no_comments": "주석 없음",
+  "action_panel.no_secrets": "비밀 값 숨김",
+  "action_panel.skeleton": "스켈레톤",
+
   "action_panel.template.tooltip": "📁 Jinja2 템플릿 선택",
   "action_panel.preview.button": "👁 미리보기",
   "action_panel.clipboard.button": "📋 복사",
@@ -200,6 +220,9 @@
   "empty_state.browse.button": "📂 폴더 찾아보기",
   "empty_state.recent.title": "🕐 최근 프로젝트",
   "empty_state.browse.dialog_title": "📂 프로젝트 폴더 선택",
+
+  "status_bar.idle": "대기 중",
+  "status_bar.tokens_count": "토큰: {tokens}",
 
   "status_bar.local_model": " (로컬 모델)",
 

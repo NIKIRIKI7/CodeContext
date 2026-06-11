@@ -15,7 +15,7 @@ class ChatDialog(QDialog):
         super().__init__(parent)
         self.state = state
         self.controller = controller
-        self.setWindowTitle("AI Chat (CodeContext)")
+        self.setWindowTitle(tr("dialogs.ai_chat_title"))
         self.resize(850, 650)
 
         layout = QVBoxLayout(self)

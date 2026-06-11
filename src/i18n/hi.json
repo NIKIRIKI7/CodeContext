@@ -30,6 +30,8 @@
   "main_window.command.check_updates": "🔄 अपडेट जांचें",
   "main_window.save_file.title": "फ़ाइल सहेजें",
 
+  "dialogs.ai_chat_title": "AI चैट (CodeContext)",
+
   "dialogs.chat.placeholder": "कोड के बारे में प्रश्न पूछें...",
   "dialogs.chat.send": "भेजें",
   "dialogs.chat.system_loaded": "📎 सिस्टम कॉन्टेक्स्ट लोड हुआ। आप प्रश्न पूछ सकते हैं।",
@@ -45,6 +47,19 @@
   "dialogs.preview.select_file": "फ़ाइल:",
   "dialogs.preview.savings_initial": "📊 मूल और संपीड़ित संस्करण की तुलना करें",
   "dialogs.preview.savings": "बचत: {original} → {processed} टोकन ({percent:.1f}%)",
+
+  "dialogs.bug_report.title": "बग रिपोर्ट",
+  "dialogs.bug_report.description": "आपको जो बग मिला उसका वर्णन करें:",
+  "dialogs.bug_report.placeholder": "पुनरुत्पादन के चरण, अपेक्षित व्यवहार, आदि...",
+  "dialogs.bug_report.logs_label": "लॉग शामिल करें:",
+  "dialogs.bug_report.logs_today": "आज के लॉग (अनुशंसित)",
+  "dialogs.bug_report.logs_all": "सभी लॉग (अंतिम 500 पंक्तियाँ)",
+  "dialogs.bug_report.logs_none": "लॉग शामिल न करें",
+  "dialogs.bug_report.send": "कॉपी करें और GitHub खोलें",
+  "dialogs.bug_report.empty_desc": "कृपया बग का वर्णन करें।",
+  "dialogs.bug_report.copied_title": "क्लिपबोर्ड पर कॉपी किया गया",
+  "dialogs.bug_report.copied_msg": "Issue टेम्पलेट कॉपी हो गया। इसे GitHub Issue बॉडी में पेस्ट करें।",
+  "sidebar.bug_report.tooltip": "बग मिला? Issue पर भेजें",
 
   "dialogs.tour.title": "🎓 इंटरैक्टिव टूर",
   "dialogs.tour.prev": "← पीछे",
@@ -186,6 +201,11 @@
   "sidebar.import_theme.success": "थीम \"{filename}\" सफलतापूर्वक आयात हुई।",
   "sidebar.import_theme.error": "थीम आयात करने में त्रुटि: {error}",
 
+  "action_panel.minify": "मिनिफ़ाई",
+  "action_panel.no_comments": "कोई टिप्पणी नहीं",
+  "action_panel.no_secrets": "कोई रहस्य नहीं",
+  "action_panel.skeleton": "कंकाल",
+
   "action_panel.template.tooltip": "📁 Jinja2 टेम्पलेट चुनें",
   "action_panel.preview.button": "👁 पूर्वावलोकन",
   "action_panel.clipboard.button": "📋 कॉपी करें",
@@ -200,6 +220,9 @@
   "empty_state.browse.button": "📂 फ़ोल्डर ब्राउज़ करें",
   "empty_state.recent.title": "🕐 हाल के प्रोजेक्ट",
   "empty_state.browse.dialog_title": "📂 प्रोजेक्ट फ़ोल्डर चुनें",
+
+  "status_bar.idle": "निष्क्रिय",
+  "status_bar.tokens_count": "टोकन: {tokens}",
 
   "status_bar.local_model": " (स्थानीय मॉडल)",
 

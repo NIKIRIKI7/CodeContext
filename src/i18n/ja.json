@@ -30,6 +30,8 @@
   "main_window.command.check_updates": "🔄 アップデートを確認",
   "main_window.save_file.title": "ファイルを保存",
 
+  "dialogs.ai_chat_title": "AI チャット (CodeContext)",
+
   "dialogs.chat.placeholder": "コードについて質問してください...",
   "dialogs.chat.send": "送信",
   "dialogs.chat.system_loaded": "📎 システムコンテキストが読み込まれました。質問できます。",
@@ -45,6 +47,19 @@
   "dialogs.preview.select_file": "ファイル:",
   "dialogs.preview.savings_initial": "📊 オリジナルと圧縮版の比較",
   "dialogs.preview.savings": "削減量: {original} → {processed} トークン ({percent:.1f}%)",
+
+  "dialogs.bug_report.title": "バグ報告",
+  "dialogs.bug_report.description": "発生したバグを説明してください：",
+  "dialogs.bug_report.placeholder": "再現手順、期待される動作など...",
+  "dialogs.bug_report.logs_label": "ログを含める：",
+  "dialogs.bug_report.logs_today": "今日のログ（推奨）",
+  "dialogs.bug_report.logs_all": "すべてのログ（最新500行）",
+  "dialogs.bug_report.logs_none": "ログを含めない",
+  "dialogs.bug_report.send": "コピーして GitHub を開く",
+  "dialogs.bug_report.empty_desc": "バグを説明してください。",
+  "dialogs.bug_report.copied_title": "クリップボードにコピーしました",
+  "dialogs.bug_report.copied_msg": "Issue テンプレートをコピーしました。GitHub Issue 本文に貼り付けてください。",
+  "sidebar.bug_report.tooltip": "バグを見つけましたか？ Issue に送信",
 
   "dialogs.tour.title": "🎓 インタラクティブツアー",
   "dialogs.tour.prev": "← 戻る",
@@ -186,6 +201,11 @@
   "sidebar.import_theme.success": "テーマ「{filename}」が正常にインポートされました。",
   "sidebar.import_theme.error": "テーマのインポート中にエラーが発生しました: {error}",
 
+  "action_panel.minify": "最小化",
+  "action_panel.no_comments": "コメントなし",
+  "action_panel.no_secrets": "シークレットなし",
+  "action_panel.skeleton": "スケルトン",
+
   "action_panel.template.tooltip": "📁 Jinja2テンプレートを選択",
   "action_panel.preview.button": "👁 プレビュー",
   "action_panel.clipboard.button": "📋 コピー",
@@ -200,6 +220,9 @@
   "empty_state.browse.button": "📂 フォルダを参照",
   "empty_state.recent.title": "🕐 最近のプロジェクト",
   "empty_state.browse.dialog_title": "📂 プロジェクトフォルダを選択",
+
+  "status_bar.idle": "待機中",
+  "status_bar.tokens_count": "トークン: {tokens}",
 
   "status_bar.local_model": "（ローカルモデル）",
 

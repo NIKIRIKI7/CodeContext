@@ -30,6 +30,8 @@
   "main_window.command.check_updates": "🔄 Nach Updates suchen",
   "main_window.save_file.title": "Datei speichern",
 
+  "dialogs.ai_chat_title": "KI-Chat (CodeContext)",
+
   "dialogs.chat.placeholder": "Stelle eine Frage zum Code...",
   "dialogs.chat.send": "Senden",
   "dialogs.chat.system_loaded": "📎 Systemkontext geladen. Du kannst eine Frage stellen.",
@@ -45,6 +47,19 @@
   "dialogs.preview.select_file": "Datei:",
   "dialogs.preview.savings_initial": "📊 Original und komprimierte Version vergleichen",
   "dialogs.preview.savings": "Ersparnis: {original} → {processed} Tokens ({percent:.1f}%)",
+
+  "dialogs.bug_report.title": "Fehlerbericht",
+  "dialogs.bug_report.description": "Beschreiben Sie den aufgetretenen Fehler:",
+  "dialogs.bug_report.placeholder": "Schritte zum Reproduzieren, erwartetes Verhalten usw...",
+  "dialogs.bug_report.logs_label": "Logs anhängen:",
+  "dialogs.bug_report.logs_today": "Heutige Logs (empfohlen)",
+  "dialogs.bug_report.logs_all": "Alle Logs (letzte 500 Zeilen)",
+  "dialogs.bug_report.logs_none": "Keine Logs anhängen",
+  "dialogs.bug_report.send": "Kopieren & GitHub öffnen",
+  "dialogs.bug_report.empty_desc": "Bitte beschreiben Sie den Fehler.",
+  "dialogs.bug_report.copied_title": "In Zwischenablage kopiert",
+  "dialogs.bug_report.copied_msg": "Issue-Vorlage kopiert. In GitHub-Issue einfügen.",
+  "sidebar.bug_report.tooltip": "Fehler gefunden? Als Issue melden",
 
   "dialogs.tour.title": "🎓 Interaktive Tour",
   "dialogs.tour.prev": "← Zurück",
@@ -186,6 +201,11 @@
   "sidebar.import_theme.success": "Design \"{filename}\" erfolgreich importiert.",
   "sidebar.import_theme.error": "Fehler beim Importieren des Designs: {error}",
 
+  "action_panel.minify": "Minimieren",
+  "action_panel.no_comments": "Keine Kommentare",
+  "action_panel.no_secrets": "Keine Geheimnisse",
+  "action_panel.skeleton": "Grundgerüst",
+
   "action_panel.template.tooltip": "📁 Jinja2-Vorlage auswählen",
   "action_panel.preview.button": "👁 Vorschau",
   "action_panel.clipboard.button": "📋 Kopieren",
@@ -200,6 +220,9 @@
   "empty_state.browse.button": "📂 Ordner durchsuchen",
   "empty_state.recent.title": "🕐 Letzte Projekte",
   "empty_state.browse.dialog_title": "📂 Projektordner auswählen",
+
+  "status_bar.idle": "Bereit",
+  "status_bar.tokens_count": "Token: {tokens}",
 
   "status_bar.local_model": " (lokales Modell)",
 

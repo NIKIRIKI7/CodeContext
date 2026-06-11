@@ -19,10 +19,10 @@ class ActionPanel(QWidget):
         row1 = QHBoxLayout()
         row1.setSpacing(8)
 
-        self.chk_minify = QCheckBox("Minify")
-        self.chk_comments = QCheckBox("No Comments")
-        self.chk_secrets = QCheckBox("No Secrets")
-        self.chk_skeleton = QCheckBox("Skeleton")
+        self.chk_minify = QCheckBox(tr("action_panel.minify"))
+        self.chk_comments = QCheckBox(tr("action_panel.no_comments"))
+        self.chk_secrets = QCheckBox(tr("action_panel.no_secrets"))
+        self.chk_skeleton = QCheckBox(tr("action_panel.skeleton"))
 
         self.cmb_format = QComboBox()
         self.cmb_format.addItems(["markdown", "xml", "plain", "jsonl_chunk", "custom"])

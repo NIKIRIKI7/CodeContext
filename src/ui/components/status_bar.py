@@ -9,13 +9,13 @@ class StatusBar(QWidget):
         self.layout = QHBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
 
-        self.lbl_status = QLabel("Idle")
+        self.lbl_status = QLabel(tr("status_bar.idle"))
         self.lbl_status.setProperty("cssClass", "muted")
 
         self.progress = QProgressBar()
         self.progress.setTextVisible(False)
 
-        self.lbl_tokens = QLabel("Tokens: 0")
+        self.lbl_tokens = QLabel(tr("status_bar.tokens_count", tokens=0))
         self.lbl_tokens.setProperty("cssClass", "muted")
 
         self.layout.addWidget(self.lbl_status)
@@ -34,4 +34,4 @@ class StatusBar(QWidget):
         self.progress.setValue(int(prog * 100))
 
         cost_str = f" (~${cost:.4f})" if cost > 0 else tr("status_bar.local_model")
-        self.lbl_tokens.setText(f"Tokens: {tokens}{cost_str}")
+        self.lbl_tokens.setText(tr("status_bar.tokens_count", tokens=tokens) + cost_str)

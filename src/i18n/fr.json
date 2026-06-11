@@ -30,6 +30,8 @@
   "main_window.command.check_updates": "🔄 Vérifier les mises à jour",
   "main_window.save_file.title": "Enregistrer le fichier",
 
+  "dialogs.ai_chat_title": "Chat IA (CodeContext)",
+
   "dialogs.chat.placeholder": "Posez une question sur le code...",
   "dialogs.chat.send": "Envoyer",
   "dialogs.chat.system_loaded": "📎 Contexte système chargé. Vous pouvez poser une question.",
@@ -45,6 +47,19 @@
   "dialogs.preview.select_file": "Fichier :",
   "dialogs.preview.savings_initial": "📊 Comparer la version originale et la version compressée",
   "dialogs.preview.savings": "Économie : {original} → {processed} jetons ({percent:.1f}%)",
+
+  "dialogs.bug_report.title": "Signaler un bug",
+  "dialogs.bug_report.description": "Décrivez le bug rencontré :",
+  "dialogs.bug_report.placeholder": "Étapes pour reproduire, comportement attendu, etc...",
+  "dialogs.bug_report.logs_label": "Inclure les logs :",
+  "dialogs.bug_report.logs_today": "Logs d'aujourd'hui (Recommandé)",
+  "dialogs.bug_report.logs_all": "Tous les logs (500 dernières lignes)",
+  "dialogs.bug_report.logs_none": "Ne pas inclure les logs",
+  "dialogs.bug_report.send": "Copier et ouvrir GitHub",
+  "dialogs.bug_report.empty_desc": "Veuillez décrire le bug.",
+  "dialogs.bug_report.copied_title": "Copié dans le presse-papier",
+  "dialogs.bug_report.copied_msg": "Modèle d'Issue copié. Collez-le dans le corps de l'Issue GitHub.",
+  "sidebar.bug_report.tooltip": "Bug trouvé ? Envoyer vers Issue",
 
   "dialogs.tour.title": "🎓 Visite interactive",
   "dialogs.tour.prev": "← Retour",
@@ -186,6 +201,11 @@
   "sidebar.import_theme.success": "Thème \"{filename}\" importé avec succès.",
   "sidebar.import_theme.error": "Erreur lors de l'importation du thème : {error}",
 
+  "action_panel.minify": "Minifier",
+  "action_panel.no_comments": "Sans commentaires",
+  "action_panel.no_secrets": "Sans secrets",
+  "action_panel.skeleton": "Squelette",
+
   "action_panel.template.tooltip": "📁 Sélectionner un modèle Jinja2",
   "action_panel.preview.button": "👁 Aperçu",
   "action_panel.clipboard.button": "📋 Copier",
@@ -200,6 +220,9 @@
   "empty_state.browse.button": "📂 Parcourir un dossier",
   "empty_state.recent.title": "🕐 Projets récents",
   "empty_state.browse.dialog_title": "📂 Sélectionner le dossier du projet",
+
+  "status_bar.idle": "Inactif",
+  "status_bar.tokens_count": "Jetons : {tokens}",
 
   "status_bar.local_model": " (modèle local)",
 

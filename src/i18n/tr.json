@@ -30,6 +30,8 @@
   "main_window.command.check_updates": "🔄 Güncellemeleri Kontrol Et",
   "main_window.save_file.title": "Dosyayı Kaydet",
 
+  "dialogs.ai_chat_title": "AI Sohbet (CodeContext)",
+
   "dialogs.chat.placeholder": "Kod hakkında bir soru sorun...",
   "dialogs.chat.send": "Gönder",
   "dialogs.chat.system_loaded": "📎 Sistem bağlamı yüklendi. Bir soru sorabilirsiniz.",
@@ -45,6 +47,19 @@
   "dialogs.preview.select_file": "Dosya:",
   "dialogs.preview.savings_initial": "📊 Orijinal ve sıkıştırılmış sürümü karşılaştır",
   "dialogs.preview.savings": "Tasarruf: {original} → {processed} token ({percent:.1f}%)",
+
+  "dialogs.bug_report.title": "Hata Bildir",
+  "dialogs.bug_report.description": "Karşılaştığın hatayı açıkla:",
+  "dialogs.bug_report.placeholder": "Tekrarlama adımları, beklenen davranış, vb...",
+  "dialogs.bug_report.logs_label": "Günlükleri dahil et:",
+  "dialogs.bug_report.logs_today": "Bugünün günlükleri (Önerilen)",
+  "dialogs.bug_report.logs_all": "Tüm günlükler (son 500 satır)",
+  "dialogs.bug_report.logs_none": "Günlükleri dahil etme",
+  "dialogs.bug_report.send": "Kopyala ve GitHub'ı aç",
+  "dialogs.bug_report.empty_desc": "Lütfen hatayı açıkla.",
+  "dialogs.bug_report.copied_title": "Panoya kopyalandı",
+  "dialogs.bug_report.copied_msg": "Issue şablonu kopyalandı. GitHub Issue gövdesine yapıştır.",
+  "sidebar.bug_report.tooltip": "Hata buldun mu? Issue'a gönder",
 
   "dialogs.tour.title": "🎓 Etkileşimli Tur",
   "dialogs.tour.prev": "← Geri",
@@ -186,6 +201,11 @@
   "sidebar.import_theme.success": "\"{filename}\" teması başarıyla içe aktarıldı.",
   "sidebar.import_theme.error": "Tema içe aktarılırken hata: {error}",
 
+  "action_panel.minify": "Küçült",
+  "action_panel.no_comments": "Yorum yok",
+  "action_panel.no_secrets": "Sır yok",
+  "action_panel.skeleton": "İskelet",
+
   "action_panel.template.tooltip": "📁 Jinja2 şablonu seç",
   "action_panel.preview.button": "👁 Önizleme",
   "action_panel.clipboard.button": "📋 Kopyala",
@@ -200,6 +220,9 @@
   "empty_state.browse.button": "📂 Klasöre Gözat",
   "empty_state.recent.title": "🕐 Son Projeler",
   "empty_state.browse.dialog_title": "📂 Proje klasörünü seç",
+
+  "status_bar.idle": "Boşta",
+  "status_bar.tokens_count": "Token: {tokens}",
 
   "status_bar.local_model": " (yerel model)",
 
