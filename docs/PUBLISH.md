@@ -45,10 +45,21 @@ codecontext --cli --path ./project  # CLI-режим
 
 ### Обновление версии
 
-1. Обновить `version` в `pyproject.toml`
-2. Обновить `VERSION.txt`
-3. Пересобрать: `python -m build`
-4. Загрузить: `python -m twine upload dist/*`
+Версия задаётся **только** в `VERSION.txt`. Остальные файлы синхронизируются автоматически.
+
+```bash
+# 1. Обновить версию
+echo "1.15.0" > VERSION.txt
+
+# 2. Синхронизировать сборки (AUR, PyPI)
+.\scripts\sync-version.ps1
+
+# 3. Пересобрать для PyPI
+python -m build
+
+# 4. Загрузить на PyPI
+python -m twine upload dist/*
+```
 
 ---
 

@@ -44,49 +44,58 @@ sudo pacman -Rns codecontext-ai
 
 # Обновление AUR-пакета (для мейнтейнера)
 
-Эти инструкции для тех, кто поддерживает пакет `codecontext-ai` в AUR.
+## Быстрый способ (рекомендуется)
 
-## Подготовка
+Версия задаётся **только** в `VERSION.txt`. Остальные файлы синхронизируются скриптом.
 
-```bash
-cd aur_build/codecontext-ai
-git pull
-```
+```powershell
+# 1. Обновить версию
+Set-Content VERSION.txt -Value "1.15.0"
 
-## 1. Обновить версию в PKGBUILD
+# 2. Синхронизировать все сборки
+.\scripts\sync-version.ps1 -CommitAur
 
-Измени `pkgver` на новую версию (например, `1.15.0`) и при необходимости `pkgrel` (сбрось в `1` при новом `pkgver`, увеличь при исправлении сборки):
-
-```bash
-# Например: vim PKGBUILD
-# pkgver=1.15.0
-# pkgrel=1
-```
-
-Убедись, что тег `v<новая-версия>` существует на GitHub:
-
-```bash
-git ls-remote --tags https://github.com/NIKIRIKI7/CodeContext.git | grep v1.15.0
-```
-
-## 2. Обновить .SRCINFO
-
-Сгенерируй новый `.SRCINFO` из PKGBUILD:
-
-```bash
-makepkg --printsrcinfo > .SRCINFO
-```
-
-Если нет `makepkg` (например, на Windows), отредактируй `.SRCINFO` вручную: обнови `pkgver`, `pkgrel` и `source` (URL с тегом).
-
-## 3. Закоммитить и запушить
-
-```bash
-git add PKGBUILD .SRCINFO
-git commit -m "update to v1.15.0"
+# 3. Закоммитить в GitHub
+git add VERSION.txt
+git commit -m "Bump version: 1.14.0 → 1.15.0"
 git push
 ```
 
-## 4. Проверить
+Убедись, что тег `v1.15.0` существует на GitHub.
 
-Открой https://aur.archlinux.org/packages/codecontext-ai — должна отображаться новая версия.
+## Пошагово
+
+### 1. Обновить VERSION.txt
+
+```bash
+echo "1.15.0" > VERSION.txt
+```
+
+### 2. Синхронизировать сборки
+
+Скрипт обновит PKGBUILD и .SRCINFO в AUR-репозитории:
+
+```powershell
+.\scripts\sync-version.ps1
+```
+
+### 3. Закоммитить и запушить в AUR
+
+```bash
+cd aur_build/codecontext-ai
+git add PKGBUILD .SRCINFO
+git commit -m "update to v1.15.0"
+git push
+cd ../..
+```
+
+### 4. Если нужен bumpversion (альтернатива п.1)
+
+```bash
+bumpversion patch  # или minor, или major
+.\scripts\sync-version.ps1 -CommitAur
+```
+
+### 5. Проверить
+
+Открой https://aur.archlinux.org/packages/codecontext-ai
