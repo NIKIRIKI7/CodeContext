@@ -23,12 +23,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Read Version
+      - name: Read Version (clean BOM)
         id: set_ver
         shell: bash
         run: |
           if [ -f "VERSION.txt" ]; then
-            VER="v$(cat VERSION.txt | tr -d '[:space:]')"
+            VER="v$(cat VERSION.txt | tr -d '\357\273\277[:space:]')"
           else
             VER="v1.0.0"
           fi
