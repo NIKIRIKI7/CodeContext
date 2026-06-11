@@ -189,9 +189,9 @@ jobs:
           name: bin-macos-arm64
           path: build_output/*
 
-  # 5. Публикация релиза (только при пуше тега)
+  # 5. Публикация релиза (тег v* — полноценный, main — черновик)
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
     needs: [prepare, build-linux, build-windows, build-macos]
     runs-on: ubuntu-latest
     steps:
@@ -207,6 +207,7 @@ jobs:
           tag_name: ${{ needs.prepare.outputs.tag_name }}
           name: "CodeContext ${{ needs.prepare.outputs.tag_name }}"
           prerelease: ${{ needs.prepare.outputs.is_prerelease == 'true' }}
+          draft: ${{ github.ref != 'refs/heads/main' && 'false' || 'true' }}
           generate_release_notes: true
           files: ./release-assets/*
           fail_on_unmatched_files: false
