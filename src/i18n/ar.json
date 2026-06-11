@@ -222,6 +222,10 @@
   "action_panel.editor.button": "📝 محرر",
   "action_panel.editor.tooltip": "📝 فتح في المحرر",
   "action_panel.file.button": "💾 ملف",
+  "action_panel.chk_dedup": "إزالة التكرار",
+  "action_panel.chk_aggressive": "مكثف",
+  "action_panel.chk_checkpoints": "نقاط التحقق",
+  "action_panel.chk_watch": "مراقبة تلقائية",
   "action_panel.template.dialog_title": "تحديد قالب Jinja2",
 
   "empty_state.drop.title": "📂 أسقط مجلداً هنا",

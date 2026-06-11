@@ -222,6 +222,10 @@
   "action_panel.editor.button": "📝 एडिटर",
   "action_panel.editor.tooltip": "📝 एडिटर में खोलें",
   "action_panel.file.button": "💾 फ़ाइल",
+  "action_panel.chk_dedup": "डीडुप",
+  "action_panel.chk_aggressive": "आक्रामक",
+  "action_panel.chk_checkpoints": "चेकपॉइंट",
+  "action_panel.chk_watch": "ऑटो-वॉच",
   "action_panel.template.dialog_title": "Jinja2 टेम्पलेट चुनें",
 
   "empty_state.drop.title": "📂 यहाँ एक फ़ोल्डर छोड़ें",

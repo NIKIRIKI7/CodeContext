@@ -222,6 +222,10 @@
   "action_panel.editor.button": "📝 Düzenleyici",
   "action_panel.editor.tooltip": "📝 Düzenleyicide aç",
   "action_panel.file.button": "💾 Dosya",
+  "action_panel.chk_dedup": "Yineleme sil",
+  "action_panel.chk_aggressive": "Agresif",
+  "action_panel.chk_checkpoints": "Kontrol noktaları",
+  "action_panel.chk_watch": "Otomatik izle",
   "action_panel.template.dialog_title": "Jinja2 şablonu seç",
 
   "empty_state.drop.title": "📂 Bir klasörü buraya bırakın",

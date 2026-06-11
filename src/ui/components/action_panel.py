@@ -119,6 +119,10 @@ class ActionPanel(QWidget):
         self.chk_comments.setChecked(settings.remove_comments)
         self.chk_secrets.setChecked(settings.remove_secrets)
         self.chk_skeleton.setChecked(settings.skeleton_mode)
+        self.chk_dedup.setChecked(getattr(settings, 'deduplicate', False))
+        self.chk_aggressive.setChecked(getattr(settings, 'aggressive_minify', False))
+        self.chk_checkpoints.setChecked(getattr(settings, 'save_checkpoints', False))
+        self.chk_watch.setChecked(getattr(settings, 'auto_watch', False))
 
         self._current_template_path = settings.template_path
         self.cmb_format.setCurrentText(settings.output_format)
@@ -133,6 +137,10 @@ class ActionPanel(QWidget):
         self.chk_comments.setText(tr("action_panel.chk_comments"))
         self.chk_secrets.setText(tr("action_panel.chk_secrets"))
         self.chk_skeleton.setText(tr("action_panel.chk_skeleton"))
+        self.chk_dedup.setText(tr("action_panel.chk_dedup"))
+        self.chk_aggressive.setText(tr("action_panel.chk_aggressive"))
+        self.chk_checkpoints.setText(tr("action_panel.chk_checkpoints"))
+        self.chk_watch.setText(tr("action_panel.chk_watch"))
         self.btn_template.setToolTip(tr("action_panel.template.tooltip"))
         self.btn_preview.setText(tr("action_panel.preview.button"))
         self.btn_copy.setText(tr("action_panel.clipboard.button"))
@@ -147,6 +155,10 @@ class ActionPanel(QWidget):
             'remove_comments': self.chk_comments.isChecked(),
             'remove_secrets': self.chk_secrets.isChecked(),
             'skeleton_mode': self.chk_skeleton.isChecked(),
+            'deduplicate': self.chk_dedup.isChecked(),
+            'aggressive_minify': self.chk_aggressive.isChecked(),
+            'save_checkpoints': self.chk_checkpoints.isChecked(),
+            'auto_watch': self.chk_watch.isChecked(),
             'output_format': self.cmb_format.currentText(),
             'template_path': getattr(self, '_current_template_path', "")
         }

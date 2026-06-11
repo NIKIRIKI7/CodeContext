@@ -222,6 +222,10 @@
   "action_panel.editor.button": "📝 편집기",
   "action_panel.editor.tooltip": "📝 편집기에서 열기",
   "action_panel.file.button": "💾 파일",
+  "action_panel.chk_dedup": "중복 제거",
+  "action_panel.chk_aggressive": "적극적",
+  "action_panel.chk_checkpoints": "체크포인트",
+  "action_panel.chk_watch": "자동 감시",
   "action_panel.template.dialog_title": "Jinja2 템플릿 선택",
 
   "empty_state.drop.title": "📂 여기에 폴더를 드롭하세요",

@@ -222,6 +222,10 @@
   "action_panel.editor.button": "📝 Editor",
   "action_panel.editor.tooltip": "📝 Openen in editor",
   "action_panel.file.button": "💾 Bestand",
+  "action_panel.chk_dedup": "Dedupliceren",
+  "action_panel.chk_aggressive": "Agressief",
+  "action_panel.chk_checkpoints": "Checkpoints",
+  "action_panel.chk_watch": "Auto-bewaken",
   "action_panel.template.dialog_title": "Jinja2-sjabloon selecteren",
 
   "empty_state.drop.title": "📂 Sleep een map hiernaartoe",

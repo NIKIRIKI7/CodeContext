@@ -220,6 +220,10 @@
   "action_panel.editor.button": "📝 Редактор",
   "action_panel.editor.tooltip": "📝 Открыть в редакторе",
   "action_panel.file.button": "💾 Файл",
+  "action_panel.chk_dedup": "Дедупликация",
+  "action_panel.chk_aggressive": "Агрессивная",
+  "action_panel.chk_checkpoints": "Контр. точки",
+  "action_panel.chk_watch": "Авто-слежка",
   "action_panel.template.dialog_title": "Выберите Jinja2 шаблон",
 
   "empty_state.drop.title": "📂 Перетащите папку сюда",

@@ -222,6 +222,10 @@
   "action_panel.editor.button": "📝 Éditeur",
   "action_panel.editor.tooltip": "📝 Ouvrir dans l'éditeur",
   "action_panel.file.button": "💾 Fichier",
+  "action_panel.chk_dedup": "Dédoublonner",
+  "action_panel.chk_aggressive": "Agressif",
+  "action_panel.chk_checkpoints": "Points de contrôle",
+  "action_panel.chk_watch": "Auto-surveillance",
   "action_panel.template.dialog_title": "Sélectionner un modèle Jinja2",
 
   "empty_state.drop.title": "📂 Déposez un dossier ici",

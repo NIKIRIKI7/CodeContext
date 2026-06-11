@@ -222,6 +222,10 @@
   "action_panel.editor.button": "📝 编辑器",
   "action_panel.editor.tooltip": "📝 在编辑器中打开",
   "action_panel.file.button": "💾 文件",
+  "action_panel.chk_dedup": "去重",
+  "action_panel.chk_aggressive": "积极",
+  "action_panel.chk_checkpoints": "检查点",
+  "action_panel.chk_watch": "自动监视",
   "action_panel.template.dialog_title": "选择 Jinja2 模板",
 
   "empty_state.drop.title": "📂 将文件夹拖放到此处",

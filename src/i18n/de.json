@@ -222,6 +222,10 @@
   "action_panel.editor.button": "📝 Editor",
   "action_panel.editor.tooltip": "📝 Im Editor öffnen",
   "action_panel.file.button": "💾 Datei",
+  "action_panel.chk_dedup": "Deduplizieren",
+  "action_panel.chk_aggressive": "Aggressiv",
+  "action_panel.chk_checkpoints": "Checkpoints",
+  "action_panel.chk_watch": "Auto-Überwachen",
   "action_panel.template.dialog_title": "Jinja2-Vorlage auswählen",
 
   "empty_state.drop.title": "📂 Ordner hier ablegen",

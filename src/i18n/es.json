@@ -222,6 +222,10 @@
   "action_panel.editor.button": "📝 Editor",
   "action_panel.editor.tooltip": "📝 Abrir en el editor",
   "action_panel.file.button": "💾 Archivo",
+  "action_panel.chk_dedup": "Deduplicar",
+  "action_panel.chk_aggressive": "Agresivo",
+  "action_panel.chk_checkpoints": "Puntos control",
+  "action_panel.chk_watch": "Auto-observar",
   "action_panel.template.dialog_title": "Seleccionar plantilla Jinja2",
 
   "empty_state.drop.title": "📂 Suelta una carpeta aquí",
