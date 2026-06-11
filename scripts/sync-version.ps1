@@ -21,7 +21,7 @@ $PKGBUILDS = @(
 foreach ($f in $PKGBUILDS) {
   if (Test-Path $f) {
     $content = Get-Content $f -Raw
-    $content = $content -replace '(?<=^pkgver=)\S+', $VERSION
+    $content = $content -replace '(?<=\n)pkgver=\d+\.\d+\.\d+', "`npkgver=$VERSION"
     Set-Content -NoNewline -Path $f -Value $content
     Write-Host "  Updated: $f"
   }
@@ -36,7 +36,7 @@ $SRCINFOS = @(
 foreach ($f in $SRCINFOS) {
   if (Test-Path $f) {
     $content = Get-Content $f -Raw
-    $content = $content -replace '(?<=^pkgver = )\S+', $VERSION
+    $content = $content -replace '(?<=\n\s)pkgver = \d+\.\d+\.\d+', "`n`tpkgver = $VERSION"
     $content = $content -replace '(?<=tags/)v\S+\.tar\.gz', "v$VERSION.tar.gz"
     $content = $content -replace '(?<=codecontext-ai-)\d+\.\d+\.\d+(?=\.tar\.gz)', $VERSION
     Set-Content -NoNewline -Path $f -Value $content

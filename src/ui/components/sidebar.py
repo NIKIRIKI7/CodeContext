@@ -40,7 +40,8 @@ class Sidebar(QWidget):
         self.tabs = QTabWidget()
         self.layout.addWidget(self.tabs)
 
-        self._rebuild_tabs(self.controller._store.state.settings.visible_tabs if hasattr(self.controller._store.state.settings, 'visible_tabs') else ["sources", "filters", "prompts", "llm_os", "appearance"])
+        visible_tabs = getattr(self.controller._store.state.settings, 'visible_tabs', ["sources", "filters", "prompts", "llm_os", "appearance"])
+        self._rebuild_tabs(visible_tabs)
 
         bottom_layout = QHBoxLayout()
         btn_ui_settings = QPushButton("\u2699")
@@ -81,16 +82,20 @@ class Sidebar(QWidget):
             'visible_actions': visible_actions,
         })
         self.controller.save_settings()
-        self._rebuild_tabs(visible_tabs)
 
     def _rebuild_tabs(self, visible_tabs):
         self.tabs.blockSignals(True)
         self.tabs.clear()
+
+        self.tab_widgets = {}
         for tab_id, label, method_name in self.TAB_DEFS:
+            tab = QWidget()
+            getattr(self, method_name)(tab)
+            self.tab_widgets[tab_id] = tab
             if tab_id in visible_tabs:
-                tab = QWidget()
-                getattr(self, method_name)(tab)
                 self.tabs.addTab(tab, tr(label))
+
+        self._current_visible_tabs = visible_tabs
         self.tabs.blockSignals(False)
 
     def _update_metrics(self):
@@ -105,13 +110,16 @@ class Sidebar(QWidget):
 
         btn_layout = QHBoxLayout()
         btn_layout.setContentsMargins(0, 0, 0, 10)
+
         btn_add = QPushButton(tr("sidebar.sources.add_folder"))
         btn_add.setProperty("cssClass", "ghost")
         btn_add.clicked.connect(self._add_folder)
+
         btn_gh = QPushButton(tr("sidebar.sources.add_github"))
         btn_gh.setProperty("cssClass", "success")
         btn_gh.setToolTip(tr("sidebar.sources.github_tooltip"))
         btn_gh.clicked.connect(self._add_github)
+
         btn_layout.addWidget(btn_add)
         btn_layout.addWidget(btn_gh)
         layout.addLayout(btn_layout)
@@ -135,6 +143,7 @@ class Sidebar(QWidget):
         btn_clear.setProperty("cssClass", "ghost")
         btn_clear.clicked.connect(self.controller.clear_folders)
         layout.addWidget(btn_clear)
+
         layout.addStretch()
 
     def _build_filters_tab(self, tab):
@@ -180,6 +189,7 @@ class Sidebar(QWidget):
         layout.addWidget(self.chk_tree)
         layout.addWidget(self.chk_dependencies)
         layout.addWidget(self.chk_mermaid)
+
         layout.addStretch()
 
     def _build_prompts_tab(self, tab):
@@ -235,7 +245,6 @@ class Sidebar(QWidget):
         self.entry_llm_key.setPlaceholderText("sk-...")
         self.entry_llm_model = QLineEdit()
         self.entry_llm_model.setPlaceholderText("gpt-4o-mini / local-model")
-
         form_llm.addRow(tr("sidebar.llm_os.url_label"), self.entry_llm_url)
         form_llm.addRow(tr("sidebar.llm_os.key_label"), self.entry_llm_key)
         form_llm.addRow(tr("sidebar.llm_os.model_label"), self.entry_llm_model)
@@ -245,9 +254,11 @@ class Sidebar(QWidget):
         btn_ollama = QPushButton(tr("sidebar.llm_os.ollama_preset"))
         btn_ollama.setProperty("cssClass", "ghost")
         btn_ollama.clicked.connect(lambda: self._apply_llm_preset("http://localhost:11434/v1", "llama3"))
+
         btn_lmstudio = QPushButton(tr("sidebar.llm_os.lmstudio_preset"))
         btn_lmstudio.setProperty("cssClass", "ghost")
         btn_lmstudio.clicked.connect(lambda: self._apply_llm_preset("http://localhost:1234/v1", "local-model"))
+
         llm_presets_layout.addWidget(btn_ollama)
         llm_presets_layout.addWidget(btn_lmstudio)
         llm_presets_layout.addStretch()
@@ -262,17 +273,14 @@ class Sidebar(QWidget):
         self.btn_install_ctx = QPushButton(tr("sidebar.llm_os.install_context_menu"))
         self.btn_install_ctx.setProperty("cssClass", "success")
         self.btn_install_ctx.clicked.connect(self._install_context_menu)
-
         self.btn_remove_ctx = QPushButton(tr("sidebar.llm_os.remove_context_menu"))
         self.btn_remove_ctx.setProperty("cssClass", "ghost")
         self.btn_remove_ctx.clicked.connect(self._remove_context_menu)
-
         btn_ctx_layout.addWidget(self.btn_install_ctx)
         btn_ctx_layout.addWidget(self.btn_remove_ctx)
         layout.addLayout(btn_ctx_layout)
 
         layout.addSpacing(10)
-
         lbl_cli = QLabel(tr("sidebar.llm_os.cli_global"))
         lbl_cli.setProperty("cssClass", "heading")
         layout.addWidget(lbl_cli)
@@ -281,11 +289,9 @@ class Sidebar(QWidget):
         self.btn_install_cli = QPushButton(tr("sidebar.llm_os.install_cli"))
         self.btn_install_cli.setProperty("cssClass", "success")
         self.btn_install_cli.clicked.connect(self._install_cli)
-
         self.btn_remove_cli = QPushButton(tr("sidebar.llm_os.remove_cli"))
         self.btn_remove_cli.setProperty("cssClass", "ghost")
         self.btn_remove_cli.clicked.connect(self._remove_cli)
-
         btn_cli_layout.addWidget(self.btn_install_cli)
         btn_cli_layout.addWidget(self.btn_remove_cli)
         layout.addLayout(btn_cli_layout)
@@ -301,6 +307,7 @@ class Sidebar(QWidget):
         lbl_upd = QLabel(tr("sidebar.llm_os.update_settings"))
         lbl_upd.setProperty("cssClass", "heading")
         layout.addWidget(lbl_upd)
+
         self.chk_prerelease = QCheckBox(tr("sidebar.llm_os.prerelease"))
         layout.addWidget(self.chk_prerelease)
 
@@ -324,6 +331,7 @@ class Sidebar(QWidget):
         self.cmb_lang = QComboBox()
         self._lang_codes = list(available_languages().keys())
         self.cmb_lang.addItems([f"{code} - {available_languages()[code]}" for code in self._lang_codes])
+
         current_code = current_lang()
         idx = next((i for i, c in enumerate(self._lang_codes) if c == current_code), 0)
         self.cmb_lang.setCurrentIndex(idx)
@@ -353,11 +361,12 @@ class Sidebar(QWidget):
         new_lang = self._lang_codes[idx]
         if new_lang == current_lang():
             return
+
         set_language(new_lang)
+        self._current_visible_tabs = None
         self.controller.update_settings({'language': new_lang})
         self.controller.save_settings()
-        self._rebuild_tabs(getattr(self.controller._store.state.settings, 'visible_tabs', ["sources", "filters", "prompts", "llm_os", "appearance"]))
-        self.update_ui(self.controller._store.state.settings)
+
         mw = self.window()
         if hasattr(mw, 'retranslate_ui'):
             mw.retranslate_ui()
@@ -463,10 +472,12 @@ class Sidebar(QWidget):
                 return
             ext = self.entry_ext.toPlainText().replace('\n', ' ').strip()
             ign = self.entry_ign.toPlainText().replace('\n', ', ').strip()
+
             custom = self.controller._store.state.settings.custom_presets.copy()
             custom[name] = {"ext": ext, "ign": ign}
             self.controller.update_settings({'custom_presets': custom})
             self.controller.save_settings()
+
             self._refresh_ext_presets()
             self.cmb_preset.setCurrentText(name)
 
@@ -569,11 +580,31 @@ class Sidebar(QWidget):
         if custom:
             self.cmb_preset.insertSeparator(self.cmb_preset.count())
             self.cmb_preset.addItems(list(custom.keys()))
+
         idx = self.cmb_preset.findText(current)
         if idx >= 0:
             self.cmb_preset.setCurrentIndex(idx)
         else:
-            self.cmb_preset.setCurrentIndex(0)
+            settings_ext = self.controller._store.state.settings.extensions
+            settings_ign = self.controller._store.state.settings.ignored_paths
+            matched = False
+            for k, v in PRESETS.items():
+                if v['ext'] == settings_ext and v['ign'] == settings_ign:
+                    idx = self.cmb_preset.findText(k)
+                    if idx >= 0:
+                        self.cmb_preset.setCurrentIndex(idx)
+                        matched = True
+                        break
+            if not matched and custom:
+                for k, v in custom.items():
+                    if v['ext'] == settings_ext and v['ign'] == settings_ign:
+                        idx = self.cmb_preset.findText(k)
+                        if idx >= 0:
+                            self.cmb_preset.setCurrentIndex(idx)
+                            matched = True
+                            break
+            if not matched:
+                self.cmb_preset.setCurrentIndex(0)
         self.cmb_preset.blockSignals(False)
 
     def _refresh_prompt_presets(self):
@@ -585,6 +616,7 @@ class Sidebar(QWidget):
         if custom:
             self.cmb_prompt.insertSeparator(self.cmb_prompt.count())
             self.cmb_prompt.addItems(list(custom.keys()))
+
         idx = self.cmb_prompt.findText(current)
         if idx >= 0:
             self.cmb_prompt.setCurrentIndex(idx)
@@ -598,6 +630,7 @@ class Sidebar(QWidget):
         self.cmb_theme.clear()
         themes = ThemeManager.get_available_themes()
         self.cmb_theme.addItems(themes)
+
         idx = self.cmb_theme.findText(current)
         if idx >= 0:
             self.cmb_theme.setCurrentIndex(idx)
@@ -606,6 +639,11 @@ class Sidebar(QWidget):
         self.cmb_theme.blockSignals(False)
 
     def update_ui(self, settings):
+        visible_tabs = getattr(settings, 'visible_tabs', ["sources", "filters", "prompts", "llm_os", "appearance"])
+
+        if getattr(self, '_current_visible_tabs', None) != visible_tabs:
+            self._rebuild_tabs(visible_tabs)
+
         self.cmb_preset.blockSignals(True)
         self._refresh_ext_presets()
         self.cmb_preset.blockSignals(False)
@@ -633,9 +671,6 @@ class Sidebar(QWidget):
         self.entry_llm_model.setText(settings.llm_model)
         self.entry_editor.setText(getattr(settings, 'external_editor', ''))
         self.chk_prerelease.setChecked(settings.receive_prereleases)
-
-        visible_tabs = getattr(settings, 'visible_tabs', ["sources", "filters", "prompts", "llm_os", "appearance"])
-        self._rebuild_tabs(visible_tabs)
 
     def get_settings(self):
         return {
