@@ -33,7 +33,7 @@ class Sidebar(QWidget):
 
         self.layout = QVBoxLayout(self)
 
-        title = QLabel("CodeContext AI")
+        title = QLabel(tr("sidebar.title"))
         title.setProperty("cssClass", "heading")
         self.layout.addWidget(title)
 
@@ -396,7 +396,7 @@ class Sidebar(QWidget):
         self.on_settings_change()
 
     def _add_github(self):
-        url, ok = QInputDialog.getText(self, "GitHub", tr("sidebar.add_github.prompt"))
+        url, ok = QInputDialog.getText(self, tr("sidebar.add_github.title"), tr("sidebar.add_github.prompt"))
         if ok and url:
             reply = QMessageBox.question(
                 self, tr("sidebar.add_github.save_title"),

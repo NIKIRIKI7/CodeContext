@@ -14,6 +14,7 @@
   "main.fail_if_exceeds": "Mislukken als tokenlimiet wordt overschreden",
   "main.sent_to_existing": "📤 Pad verzonden naar bestaande applicatie-instantie",
 
+  "main_window.title": "CodeContext AI",
   "main_window.tab.file_tree": "📂 Bestanden",
   "main_window.tab.analytics": "📊 Analyses",
   "main_window.command.copy_to_clipboard": "📋 Kopiëren naar klembord",
@@ -59,6 +60,7 @@
   "dialogs.bug_report.empty_desc": "Beschrijf de bug alstublieft.",
   "dialogs.bug_report.copied_title": "Gekopieerd naar klembord",
   "dialogs.bug_report.copied_msg": "Issue-sjabloon gekopieerd. Plak het in de GitHub Issue-body.",
+  "dialogs.clipboard_error": "❌ Klembordfout: {error}",
   "sidebar.bug_report.tooltip": "Bug gevonden? Naar Issue sturen",
 
   "dialogs.tour.title": "🎓 Interactieve rondleiding",
@@ -122,6 +124,7 @@
   "dialogs.ui_customization.cancel": "Annuleren",
   "dialogs.ui_customization.save": "💾 Opslaan",
 
+  "sidebar.title": "CodeContext AI",
   "sidebar.tab.sources": "📂 Bronnen",
   "sidebar.tab.filters": "🔧 Filters",
   "sidebar.tab.prompts": "📝 Promptteksten",
@@ -179,6 +182,7 @@
   "sidebar.appearance.import_theme": "📥 Thema importeren",
   "sidebar.add_folder.title": "📂 Projectmap selecteren",
   "sidebar.add_github.prompt": "Voer GitHub-opslagplaats-URL (of PR-link) in:",
+  "sidebar.add_github.title": "🐙 GitHub",
   "sidebar.add_github.save_title": "💾 Opslagplaats opslaan",
   "sidebar.add_github.save_prompt": "Wilt u de opslagplaats lokaal opslaan?",
   "sidebar.add_github.clone_dialog": "📂 Map selecteren om in te klonen",
@@ -297,6 +301,7 @@
 
   "store.status.done": "✅ Gereed",
   "store.status.scan_error": "❌ Scansfout: {error}",
+  "store.status.scan_error_log": "Fout: {error}",
   "store.status.workspace_cleared": "🧹 Werkruimte gewist",
   "store.status.repo_loaded": "✅ Opslagplaats geladen",
   "store.status.clone_error": "❌ Kloonfout",

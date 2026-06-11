@@ -14,6 +14,7 @@
   "main.fail_if_exceeds": "Ошибка при превышении лимита токенов",
   "main.sent_to_existing": "📤 Путь отправлен существующему экземпляру приложения",
 
+  "main_window.title": "CodeContext AI",
   "main_window.tab.file_tree": "📂 Файлы",
   "main_window.tab.analytics": "📊 Аналитика",
   "main_window.command.copy_to_clipboard": "📋 Копировать в буфер обмена",
@@ -58,6 +59,7 @@
   "dialogs.bug_report.empty_desc": "Пожалуйста, опишите баг.",
   "dialogs.bug_report.copied_title": "Скопировано",
   "dialogs.bug_report.copied_msg": "Шаблон Issue скопирован. Вставьте его в описание на GitHub.",
+  "dialogs.clipboard_error": "❌ Ошибка буфера обмена: {error}",
   "sidebar.bug_report.tooltip": "Нашли баг? Отправить в Issue",
 
   "dialogs.tour.title": "🎓 Интерактивный тур",
@@ -121,6 +123,7 @@
   "dialogs.ui_customization.cancel": "Отмена",
   "dialogs.ui_customization.save": "💾 Сохранить",
 
+  "sidebar.title": "CodeContext AI",
   "sidebar.tab.sources": "📂 Источники",
   "sidebar.tab.filters": "🔧 Фильтры",
   "sidebar.tab.prompts": "📝 Промпты",
@@ -178,6 +181,7 @@
   "sidebar.appearance.import_theme": "📥 Импортировать тему",
   "sidebar.add_folder.title": "📂 Выберите папку проекта",
   "sidebar.add_github.prompt": "Введите URL GitHub репозитория (или PR ссылку):",
+  "sidebar.add_github.title": "🐙 GitHub",
   "sidebar.add_github.save_title": "💾 Сохранить репозиторий",
   "sidebar.add_github.save_prompt": "Вы хотите сохранить репозиторий локально?",
   "sidebar.add_github.clone_dialog": "📂 Выберите папку для клонирования",
@@ -294,6 +298,7 @@
 
   "store.status.done": "✅ Готово",
   "store.status.scan_error": "❌ Ошибка сканирования: {error}",
+  "store.status.scan_error_log": "Ошибка: {error}",
   "store.status.workspace_cleared": "🧹 Рабочее пространство очищено",
   "store.status.repo_loaded": "✅ Репозиторий загружен",
   "store.status.clone_error": "❌ Ошибка клонирования",

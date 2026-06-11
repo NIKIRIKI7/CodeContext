@@ -66,7 +66,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.store = store
         self.controller = controller
-        self.setWindowTitle("CodeContext AI")
+        self.setWindowTitle(tr("main_window.title"))
         self.setAcceptDrops(True)
         self._apply_adaptive_size()
 
@@ -152,7 +152,7 @@ class MainWindow(QMainWindow):
     def retranslate_ui(self):
         self.tree_tabs.setTabText(0, tr("main_window.tab.file_tree"))
         self.tree_tabs.setTabText(1, tr("main_window.tab.analytics"))
-        self.setWindowTitle("CodeContext AI")
+        self.setWindowTitle(tr("main_window.title"))
 
     def _update_theme_metrics(self):
         m = ThemeManager.get_layout("main_margin", 16)

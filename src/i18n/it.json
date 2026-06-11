@@ -14,6 +14,7 @@
   "main.fail_if_exceeds": "Errore se superato il limite di token",
   "main.sent_to_existing": "📤 Percorso inviato all'istanza esistente dell'applicazione",
 
+  "main_window.title": "CodeContext AI",
   "main_window.tab.file_tree": "📂 File",
   "main_window.tab.analytics": "📊 Analisi",
   "main_window.command.copy_to_clipboard": "📋 Copia negli appunti",
@@ -59,6 +60,7 @@
   "dialogs.bug_report.empty_desc": "Per favore descrivi il bug.",
   "dialogs.bug_report.copied_title": "Copiato negli appunti",
   "dialogs.bug_report.copied_msg": "Template Issue copiato. Incollalo nel corpo dell'Issue GitHub.",
+  "dialogs.clipboard_error": "❌ Errore degli appunti: {error}",
   "sidebar.bug_report.tooltip": "Trovato un bug? Invia a Issue",
 
   "dialogs.tour.title": "🎓 Tour interattivo",
@@ -122,6 +124,7 @@
   "dialogs.ui_customization.cancel": "Annulla",
   "dialogs.ui_customization.save": "💾 Salva",
 
+  "sidebar.title": "CodeContext AI",
   "sidebar.tab.sources": "📂 Origini",
   "sidebar.tab.filters": "🔧 Filtri",
   "sidebar.tab.prompts": "📝 Prompt",
@@ -179,6 +182,7 @@
   "sidebar.appearance.import_theme": "📥 Importa tema",
   "sidebar.add_folder.title": "📂 Seleziona cartella del progetto",
   "sidebar.add_github.prompt": "Inserisci URL del repository GitHub (o link PR):",
+  "sidebar.add_github.title": "🐙 GitHub",
   "sidebar.add_github.save_title": "💾 Salva repository",
   "sidebar.add_github.save_prompt": "Vuoi salvare il repository localmente?",
   "sidebar.add_github.clone_dialog": "📂 Seleziona cartella in cui clonare",
@@ -297,6 +301,7 @@
 
   "store.status.done": "✅ Completato",
   "store.status.scan_error": "❌ Errore di scansione: {error}",
+  "store.status.scan_error_log": "Errore: {error}",
   "store.status.workspace_cleared": "🧹 Area di lavoro pulita",
   "store.status.repo_loaded": "✅ Repository caricato",
   "store.status.clone_error": "❌ Errore di clonazione",

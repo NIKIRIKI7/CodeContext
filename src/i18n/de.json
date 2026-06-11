@@ -14,6 +14,7 @@
   "main.fail_if_exceeds": "Fehlschlagen bei Token-Limit-Überschreitung",
   "main.sent_to_existing": "📤 Pfad an vorhandene Anwendungsinstanz gesendet",
 
+  "main_window.title": "CodeContext AI",
   "main_window.tab.file_tree": "📂 Dateien",
   "main_window.tab.analytics": "📊 Analysen",
   "main_window.command.copy_to_clipboard": "📋 In Zwischenablage kopieren",
@@ -59,6 +60,7 @@
   "dialogs.bug_report.empty_desc": "Bitte beschreiben Sie den Fehler.",
   "dialogs.bug_report.copied_title": "In Zwischenablage kopiert",
   "dialogs.bug_report.copied_msg": "Issue-Vorlage kopiert. In GitHub-Issue einfügen.",
+  "dialogs.clipboard_error": "❌ Zwischenablagefehler: {error}",
   "sidebar.bug_report.tooltip": "Fehler gefunden? Als Issue melden",
 
   "dialogs.tour.title": "🎓 Interaktive Tour",
@@ -122,6 +124,7 @@
   "dialogs.ui_customization.cancel": "Abbrechen",
   "dialogs.ui_customization.save": "💾 Speichern",
 
+  "sidebar.title": "CodeContext AI",
   "sidebar.tab.sources": "📂 Quellen",
   "sidebar.tab.filters": "🔧 Filter",
   "sidebar.tab.prompts": "📝 Eingabeaufforderungen",
@@ -179,6 +182,7 @@
   "sidebar.appearance.import_theme": "📥 Design importieren",
   "sidebar.add_folder.title": "📂 Projektordner auswählen",
   "sidebar.add_github.prompt": "GitHub-Repository-URL (oder PR-Link) eingeben:",
+  "sidebar.add_github.title": "🐙 GitHub",
   "sidebar.add_github.save_title": "💾 Repository speichern",
   "sidebar.add_github.save_prompt": "Möchtest du das Repository lokal speichern?",
   "sidebar.add_github.clone_dialog": "📂 Ordner zum Klonen auswählen",
@@ -297,6 +301,7 @@
 
   "store.status.done": "✅ Erledigt",
   "store.status.scan_error": "❌ Scan-Fehler: {error}",
+  "store.status.scan_error_log": "Fehler: {error}",
   "store.status.workspace_cleared": "🧹 Arbeitsbereich geleert",
   "store.status.repo_loaded": "✅ Repository geladen",
   "store.status.clone_error": "❌ Klon-Fehler",

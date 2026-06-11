@@ -14,6 +14,7 @@
   "main.fail_if_exceeds": "トークン制限を超えた場合に失敗",
   "main.sent_to_existing": "📤 パスを既存のアプリケーションインスタンスに送信しました",
 
+  "main_window.title": "CodeContext AI",
   "main_window.tab.file_tree": "📂 ファイル",
   "main_window.tab.analytics": "📊 分析",
   "main_window.command.copy_to_clipboard": "📋 クリップボードにコピー",
@@ -59,6 +60,7 @@
   "dialogs.bug_report.empty_desc": "バグを説明してください。",
   "dialogs.bug_report.copied_title": "クリップボードにコピーしました",
   "dialogs.bug_report.copied_msg": "Issue テンプレートをコピーしました。GitHub Issue 本文に貼り付けてください。",
+  "dialogs.clipboard_error": "❌ クリップボードエラー: {error}",
   "sidebar.bug_report.tooltip": "バグを見つけましたか？ Issue に送信",
 
   "dialogs.tour.title": "🎓 インタラクティブツアー",
@@ -122,6 +124,7 @@
   "dialogs.ui_customization.cancel": "キャンセル",
   "dialogs.ui_customization.save": "💾 保存",
 
+  "sidebar.title": "CodeContext AI",
   "sidebar.tab.sources": "📂 ソース",
   "sidebar.tab.filters": "🔧 フィルター",
   "sidebar.tab.prompts": "📝 プロンプト",
@@ -179,6 +182,7 @@
   "sidebar.appearance.import_theme": "📥 テーマをインポート",
   "sidebar.add_folder.title": "📂 プロジェクトフォルダを選択",
   "sidebar.add_github.prompt": "GitHubリポジトリURL（またはPRリンク）を入力:",
+  "sidebar.add_github.title": "🐙 GitHub",
   "sidebar.add_github.save_title": "💾 リポジトリを保存",
   "sidebar.add_github.save_prompt": "リポジトリをローカルに保存しますか？",
   "sidebar.add_github.clone_dialog": "📂 クローン先のフォルダを選択",
@@ -297,6 +301,7 @@
 
   "store.status.done": "✅ 完了",
   "store.status.scan_error": "❌ スキャンエラー: {error}",
+  "store.status.scan_error_log": "エラー: {error}",
   "store.status.workspace_cleared": "🧹 ワークスペースがクリアされました",
   "store.status.repo_loaded": "✅ リポジトリが読み込まれました",
   "store.status.clone_error": "❌ クローンエラー",

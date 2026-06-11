@@ -14,6 +14,7 @@
   "main.fail_if_exceeds": "超出令牌限制时报错",
   "main.sent_to_existing": "📤 路径已发送到现有应用实例",
 
+  "main_window.title": "CodeContext AI",
   "main_window.tab.file_tree": "📂 文件",
   "main_window.tab.analytics": "📊 分析",
   "main_window.command.copy_to_clipboard": "📋 复制到剪贴板",
@@ -59,6 +60,7 @@
   "dialogs.bug_report.empty_desc": "请描述该错误。",
   "dialogs.bug_report.copied_title": "已复制到剪贴板",
   "dialogs.bug_report.copied_msg": "Issue 模板已复制。请粘贴到 GitHub Issue 正文中。",
+  "dialogs.clipboard_error": "❌ 剪贴板错误: {error}",
   "sidebar.bug_report.tooltip": "发现错误？提交 Issue",
 
   "dialogs.tour.title": "🎓 交互式导览",
@@ -122,6 +124,7 @@
   "dialogs.ui_customization.cancel": "取消",
   "dialogs.ui_customization.save": "💾 保存",
 
+  "sidebar.title": "CodeContext AI",
   "sidebar.tab.sources": "📂 源文件",
   "sidebar.tab.filters": "🔧 筛选器",
   "sidebar.tab.prompts": "📝 提示",
@@ -179,6 +182,7 @@
   "sidebar.appearance.import_theme": "📥 导入主题",
   "sidebar.add_folder.title": "📂 选择项目文件夹",
   "sidebar.add_github.prompt": "输入 GitHub 仓库 URL（或 PR 链接）：",
+  "sidebar.add_github.title": "🐙 GitHub",
   "sidebar.add_github.save_title": "💾 保存仓库",
   "sidebar.add_github.save_prompt": "是否要在本地保存仓库？",
   "sidebar.add_github.clone_dialog": "📂 选择克隆目标文件夹",
@@ -297,6 +301,7 @@
 
   "store.status.done": "✅ 完成",
   "store.status.scan_error": "❌ 扫描错误：{error}",
+  "store.status.scan_error_log": "错误: {error}",
   "store.status.workspace_cleared": "🧹 工作区已清空",
   "store.status.repo_loaded": "✅ 仓库已加载",
   "store.status.clone_error": "❌ 克隆错误",

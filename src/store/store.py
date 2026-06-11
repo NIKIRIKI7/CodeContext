@@ -200,7 +200,7 @@ class Store:
     def _handle_scan_failure(self, error: str):
         self._state.scanned_files_paths.clear()
         self._state.status_message = tr("store.status.scan_error")
-        self._state.logs.append(f"Error: {error}")
+        self._state.logs.append(tr("store.status.scan_error_log", error=error))
 
     def _handle_formatting_success(self, payload: dict):
         self._state.final_output_text = payload['text']

@@ -873,7 +873,7 @@ class BugReportDialog(QDialog):
         try:
             pyperclip.copy(issue_body)
         except Exception as e:
-            QMessageBox.warning(self, tr("sidebar.error.title"), f"Clipboard error: {e}")
+            QMessageBox.warning(self, tr("sidebar.error.title"), tr("dialogs.clipboard_error", error=e))
             return
 
         QMessageBox.information(
