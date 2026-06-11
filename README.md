@@ -294,34 +294,6 @@ python main.py --cli --path ./frontend ./backend --format xml --output combined.
 
 <hr>
 
-<h2>📁 Структура проекта</h2>
-<pre>CodeContext/
-├── main.py                  # Точка входа
-├── VERSION.txt              # Версия
-├── requirements.txt         # Зависимости
-├── assets/images/logo.png   # Логотип
-├── aur_build/               # AUR-пакет
-│   ├── PKGBUILD
-│   ├── codecontext.desktop
-│   └── codecontext.sh
-├── themes/                  # JSON-темы
-└── src/
-    ├── main_app.py          # Загрузчик
-    ├── store/               # Redux-like (state.py, store.py)
-    ├── controllers/         # Бизнес-логика
-    ├── ui/                  # PySide6
-    │   ├── main_window.py
-    │   ├── dialogs.py
-    │   ├── theme_manager.py
-    │   └── components/
-    │       ├── sidebar.py, action_panel.py, folder_list.py
-    │       ├── file_tree.py, log_panel.py, status_bar.py
-    │       ├── empty_state.py, analytics_panel.py
-    └── utils/
-        ├── config.py, async_runtime.py</pre>
-
-<hr>
-
 <h2>🗺️ Roadmap</h2>
 <ul>
 <li>🍎 macOS Finder context menu</li>
@@ -624,31 +596,6 @@ python main.py --cli --path ./frontend ./backend --format xml --output combined.
 
 <hr>
 
-<h2>📁 Project Structure</h2>
-<pre>CodeContext/
-├── main.py                  # Entry point
-├── VERSION.txt              # Version
-├── requirements.txt         # Dependencies
-├── assets/images/logo.png   # Logo
-├── aur_build/               # AUR package
-│   ├── PKGBUILD
-│   ├── codecontext.desktop
-│   └── codecontext.sh
-├── themes/                  # JSON themes
-└── src/
-    ├── main_app.py          # Bootstrap
-    ├── store/               # Redux-like (state.py, store.py)
-    ├── controllers/         # Business logic
-    ├── ui/                  # PySide6
-    │   ├── main_window.py
-    │   ├── dialogs.py
-    │   ├── theme_manager.py
-    │   └── components/
-    │       ├── sidebar.py, action_panel.py, folder_list.py
-    │       ├── file_tree.py, log_panel.py, status_bar.py
-    │       ├── empty_state.py, analytics_panel.py
-    └── utils/
-        ├── config.py, async_runtime.py</pre>
 
 <hr>
 
@@ -685,38 +632,4 @@ python main.py --cli --path ./frontend ./backend --format xml --output combined.
 
 </div>
 
-<style>
-  .lang-btn {
-    display: inline-block;
-    padding: 8px 28px;
-    margin: 0 6px;
-    cursor: pointer;
-    border-radius: 20px;
-    font-size: 15px;
-    font-weight: 600;
-    transition: all 0.25s ease;
-    border: 2px solid #d0d7de;
-    background: #f6f8fa;
-    color: #656d76;
-    user-select: none;
-  }
-  .lang-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 3px 10px rgba(0,0,0,0.12);
-    border-color: #0969da;
-    color: #0969da;
-  }
-  .lang-ru, .lang-en { display: none; }
 
-  /* Default: show Russian */
-  #lang_ru:checked ~ .lang-header .lang-btn[for="lang_ru"],
-  #lang_en:checked ~ .lang-header .lang-btn[for="lang_en"] {
-    background: #0969da;
-    border-color: #0969da;
-    color: #fff;
-    box-shadow: 0 3px 10px rgba(9,105,218,0.35);
-  }
-
-  #lang_ru:checked ~ .lang-ru { display: block; }
-  #lang_en:checked ~ .lang-en { display: block; }
-</style>
