@@ -1,5 +1,7 @@
 import asyncio
 import datetime
+import gc
+import json
 import os
 from typing import Optional, List, Dict, Set
 from ..actions.action_types import (
@@ -18,7 +20,11 @@ from ..services.skeleton_service import SkeletonService
 from ..services.token_service import TokenService
 from ..store.state import AppState, ProcessedFile
 from ..utils.pipeline_utils import PipelineUtils
+from ..utils.config import get_app_data_dir
 from src.i18n import tr
+
+
+_CHECKPOINT_FILE = os.path.join(get_app_data_dir(), "processing_checkpoint.json")
 
 
 class ProcessWorkspaceUseCase:
@@ -54,6 +60,8 @@ class ProcessWorkspaceUseCase:
         self._dispatcher.dispatch(WORKFLOW_STARTED, {
             'message': tr("process_use_case.workflow.preparing"), 'progress': 0.1
         })
+
+        gc.disable()
 
         try:
             files_to_process = [
@@ -91,6 +99,9 @@ class ProcessWorkspaceUseCase:
                 self._run_processing, raw_files, state.settings
             )
 
+            if state.settings.save_checkpoints:
+                self._save_checkpoint(processed)
+
             self._dispatcher.dispatch(PROCESSING_SUCCESS, processed)
 
             self._dispatcher.dispatch(WORKFLOW_PROGRESS, {
@@ -100,6 +111,9 @@ class ProcessWorkspaceUseCase:
             text_result: str = await asyncio.to_thread(
                 self._run_formatting, processed, state.settings, dependency_map
             )
+
+            if state.settings.save_checkpoints:
+                self._clear_checkpoint()
 
             final_tokens = await asyncio.to_thread(self._token_service.count_tokens, text_result)
 
@@ -131,7 +145,40 @@ class ProcessWorkspaceUseCase:
             self._dispatcher.dispatch(WORKFLOW_ERROR, str(exc))
             self._dispatcher.dispatch(UI_ADD_LOG, tr("process_use_case.workflow.error", error=exc))
         finally:
+            gc.enable()
+            gc.collect()
             self._dispatcher.dispatch(UI_SET_LOADING, False)
+
+    def _save_checkpoint(self, processed: List[ProcessedFile]) -> None:
+        """Сохраняет чекпоинт обработанных файлов для возобновления при сбое"""
+        try:
+            data = [{
+                "path": p.path,
+                "content": p.content,
+                "tokens": p.tokens
+            } for p in processed]
+            with open(_CHECKPOINT_FILE, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False)
+        except Exception:
+            pass
+
+    def _clear_checkpoint(self) -> None:
+        try:
+            if os.path.exists(_CHECKPOINT_FILE):
+                os.remove(_CHECKPOINT_FILE)
+        except Exception:
+            pass
+
+    def load_checkpoint(self) -> Optional[List[ProcessedFile]]:
+        """Загружает чекпоинт, если есть"""
+        try:
+            if not os.path.exists(_CHECKPOINT_FILE):
+                return None
+            with open(_CHECKPOINT_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            return [ProcessedFile(**d) for d in data]
+        except Exception:
+            return None
 
     def _run_processing(self, raw_files, settings) -> List[ProcessedFile]:
         return PipelineUtils.process_files_batch_parallel(
@@ -177,7 +224,8 @@ class ProcessWorkspaceUseCase:
             system_prompt=settings.system_prompt,
             dependency_map=dep_map,
             template_path=settings.template_path,
-            include_mermaid=settings.include_mermaid
+            include_mermaid=settings.include_mermaid,
+            deduplicate=getattr(settings, 'deduplicate', False),
         )
 
     async def _export(self, target: str, text: str, save_path: Optional[str]):

@@ -42,6 +42,19 @@ class ActionPanel(QWidget):
         row1.addWidget(self.btn_template)
         row1.addStretch()
 
+        row_opt = QHBoxLayout()
+        row_opt.setSpacing(8)
+        self.chk_dedup = QCheckBox(tr("action_panel.chk_dedup"))
+        self.chk_aggressive = QCheckBox(tr("action_panel.chk_aggressive"))
+        self.chk_checkpoints = QCheckBox(tr("action_panel.chk_checkpoints"))
+        self.chk_watch = QCheckBox(tr("action_panel.chk_watch"))
+        row_opt.addWidget(self.chk_dedup)
+        row_opt.addWidget(self.chk_aggressive)
+        row_opt.addWidget(self.chk_checkpoints)
+        row_opt.addWidget(self.chk_watch)
+        row_opt.addStretch()
+        self.layout.addLayout(row_opt)
+
         row2 = QHBoxLayout()
         row2.setSpacing(8)
 

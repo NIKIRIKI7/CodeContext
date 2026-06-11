@@ -1,7 +1,7 @@
 import os
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTreeView, QLineEdit, QMenu, QPushButton
 from PySide6.QtGui import QStandardItemModel, QStandardItem
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from ..theme_manager import ThemeManager, theme_bus
 from src.i18n import tr
 
@@ -17,6 +17,11 @@ class FileTree(QWidget):
 
         self.search = QLineEdit()
         self.search.setPlaceholderText(tr("file_tree.search.placeholder"))
+
+        self._debounce_timer = QTimer()
+        self._debounce_timer.setSingleShot(True)
+        self._debounce_timer.setInterval(250)
+        self._debounce_timer.timeout.connect(self._apply_filter)
 
         btn_layout = QHBoxLayout()
         btn_layout.setContentsMargins(0, 0, 0, 0)
@@ -55,7 +60,7 @@ class FileTree(QWidget):
         self.layout.addLayout(btn_layout)
         self.layout.addLayout(btn_layout_smart)
         self.layout.addWidget(self.tree)
-        self.search.textChanged.connect(self._filter_tree)
+        self.search.textChanged.connect(self._debounce_timer.start)
 
         self._all_items = []
         self._is_updating = False
@@ -177,7 +182,8 @@ class FileTree(QWidget):
             if child.hasChildren():
                 self._propagate_check_recursive(child, state)
 
-    def _filter_tree(self, text):
+    def _apply_filter(self):
+        text = self.search.text()
         search_query = text.lower()
         for item, full_path in self._all_items:
             match = search_query in full_path.lower()

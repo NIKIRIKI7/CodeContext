@@ -46,6 +46,15 @@ class AppSettings:
     custom_prompt_presets: Dict[str, str] = field(default_factory=dict)
     language: str = ""
 
+    # === Optimization features (v2.5+) ===
+    deduplicate: bool = False
+    save_checkpoints: bool = False
+    auto_watch: bool = False
+    prioritize_entry_files: bool = True
+    preserve_docstrings: bool = False
+    preserve_imports: bool = False
+    aggressive_minify: bool = False
+
 
 @dataclass
 class ProcessedFile:

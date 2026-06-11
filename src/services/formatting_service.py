@@ -19,6 +19,8 @@ from ..store.state import ProcessedFile
 class FormattingService:
     """Сервис форматирования итогового текста с поддержкой Jinja2 и генерацией Diff"""
 
+    _env_cache: dict[str, Any] = {}
+
     def format_output(self,
                       files: List[ProcessedFile],
                       fmt: str,
@@ -26,9 +28,15 @@ class FormattingService:
                       system_prompt: str,
                       dependency_map: Optional[Dict[str, Set[str]]] = None,
                       template_path: str = "",
-                      include_mermaid: bool = False) -> str:
+                      include_mermaid: bool = False,
+                      deduplicate: bool = False) -> str:
         if fmt == 'jsonl_chunk':
             return self._to_jsonl_chunks(files)
+        if fmt == 'jsonl_mini':
+            return self._to_jsonl_mini(files)
+
+        if deduplicate and len(files) > 1:
+            files = self._deduplicate(files)
 
         tree_text = self._generate_tree([f.path for f in files]) if include_tree else ""
         dep_text = self._format_dependency_graph(dependency_map) if dependency_map else ""
@@ -86,6 +94,39 @@ class FormattingService:
         return "\n".join(output)
 
     @staticmethod
+    def _deduplicate(files: List[ProcessedFile]) -> List[ProcessedFile]:
+        """Удаляет дубликаты содержимого соседних файлов, оставляя пометку"""
+        if not files:
+            return files
+        result = [files[0]]
+        for i in range(1, len(files)):
+            prev = files[i - 1]
+            curr = files[i]
+            if curr.content == prev.content:
+                dup = ProcessedFile(
+                    path=f"{curr.path}  (same content as {Path(prev.path).name})",
+                    content="",
+                    tokens=0
+                )
+                result.append(dup)
+            else:
+                result.append(curr)
+        return result
+
+    @staticmethod
+    def _to_jsonl_mini(files: List[ProcessedFile]) -> str:
+        """Ультра-компактный JSONL: каждый файл — одна строка с минимальными ключами"""
+        lines_out = []
+        for f in files:
+            obj = {
+                "p": f.path,
+                "c": f.content,
+                "t": f.tokens,
+            }
+            lines_out.append(json.dumps(obj, ensure_ascii=False, separators=(',', ':')))
+        return "\n".join(lines_out)
+
+    @staticmethod
     def get_search_markers(filepath: str) -> List[str]:
         """Возвращает возможные варианты заголовка файла для навигации в предпросмотре."""
         return [
@@ -97,15 +138,36 @@ class FormattingService:
 
     @staticmethod
     def generate_html_diff(source_text: str, target_text: str, colors: dict, fonts: dict) -> str:
-        """Создает HTML Diff с заданными цветами темы."""
+        """Создает HTML Diff с заданными цветами темы и схлопыванием идентичных краёв."""
         font_family = fonts.get("family", "monospace")
         font_size = fonts.get("size", "14px")
 
+        source_lines = source_text.splitlines()
+        target_lines = target_text.splitlines()
+
+        start = 0
+        while start < len(source_lines) and start < len(target_lines) and source_lines[start] == target_lines[start]:
+            start += 1
+
+        end_s = len(source_lines) - 1
+        end_t = len(target_lines) - 1
+        while end_s > start and end_t > start and source_lines[end_s] == target_lines[end_t]:
+            end_s -= 1
+            end_t -= 1
+
+        ctx = 5
+        c_start = max(0, start - ctx)
+        c_end_s = min(len(source_lines), end_s + ctx + 1)
+        c_end_t = min(len(target_lines), end_t + ctx + 1)
+
         html_diff = difflib.HtmlDiff(wrapcolumn=90).make_file(
-            source_text.splitlines(),
-            target_text.splitlines(),
+            source_lines[c_start:c_end_s],
+            target_lines[c_start:c_end_t],
             context=True, numlines=5
         )
+
+        if c_start > 0:
+            html_diff = html_diff.replace('<body>', f'<body><div style="color:gray;padding:5px;">... {c_start} identical lines hidden ...</div>')
 
         custom_css = f"""
         <style>
@@ -157,10 +219,15 @@ class FormattingService:
         try:
             template_dir = os.path.dirname(template_path)
             template_file = os.path.basename(template_path)
-            env = Environment(
-                loader=FileSystemLoader(template_dir),
-                autoescape=select_autoescape(['html', 'xml'])
-            )
+
+            if template_dir not in FormattingService._env_cache:
+                env = Environment(
+                    loader=FileSystemLoader(template_dir),
+                    autoescape=select_autoescape(['html', 'xml'])
+                )
+                FormattingService._env_cache[template_dir] = env
+
+            env = FormattingService._env_cache[template_dir]
             template = env.get_template(template_file)
             return template.render(**context)
         except Exception as e:

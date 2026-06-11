@@ -191,8 +191,6 @@ class AdvancedPreviewDialog(QDialog):
 
     def update_data(self, state):
         self.state = state
-        self.txt_preview.setPlainText(state.preview_text)
-
         self.list_toc.clear()
         self.cmb_diff_files.blockSignals(True)
         self.cmb_diff_files.clear()
@@ -205,6 +203,9 @@ class AdvancedPreviewDialog(QDialog):
 
         self.cmb_diff_files.blockSignals(False)
 
+        if state.processed_files:
+            self.list_toc.setCurrentRow(0)
+
         if state.before_after_data:
             self.cmb_diff_files.setCurrentIndex(0)
             self._on_diff_file_changed(state.before_after_data[0]["path"])
@@ -216,15 +217,11 @@ class AdvancedPreviewDialog(QDialog):
         self.btn_copy_file.setEnabled(True)
         selected_file = self.state.processed_files[idx]
 
-        search_strs = self.controller.get_search_markers_for_preview(selected_file.path)
-        cursor = self.txt_preview.textCursor()
-        cursor.setPosition(0)
-        self.txt_preview.setTextCursor(cursor)
+        self.txt_preview.setPlainText(f"FILE: {selected_file.path}\n\n{selected_file.content}")
+        self.txt_preview.verticalScrollBar().setValue(0)
 
-        for s in search_strs:
-            if self.txt_preview.find(s):
-                self.txt_preview.centerCursor()
-                break
+        if hasattr(self, 'highlighter') and self.highlighter:
+            self.highlighter.rehighlight()
 
     def _on_diff_file_changed(self, path):
         if not path:

@@ -220,6 +220,10 @@
   "action_panel.editor.button": "📝 Editor",
   "action_panel.editor.tooltip": "📝 Open in editor",
   "action_panel.file.button": "💾 File",
+  "action_panel.chk_dedup": "Dedup",
+  "action_panel.chk_aggressive": "Aggressive",
+  "action_panel.chk_checkpoints": "Checkpoints",
+  "action_panel.chk_watch": "Auto-Watch",
   "action_panel.template.dialog_title": "Select Jinja2 template",
 
   "empty_state.drop.title": "📂 Drop a folder here",

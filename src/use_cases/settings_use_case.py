@@ -37,6 +37,13 @@ _DEFAULT_SETTINGS = {
     'output_format': 'markdown',
     'template_path': '',
     'python_interpreter': '',
+    'deduplicate': False,
+    'save_checkpoints': False,
+    'auto_watch': False,
+    'prioritize_entry_files': True,
+    'preserve_docstrings': False,
+    'preserve_imports': False,
+    'aggressive_minify': False,
 }
 
 

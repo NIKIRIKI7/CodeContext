@@ -1,4 +1,5 @@
 import os
+import mmap
 import shutil
 import stat
 import asyncio
@@ -15,8 +16,14 @@ class FileSystemRepository:
         if self._is_binary(path):
             return None
         try:
-            return Path(path).read_text(encoding='utf-8', errors='replace')
-        except (OSError, UnicodeDecodeError):
+            file_size = os.path.getsize(path)
+            if file_size > 1024 * 1024:
+                with open(path, 'r', encoding='utf-8', errors='replace') as f:
+                    with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm:
+                        return mm.read().decode('utf-8', errors='replace')
+            else:
+                return Path(path).read_text(encoding='utf-8', errors='replace')
+        except (OSError, UnicodeDecodeError, ValueError):
             return None
 
     @staticmethod

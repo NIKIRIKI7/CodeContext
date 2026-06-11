@@ -1,13 +1,18 @@
 import os
 import pathspec
 import asyncio
-from typing import List
+import time
+import threading
+from typing import List, Callable, Optional, Set
 from ..data.file_system_repository import FileSystemRepository
 
 
 class FileService:
     def __init__(self, repo: FileSystemRepository):
         self.repo = repo
+        self._watcher_thread: Optional[threading.Thread] = None
+        self._watcher_stop = threading.Event()
+        self._on_change_callback: Optional[Callable] = None
 
     async def scan_folders_async(self, paths: List[str], extensions_str: str, ignored_str: str, use_git: bool,
                                  use_gitignore: bool) -> List[str]:
@@ -81,3 +86,51 @@ class FileService:
                 break
             check_dir = parent
         return current_dir
+
+    def start_watching(self, paths: List[str], exts_set: Set[str], ign_set: Set[str],
+                       on_change: Callable, interval: float = 3.0) -> None:
+        """Запускает фоновый поток для отслеживания изменений в файлах (поллинг)"""
+        self.stop_watching()
+        self._on_change_callback = on_change
+        self._watcher_stop.clear()
+        self._watcher_thread = threading.Thread(
+            target=self._watcher_loop,
+            args=(paths, exts_set, ign_set, interval),
+            daemon=True
+        )
+        self._watcher_thread.start()
+
+    def stop_watching(self) -> None:
+        self._watcher_stop.set()
+        if self._watcher_thread and self._watcher_thread.is_alive():
+            self._watcher_thread.join(timeout=2)
+        self._watcher_thread = None
+
+    def _watcher_loop(self, paths: List[str], exts_set: Set[str], ign_set: Set[str], interval: float) -> None:
+        """Проверяет mtime файлов через интервал и вызывает callback при изменениях"""
+        state: dict = {}
+        while not self._watcher_stop.is_set():
+            changed = False
+            for base in paths:
+                for dirpath, dirnames, filenames in os.walk(base):
+                    dirnames[:] = [d for d in dirnames if d not in ign_set]
+                    for fname in filenames:
+                        ext = os.path.splitext(fname)[1].lower()
+                        if ext not in exts_set:
+                            continue
+                        fpath = os.path.join(dirpath, fname)
+                        try:
+                            mtime = os.path.getmtime(fpath)
+                            prev = state.get(fpath)
+                            if prev is None:
+                                state[fpath] = mtime
+                                changed = True
+                            elif abs(mtime - prev) > 0.5:
+                                state[fpath] = mtime
+                                changed = True
+                        except OSError:
+                            state.pop(fpath, None)
+                            changed = True
+            if changed and self._on_change_callback:
+                self._on_change_callback()
+            self._watcher_stop.wait(interval)
