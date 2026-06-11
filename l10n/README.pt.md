@@ -40,10 +40,10 @@
 <tr><td>🎨 Temas</td><td>Apple, Modern, JSON personalizado</td><td>Interface fixa</td></tr>
 <tr><td>⚙️ Personalização de UI (v1.14+)</td><td>Estilo Premiere Pro</td><td>Interface fixa</td></tr>
 <tr><td>🌐 i18n (v1.17+)</td><td>15 languages, system auto-detect</td><td>Single language</td></tr>
-<tr><td>♻️ Dedup (v1.23+)</td><td>Auto-remove duplicate files</td><td>Manual check</td></tr>
-<tr><td>⚡ Aggressive minify (v1.23+)</td><td>Strips all blank lines</td><td>Manual delete</td></tr>
-<tr><td>📌 Checkpoints (v1.23+)</td><td>Save intermediate results</td><td>Not available</td></tr>
-<tr><td>👁️ Auto-Watch (v1.23+)</td><td>Auto-reprocess on file changes</td><td>Not available</td></tr>
+<tr><td>♻️ Dedup (v1.23+)</td><td>Detects & skips files with identical content</td><td>Manual check</td></tr>
+<tr><td>⚡ Aggressive minify (v1.23+)</td><td>Extra compression — eliminates trailing whitespace on every line</td><td>Manual delete</td></tr>
+<tr><td>📌 Checkpoints (v1.23+)</td><td>Save before/after snapshots for debugging</td><td>Not available</td></tr>
+<tr><td>👁️ Auto-Watch (v1.23+)</td><td>Watches files & re-processes on change</td><td>Not available</td></tr>
 </tbody>
 </table>
 
@@ -162,13 +162,13 @@ cd yay && makepkg -si</pre>
 <thead><tr><th>Opção</th><th>Descrição</th></tr></thead>
 <tbody>
 <tr><td>☑ Minificar</td><td>Remove espaços em branco e linhas em branco</td></tr>
+<tr><td>☑ Aggressive</td><td>Aggressive minification — Extra compression — eliminates trailing whitespace on every line</td></tr>
 <tr><td>☑ Sem Comentários</td><td>Remove todos os comentários</td></tr>
 <tr><td>☑ Sem Segredos</td><td>Mascara chaves de API, senhas, tokens</td></tr>
 <tr><td>☑ Esqueleto ☠️</td><td><b>Remove corpos de funções</b> — economia máxima de tokens</td></tr>
 <tr><td>☑ Dedup</td><td>Removes duplicate files with identical content</td></tr>
-<tr><td>☑ Aggressive</td><td>Aggressive minification — strips all blank lines</td></tr>
 <tr><td>☑ Checkpoints</td><td>Saves intermediate processing checkpoints</td></tr>
-<tr><td>☑ Auto-Watch</td><td>Auto-reprocess on file changes</td></tr>
+<tr><td>☑ Auto-Watch</td><td>Watches files & re-processes on change</td></tr>
 <tr><td>Formato</td><td>Markdown, XML, Plain, JSONL Chunks, Personalizado (Jinja2)</td></tr>
 <tr><td>📁 template</td><td>Seletor de template Jinja2</td></tr>
 </tbody>
@@ -176,6 +176,14 @@ cd yay && makepkg -si</pre>
 
 <p><b>Modo Esqueleto:</b> remove implementações de funções (<code>def func_name(...):  # ... implementation ...</code>), preservando todas as classes — permite que o LLM entenda projetos massivos com tokens mínimos.</p>
 
+
+<p><b>Minify vs Aggressive:</b> <b>Minify</b> strips leading/trailing whitespace and removes blank lines — safe for any codebase, reduces tokens without affecting readability. <b>Aggressive</b> adds an extra pass that eliminates trailing whitespace on every line for maximum compression. Combine both when you need to fit more code into a limited context window.</p>
+
+<p><b>Dedup:</b> automatically detects files with identical content across your project and excludes duplicates from the output — prevents LLM from seeing the same code twice and wasting tokens.</p>
+
+<p><b>Checkpoints:</b> saves intermediate results at each pipeline stage (before cleanup, after minification, etc.) to <code>checkpoints/</code> folder. Useful for debugging what each processing step does or comparing outputs side by side.</p>
+
+<p><b>Auto-Watch:</b> monitors your project files for changes using the OS file watcher. When a file is saved, the pipeline automatically re-runs — ideal during active development when you need continuous prompt updates.</p>
 <h3>5. Botões de Ação</h3>
 <table>
 <thead><tr><th>Botão</th><th>Ação</th></tr></thead>

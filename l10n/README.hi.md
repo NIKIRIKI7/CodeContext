@@ -40,10 +40,10 @@
 <tr><td>🎨 थीम</td><td>Apple, Modern, कस्टम JSON</td><td>निश्चित UI</td></tr>
 <tr><td>⚙️ UI अनुकूलन (v1.14+)</td><td>Premiere Pro-शैली</td><td>निश्चित UI</td></tr>
 <tr><td>🌐 i18n (v1.17+)</td><td>15 languages, system auto-detect</td><td>Single language</td></tr>
-<tr><td>♻️ Dedup (v1.23+)</td><td>Auto-remove duplicate files</td><td>Manual check</td></tr>
-<tr><td>⚡ Aggressive minify (v1.23+)</td><td>Strips all blank lines</td><td>Manual delete</td></tr>
-<tr><td>📌 Checkpoints (v1.23+)</td><td>Save intermediate results</td><td>Not available</td></tr>
-<tr><td>👁️ Auto-Watch (v1.23+)</td><td>Auto-reprocess on file changes</td><td>Not available</td></tr>
+<tr><td>♻️ Dedup (v1.23+)</td><td>Detects & skips files with identical content</td><td>Manual check</td></tr>
+<tr><td>⚡ Aggressive minify (v1.23+)</td><td>Extra compression — eliminates trailing whitespace on every line</td><td>Manual delete</td></tr>
+<tr><td>📌 Checkpoints (v1.23+)</td><td>Save before/after snapshots for debugging</td><td>Not available</td></tr>
+<tr><td>👁️ Auto-Watch (v1.23+)</td><td>Watches files & re-processes on change</td><td>Not available</td></tr>
 </tbody>
 </table>
 
@@ -162,13 +162,13 @@ cd yay && makepkg -si</pre>
 <thead><tr><th>विकल्प</th><th>विवरण</th></tr></thead>
 <tbody>
 <tr><td>☑ मिनिफाई</td><td>व्हाइटस्पेस और खाली पंक्तियां हटाता है</td></tr>
+<tr><td>☑ Aggressive</td><td>Aggressive minification — Extra compression — eliminates trailing whitespace on every line</td></tr>
 <tr><td>☑ कोई टिप्पणी नहीं</td><td>सभी टिप्पणियां हटाता है</td></tr>
 <tr><td>☑ कोई रहस्य नहीं</td><td>API कुंजी, पासवर्ड, टोकन मास्क करता है</td></tr>
 <tr><td>☑ स्केलेटन ☠️</td><td><b>फ़ंक्शन बॉडी हटाता है</b> — अधिकतम टोकन बचत</td></tr>
 <tr><td>☑ Dedup</td><td>Removes duplicate files with identical content</td></tr>
-<tr><td>☑ Aggressive</td><td>Aggressive minification — strips all blank lines</td></tr>
 <tr><td>☑ Checkpoints</td><td>Saves intermediate processing checkpoints</td></tr>
-<tr><td>☑ Auto-Watch</td><td>Auto-reprocess on file changes</td></tr>
+<tr><td>☑ Auto-Watch</td><td>Watches files & re-processes on change</td></tr>
 <tr><td>प्रारूप</td><td>Markdown, XML, Plain, JSONL Chunks, कस्टम (Jinja2)</td></tr>
 <tr><td>📁 टेम्पलेट</td><td>Jinja2 टेम्पलेट चयनकर्ता</td></tr>
 </tbody>
@@ -176,6 +176,14 @@ cd yay && makepkg -si</pre>
 
 <p><b>स्केलेटन मोड:</b> फ़ंक्शन कार्यान्वयन हटाता है (<code>def func_name(...):  # ... implementation ...</code>), सभी कक्षाओं को संरक्षित करता है — LLM को न्यूनतम टोकन के साथ बड़े प्रोजेक्ट समझने देता है।</p>
 
+
+<p><b>Minify vs Aggressive:</b> <b>Minify</b> strips leading/trailing whitespace and removes blank lines — safe for any codebase, reduces tokens without affecting readability. <b>Aggressive</b> adds an extra pass that eliminates trailing whitespace on every line for maximum compression. Combine both when you need to fit more code into a limited context window.</p>
+
+<p><b>Dedup:</b> automatically detects files with identical content across your project and excludes duplicates from the output — prevents LLM from seeing the same code twice and wasting tokens.</p>
+
+<p><b>Checkpoints:</b> saves intermediate results at each pipeline stage (before cleanup, after minification, etc.) to <code>checkpoints/</code> folder. Useful for debugging what each processing step does or comparing outputs side by side.</p>
+
+<p><b>Auto-Watch:</b> monitors your project files for changes using the OS file watcher. When a file is saved, the pipeline automatically re-runs — ideal during active development when you need continuous prompt updates.</p>
 <h3>5. क्रिया बटन</h3>
 <table>
 <thead><tr><th>बटन</th><th>क्रिया</th></tr></thead>

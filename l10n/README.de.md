@@ -40,10 +40,10 @@
 <tr><td>🎨 Themes</td><td>Apple, Modern, benutzerdefiniertes JSON</td><td>Feste UI</td></tr>
 <tr><td>⚙️ UI-Anpassung (v1.14+)</td><td>Premiere-Pro-Stil</td><td>Feste UI</td></tr>
 <tr><td>🌐 i18n (v1.17+)</td><td>15 languages, system auto-detect</td><td>Single language</td></tr>
-<tr><td>♻️ Dedup (v1.23+)</td><td>Auto-remove duplicate files</td><td>Manual check</td></tr>
-<tr><td>⚡ Aggressive minify (v1.23+)</td><td>Strips all blank lines</td><td>Manual delete</td></tr>
-<tr><td>📌 Checkpoints (v1.23+)</td><td>Save intermediate results</td><td>Not available</td></tr>
-<tr><td>👁️ Auto-Watch (v1.23+)</td><td>Auto-reprocess on file changes</td><td>Not available</td></tr>
+<tr><td>♻️ Dedup (v1.23+)</td><td>Detects & skips files with identical content</td><td>Manual check</td></tr>
+<tr><td>⚡ Aggressive minify (v1.23+)</td><td>Extra compression — eliminates trailing whitespace on every line</td><td>Manual delete</td></tr>
+<tr><td>📌 Checkpoints (v1.23+)</td><td>Save before/after snapshots for debugging</td><td>Not available</td></tr>
+<tr><td>👁️ Auto-Watch (v1.23+)</td><td>Watches files & re-processes on change</td><td>Not available</td></tr>
 </tbody>
 </table>
 
@@ -162,11 +162,11 @@ cd yay && makepkg -si</pre>
 <thead><tr><th>Option</th><th>Beschreibung</th></tr></thead>
 <tbody>
 <tr><td>☑ Minify</td><td>Entfernt Leerzeichen und Leerzeilen</td></tr>
+<tr><td>☑ Aggressive</td><td>Aggressive minification — strips all blank lines</td></tr>
 <tr><td>☑ No Comments</td><td>Entfernt alle Kommentare</td></tr>
 <tr><td>☑ No Secrets</td><td>Maskiert API-Schlüssel, Passwörter, Tokens</td></tr>
 <tr><td>☑ Skeleton ☠️</td><td><b>Entfernt Funktionsrümpfe</b> — maximale Token-Ersparnis</td></tr>
 <tr><td>☑ Dedup</td><td>Removes duplicate files with identical content</td></tr>
-<tr><td>☑ Aggressive</td><td>Aggressive minification — strips all blank lines</td></tr>
 <tr><td>☑ Checkpoints</td><td>Saves intermediate processing checkpoints</td></tr>
 <tr><td>☑ Auto-Watch</td><td>Auto-reprocess on file changes</td></tr>
 <tr><td>Format</td><td>Markdown, XML, Plain, JSONL Chunks, Custom (Jinja2)</td></tr>
@@ -175,6 +175,14 @@ cd yay && makepkg -si</pre>
 </table>
 
 <p><b>Skeleton-Modus :</b> entfernt Funktionsimplementierungen (<code>def func_name(...):  # ... Implementierung ...</code>), behält alle Klassen — ermöglicht es dem LLM, große Projekte mit minimalen Tokens zu verstehen.</p>
+
+<p><b>Minify vs Aggressive:</b> <b>Minify</b> strips leading/trailing whitespace and removes blank lines — safe for any codebase, reduces tokens without affecting readability. <b>Aggressive</b> adds an extra pass that eliminates trailing whitespace on every line for maximum compression. Combine both when you need to fit more code into a limited context window.</p>
+
+<p><b>Dedup:</b> automatically detects files with identical content across your project and excludes duplicates from the output — prevents LLM from seeing the same code twice and wasting tokens.</p>
+
+<p><b>Checkpoints:</b> saves intermediate results at each pipeline stage (before cleanup, after minification, etc.) to <code>checkpoints/</code> folder. Useful for debugging what each processing step does or comparing outputs side by side.</p>
+
+<p><b>Auto-Watch:</b> monitors your project files for changes using the OS file watcher. When a file is saved, the pipeline automatically re-runs — ideal during active development when you need continuous prompt updates.</p>
 
 <h3>5. Aktionsschaltflächen</h3>
 <table>

@@ -32,7 +32,7 @@
 <table>
 <thead><tr><th>Feature</th><th>CodeContext AI</th><th>Manual</th></tr></thead>
 <tbody>
-<tr><td>🗜️ Minify + Skeleton</td><td><b>Up to 80%</b> token reduction</td><td>Manual copy-paste</td></tr>
+<tr><td>🗜️ Minify</td><td><b>Up to 80%</b> token reduction — strips whitespace & blank lines</td><td>Manual copy-paste</td></tr>
 <tr><td>🧩 LLM Patcher</td><td>Preview & apply JSON patches</td><td>Not available</td></tr>
 <tr><td>✅ LLM Checker</td><td>Auto-verify code before saving</td><td>Not available</td></tr>
 <tr><td>🔗 AST dependency graph</td><td>Python, JS/TS, Vue</td><td>File listing only</td></tr>
@@ -40,10 +40,10 @@
 <tr><td>🎨 Themes</td><td>Apple, Modern, custom JSON</td><td>Fixed UI</td></tr>
 <tr><td>⚙️ UI customization (v1.14+)</td><td>Premiere Pro-style</td><td>Fixed UI</td></tr>
 <tr><td>🌐 i18n (v1.17+)</td><td>15 languages, system auto-detect</td><td>Single language</td></tr>
-<tr><td>♻️ Dedup (v1.23+)</td><td>Auto-remove duplicate files</td><td>Manual check</td></tr>
-<tr><td>⚡ Aggressive minify (v1.23+)</td><td>Strips all blank lines</td><td>Manual delete</td></tr>
-<tr><td>📌 Checkpoints (v1.23+)</td><td>Save intermediate results</td><td>Not available</td></tr>
-<tr><td>👁️ Auto-Watch (v1.23+)</td><td>Auto-reprocess on file changes</td><td>Not available</td></tr>
+<tr><td>♻️ Dedup (v1.23+)</td><td>Detects & skips files with identical content</td><td>Manual check</td></tr>
+<tr><td>⚡ Aggressive minify (v1.23+)</td><td>Extra compression — eliminates trailing whitespace on every line</td><td>Manual delete</td></tr>
+<tr><td>📌 Checkpoints (v1.23+)</td><td>Save before/after snapshots for debugging</td><td>Not available</td></tr>
+<tr><td>👁️ Auto-Watch (v1.23+)</td><td>Watches files & re-processes on change</td><td>Not available</td></tr>
 </tbody>
 </table>
 
@@ -161,20 +161,28 @@ cd yay && makepkg -si</pre>
 <table>
 <thead><tr><th>Option</th><th>Description</th></tr></thead>
 <tbody>
-<tr><td>☑ Minify</td><td>Strips whitespace and blank lines</td></tr>
-<tr><td>☑ No Comments</td><td>Removes all comments</td></tr>
+<tr><td>☑ Minify</td><td>Trims leading/trailing whitespace on every line, removes blank lines — safe baseline compression for everyday use</td></tr>
+<tr><td>☑ Aggressive</td><td>Extra minification pass — strips trailing whitespace aggressively on every line. Combine with Minify for maximum token savings when context is tight</td></tr>
+<tr><td>☑ No Comments</td><td>Removes all comments from code</td></tr>
 <tr><td>☑ No Secrets</td><td>Masks API keys, passwords, tokens</td></tr>
 <tr><td>☑ Skeleton ☠️</td><td><b>Strips function bodies</b> — maximum token savings</td></tr>
-<tr><td>☑ Dedup</td><td>Removes duplicate files with identical content</td></tr>
-<tr><td>☑ Aggressive</td><td>Aggressive minification — strips all blank lines</td></tr>
-<tr><td>☑ Checkpoints</td><td>Saves intermediate processing checkpoints</td></tr>
-<tr><td>☑ Auto-Watch</td><td>Auto-reprocess on file changes</td></tr>
+<tr><td>☑ Dedup</td><td>Scans all files and excludes duplicates with identical content — eliminates redundant context from repeated files</td></tr>
+<tr><td>☑ Checkpoints</td><td>Saves intermediate processing snapshots (before/after) to disk — useful for debugging pipeline stages or comparing outputs</td></tr>
+<tr><td>☑ Auto-Watch</td><td>Watches project files for changes and automatically reprocesses — keeps your prompt up-to-date during active development</td></tr>
 <tr><td>Format</td><td>Markdown, XML, Plain, JSONL Chunks, Custom (Jinja2)</td></tr>
 <tr><td>📁 template</td><td>Jinja2 template picker</td></tr>
 </tbody>
 </table>
 
 <p><b>Skeleton Mode:</b> removes function implementations (<code>def func_name(...):  # ... implementation ...</code>), preserving all classes — lets LLM understand massive projects with minimal tokens.</p>
+
+<p><b>Minify vs Aggressive:</b> <b>Minify</b> strips leading/trailing whitespace and removes blank lines — safe for any codebase, reduces tokens without affecting readability. <b>Aggressive</b> adds an extra pass that eliminates trailing whitespace on every line for maximum compression. Combine both when you need to fit more code into a limited context window.</p>
+
+<p><b>Dedup:</b> automatically detects files with identical content across your project and excludes duplicates from the output — prevents LLM from seeing the same code twice and wasting tokens.</p>
+
+<p><b>Checkpoints:</b> saves intermediate results at each pipeline stage (before cleanup, after minification, etc.) to <code>checkpoints/</code> folder. Useful for debugging what each processing step does or comparing outputs side by side.</p>
+
+<p><b>Auto-Watch:</b> monitors your project files for changes using the OS file watcher. When a file is saved, the pipeline automatically re-runs — ideal during active development when you need continuous prompt updates.</p>
 
 <h3>5. Action Buttons</h3>
 <table>
