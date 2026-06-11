@@ -1,0 +1,4 @@
+include templates/*.jinja2
+include themes/*.json
+include assets/images/*.png
+include VERSION.txt

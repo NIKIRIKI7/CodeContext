@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "codecontext-ai"
+version = "1.14.0"
+description = "AI-powered codebase analyzer — scans project structure, builds dependency graphs, generates LLM-optimized prompts with minification, skeleton mode, and JSON patching"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+  { name = "mcniki", email = "sawwa.cwer13@gmail.com" }
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Environment :: X11 Applications :: Qt",
+  "Operating System :: OS Independent",
+]
+dependencies = [
+  "PySide6>=6.6.0",
+  "tiktoken>=0.5.1",
+  "fpdf>=1.7.2",
+  "pyperclip>=1.8.2",
+  "pathspec>=0.11.2",
+  "jinja2>=3.1.2",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=9.0.0",
+  "pytest-asyncio>=1.4.0",
+  "pytest-cov>=7.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/NIKIRIKI7/CodeContext"
+"AUR" = "https://aur.archlinux.org/packages/codecontext-ai"
+
+[project.scripts]
+codecontext = "codecontext:main"
+
+[tool.setuptools.packages.find]
+include = ["src", "src.*"]
+
+[tool.setuptools.package-data]
+src = ["**/*"]
+
+[tool.setuptools.data-files]
+"share/codecontext-ai/templates" = ["templates/*.jinja2"]
+"share/codecontext-ai/themes" = ["themes/*.json"]
+
+[project.entry-points.gui_scripts]
+codecontext = "codecontext:main"
