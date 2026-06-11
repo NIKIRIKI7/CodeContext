@@ -65,12 +65,18 @@ venv\Scripts\activate
 source venv/bin/activate
 pip install -r requirements.txt</pre>
 
-<h3>Arch Linux (AUR)</h3>
-<pre>yay -S codecontext-ai</pre>
-
 <h3>Windows .exe</h3>
 <pre>pip install pyinstaller
 pyinstaller --windowed --onefile --icon=assets/images/logo.ico --name "CodeContext AI" main.py</pre>
+
+<h3>Arch Linux (AUR)</h3>
+<pre>yay -S codecontext-ai</pre>
+<p><b>yay</b> — AUR-хелпер для Arch Linux. Если yay ещё не установлен:</p>
+<pre>sudo pacman -S --needed git base-devel
+git clone https://aur.archlinux.org/yay.git
+cd yay && makepkg -si</pre>
+<p>Обновление: <code>yay -Syu</code> · Поиск: <code>yay -Ss codecontext</code> · Удаление: <code>sudo pacman -Rns codecontext-ai</code></p>
+<p>Доступен также через <b>paru</b>: <code>paru -S codecontext-ai</code></p>
 
 <hr>
 
@@ -392,12 +398,18 @@ venv\Scripts\activate
 source venv/bin/activate
 pip install -r requirements.txt</pre>
 
-<h3>Arch Linux (AUR)</h3>
-<pre>yay -S codecontext-ai</pre>
-
 <h3>Windows .exe</h3>
 <pre>pip install pyinstaller
 pyinstaller --windowed --onefile --icon=assets/images/logo.ico --name "CodeContext AI" main.py</pre>
+
+<h3>Arch Linux (AUR)</h3>
+<pre>yay -S codecontext-ai</pre>
+<p><b>yay</b> is an AUR helper for Arch Linux. To install yay first:</p>
+<pre>sudo pacman -S --needed git base-devel
+git clone https://aur.archlinux.org/yay.git
+cd yay && makepkg -si</pre>
+<p>Update: <code>yay -Syu</code> · Search: <code>yay -Ss codecontext</code> · Remove: <code>sudo pacman -Rns codecontext-ai</code></p>
+<p>Also available via <b>paru</b>: <code>paru -S codecontext-ai</code></p>
 
 <hr>
 
