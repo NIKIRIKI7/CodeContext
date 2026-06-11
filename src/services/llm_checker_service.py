@@ -2,6 +2,7 @@ import json
 import urllib.request
 import urllib.error
 import asyncio
+from src.i18n import tr
 
 class LlmCheckerService:
     """Сервис для проверки и исправления кода через LLM (OpenAI-совместимый API)"""
@@ -9,7 +10,7 @@ class LlmCheckerService:
     async def send_chat_message(self, messages: list, settings) -> str:
         """Отправляет произвольный набор сообщений в чат."""
         if not settings.llm_base_url:
-            return "Ошибка: Не указан URL API в настройках (вкладка LLM & ОС)."
+            return tr("llm_checker.send.no_url")
 
         data = {
             "model": settings.llm_model or "gpt-4o-mini",
@@ -39,9 +40,9 @@ class LlmCheckerService:
     async def check_patch(self, original_code: str, patched_code: str, settings) -> dict:
         """Возвращает словарь: {'status': str, 'reason': str, 'suggested_code': str | None}"""
         if not settings.llm_check_enabled:
-            return {"status": "DISABLED", "reason": "Проверка LLM отключена в настройках.", "suggested_code": None}
+            return {"status": "DISABLED", "reason": tr("llm_checker.check.disabled"), "suggested_code": None}
         if not settings.llm_base_url:
-            return {"status": "ERROR", "reason": "Ошибка: Не указан URL API в настройках.", "suggested_code": None}
+            return {"status": "ERROR", "reason": tr("llm_checker.check.no_url_short"), "suggested_code": None}
 
         prompt = (
             "You are an expert Python/JS/TS code reviewer.\n"
@@ -86,7 +87,7 @@ class LlmCheckerService:
                             "suggested_code": parsed.get("suggested_code", None)
                         }
                     except json.JSONDecodeError:
-                        return {"status": "ERROR", "reason": "LLM returned invalid JSON.", "suggested_code": None}
+                        return {"status": "ERROR", "reason": tr("llm_checker.check.invalid_json"), "suggested_code": None}
 
             except urllib.error.URLError as e:
                 body = e.read().decode('utf-8') if hasattr(e, 'read') else str(e)

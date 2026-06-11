@@ -13,6 +13,7 @@ from ..use_cases.process_use_case import ProcessWorkspaceUseCase
 from ..use_cases.patch_use_case import PatchUseCase
 from ..utils.config import PRESETS, DEFAULT_SYSTEM_PROMPT, PricingManager
 from ..utils.logger import app_logger
+from src.i18n import tr
 
 class CliController:
     """CLI-точка входа. Инициализирует Store и вызывает Use Cases."""
@@ -43,8 +44,8 @@ class CliController:
 
         mode = kwargs.get('mode', 'default')
         app_logger.info(f"🖥️ CLI Run Triggered | Mode: {mode} | Target: {target_path}")
-        print(f"\n🚀 CodeContext AI: Запуск (Mode: {mode})...")
-        print(f"🎯 Цель: {target_path}")
+        print(tr("cli_controller.starting", mode=mode))
+        print(tr("cli_controller.target", target_path=target_path))
 
         if not self._validate(target_path, silent):
             return
@@ -56,7 +57,7 @@ class CliController:
             asyncio.run(self._pipeline(kwargs))
         except Exception as exc:
             app_logger.error(f"Critical CLI Error: {exc}\n{traceback.format_exc()}")
-            print(f"\n🔥 Критическая ошибка: {exc}")
+            print(tr("cli_controller.critical_error", exc=exc))
             if not silent:
                 traceback.print_exc()
         finally:
@@ -71,15 +72,15 @@ class CliController:
         target_path = self._normalize_path(target_path)
         patch_file = self._normalize_path(patch_file)
 
-        print(f"\n🚀 CodeContext AI: Safety Patch Mode")
-        print(f"🎯 Цель: {target_path}")
-        print(f"📄 Файл патча: {patch_file}\n")
+        print(tr("cli_controller.safety_patch_mode"))
+        print(tr("cli_controller.patch_target", target_path=target_path))
+        print(tr("cli_controller.patch_file", patch_file=patch_file))
 
         if not self._validate(target_path, False):
             return
 
         if not os.path.exists(patch_file):
-            print(f"❌ Ошибка: Файл патча не найден: {patch_file}")
+            print(tr("cli_controller.patch_file_not_found", patch_file=patch_file))
             return
 
         with open(patch_file, 'r', encoding='utf-8') as f:
@@ -87,45 +88,45 @@ class CliController:
 
         prepared_patches = self._patch_uc.prepare_json_patch(patch_str, [target_path])
         if not prepared_patches:
-            print("⚠️ Патчи не найдены или JSON не валиден.")
+            print(tr("cli_controller.patches_invalid"))
             return
 
         patches_to_apply = []
         for p in prepared_patches:
             if not p['success']:
-                print(f"❌ Пропущен ({p['file_target']}): {p['msg']}")
+                print(tr("cli_controller.patch_skipped", file_target=p['file_target'], msg=p['msg']))
                 continue
 
-            print(f"\n=== Изменения для: {p['file_target']} [{p.get('action', 'unknown').upper()}] ===")
+            print(tr("cli_controller.changes_for", file_target=p['file_target'], action=p.get('action', 'unknown').upper()))
             self._print_unified_diff(p['original_content'], p['patched_content'], p['file_target'])
 
             while True:
-                choice = input("\nПрименить эти изменения? [Y/n/q]: ").strip().lower()
+                choice = input(tr("cli_controller.apply_prompt")).strip().lower()
                 if choice in ('y', 'yes', ''):
                     patches_to_apply.append(p)
                     break
                 elif choice in ('n', 'no'):
-                    print("⏭️ Пропущено.")
+                    print(tr("cli_controller.skipped"))
                     break
                 elif choice in ('q', 'quit'):
-                    print("🛑 Отменено пользователем.")
+                    print(tr("cli_controller.cancelled"))
                     self._apply_approved_patches(patches_to_apply)
                     return
                 else:
-                    print("Пожалуйста, введите Y, n или q.")
+                    print(tr("cli_controller.invalid_choice"))
 
         self._apply_approved_patches(patches_to_apply)
 
     def _apply_approved_patches(self, patches: list):
         if not patches:
-            print("\nНет патчей для применения.")
+            print(tr("cli_controller.no_patches"))
             return
-
-        print(f"\nПрименение {len(patches)} патчей...")
+ 
+        print(tr("cli_controller.applying_patches", count=len(patches)))
         applied, logs = self._patch_uc.apply_prepared(patches)
         for log in logs:
             print(log)
-        print(f"✅ Успешно применено: {applied}")
+        print(tr("cli_controller.applied_count", applied=applied))
 
     def _print_unified_diff(self, original: str, patched: str, filename: str):
         GREEN = '\033[92m'
@@ -142,7 +143,7 @@ class CliController:
         ))
 
         if not diff:
-            print("Без изменений (содержимое идентично).")
+            print(tr("cli_controller.no_changes"))
             return
 
         for line in diff:
@@ -192,13 +193,13 @@ class CliController:
 
         if not current_state.scanned_files_paths:
             app_logger.warning("CLI: Файлы не найдены.")
-            print("⚠️ Файлы не найдены.")
+            print(tr("cli_controller.no_files_found"))
             return
 
         limit = kwargs.get('fail_if_exceeds')
         if limit and current_state.selected_tokens > limit:
             import sys
-            print(f"\n❌ Ошибка (CI/CD Gate): Проект занимает {current_state.selected_tokens} токенов, что превышает лимит в {limit}.", file=sys.stderr)
+            print(tr("cli_controller.token_limit_exceeded", tokens=current_state.selected_tokens, limit=limit), file=sys.stderr)
             sys.exit(1)
 
         if kwargs.get('dry_run', False):
@@ -206,11 +207,11 @@ class CliController:
             count = len(current_state.scanned_files_paths)
             model = current_state.settings.llm_model or "gpt-4o-mini"
 
-            print("\n📊 ОЦЕНКА КОНТЕКСТА (DRY-RUN)")
+            print(tr("cli_controller.dry_run_header"))
             print("==================================")
-            print(f"📁 Найдено файлов: {count}")
-            print(f"⚖️ Примерный объем: {tokens} токенов")
-            print("⏳ Получение актуальных цен из API...")
+            print(tr("cli_controller.files_found", count=count))
+            print(tr("cli_controller.estimated_volume", tokens=tokens))
+            print(tr("cli_controller.fetching_prices"))
 
             def fetch_and_get():
                 PricingManager.fetch_prices_sync()
@@ -220,9 +221,9 @@ class CliController:
 
             if price > 0:
                 cost = tokens * price
-                print(f"💰 Оценка ({model}): ~${cost:.6f} USD")
+                print(tr("cli_controller.cost_estimate", model=model, cost=cost))
             else:
-                print(f"💰 Оценка ({model}): Бесплатно или локальная модель")
+                print(tr("cli_controller.free_or_local", model=model))
             print("==================================")
             return
 
@@ -237,7 +238,7 @@ class CliController:
         import platform
         try:
             sys_name = platform.system()
-            msg = f"Проект скопирован! ({tokens} токенов)"
+            msg = tr("cli_controller.project_copied", tokens=tokens)
             if sys_name == "Windows":
                 script = f'[reflection.assembly]::loadwithpartialname("System.Windows.Forms");[system.Windows.Forms.MessageBox]::show("{msg}", "CodeContext AI")'
                 os.system(f'powershell -Command "{script}"')
@@ -258,12 +259,12 @@ class CliController:
         if not os.path.exists(path):
             app_logger.error(f"CLI Error: Путь не существует {path}")
             if not silent:
-                print(f"❌ Ошибка: Путь не существует: {path}")
+                print(tr("cli_controller.path_not_found", path=path))
                 CliController._keep_window_open()
             return False
         return True
 
     @staticmethod
     def _keep_window_open():
-        print("\n(Окно закроется через 3 секунды...)")
+        print(tr("cli_controller.window_closing"))
         time.sleep(3)

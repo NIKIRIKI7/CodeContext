@@ -5,6 +5,7 @@ import copy
 from typing import List, Callable, Any, Dict
 from .state import AppState, AppSettings
 from ..actions.action_types import *
+from src.i18n import tr
 
 
 class Store:
@@ -62,7 +63,7 @@ class Store:
             FORMATTING_SUCCESS:   self._handle_formatting_success,
             WORKFLOW_STARTED:     self._handle_update_status,
             WORKFLOW_PROGRESS:    self._handle_update_status,
-            WORKFLOW_FINISHED:    lambda _: self._handle_update_status({'message': 'Готово', 'progress': 1.0}),
+            WORKFLOW_FINISHED:    lambda _: self._handle_update_status({'message': tr("store.status.done"), 'progress': 1.0}),
             WORKFLOW_ERROR:       self._handle_workflow_error,
             HISTORY_ADD:          self._handle_history_add,
             SET_BEFORE_AFTER:     lambda p: self._state.__setattr__('before_after_data', p),
@@ -163,7 +164,7 @@ class Store:
         self._state.final_output_text = ""
         self._state.total_tokens = 0
         self._state.selected_tokens = 0
-        self._state.status_message = "Рабочая область очищена"
+        self._state.status_message = tr("store.status.workspace_cleared")
         self._state.progress = 0.0
         self._state.logs.clear()
         self._state.toast_message = ""
@@ -175,34 +176,34 @@ class Store:
             self._state.selected_folders.append(path)
         if path and is_temp and path not in self._state.temp_folders:
             self._state.temp_folders.append(path)
-        self._state.status_message = "Репозиторий загружен"
+        self._state.status_message = tr("store.status.repo_loaded")
         self._state.logs.append(f"GitHub Repo Cloned: {path}")
 
     def _handle_github_failure(self, error: str):
-        self._state.status_message = "Ошибка клонирования"
+        self._state.status_message = tr("store.status.clone_error")
         self._state.logs.append(f"GitHub Error: {error}")
 
     def _handle_scan_success(self, payload: dict):
         self._state.scanned_files_paths = payload['paths']
         self._state.scanned_file_metadata = payload['metadata']
         self._state.manual_exclusions = set()
-        self._state.status_message = f"Найдено файлов: {len(payload['paths'])}"
+        self._state.status_message = tr("store.status.files_found", count=len(payload['paths']))
         self._handle_recalculate_tokens(None)
 
     def _handle_scan_failure(self, error: str):
         self._state.scanned_files_paths.clear()
-        self._state.status_message = "Ошибка сканирования"
+        self._state.status_message = tr("store.status.scan_error")
         self._state.logs.append(f"Error: {error}")
 
     def _handle_formatting_success(self, payload: dict):
         self._state.final_output_text = payload['text']
         self._state.total_tokens = payload['tokens']
-        self._state.status_message = "Готово"
+        self._state.status_message = tr("store.status.done")
         self._state.progress = 1.0
         self._state.is_loading = False
 
     def _handle_workflow_error(self, error: str):
-        self._state.status_message = f"Ошибка: {error}"
+        self._state.status_message = tr("store.status.error_with_msg", error_msg=error)
         self._state.is_loading = False
         self._state.logs.append(f"CRITICAL ERROR: {error}")
 

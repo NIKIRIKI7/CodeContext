@@ -8,6 +8,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from src.di_container import DIContainer
 from src.utils.async_runtime import AsyncRuntime
 from src.utils.logger import app_logger
+from src.i18n import tr
 from PySide6.QtWidgets import QApplication
 from PySide6.QtGui import QIcon, QImage, QPainter, QColor, QFont, QPen
 from PySide6.QtCore import Qt
@@ -77,19 +78,19 @@ def main():
                 except Exception: pass
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--cli", action="store_true", help="Запуск в режиме командной строки")
-    parser.add_argument("--path", type=str, help="Путь к проекту")
-    parser.add_argument("--patch", type=str, help="Путь к JSON-файлу с патчами от LLM")
-    parser.add_argument("--mode", type=str, default="default", help="Режим сбора зависимостей")
-    parser.add_argument("--install-context", action="store_true", help="Установить интеграцию с ОС")
-    parser.add_argument("--remove-context", action="store_true", help="Удалить интеграцию с ОС")
-    parser.add_argument("--minify", type=str, choices=["true", "false"], help="Включить/выключить Minify")
-    parser.add_argument("--skeleton", type=str, choices=["true", "false"], help="Включить/выключить Skeleton")
-    parser.add_argument("--format", type=str, choices=["markdown", "xml", "plain", "jsonl_chunk"], help="Формат вывода")
-    parser.add_argument("--dry-run", action="store_true", help="Оценить токены без генерации (только CLI)")
-    parser.add_argument("--silent", action="store_true", help="Тихий режим (только CLI)")
-    parser.add_argument("--stdout", action="store_true", help="Вывод в stdout")
-    parser.add_argument("--fail-if-exceeds", type=int, help="Limit Gate Guard")
+    parser.add_argument("--cli", action="store_true", help=tr("main.cli_mode"))
+    parser.add_argument("--path", type=str, help=tr("main.path"))
+    parser.add_argument("--patch", type=str, help=tr("main.patch"))
+    parser.add_argument("--mode", type=str, default="default", help=tr("main.mode"))
+    parser.add_argument("--install-context", action="store_true", help=tr("main.install_context"))
+    parser.add_argument("--remove-context", action="store_true", help=tr("main.remove_context"))
+    parser.add_argument("--minify", type=str, choices=["true", "false"], help=tr("main.minify"))
+    parser.add_argument("--skeleton", type=str, choices=["true", "false"], help=tr("main.skeleton"))
+    parser.add_argument("--format", type=str, choices=["markdown", "xml", "plain", "jsonl_chunk"], help=tr("main.format"))
+    parser.add_argument("--dry-run", action="store_true", help=tr("main.dry_run"))
+    parser.add_argument("--silent", action="store_true", help=tr("main.silent"))
+    parser.add_argument("--stdout", action="store_true", help=tr("main.stdout"))
+    parser.add_argument("--fail-if-exceeds", type=int, help=tr("main.fail_if_exceeds"))
 
     args, _ = parser.parse_known_args()
     container = DIContainer()
@@ -124,7 +125,7 @@ def main():
     if args.path and os.path.exists(args.path):
         abs_path = os.path.abspath(args.path)
         if send_to_existing_instance(abs_path):
-            app_logger.info("Отправлено в уже открытое окно. Завершение работы.")
+            app_logger.info(tr("main.sent_to_existing"))
             sys.exit(0)
 
     app_logger.info("Starting GUI Mode (PySide6)...")

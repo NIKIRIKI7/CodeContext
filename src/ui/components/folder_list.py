@@ -2,6 +2,7 @@ import os
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QScrollArea, QFrame
 from PySide6.QtCore import Qt
 from ..theme_manager import ThemeManager, theme_bus
+from src.i18n import tr
 
 
 class FolderList(QScrollArea):
@@ -35,7 +36,7 @@ class FolderList(QScrollArea):
                 item.widget().deleteLater()
 
         if not selected_folders:
-            lbl = QLabel("Источники не выбраны. Перетащите папки сюда.")
+            lbl = QLabel(tr("folder_list.no_sources"))
             lbl.setProperty("cssClass", "muted")
             self.layout.addWidget(lbl)
             return
@@ -51,12 +52,12 @@ class FolderList(QScrollArea):
 
             btn_edit = QPushButton("✏️")
             btn_edit.setProperty("cssClass", "icon")
-            btn_edit.setToolTip("Редактировать путь")
+            btn_edit.setToolTip(tr("folder_list.edit.tooltip"))
             btn_edit.clicked.connect(lambda _, p=folder: self.on_edit(p))
 
             btn_del = QPushButton("✕")
             btn_del.setProperty("cssClass", "icon")
-            btn_del.setToolTip("Удалить из списка")
+            btn_del.setToolTip(tr("folder_list.delete.tooltip"))
             btn_del.clicked.connect(lambda _, p=folder: self.on_delete(p))
 
             row_layout.addWidget(lbl, 1)

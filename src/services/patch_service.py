@@ -2,6 +2,7 @@ import os
 import re
 import difflib
 from typing import Tuple, List, Dict
+from src.i18n import tr
 
 
 class PatchService:
@@ -15,14 +16,14 @@ class PatchService:
             file_target = item.get('file')
 
             if not file_target:
-                prepared.append({'success': False, 'file_target': 'Unknown', 'msg': "Пропущен патч: нет 'file'"})
+                prepared.append({'success': False, 'file_target': 'Unknown', 'msg': tr("patch_service.prepare.missing_file")})
                 continue
 
             search_text = item.get('search', '')
             content_text = item.get('content', item.get('replace', ''))
 
             if not base_folders:
-                prepared.append({'success': False, 'file_target': file_target, 'msg': "Нет выбранных папок."})
+                prepared.append({'success': False, 'file_target': file_target, 'msg': tr("patch_service.prepare.no_folders")})
                 continue
 
             base_dir = base_folders[0]
@@ -34,19 +35,19 @@ class PatchService:
                 prepared.append({
                     'success': True, 'action': action, 'file_target': file_target,
                     'actual_path': target_path, 'original_content': "",
-                    'patched_content': content_text, 'msg': f"🌟 Создан файл: {clean_target}"
+                    'patched_content': content_text, 'msg': tr("patch_service.prepare.created", clean_target=clean_target)
                 })
                 continue
 
             if not actual_path:
-                prepared.append({'success': False, 'file_target': file_target, 'msg': f"Файл не найден: {file_target}"})
+                prepared.append({'success': False, 'file_target': file_target, 'msg': tr("patch_service.prepare.not_found", file_target=file_target)})
                 continue
 
             if action == 'delete':
                 prepared.append({
                     'success': True, 'action': action, 'file_target': file_target,
-                    'actual_path': actual_path, 'original_content': "(Файл будет удален)",
-                    'patched_content': "", 'msg': f"🗑️ Удален файл: {os.path.basename(actual_path)}"
+                    'actual_path': actual_path, 'original_content': tr("patch_service.prepare.will_delete"),
+                    'patched_content': "", 'msg': tr("patch_service.prepare.deleted", basename=os.path.basename(actual_path))
                 })
                 continue
 
@@ -60,35 +61,35 @@ class PatchService:
 
             if action == 'append':
                 new_content = file_content + ("\n" if not file_content.endswith("\n") else "") + content_text
-                msg = f"➕ Добавлен текст в конец: {os.path.basename(actual_path)}"
+                msg = tr("patch_service.prepare.appended", basename=os.path.basename(actual_path))
                 success = True
             elif action == 'prepend':
                 new_content = content_text + ("\n" if not content_text.endswith("\n") else "") + file_content
-                msg = f"➕ Добавлен текст в начало: {os.path.basename(actual_path)}"
+                msg = tr("patch_service.prepare.prepended", basename=os.path.basename(actual_path))
                 success = True
             elif action in ('replace', 'insert_before', 'insert_after'):
                 if not search_text:
-                    success, msg = False, "Пустой 'search'"
+                    success, msg = False, tr("patch_service.prepare.empty_search")
                 else:
                     start_idx, end_idx, fuzzy_marker = self._find_match_indices(file_content, search_text)
                     if start_idx == -1:
-                        success, msg = False, "Строка поиска не найдена."
+                        success, msg = False, tr("patch_service.prepare.search_not_found")
                     else:
                         if action == 'replace':
                             new_content = file_content[:start_idx] + content_text + file_content[end_idx:]
-                            msg = f"✅ Заменен блок в {os.path.basename(actual_path)}"
+                            msg = tr("patch_service.prepare.replaced", basename=os.path.basename(actual_path))
                         elif action == 'insert_before':
                             new_content = file_content[:start_idx] + content_text + "\n" + file_content[start_idx:]
-                            msg = f"⤴️ Вставлен текст перед в {os.path.basename(actual_path)}"
+                            msg = tr("patch_service.prepare.inserted_before", basename=os.path.basename(actual_path))
                         elif action == 'insert_after':
                             new_content = file_content[:end_idx] + "\n" + content_text + file_content[end_idx:]
-                            msg = f"⤵️ Вставлен текст после в {os.path.basename(actual_path)}"
+                            msg = tr("patch_service.prepare.inserted_after", basename=os.path.basename(actual_path))
                         success = True
             else:
-                success, msg = False, f"Неизвестный action: '{action}'"
+                success, msg = False, tr("patch_service.prepare.unknown_action", action=action)
 
             if fuzzy_marker:
-                msg += f" (нечёткое совпадение: {fuzzy_marker:.0%})"
+                msg += tr("patch_service.prepare.fuzzy_match", fuzzy_marker=fuzzy_marker)
             prepared.append({
                 'success': success, 'action': action, 'file_target': file_target,
                 'actual_path': actual_path, 'original_content': file_content,
@@ -115,7 +116,7 @@ class PatchService:
                 applied_count += 1
                 logs.append(p['msg'])
             except Exception as e:
-                logs.append(f"❌ Ошибка {p['file_target']}: {e}")
+                logs.append(tr("patch_service.apply.error", file_target=p['file_target'], e=e))
         return applied_count, logs
 
     def _find_match_indices(self, content: str, search_text: str) -> Tuple[int, int, float]:

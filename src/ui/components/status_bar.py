@@ -1,5 +1,6 @@
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QLabel, QProgressBar
 from ..theme_manager import ThemeManager, theme_bus
+from src.i18n import tr
 
 
 class StatusBar(QWidget):
@@ -32,5 +33,5 @@ class StatusBar(QWidget):
         self.lbl_status.setText(msg)
         self.progress.setValue(int(prog * 100))
 
-        cost_str = f" (~${cost:.4f})" if cost > 0 else " (Локальная модель/Free)"
+        cost_str = f" (~${cost:.4f})" if cost > 0 else tr("status_bar.local_model")
         self.lbl_tokens.setText(f"Tokens: {tokens}{cost_str}")

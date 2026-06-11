@@ -1,6 +1,7 @@
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QCheckBox, QComboBox, QPushButton, QFileDialog
 from PySide6.QtCore import Qt
 from ..theme_manager import ThemeManager, theme_bus
+from src.i18n import tr
 
 
 class ActionPanel(QWidget):
@@ -28,7 +29,7 @@ class ActionPanel(QWidget):
         self.cmb_format.currentTextChanged.connect(self._on_format_changed)
 
         self.btn_template = QPushButton("\U0001F4C1")
-        self.btn_template.setToolTip("Выбрать Jinja2 шаблон")
+        self.btn_template.setToolTip(tr("action_panel.template.tooltip"))
         self.btn_template.setProperty("cssClass", "icon")
         self.btn_template.clicked.connect(self._pick_template)
         self.btn_template.hide()
@@ -44,23 +45,23 @@ class ActionPanel(QWidget):
         row2 = QHBoxLayout()
         row2.setSpacing(8)
 
-        self.btn_preview = QPushButton("\U0001F440 Предпросмотр")
+        self.btn_preview = QPushButton(tr("action_panel.preview.button"))
         self.btn_preview.setProperty("cssClass", "ghost")
         self.btn_preview.clicked.connect(lambda: self.on_run("preview"))
 
-        self.btn_copy = QPushButton("\U0001F4CB В Буфер обмена")
+        self.btn_copy = QPushButton(tr("action_panel.clipboard.button"))
         self.btn_copy.clicked.connect(lambda: self.on_run("clipboard"))
 
-        self.btn_chat = QPushButton("\U0001F680 Отправить в ChatGPT / Claude")
+        self.btn_chat = QPushButton(tr("action_panel.chat.button"))
         self.btn_chat.setProperty("cssClass", "success")
         self.btn_chat.clicked.connect(lambda: self.on_run("chat"))
 
-        self.btn_editor = QPushButton("\U0001F4BB В редактор")
+        self.btn_editor = QPushButton(tr("action_panel.editor.button"))
         self.btn_editor.setProperty("cssClass", "ghost")
-        self.btn_editor.setToolTip("Открыть результат в VS Code / Cursor")
+        self.btn_editor.setToolTip(tr("action_panel.editor.tooltip"))
         self.btn_editor.clicked.connect(lambda: self.on_run("editor"))
 
-        self.btn_file = QPushButton("\U0001F4BE В Файл")
+        self.btn_file = QPushButton(tr("action_panel.file.button"))
         self.btn_file.setProperty("cssClass", "ghost")
         self.btn_file.clicked.connect(lambda: self.on_run("file"))
 
@@ -95,7 +96,7 @@ class ActionPanel(QWidget):
 
     def _pick_template(self):
         path, _ = QFileDialog.getOpenFileName(
-            self, "Выберите Jinja2 шаблон", "", "Jinja2 Templates (*.jinja2 *.j2 *.html);;All Files (*.*)"
+            self, tr("action_panel.template.dialog_title"), "", "Jinja2 Templates (*.jinja2 *.j2 *.html);;All Files (*.*)"
         )
         if path:
             self._current_template_path = path

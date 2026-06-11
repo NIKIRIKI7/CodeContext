@@ -10,6 +10,7 @@ import zipfile
 import shutil
 from typing import Optional, Tuple, Callable
 from ..utils.logger import app_logger
+from src.i18n import tr
 
 class UpdaterService:
     """Сервис для проверки и загрузки обновлений с GitHub с полной поддержкой Mac/Linux/Win."""
@@ -84,23 +85,23 @@ class UpdaterService:
             app_logger.info(f"[Updater] Ассет успешно найден: {asset_url}")
             return {
                 "version": latest_release.get("tag_name"),
-                "notes": latest_release.get("body", "Описание отсутствует."),
+                "notes": latest_release.get("body", tr("updater_service.check.no_description")),
                 "download_url": asset_url
             }
 
         except HTTPError as e:
             app_logger.error(f"[Updater] Ошибка API GitHub: Код {e.code} - {e.read().decode('utf-8')}")
-            raise RuntimeError(f"Сбой API GitHub: Код {e.code}")
+            raise RuntimeError(tr("updater_service.check.github_api_error", code=e.code))
         except Exception as e:
             app_logger.error(f"[Updater] Критическая ошибка проверки обновлений: {e}")
-            raise RuntimeError(f"Ошибка соединения: {e}")
+            raise RuntimeError(tr("updater_service.check.connection_error", error=e))
 
     async def download_and_install(self, download_url: str, progress_cb: Callable[[float], None]) -> bool:
         app_logger.info(f"[Updater] Запуск скачивания с URL: {download_url}")
         
         if not getattr(sys, 'frozen', False):
             app_logger.error("[Updater] Автообновление вызвано не из скомпилированного файла.")
-            raise RuntimeError("Автообновление работает только в скомпилированной версии (PyInstaller).")
+            raise RuntimeError(tr("updater_service.download.not_compiled"))
 
         current_exe = sys.executable
         return await asyncio.to_thread(self._download_sync, download_url, current_exe, progress_cb)
@@ -176,7 +177,7 @@ class UpdaterService:
                         break
                         
                 if not extracted_app:
-                    raise RuntimeError("Неверный формат: .app не найден внутри архива.")
+                    raise RuntimeError(tr("updater_service.download.no_app_in_archive"))
                     
                 if os.path.exists(target_app):
                     app_logger.info(f"[Updater] Перемещение старого .app: {target_app} -> {old_target}")
@@ -230,7 +231,7 @@ class UpdaterService:
                     except OSError as rollback_err:
                         app_logger.error(f"Критическая ошибка отката: {rollback_err}")
             
-            raise RuntimeError(f"Сбой загрузки: {e}")
+            raise RuntimeError(tr("updater_service.download.download_failed", error=e))
 
     def _parse_version(self, v_str: str) -> Tuple[int, int, int, int, int]:
         match = re.match(r'v?(\d+)\.(\d+)\.(\d+)(?:-pre\.(\d+))?', v_str)

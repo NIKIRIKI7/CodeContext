@@ -3,6 +3,7 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QTableWidget, QTableWidgetIt
     QHeaderView, QProgressBar, QHBoxLayout
 from PySide6.QtCore import Qt
 from ..theme_manager import ThemeManager, theme_bus
+from src.i18n import tr
 
 
 class AnalyticsPanel(QWidget):
@@ -12,7 +13,7 @@ class AnalyticsPanel(QWidget):
         self.layout.setContentsMargins(0, 0, 0, 0)
 
         self.table = QTableWidget(0, 3)
-        self.table.setHorizontalHeaderLabels(["Файл", "Токены", "Вес (Прогресс)"])
+        self.table.setHorizontalHeaderLabels([tr("analytics_panel.header.file"), tr("analytics_panel.header.tokens"), tr("analytics_panel.header.weight")])
 
         header = self.table.horizontalHeader()
         header.setStretchLastSection(False)

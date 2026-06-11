@@ -3,6 +3,7 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTreeView, QLin
 from PySide6.QtGui import QStandardItemModel, QStandardItem
 from PySide6.QtCore import Qt
 from ..theme_manager import ThemeManager, theme_bus
+from src.i18n import tr
 
 
 class FileTree(QWidget):
@@ -15,12 +16,12 @@ class FileTree(QWidget):
         self.layout.setContentsMargins(0, 0, 0, 0)
 
         self.search = QLineEdit()
-        self.search.setPlaceholderText("🔍 Поиск файлов (Ctrl+F)...")
+        self.search.setPlaceholderText(tr("file_tree.search.placeholder"))
 
         btn_layout = QHBoxLayout()
         btn_layout.setContentsMargins(0, 0, 0, 0)
-        self.btn_expand = QPushButton("Развернуть всё")
-        self.btn_collapse = QPushButton("Свернуть всё")
+        self.btn_expand = QPushButton(tr("file_tree.expand_all"))
+        self.btn_collapse = QPushButton(tr("file_tree.collapse_all"))
         self.btn_expand.setProperty("cssClass", "ghost")
         self.btn_collapse.setProperty("cssClass", "ghost")
         btn_layout.addWidget(self.btn_expand)
@@ -28,8 +29,8 @@ class FileTree(QWidget):
 
         btn_layout_smart = QHBoxLayout()
         btn_layout_smart.setContentsMargins(0, 0, 0, 0)
-        self.btn_exclude_tests = QPushButton("🚫 Без тестов")
-        self.btn_git_modified = QPushButton("🟢 Измененные (Git)")
+        self.btn_exclude_tests = QPushButton(tr("file_tree.exclude_tests"))
+        self.btn_git_modified = QPushButton(tr("file_tree.git_modified"))
         self.btn_exclude_tests.setProperty("cssClass", "ghost")
         self.btn_git_modified.setProperty("cssClass", "ghost")
         btn_layout_smart.addWidget(self.btn_exclude_tests)
@@ -81,9 +82,9 @@ class FileTree(QWidget):
         node_map = {"": root}
 
         icon_map = {
-            "DEPENDENCY": "📦 [ЗАВИСИМОСТЬ]",
-            "HUGE": "🔥 [ОГРОМНЫЙ]",
-            "HEAVY": "🔴 [ТЯЖЕЛЫЙ]",
+            "DEPENDENCY": tr("file_tree.icon.dependency"),
+            "HUGE": tr("file_tree.icon.huge"),
+            "HEAVY": tr("file_tree.icon.heavy"),
             "MEDIUM": "🟡",
             "LIGHT": "🟢"
         }
@@ -184,9 +185,9 @@ class FileTree(QWidget):
 
         menu = QMenu()
         if is_file:
-            act_none = menu.addAction("Копировать без зависимостей")
-            act_shallow = menu.addAction("Копировать с зависимостями (Shallow)")
-            act_deep = menu.addAction("Копировать с зависимостями (Deep)")
+            act_none = menu.addAction(tr("file_tree.context.copy_no_deps"))
+            act_shallow = menu.addAction(tr("file_tree.context.copy_shallow"))
+            act_deep = menu.addAction(tr("file_tree.context.copy_deep"))
 
             action = menu.exec(self.tree.viewport().mapToGlobal(position))
 
@@ -197,11 +198,11 @@ class FileTree(QWidget):
             elif action == act_deep:
                 self.on_context(path, 'deep')
         else:
-            act_only_py = menu.addAction("Выбрать только .py файлы внутри")
-            act_only_js = menu.addAction("Выбрать только .js / .ts / .vue внутри")
-            act_exclude_heavy = menu.addAction("Исключить зависимости и тяжелые файлы")
+            act_only_py = menu.addAction(tr("file_tree.context.select_py"))
+            act_only_js = menu.addAction(tr("file_tree.context.select_js"))
+            act_exclude_heavy = menu.addAction(tr("file_tree.context.exclude_heavy"))
             menu.addSeparator()
-            act_exclude_all = menu.addAction("Исключить все файлы внутри")
+            act_exclude_all = menu.addAction(tr("file_tree.context.exclude_all"))
 
             action = menu.exec(self.tree.viewport().mapToGlobal(position))
 

@@ -9,6 +9,7 @@ import os
 import sys
 from abc import ABC, abstractmethod
 from typing import Tuple, Optional, Any
+from src.i18n import tr
 
 
 class ContextMenuStrategy(ABC):
@@ -64,7 +65,7 @@ class WindowsContextMenuStrategy(ContextMenuStrategy):
         try:
             ctypes.windll.shell32.ShellExecuteW(None, "runas", executable, params, None, 0)
         except Exception as exc:
-            print(f"Error elevating privileges: {exc}")
+            print(tr("integration_strategies.windows.elevate_error", exc=exc))
 
     def _delete_registry_tree(self, root_key: Any, key_path: str) -> bool:
         winreg, _ = self._imports()
@@ -84,7 +85,7 @@ class WindowsContextMenuStrategy(ContextMenuStrategy):
     def install(self, custom_python_path: Optional[str] = None) -> Tuple[bool, str]:
         if not self._is_admin():
             self._restart_as_admin("--install-context")
-            return False, "🛡 Запрошены права администратора. Применится в фоновом режиме."
+            return False, tr("integration_strategies.windows.admin_required_install")
 
         winreg, _ = self._imports()
 
@@ -125,7 +126,7 @@ class WindowsContextMenuStrategy(ContextMenuStrategy):
 
                 # 1. Запуск GUI
                 sub_gui = winreg.CreateKey(sub_shell, "cmd_gui")
-                winreg.SetValue(sub_gui, "", winreg.REG_SZ, "📂 Открыть UI")
+                winreg.SetValue(sub_gui, "", winreg.REG_SZ, tr("integration_strategies.windows.menu_open_ui"))
                 winreg.SetValueEx(sub_gui, "Icon", 0, winreg.REG_SZ, icon_path)
                 cmd_gui = winreg.CreateKey(sub_gui, "command")
                 winreg.SetValue(cmd_gui, "", winreg.REG_SZ, f'{gui_command} "{target_arg}"')
@@ -134,10 +135,10 @@ class WindowsContextMenuStrategy(ContextMenuStrategy):
 
                 # 2. Быстрые команды (Без UI)
                 commands = [
-                    ("cmd1", "📋 Скопировать (Default)", f'--silent'),
-                    ("cmd2", "📦 Скопировать (Deep Deps)", f'--mode deep --silent'),
-                    ("cmd3", "📄 Скопировать как XML", f'--format xml --silent'),
-                    ("cmd4", "☠️ Скопировать Skeleton", f'--skeleton true --silent')
+                    ("cmd1", tr("integration_strategies.windows.menu_copy_default"), f'--silent'),
+                    ("cmd2", tr("integration_strategies.windows.menu_copy_deep"), f'--mode deep --silent'),
+                    ("cmd3", tr("integration_strategies.windows.menu_copy_xml"), f'--format xml --silent'),
+                    ("cmd4", tr("integration_strategies.windows.menu_copy_skeleton"), f'--skeleton true --silent')
                 ]
                 for k_name, k_label, flags in commands:
                     sub = winreg.CreateKey(sub_shell, k_name)
@@ -161,14 +162,14 @@ class WindowsContextMenuStrategy(ContextMenuStrategy):
             # 3. Применяем для файлов (клик ПКМ по файлу)
             _add_menu(winreg.HKEY_CLASSES_ROOT, r"*\shell\CodeContextAI", "%1")
 
-            return True, "Успешно! Пункты добавлены для папок и файлов."
+            return True, tr("integration_strategies.windows.install_success")
         except Exception as exc:
-            return False, f"Ошибка записи в реестр: {exc}"
+            return False, tr("integration_strategies.windows.install_error", error=exc)
 
     def remove(self) -> Tuple[bool, str]:
         if not self._is_admin():
             self._restart_as_admin("--remove-context")
-            return False, "🛡 Запрошены права администратора. Будет удалено в фоновом режиме."
+            return False, tr("integration_strategies.windows.admin_required_remove")
 
         winreg, _ = self._imports()
         err_msg = ""
@@ -187,10 +188,10 @@ class WindowsContextMenuStrategy(ContextMenuStrategy):
 
         if err_msg:
             if "[WinError 5]" in err_msg:
-                return False, f"Ошибка доступа (запустите IDE от администратора): {err_msg}"
-            return False, f"Ошибка удаления из реестра: {err_msg}"
+                return False, tr("integration_strategies.windows.remove_access_error", error=err_msg)
+            return False, tr("integration_strategies.windows.remove_registry_error", error=err_msg)
 
-        return True, "Успешно! Пункты меню удалены."
+        return True, tr("integration_strategies.windows.remove_success")
 
     def install_cli(self, custom_python_path: Optional[str] = None) -> Tuple[bool, str]:
         try:
@@ -237,9 +238,9 @@ class WindowsContextMenuStrategy(ContextMenuStrategy):
                 ctypes.windll.user32.SendMessageTimeoutW(HWND_BROADCAST, WM_SETTINGCHANGE, 0, "Environment", SMTO_ABORTIFHUNG, 5000, None)
 
             winreg.CloseKey(key)
-            return True, "Успешно! Команда 'codecontext' добавлена в PATH.\n(Перезапустите терминал для применения)"
+            return True, tr("integration_strategies.windows.cli_install_success")
         except Exception as e:
-            return False, f"Ошибка добавления в PATH: {e}"
+            return False, tr("integration_strategies.windows.cli_install_error", error=e)
 
     def remove_cli(self) -> Tuple[bool, str]:
         try:
@@ -266,9 +267,9 @@ class WindowsContextMenuStrategy(ContextMenuStrategy):
                 pass
             finally:
                 winreg.CloseKey(key)
-            return True, "Успешно! Команда 'codecontext' удалена из PATH."
+            return True, tr("integration_strategies.windows.cli_remove_success")
         except Exception as e:
-            return False, f"Ошибка удаления: {e}"
+            return False, tr("integration_strategies.windows.cli_remove_error", error=e)
 
 
 # ===========================================================================
@@ -294,18 +295,18 @@ class LinuxContextMenuStrategy(ContextMenuStrategy):
                     f"X-KDE-Submenu=CodeContext AI\n"
                     f"Icon=utilities-terminal\n\n"
 
-                    f"[Desktop Action OpenGUI]\nName=📂 Открыть UI\n"
+                    f"[Desktop Action OpenGUI]\nName={tr('integration_strategies.linux.menu_open_ui')}\n"
                     f"Icon=utilities-terminal\nExec={python_exe} {script_path} --path %f\n\n"
 
-                    f"[Desktop Action CopyXML]\nName=📄 Скопировать как XML\n"
+                    f"[Desktop Action CopyXML]\nName={tr('integration_strategies.linux.menu_copy_xml')}\n"
                     f"Icon=edit-copy\nExec={python_exe} {script_path} --cli --path %f --format xml --silent\n\n"
 
-                    f"[Desktop Action CopySkeleton]\nName=☠️ Скопировать Skeleton\n"
+                    f"[Desktop Action CopySkeleton]\nName={tr('integration_strategies.linux.menu_copy_skeleton')}\n"
                     f"Icon=edit-copy\nExec={python_exe} {script_path} --cli --path %f --skeleton true --silent\n"
                 )
-            return True, "Успешно! Контекстное меню добавлено (KDE/GTK)."
+            return True, tr("integration_strategies.linux.install_success")
         except Exception as exc:
-            return False, f"Ошибка установки в Linux: {exc}"
+            return False, tr("integration_strategies.linux.install_error", error=exc)
 
     def remove(self) -> Tuple[bool, str]:
         try:
@@ -316,9 +317,9 @@ class LinuxContextMenuStrategy(ContextMenuStrategy):
                 full = os.path.expanduser(path)
                 if os.path.exists(full):
                     os.remove(full)
-            return True, "Успешно! Контекстное меню удалено."
+            return True, tr("integration_strategies.linux.remove_success")
         except Exception as exc:
-            return False, f"Ошибка удаления в Linux: {exc}"
+            return False, tr("integration_strategies.linux.remove_error", error=exc)
 
     def install_cli(self, custom_python_path: Optional[str] = None) -> Tuple[bool, str]:
         try:
@@ -338,18 +339,18 @@ class LinuxContextMenuStrategy(ContextMenuStrategy):
                     f.write(f'#!/bin/bash\nexec "{python_exe}" "{script_path}" "$@"\n')
 
             os.chmod(sh_path, 0o755)
-            return True, "Успешно! Скрипт 'codecontext' добавлен в ~/.local/bin.\n(Убедитесь, что ~/.local/bin есть в вашем PATH)"
+            return True, tr("integration_strategies.linux.cli_install_success")
         except Exception as e:
-            return False, f"Ошибка добавления в PATH: {e}"
+            return False, tr("integration_strategies.linux.cli_install_error", error=e)
 
     def remove_cli(self) -> Tuple[bool, str]:
         try:
             sh_path = os.path.expanduser("~/.local/bin/codecontext")
             if os.path.exists(sh_path):
                 os.remove(sh_path)
-            return True, "Успешно! Команда 'codecontext' удалена."
+            return True, tr("integration_strategies.linux.cli_remove_success")
         except Exception as e:
-            return False, f"Ошибка удаления: {e}"
+            return False, tr("integration_strategies.linux.cli_remove_error", error=e)
 
 
 # ===========================================================================
@@ -366,7 +367,7 @@ class MacOSContextMenuStrategy(ContextMenuStrategy):
         return LinuxContextMenuStrategy().remove_cli()
 
     def install(self, custom_python_path: Optional[str] = None) -> Tuple[bool, str]:
-        return True, "Контекстное меню macOS реализовано через Automator (пока поддерживает только базовые функции)."
+        return True, tr("integration_strategies.macos.install_success")
 
     def remove(self) -> Tuple[bool, str]:
-        return True, "Контекстное меню macOS удалено."
+        return True, tr("integration_strategies.macos.remove_success")

@@ -3,6 +3,7 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QLabel, QPushButton,
                                QFrame, QGridLayout)
 from PySide6.QtCore import Qt
 from ..theme_manager import ThemeManager, theme_bus
+from src.i18n import tr
 
 
 class RecentCard(QFrame):
@@ -49,15 +50,15 @@ class EmptyState(QWidget):
         icon_lbl.setProperty("cssClass", "empty_icon")
         icon_lbl.setAlignment(Qt.AlignCenter)
 
-        title_lbl = QLabel("Перетащите папку проекта сюда")
+        title_lbl = QLabel(tr("empty_state.drop.title"))
         title_lbl.setProperty("cssClass", "empty_title")
         title_lbl.setAlignment(Qt.AlignCenter)
 
-        subtitle_lbl = QLabel("или выберите вручную, нажав кнопку ниже")
+        subtitle_lbl = QLabel(tr("empty_state.drop.subtitle"))
         subtitle_lbl.setProperty("cssClass", "empty_subtitle")
         subtitle_lbl.setAlignment(Qt.AlignCenter)
 
-        btn_browse = QPushButton("Обзор файлов")
+        btn_browse = QPushButton(tr("empty_state.browse.button"))
         btn_browse.setProperty("cssClass", "success")
         btn_browse.setCursor(Qt.PointingHandCursor)
         btn_browse.clicked.connect(self._browse)
@@ -77,7 +78,7 @@ class EmptyState(QWidget):
         self.recent_layout = QVBoxLayout(self.recent_container)
         self.recent_layout.setContentsMargins(0, 0, 0, 0)
 
-        recent_title = QLabel("Последние проекты")
+        recent_title = QLabel(tr("empty_state.recent.title"))
         recent_title.setProperty("cssClass", "heading")
         self.recent_layout.addWidget(recent_title)
 
@@ -131,6 +132,6 @@ class EmptyState(QWidget):
 
     def _browse(self):
         from PySide6.QtWidgets import QFileDialog
-        path = QFileDialog.getExistingDirectory(self, "Выберите папку проекта")
+        path = QFileDialog.getExistingDirectory(self, tr("empty_state.browse.dialog_title"))
         if path:
             self.on_folder_select(path)

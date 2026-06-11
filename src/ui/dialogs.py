@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QTextEdit,
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QSyntaxHighlighter, QTextCharFormat, QColor, QFont
 from .theme_manager import ThemeManager
+from src.i18n import tr
 
 
 class ChatDialog(QDialog):
@@ -26,9 +27,9 @@ class ChatDialog(QDialog):
         input_layout = QHBoxLayout()
         self.input_field = QPlainTextEdit()
         self.input_field.setProperty("cssClass", "chat_input")
-        self.input_field.setPlaceholderText("Напишите ваш запрос... (Например: 'Найди баг' или 'Оптимизируй этот файл')")
+        self.input_field.setPlaceholderText(tr("dialogs.chat.placeholder"))
 
-        self.btn_send = QPushButton("Отправить")
+        self.btn_send = QPushButton(tr("dialogs.chat.send"))
         self.btn_send.setProperty("cssClass", "success")
         self.btn_send.clicked.connect(self._send_message)
 
@@ -41,7 +42,7 @@ class ChatDialog(QDialog):
     def update_data(self, state):
         if not self.messages:
             self.messages.append({"role": "system", "content": state.chat_context})
-            self.chat_history.append("<b>Система:</b> Контекст проекта успешно загружен в память! Можете задавать вопросы.<br><br>")
+            self.chat_history.append(tr("dialogs.chat.system_loaded"))
 
     def _send_message(self):
         user_text = self.input_field.toPlainText().strip()
@@ -50,9 +51,9 @@ class ChatDialog(QDialog):
 
         self.input_field.clear()
         self.messages.append({"role": "user", "content": user_text})
-        self.chat_history.append(f"<b>Вы:</b> {user_text}<br><br>")
+        self.chat_history.append(f"<b>{tr('dialogs.chat.you_label')}:</b> {user_text}<br><br>")
         self.btn_send.setEnabled(False)
-        self.btn_send.setText("⏳ Ожидание...")
+        self.btn_send.setText(tr("dialogs.chat.waiting"))
 
         async def fetch_reply():
             reply = await self.controller._llm_checker.send_chat_message(self.messages, self.controller._store.state.settings)
@@ -66,7 +67,7 @@ class ChatDialog(QDialog):
         self.messages.append({"role": "assistant", "content": reply})
         self.chat_history.append(f"<b>AI:</b> {reply}<br><br>")
         self.btn_send.setEnabled(True)
-        self.btn_send.setText("Отправить")
+        self.btn_send.setText(tr("dialogs.chat.send"))
         self.chat_history.verticalScrollBar().setValue(self.chat_history.verticalScrollBar().maximum())
 
     def closeEvent(self, event):
@@ -111,7 +112,7 @@ class AdvancedPreviewDialog(QDialog):
         self.state = state
         self.controller = controller
 
-        self.setWindowTitle("Предпросмотр (CodeContext AI)")
+        self.setWindowTitle(tr("dialogs.preview.title"))
         self.resize(1100, 700)
 
         layout = QVBoxLayout(self)
@@ -119,7 +120,7 @@ class AdvancedPreviewDialog(QDialog):
         layout.addWidget(self.tabs)
 
         self.tab_preview = QWidget()
-        self.tabs.addTab(self.tab_preview, "📝 Итоговый промпт")
+        self.tabs.addTab(self.tab_preview, tr("dialogs.preview.tab_prompt"))
         preview_layout = QVBoxLayout(self.tab_preview)
 
         self.splitter = QSplitter(Qt.Horizontal)
@@ -129,7 +130,7 @@ class AdvancedPreviewDialog(QDialog):
         left_layout = QVBoxLayout(left_widget)
         left_layout.setContentsMargins(0, 0, 0, 0)
 
-        lbl_toc = QLabel("📄 Файлы в промпте:")
+        lbl_toc = QLabel(tr("dialogs.preview.files_in_prompt"))
         lbl_toc.setProperty("cssClass", "heading")
         left_layout.addWidget(lbl_toc)
 
@@ -143,9 +144,9 @@ class AdvancedPreviewDialog(QDialog):
         right_layout.setContentsMargins(0, 0, 0, 0)
 
         toolbar_layout = QHBoxLayout()
-        self.btn_copy_all = QPushButton("📋 Копировать всё")
+        self.btn_copy_all = QPushButton(tr("dialogs.preview.copy_all"))
         self.btn_copy_all.clicked.connect(self._copy_all)
-        self.btn_copy_file = QPushButton("✂️ Скопировать только этот файл")
+        self.btn_copy_file = QPushButton(tr("dialogs.preview.copy_file"))
         self.btn_copy_file.setProperty("cssClass", "ghost")
         self.btn_copy_file.setEnabled(False)
         self.btn_copy_file.clicked.connect(self._copy_selected_file)
@@ -167,17 +168,17 @@ class AdvancedPreviewDialog(QDialog):
         self.highlighter = PreviewHighlighter(self.txt_preview.document(), colors)
 
         self.tab_diff = QWidget()
-        self.tabs.addTab(self.tab_diff, "🔍 До/После (Оптимизация)")
+        self.tabs.addTab(self.tab_diff, tr("dialogs.preview.tab_diff"))
         diff_layout = QVBoxLayout(self.tab_diff)
 
         diff_top_layout = QHBoxLayout()
-        diff_top_layout.addWidget(QLabel("Выберите файл для сравнения:"))
+        diff_top_layout.addWidget(QLabel(tr("dialogs.preview.select_file")))
         self.cmb_diff_files = QComboBox()
         self.cmb_diff_files.setSizeAdjustPolicy(QComboBox.AdjustToContents)
         self.cmb_diff_files.currentTextChanged.connect(self._on_diff_file_changed)
         diff_top_layout.addWidget(self.cmb_diff_files, 1)
 
-        self.lbl_savings = QLabel("Экономия: 0 токенов (0%)")
+        self.lbl_savings = QLabel(tr("dialogs.preview.savings_initial"))
         self.lbl_savings.setProperty("cssClass", "heading")
         self.lbl_savings.setStyleSheet("color: #16a34a;")
         diff_top_layout.addWidget(self.lbl_savings)
@@ -239,7 +240,7 @@ class AdvancedPreviewDialog(QDialog):
         saved = t_orig - t_proc
         percent = (saved / t_orig * 100) if t_orig > 0 else 0
 
-        self.lbl_savings.setText(f"Было: {t_orig} ➡️ Стало: {t_proc} (Сжато на {percent:.1f}%)")
+        self.lbl_savings.setText(tr("dialogs.preview.savings", original=t_orig, processed=t_proc, percent=percent))
 
         colors = ThemeManager.get_current_colors()
         fonts = ThemeManager.get_font_settings()
@@ -267,7 +268,7 @@ class InteractiveTourDialog(QDialog):
         self.steps = steps
         self.on_close = on_close
         self.current_step = 0
-        self.setWindowTitle("Интерактивный тур")
+        self.setWindowTitle(tr("dialogs.tour.title"))
         self.resize(700, 500)
         layout = QVBoxLayout(self)
         self.lbl_title = QLabel()
@@ -275,10 +276,10 @@ class InteractiveTourDialog(QDialog):
         self.txt_desc = QTextEdit()
         self.txt_desc.setReadOnly(True)
         btn_layout = QHBoxLayout()
-        self.btn_prev = QPushButton("⬅ Назад")
+        self.btn_prev = QPushButton(tr("dialogs.tour.prev"))
         self.btn_prev.setProperty("cssClass", "ghost")
         self.btn_prev.clicked.connect(self._prev)
-        self.btn_next = QPushButton("Далее ➡")
+        self.btn_next = QPushButton(tr("dialogs.tour.next"))
         self.btn_next.clicked.connect(self._next)
         btn_layout.addWidget(self.btn_prev)
         btn_layout.addStretch()
@@ -294,9 +295,9 @@ class InteractiveTourDialog(QDialog):
         self.txt_desc.setPlainText(step.get("text", ""))
         self.btn_prev.setEnabled(self.current_step > 0)
         if self.current_step == len(self.steps) - 1:
-            self.btn_next.setText("Начать работу 🚀")
+            self.btn_next.setText(tr("dialogs.tour.finish"))
         else:
-            self.btn_next.setText("Далее ➡")
+            self.btn_next.setText(tr("dialogs.tour.next"))
 
     def _prev(self):
         if self.current_step > 0:
@@ -319,13 +320,13 @@ class EditFolderDialog(QDialog):
     def __init__(self, parent, initial_path):
         super().__init__(parent)
         self.result = None
-        self.setWindowTitle("Редактировать путь")
+        self.setWindowTitle(tr("dialogs.edit_folder.title"))
         self.resize(400, 100)
         layout = QVBoxLayout(self)
         self.entry = QLineEdit(initial_path)
         layout.addWidget(self.entry)
         btn_layout = QHBoxLayout()
-        btn_ok = QPushButton("OK")
+        btn_ok = QPushButton(tr("dialogs.edit_folder.ok"))
         btn_ok.clicked.connect(self._on_ok)
         btn_layout.addWidget(btn_ok)
         layout.addLayout(btn_layout)
@@ -341,10 +342,10 @@ class EditFolderDialog(QDialog):
 class JsonPatchDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Применить JSON-патч от ИИ")
+        self.setWindowTitle(tr("dialogs.json_patch.title"))
         self.resize(650, 450)
         layout = QVBoxLayout(self)
-        lbl = QLabel("Вставьте ответ нейросети (массив JSON с инструкциями):")
+        lbl = QLabel(tr("dialogs.json_patch.instruction"))
         lbl.setProperty("cssClass", "muted")
         layout.addWidget(lbl)
         self.txt_patch = QTextEdit()
@@ -352,10 +353,10 @@ class JsonPatchDialog(QDialog):
             '[\n  {\n    "action": "replace",\n    "file": "main.py",\n    "search": "def test():\\n    pass",\n    "content": "def test():\\n    return True"\n  }\n]')
         layout.addWidget(self.txt_patch)
         btn_layout = QHBoxLayout()
-        btn_cancel = QPushButton("Отмена")
+        btn_cancel = QPushButton(tr("dialogs.json_patch.cancel"))
         btn_cancel.setProperty("cssClass", "ghost")
         btn_cancel.clicked.connect(self.reject)
-        btn_apply = QPushButton("Далее (Предпросмотр)")
+        btn_apply = QPushButton(tr("dialogs.json_patch.apply"))
         btn_apply.setProperty("cssClass", "success")
         btn_apply.clicked.connect(self.accept)
         btn_layout.addStretch()
@@ -374,7 +375,7 @@ class InteractiveDiffDialog(QDialog):
         super().__init__(parent)
         self.prepared = prepared_patches
         self.controller = controller
-        self.setWindowTitle("Предпросмотр изменений (Safety Diff Viewer)")
+        self.setWindowTitle(tr("dialogs.diff.title"))
         self.resize(1200, 800)
         layout = QVBoxLayout(self)
         splitter = QSplitter(Qt.Horizontal)
@@ -400,13 +401,13 @@ class InteractiveDiffDialog(QDialog):
         llm_container.setProperty("cssClass", "card")
         llm_layout = QVBoxLayout(llm_container)
         llm_top_layout = QHBoxLayout()
-        self.btn_llm = QPushButton("🤖 Проверить через LLM")
+        self.btn_llm = QPushButton(tr("dialogs.diff.check_llm"))
         self.btn_llm.setProperty("cssClass", "success")
         self.btn_llm.clicked.connect(self._check_llm)
         self.lbl_llm_verdict = QTextEdit()
         self.lbl_llm_verdict.setMaximumHeight(60)
         self.lbl_llm_verdict.setReadOnly(True)
-        self.lbl_llm_verdict.setPlaceholderText("Здесь будет вердикт нейросети...")
+        self.lbl_llm_verdict.setPlaceholderText(tr("dialogs.diff.verdict_placeholder"))
         llm_top_layout.addWidget(self.btn_llm)
         llm_top_layout.addWidget(self.lbl_llm_verdict, 1)
         llm_layout.addLayout(llm_top_layout)
@@ -415,16 +416,16 @@ class InteractiveDiffDialog(QDialog):
         self.suggestion_panel.setVisible(False)
         sug_layout = QVBoxLayout(self.suggestion_panel)
         sug_layout.setContentsMargins(0, 10, 0, 0)
-        lbl_sug = QLabel("💡 LLM предлагает исправление (Diff между текущим патчем и вариантом ИИ):")
+        lbl_sug = QLabel(tr("dialogs.diff.suggestion_label"))
         lbl_sug.setProperty("cssClass", "heading")
         self.sug_diff_browser = QTextBrowser()
         self.sug_diff_browser.setMaximumHeight(200)
 
         sug_btn_layout = QHBoxLayout()
-        self.btn_accept_sug = QPushButton("✅ Принять предложение LLM")
+        self.btn_accept_sug = QPushButton(tr("dialogs.diff.accept_suggestion"))
         self.btn_accept_sug.setProperty("cssClass", "success")
         self.btn_accept_sug.clicked.connect(self._accept_suggestion)
-        self.btn_reject_sug = QPushButton("❌ Отклонить")
+        self.btn_reject_sug = QPushButton(tr("dialogs.diff.reject_suggestion"))
         self.btn_reject_sug.setProperty("cssClass", "ghost")
         self.btn_reject_sug.clicked.connect(self._reject_suggestion)
         sug_btn_layout.addStretch()
@@ -440,10 +441,10 @@ class InteractiveDiffDialog(QDialog):
         splitter.setSizes([300, 900])
 
         btn_layout = QHBoxLayout()
-        btn_cancel = QPushButton("Отмена")
+        btn_cancel = QPushButton(tr("dialogs.diff.cancel"))
         btn_cancel.setProperty("cssClass", "ghost")
         btn_cancel.clicked.connect(self.reject)
-        btn_apply = QPushButton("💾 Сохранить выбранные на диск")
+        btn_apply = QPushButton(tr("dialogs.diff.save_selected"))
         btn_apply.setProperty("cssClass", "success")
         btn_apply.clicked.connect(self.accept)
         btn_layout.addStretch()
@@ -465,7 +466,7 @@ class InteractiveDiffDialog(QDialog):
             colors = ThemeManager.get_current_colors()
             err_color = colors.get('danger', 'red')
             self.diff_browser.setHtml(
-                f"<h3 style='color:{err_color};'>Ошибка подготовки патча:</h3><p>{p['msg']}</p>"
+                f"<h3 style='color:{err_color};'>{tr('dialogs.diff.patch_error')}</h3><p>{p['msg']}</p>"
             )
             return
 
@@ -480,9 +481,9 @@ class InteractiveDiffDialog(QDialog):
         if idx < 0: return
         patch = self.prepared[idx]
         if not patch['success']: return
-        self.btn_llm.setText("⏳ Проверка...")
+        self.btn_llm.setText(tr("dialogs.diff.checking"))
         self.btn_llm.setEnabled(False)
-        self.lbl_llm_verdict.setPlainText("Отправка запроса к LLM...")
+        self.lbl_llm_verdict.setPlainText(tr("dialogs.diff.sending_request"))
         self.suggestion_panel.setVisible(False)
         self.current_llm_suggestion = None
 
@@ -490,8 +491,8 @@ class InteractiveDiffDialog(QDialog):
             status = result_dict.get('status', 'ERROR')
             reason = result_dict.get('reason', '')
             sug_code = result_dict.get('suggested_code')
-            self.lbl_llm_verdict.setPlainText(f"Статус: {status}\nВердикт: {reason}")
-            self.btn_llm.setText("🤖 Проверить снова")
+            self.lbl_llm_verdict.setPlainText(tr("dialogs.diff.verdict", status=status, reason=reason))
+            self.btn_llm.setText(tr("dialogs.diff.check_again"))
             self.btn_llm.setEnabled(True)
             if sug_code and sug_code.strip() != patch['patched_content'].strip():
                 self.current_llm_suggestion = sug_code
@@ -510,17 +511,17 @@ class InteractiveDiffDialog(QDialog):
         idx = self.list_widget.currentRow()
         if idx < 0 or not self.current_llm_suggestion: return
         self.prepared[idx]['patched_content'] = self.current_llm_suggestion
-        self.prepared[idx]['msg'] += " (✨ Обновлено по совету ИИ)"
+        self.prepared[idx]['msg'] += tr("dialogs.diff.updated_by_ai")
         self.suggestion_panel.setVisible(False)
         self.current_llm_suggestion = None
-        self.lbl_llm_verdict.setPlainText("✅ Предложение LLM успешно применено к патчу!")
+        self.lbl_llm_verdict.setPlainText(tr("dialogs.diff.suggestion_applied"))
         self._on_file_selected(idx)
 
     def _reject_suggestion(self):
         """Отклоняет предложение LLM."""
         self.suggestion_panel.setVisible(False)
         self.current_llm_suggestion = None
-        self.lbl_llm_verdict.setPlainText("Предложение LLM отклонено. Используется исходный патч.")
+        self.lbl_llm_verdict.setPlainText(tr("dialogs.diff.suggestion_rejected"))
 
     def get_selected(self):
         selected = []
@@ -538,7 +539,7 @@ class UpdateDialog(QDialog):
         self.on_close = on_close
         self.controller = controller
 
-        self.setWindowTitle("Обновления CodeContext AI")
+        self.setWindowTitle(tr("dialogs.update.title"))
         self.resize(550, 450)
         self.layout = QVBoxLayout(self)
 
@@ -573,48 +574,44 @@ class UpdateDialog(QDialog):
         notes_text = update_info.get('notes', '')
 
         if status == 'checking':
-            self.lbl_title.setText(f"⏳ Поиск обновлений (v{version})...")
+            self.lbl_title.setText(tr("dialogs.update.checking", version=version))
             self.notes.setMarkdown(notes_text)
             self.btn_update.hide()
             self.btn_cancel.setEnabled(True)
-            self.btn_cancel.setText("Отмена")
+            self.btn_cancel.setText(tr("dialogs.update.cancel"))
 
         elif status == 'available':
-            self.lbl_title.setText(f"🎉 Доступна новая версия: {version}")
+            self.lbl_title.setText(tr("dialogs.update.available", version=version))
             self.notes.setMarkdown(notes_text)
             self.btn_update.show()
-            self.btn_update.setText("Скачать и обновить")
+            self.btn_update.setText(tr("dialogs.update.download"))
             self.btn_update.setEnabled(True)
             self.btn_cancel.setEnabled(True)
-            self.btn_cancel.setText("Позже")
+            self.btn_cancel.setText(tr("dialogs.update.later"))
 
         elif status == 'latest':
-            self.lbl_title.setText("✅ У вас самая актуальная версия")
+            self.lbl_title.setText(tr("dialogs.update.latest"))
             self.notes.setMarkdown(notes_text)
             self.btn_update.hide()
             self.btn_cancel.setEnabled(True)
-            self.btn_cancel.setText("Закрыть")
+            self.btn_cancel.setText(tr("dialogs.update.close"))
 
         else:
-            self.lbl_title.setText("❌ Ошибка при проверке/установке")
+            self.lbl_title.setText(tr("dialogs.update.error"))
             self.notes.setMarkdown(notes_text)
             self.btn_update.hide()
             self.btn_cancel.setEnabled(True)
-            self.btn_cancel.setText("Закрыть")
+            self.btn_cancel.setText(tr("dialogs.update.close"))
 
         self.lbl_title.style().unpolish(self.lbl_title)
         self.lbl_title.style().polish(self.lbl_title)
 
     def _do_update(self):
         self.btn_update.setEnabled(False)
-        self.btn_update.setText("Загрузка...")
+        self.btn_update.setText(tr("dialogs.update.downloading"))
         self.btn_cancel.setEnabled(False)
-        self.lbl_title.setText("⬇️ Идёт скачивание и установка...")
-        self.notes.setMarkdown(
-            "Пожалуйста, не закрывайте приложение.\n\n"
-            "После загрузки программа будет автоматически перезапущена.\n"
-            "Вы можете наблюдать за прогрессом загрузки в статус-баре на главном экране."
-        )
+        self.lbl_title.setText(tr("dialogs.update.installing"))
+        self.notes.setMarkdown(tr("dialogs.update.install_notes"))
         self.controller.apply_update(self.update_info['download_url'])
 
     def closeEvent(self, event):
@@ -641,7 +638,7 @@ class CommandPaletteDialog(QDialog):
         layout.setSpacing(5)
 
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Введите команду (например, 'Предпросмотр')...")
+        self.search_input.setPlaceholderText(tr("dialogs.command_palette.placeholder"))
         self.search_input.textChanged.connect(self._filter_commands)
         self.search_input.returnPressed.connect(self._execute_selected)
 
@@ -713,22 +710,22 @@ class UICustomizationDialog(QDialog):
     def __init__(self, parent, settings, on_save):
         super().__init__(parent)
         self.on_save = on_save
-        self.setWindowTitle("Настройка интерфейса (Premiere Pro style)")
+        self.setWindowTitle(tr("dialogs.ui_customization.title"))
         self.resize(420, 380)
 
         layout = QVBoxLayout(self)
 
-        lbl_tabs = QLabel("Видимые вкладки в боковой панели:")
+        lbl_tabs = QLabel(tr("dialogs.ui_customization.visible_tabs"))
         lbl_tabs.setProperty("cssClass", "heading")
         layout.addWidget(lbl_tabs)
 
         self.tab_checks = {}
         tab_defs = [
-            ("sources", "Источники"),
-            ("filters", "Фильтры"),
-            ("prompts", "Промпты"),
-            ("llm_os", "LLM & ОС"),
-            ("appearance", "Темы"),
+            ("sources", tr("dialogs.ui_customization.tab_sources")),
+            ("filters", tr("dialogs.ui_customization.tab_filters")),
+            ("prompts", tr("dialogs.ui_customization.tab_prompts")),
+            ("llm_os", tr("dialogs.ui_customization.tab_llm_os")),
+            ("appearance", tr("dialogs.ui_customization.tab_appearance")),
         ]
         for tab_id, tab_label in tab_defs:
             chk = QCheckBox(tab_label)
@@ -737,17 +734,17 @@ class UICustomizationDialog(QDialog):
             layout.addWidget(chk)
 
         layout.addSpacing(10)
-        lbl_actions = QLabel("Видимые кнопки действий:")
+        lbl_actions = QLabel(tr("dialogs.ui_customization.visible_actions"))
         lbl_actions.setProperty("cssClass", "heading")
         layout.addWidget(lbl_actions)
 
         self.action_checks = {}
         action_defs = [
-            ("preview", "Предпросмотр"),
-            ("clipboard", "В Буфер обмена"),
-            ("chat", "Отправить в ChatGPT / Claude"),
-            ("editor", "В редактор"),
-            ("file", "В Файл"),
+            ("preview", tr("dialogs.ui_customization.action_preview")),
+            ("clipboard", tr("dialogs.ui_customization.action_clipboard")),
+            ("chat", tr("dialogs.ui_customization.action_chat")),
+            ("editor", tr("dialogs.ui_customization.action_editor")),
+            ("file", tr("dialogs.ui_customization.action_file")),
         ]
         for act_id, act_label in action_defs:
             chk = QCheckBox(act_label)
@@ -758,10 +755,10 @@ class UICustomizationDialog(QDialog):
         layout.addStretch()
 
         btn_layout = QHBoxLayout()
-        btn_cancel = QPushButton("Отмена")
+        btn_cancel = QPushButton(tr("dialogs.ui_customization.cancel"))
         btn_cancel.setProperty("cssClass", "ghost")
         btn_cancel.clicked.connect(self.reject)
-        btn_save = QPushButton("Сохранить")
+        btn_save = QPushButton(tr("dialogs.ui_customization.save"))
         btn_save.setProperty("cssClass", "success")
         btn_save.clicked.connect(self._save)
         btn_layout.addStretch()

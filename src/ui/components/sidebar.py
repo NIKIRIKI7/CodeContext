@@ -11,15 +11,16 @@ from PySide6.QtCore import Qt
 from ...utils.config import PRESETS, PROMPT_PRESETS, get_app_version
 from ..theme_manager import ThemeManager, theme_bus
 from ..dialogs import UICustomizationDialog
+from src.i18n import tr
 
 
 class Sidebar(QWidget):
     TAB_DEFS = [
-        ("sources", "\U0001F4E1 Источники", "_build_sources_tab"),
-        ("filters", "\U0001F3AF Фильтры", "_build_filters_tab"),
-        ("prompts", "\U0001F4DD Промпты", "_build_prompts_tab"),
-        ("llm_os", "LLM & ОС", "_build_llm_os_tab"),
-        ("appearance", "\U0001F3A8 Темы", "_build_appearance_tab"),
+        ("sources", "sidebar.tab.sources", "_build_sources_tab"),
+        ("filters", "sidebar.tab.filters", "_build_filters_tab"),
+        ("prompts", "sidebar.tab.prompts", "_build_prompts_tab"),
+        ("llm_os", "sidebar.tab.llm_os", "_build_llm_os_tab"),
+        ("appearance", "sidebar.tab.appearance", "_build_appearance_tab"),
     ]
 
     def __init__(self, controller, on_settings_change):
@@ -44,18 +45,18 @@ class Sidebar(QWidget):
         bottom_layout = QHBoxLayout()
         btn_ui_settings = QPushButton("\u2699")
         btn_ui_settings.setProperty("cssClass", "icon")
-        btn_ui_settings.setToolTip("Настройка интерфейса")
+        btn_ui_settings.setToolTip(tr("sidebar.ui_settings.tooltip"))
         btn_ui_settings.clicked.connect(self._open_ui_settings)
 
-        btn_tour = QPushButton("\U0001F4D6 Инструкция")
+        btn_tour = QPushButton(tr("sidebar.tour.button"))
         btn_tour.setProperty("cssClass", "ghost")
         btn_tour.clicked.connect(self.controller.show_tour)
 
         version_str = get_app_version()
-        lbl_version = QLabel(f"v{version_str}")
+        lbl_version = QLabel(tr("sidebar.version.label", version=version_str))
         lbl_version.setProperty("cssClass", "muted")
 
-        btn_update = QPushButton("\U0001F504 Обновления")
+        btn_update = QPushButton(tr("sidebar.update.button"))
         btn_update.setProperty("cssClass", "ghost")
         btn_update.clicked.connect(self._check_updates)
 
@@ -89,7 +90,7 @@ class Sidebar(QWidget):
             if tab_id in visible_tabs:
                 tab = QWidget()
                 getattr(self, method_name)(tab)
-                self.tabs.addTab(tab, label)
+                self.tabs.addTab(tab, tr(label))
         self.tabs.blockSignals(False)
 
     def _update_metrics(self):
@@ -104,33 +105,33 @@ class Sidebar(QWidget):
 
         btn_layout = QHBoxLayout()
         btn_layout.setContentsMargins(0, 0, 0, 10)
-        btn_add = QPushButton("+ Папка ПК")
+        btn_add = QPushButton(tr("sidebar.sources.add_folder"))
         btn_add.setProperty("cssClass", "ghost")
         btn_add.clicked.connect(self._add_folder)
-        btn_gh = QPushButton("+ GitHub / PR")
+        btn_gh = QPushButton(tr("sidebar.sources.add_github"))
         btn_gh.setProperty("cssClass", "success")
-        btn_gh.setToolTip("Вставьте ссылку на репозиторий или Pull Request")
+        btn_gh.setToolTip(tr("sidebar.sources.github_tooltip"))
         btn_gh.clicked.connect(self._add_github)
         btn_layout.addWidget(btn_add)
         btn_layout.addWidget(btn_gh)
         layout.addLayout(btn_layout)
 
-        self.chk_git = QCheckBox("Только Git Changes")
-        self.chk_gitignore = QCheckBox("Учитывать .gitignore")
+        self.chk_git = QCheckBox(tr("sidebar.sources.git_only"))
+        self.chk_gitignore = QCheckBox(tr("sidebar.sources.respect_gitignore"))
         layout.addWidget(self.chk_git)
         layout.addWidget(self.chk_gitignore)
 
         layout.addSpacing(10)
-        btn_scan = QPushButton("\U0001F50D Сканировать файлы")
+        btn_scan = QPushButton(tr("sidebar.sources.scan_files"))
         btn_scan.clicked.connect(self._trigger_scan)
         layout.addWidget(btn_scan)
 
-        btn_save_local = QPushButton("\U0001F4BE Сохранить конфиг (.codecontextrc)")
+        btn_save_local = QPushButton(tr("sidebar.sources.save_config"))
         btn_save_local.setProperty("cssClass", "ghost")
         btn_save_local.clicked.connect(self.controller.save_local_config)
         layout.addWidget(btn_save_local)
 
-        btn_clear = QPushButton("Очистить проект")
+        btn_clear = QPushButton(tr("sidebar.sources.clear_project"))
         btn_clear.setProperty("cssClass", "ghost")
         btn_clear.clicked.connect(self.controller.clear_folders)
         layout.addWidget(btn_clear)
@@ -147,35 +148,35 @@ class Sidebar(QWidget):
 
         btn_save_preset = QPushButton("\U0001F4BE")
         btn_save_preset.setProperty("cssClass", "icon")
-        btn_save_preset.setToolTip("Сохранить как пресет")
+        btn_save_preset.setToolTip(tr("sidebar.filters.save_preset_tooltip"))
         btn_save_preset.clicked.connect(self._save_ext_preset)
 
         btn_del_preset = QPushButton("\U0001F5D1")
         btn_del_preset.setProperty("cssClass", "icon")
-        btn_del_preset.setToolTip("Удалить выбранный кастомный пресет")
+        btn_del_preset.setToolTip(tr("sidebar.filters.delete_preset_tooltip"))
         btn_del_preset.clicked.connect(self._del_ext_preset)
 
-        preset_layout.addWidget(QLabel("Пресет:"))
+        preset_layout.addWidget(QLabel(tr("sidebar.filters.preset_label")))
         preset_layout.addWidget(self.cmb_preset, 1)
         preset_layout.addWidget(btn_save_preset)
         preset_layout.addWidget(btn_del_preset)
         layout.addLayout(preset_layout)
 
-        layout.addWidget(QLabel("Расширения:"))
+        layout.addWidget(QLabel(tr("sidebar.filters.extensions_label")))
         self.entry_ext = QPlainTextEdit()
         self.entry_ext.setProperty("cssClass", "textarea_small")
-        self.entry_ext.setPlaceholderText("Например: .py .js .ts")
+        self.entry_ext.setPlaceholderText(tr("sidebar.filters.extensions_placeholder"))
         layout.addWidget(self.entry_ext)
 
-        layout.addWidget(QLabel("Игнорировать пути:"))
+        layout.addWidget(QLabel(tr("sidebar.filters.ignore_paths_label")))
         self.entry_ign = QPlainTextEdit()
         self.entry_ign.setProperty("cssClass", "textarea_small")
-        self.entry_ign.setPlaceholderText("Например: node_modules, .git, build")
+        self.entry_ign.setPlaceholderText(tr("sidebar.filters.ignore_paths_placeholder"))
         layout.addWidget(self.entry_ign)
 
-        self.chk_tree = QCheckBox("Включить дерево файлов")
-        self.chk_dependencies = QCheckBox("Включить карту зависимостей")
-        self.chk_mermaid = QCheckBox("Включить Mermaid-граф архитектуры")
+        self.chk_tree = QCheckBox(tr("sidebar.filters.include_tree"))
+        self.chk_dependencies = QCheckBox(tr("sidebar.filters.include_deps"))
+        self.chk_mermaid = QCheckBox(tr("sidebar.filters.include_mermaid"))
         layout.addWidget(self.chk_tree)
         layout.addWidget(self.chk_dependencies)
         layout.addWidget(self.chk_mermaid)
@@ -191,25 +192,25 @@ class Sidebar(QWidget):
 
         btn_save_prompt = QPushButton("\U0001F4BE")
         btn_save_prompt.setProperty("cssClass", "icon")
-        btn_save_prompt.setToolTip("Сохранить как пресет")
+        btn_save_prompt.setToolTip(tr("sidebar.prompts.save_preset_tooltip"))
         btn_save_prompt.clicked.connect(self._save_prompt_preset)
 
         btn_del_prompt = QPushButton("\U0001F5D1")
         btn_del_prompt.setProperty("cssClass", "icon")
-        btn_del_prompt.setToolTip("Удалить выбранный кастомный пресет")
+        btn_del_prompt.setToolTip(tr("sidebar.prompts.delete_preset_tooltip"))
         btn_del_prompt.clicked.connect(self._del_prompt_preset)
 
-        preset_layout.addWidget(QLabel("Пресет:"))
+        preset_layout.addWidget(QLabel(tr("sidebar.prompts.preset_label")))
         preset_layout.addWidget(self.cmb_prompt, 1)
         preset_layout.addWidget(btn_save_prompt)
         preset_layout.addWidget(btn_del_prompt)
         layout.addLayout(preset_layout)
 
-        layout.addWidget(QLabel("Системный промпт:"))
+        layout.addWidget(QLabel(tr("sidebar.prompts.system_prompt_label")))
         self.txt_system_prompt = QTextEdit()
         layout.addWidget(self.txt_system_prompt)
 
-        btn_patch = QPushButton("\U0001F9E9 Применить JSON-патч от LLM")
+        btn_patch = QPushButton(tr("sidebar.prompts.apply_patch"))
         btn_patch.setProperty("cssClass", "success")
         btn_patch.clicked.connect(self._open_patch_dialog)
         layout.addWidget(btn_patch)
@@ -218,11 +219,11 @@ class Sidebar(QWidget):
         layout = QVBoxLayout(tab)
         layout.setContentsMargins(0, 10, 0, 0)
 
-        lbl_llm = QLabel("LLM Validator (API):")
+        lbl_llm = QLabel(tr("sidebar.llm_os.llm_validator"))
         lbl_llm.setProperty("cssClass", "heading")
         layout.addWidget(lbl_llm)
 
-        self.chk_llm_check = QCheckBox("Включить проверку (LLM Checker)")
+        self.chk_llm_check = QCheckBox(tr("sidebar.llm_os.enable_llm_check"))
         layout.addWidget(self.chk_llm_check)
 
         form_llm = QFormLayout()
@@ -235,16 +236,16 @@ class Sidebar(QWidget):
         self.entry_llm_model = QLineEdit()
         self.entry_llm_model.setPlaceholderText("gpt-4o-mini / local-model")
 
-        form_llm.addRow("URL:", self.entry_llm_url)
-        form_llm.addRow("Ключ:", self.entry_llm_key)
-        form_llm.addRow("Модель:", self.entry_llm_model)
+        form_llm.addRow(tr("sidebar.llm_os.url_label"), self.entry_llm_url)
+        form_llm.addRow(tr("sidebar.llm_os.key_label"), self.entry_llm_key)
+        form_llm.addRow(tr("sidebar.llm_os.model_label"), self.entry_llm_model)
         layout.addLayout(form_llm)
 
         llm_presets_layout = QHBoxLayout()
-        btn_ollama = QPushButton("\U0001F999 Ollama")
+        btn_ollama = QPushButton(tr("sidebar.llm_os.ollama_preset"))
         btn_ollama.setProperty("cssClass", "ghost")
         btn_ollama.clicked.connect(lambda: self._apply_llm_preset("http://localhost:11434/v1", "llama3"))
-        btn_lmstudio = QPushButton("\U0001F5A5 LM Studio")
+        btn_lmstudio = QPushButton(tr("sidebar.llm_os.lmstudio_preset"))
         btn_lmstudio.setProperty("cssClass", "ghost")
         btn_lmstudio.clicked.connect(lambda: self._apply_llm_preset("http://localhost:1234/v1", "local-model"))
         llm_presets_layout.addWidget(btn_ollama)
@@ -253,16 +254,16 @@ class Sidebar(QWidget):
         layout.addLayout(llm_presets_layout)
 
         layout.addSpacing(10)
-        lbl_os = QLabel(f"Интеграция с ОС ({platform.system()}):")
+        lbl_os = QLabel(tr("sidebar.llm_os.os_integration", os_name=platform.system()))
         lbl_os.setProperty("cssClass", "heading")
         layout.addWidget(lbl_os)
 
         btn_ctx_layout = QHBoxLayout()
-        self.btn_install_ctx = QPushButton("В меню проводника")
+        self.btn_install_ctx = QPushButton(tr("sidebar.llm_os.install_context_menu"))
         self.btn_install_ctx.setProperty("cssClass", "success")
         self.btn_install_ctx.clicked.connect(self._install_context_menu)
 
-        self.btn_remove_ctx = QPushButton("Удалить из меню")
+        self.btn_remove_ctx = QPushButton(tr("sidebar.llm_os.remove_context_menu"))
         self.btn_remove_ctx.setProperty("cssClass", "ghost")
         self.btn_remove_ctx.clicked.connect(self._remove_context_menu)
 
@@ -272,16 +273,16 @@ class Sidebar(QWidget):
 
         layout.addSpacing(10)
 
-        lbl_cli = QLabel("Глобальный CLI (Терминал):")
+        lbl_cli = QLabel(tr("sidebar.llm_os.cli_global"))
         lbl_cli.setProperty("cssClass", "heading")
         layout.addWidget(lbl_cli)
 
         btn_cli_layout = QHBoxLayout()
-        self.btn_install_cli = QPushButton("Добавить в PATH")
+        self.btn_install_cli = QPushButton(tr("sidebar.llm_os.install_cli"))
         self.btn_install_cli.setProperty("cssClass", "success")
         self.btn_install_cli.clicked.connect(self._install_cli)
 
-        self.btn_remove_cli = QPushButton("Удалить из PATH")
+        self.btn_remove_cli = QPushButton(tr("sidebar.llm_os.remove_cli"))
         self.btn_remove_cli.setProperty("cssClass", "ghost")
         self.btn_remove_cli.clicked.connect(self._remove_cli)
 
@@ -292,15 +293,15 @@ class Sidebar(QWidget):
         layout.addSpacing(10)
         editor_form = QFormLayout()
         self.entry_editor = QLineEdit()
-        self.entry_editor.setPlaceholderText("code, cursor, idea (пусто = по умолчанию)")
-        editor_form.addRow("Редактор:", self.entry_editor)
+        self.entry_editor.setPlaceholderText(tr("sidebar.llm_os.editor_placeholder"))
+        editor_form.addRow(tr("sidebar.llm_os.editor_label"), self.entry_editor)
         layout.addLayout(editor_form)
 
         layout.addSpacing(10)
-        lbl_upd = QLabel("Настройки обновления:")
+        lbl_upd = QLabel(tr("sidebar.llm_os.update_settings"))
         lbl_upd.setProperty("cssClass", "heading")
         layout.addWidget(lbl_upd)
-        self.chk_prerelease = QCheckBox("Получать Pre-release версии")
+        self.chk_prerelease = QCheckBox(tr("sidebar.llm_os.prerelease"))
         layout.addWidget(self.chk_prerelease)
 
         layout.addStretch()
@@ -320,16 +321,16 @@ class Sidebar(QWidget):
         self.cmb_mode.setCurrentText(ThemeManager._current_mode)
         self.cmb_mode.currentTextChanged.connect(lambda m: ThemeManager.apply_theme(mode=m))
 
-        form.addRow("Тема:", self.cmb_theme)
-        form.addRow("Режим:", self.cmb_mode)
+        form.addRow(tr("sidebar.appearance.theme_label"), self.cmb_theme)
+        form.addRow(tr("sidebar.appearance.mode_label"), self.cmb_mode)
         layout.addLayout(form)
 
         layout.addSpacing(20)
-        btn_themes_folder = QPushButton("\U0001F4C2 Открыть папку тем")
+        btn_themes_folder = QPushButton(tr("sidebar.appearance.open_themes_folder"))
         btn_themes_folder.setProperty("cssClass", "ghost")
         btn_themes_folder.clicked.connect(self._open_themes_folder)
 
-        btn_import_theme = QPushButton("➕ Импортировать тему (.json)")
+        btn_import_theme = QPushButton(tr("sidebar.appearance.import_theme"))
         btn_import_theme.setProperty("cssClass", "success")
         btn_import_theme.clicked.connect(self._import_theme)
 
@@ -338,7 +339,7 @@ class Sidebar(QWidget):
         layout.addStretch()
 
     def _add_folder(self):
-        path = QFileDialog.getExistingDirectory(self, "Выберите папку")
+        path = QFileDialog.getExistingDirectory(self, tr("sidebar.add_folder.title"))
         if path:
             self.controller.add_folder(path)
 
@@ -350,17 +351,15 @@ class Sidebar(QWidget):
         self.on_settings_change()
 
     def _add_github(self):
-        url, ok = QInputDialog.getText(self, "GitHub", "Введите URL репозитория ИЛИ ссылку на Pull Request (например, https://github.com/user/repo/pull/123):")
+        url, ok = QInputDialog.getText(self, "GitHub", tr("sidebar.add_github.prompt"))
         if ok and url:
             reply = QMessageBox.question(
-                self, "Сохранение",
-                "Сохранить репозиторий на диск навсегда?\n\n"
-                "• Да — выбрать папку на ПК\n"
-                "• Нет — загрузить во временную папку (удалится при закрытии)",
+                self, tr("sidebar.add_github.save_title"),
+                tr("sidebar.add_github.save_prompt"),
                 QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel
             )
             if reply == QMessageBox.Yes:
-                dest_dir = QFileDialog.getExistingDirectory(self, "Выберите папку для клонирования")
+                dest_dir = QFileDialog.getExistingDirectory(self, tr("sidebar.add_github.clone_dialog"))
                 if dest_dir:
                     self.controller.add_github_repo(url, dest_dir)
             elif reply == QMessageBox.No:
@@ -374,31 +373,31 @@ class Sidebar(QWidget):
         self.on_settings_change()
         success, msg = self.controller.install_context_menu()
         if success or "запрошены права" in msg.lower():
-            QMessageBox.information(self, "Интеграция", msg)
+            QMessageBox.information(self, tr("sidebar.integration.title"), msg)
         else:
-            QMessageBox.warning(self, "Ошибка", msg)
+            QMessageBox.warning(self, tr("sidebar.error.title"), msg)
 
     def _remove_context_menu(self):
         success, msg = self.controller.remove_context_menu()
         if success or "запрошены права" in msg.lower():
-            QMessageBox.information(self, "Интеграция", msg)
+            QMessageBox.information(self, tr("sidebar.integration.title"), msg)
         else:
-            QMessageBox.warning(self, "Ошибка", msg)
+            QMessageBox.warning(self, tr("sidebar.error.title"), msg)
 
     def _install_cli(self):
         self.on_settings_change()
         success, msg = self.controller.install_cli()
         if success:
-            QMessageBox.information(self, "CLI Интеграция", msg)
+            QMessageBox.information(self, tr("sidebar.cli_integration.title"), msg)
         else:
-            QMessageBox.warning(self, "Ошибка", msg)
+            QMessageBox.warning(self, tr("sidebar.error.title"), msg)
 
     def _remove_cli(self):
         success, msg = self.controller.remove_cli()
         if success:
-            QMessageBox.information(self, "CLI Интеграция", msg)
+            QMessageBox.information(self, tr("sidebar.cli_integration.title"), msg)
         else:
-            QMessageBox.warning(self, "Ошибка", msg)
+            QMessageBox.warning(self, tr("sidebar.error.title"), msg)
 
     def _open_patch_dialog(self):
         from ..dialogs import JsonPatchDialog, InteractiveDiffDialog
@@ -414,7 +413,7 @@ class Sidebar(QWidget):
                         if selected:
                             self.controller.apply_prepared_patches(selected)
                         else:
-                            QMessageBox.warning(self, "Ошибка патча", "Не найдено валидных JSON-инструкций.\n\nУбедитесь, что ответ содержит массив объектов.")
+                            QMessageBox.warning(self, tr("sidebar.patch_error.title"), tr("sidebar.patch_error.message"))
 
     def _check_updates(self):
         self.on_settings_change()
@@ -433,10 +432,10 @@ class Sidebar(QWidget):
         self.on_settings_change()
 
     def _save_ext_preset(self):
-        name, ok = QInputDialog.getText(self, "Новый пресет", "Введите имя пресета:")
+        name, ok = QInputDialog.getText(self, tr("sidebar.new_preset.title"), tr("sidebar.new_preset.prompt"))
         if ok and name:
             if name in PRESETS:
-                QMessageBox.warning(self, "Ошибка", "Это имя занято системным пресетом.")
+                QMessageBox.warning(self, tr("sidebar.error.title"), tr("sidebar.new_preset.name_taken"))
                 return
             ext = self.entry_ext.toPlainText().replace('\n', ' ').strip()
             ign = self.entry_ign.toPlainText().replace('\n', ', ').strip()
@@ -450,7 +449,7 @@ class Sidebar(QWidget):
     def _del_ext_preset(self):
         name = self.cmb_preset.currentText()
         if name in PRESETS:
-            QMessageBox.warning(self, "Ошибка", "Системные пресеты нельзя удалить.")
+            QMessageBox.warning(self, tr("sidebar.error.title"), tr("sidebar.delete_preset.system_preset"))
             return
         custom = self.controller._store.state.settings.custom_presets.copy()
         if name in custom:
@@ -471,10 +470,10 @@ class Sidebar(QWidget):
         self.on_settings_change()
 
     def _save_prompt_preset(self):
-        name, ok = QInputDialog.getText(self, "Новый промпт", "Введите имя пресета:")
+        name, ok = QInputDialog.getText(self, tr("sidebar.new_prompt.title"), tr("sidebar.new_prompt.prompt"))
         if ok and name:
             if name in PROMPT_PRESETS or name == "Custom":
-                QMessageBox.warning(self, "Ошибка", "Это имя занято системным пресетом.")
+                QMessageBox.warning(self, tr("sidebar.error.title"), tr("sidebar.new_prompt.name_taken"))
                 return
             txt = self.txt_system_prompt.toPlainText().strip()
             custom = self.controller._store.state.settings.custom_prompt_presets.copy()
@@ -487,7 +486,7 @@ class Sidebar(QWidget):
     def _del_prompt_preset(self):
         name = self.cmb_prompt.currentText()
         if name in PROMPT_PRESETS or name == "Custom":
-            QMessageBox.warning(self, "Ошибка", "Системные пресеты нельзя удалить.")
+            QMessageBox.warning(self, tr("sidebar.error.title"), tr("sidebar.delete_prompt.system_preset"))
             return
         custom = self.controller._store.state.settings.custom_prompt_presets.copy()
         if name in custom:
@@ -515,10 +514,10 @@ class Sidebar(QWidget):
                 import subprocess
                 subprocess.call(["xdg-open", themes_dir])
         except Exception as e:
-            QMessageBox.warning(self, "Ошибка", f"Не удалось открыть папку: {e}")
+            QMessageBox.warning(self, tr("sidebar.error.title"), tr("sidebar.open_folder.error", error=str(e)))
 
     def _import_theme(self):
-        path, _ = QFileDialog.getOpenFileName(self, "Импорт темы", "", "JSON Files (*.json)")
+        path, _ = QFileDialog.getOpenFileName(self, tr("sidebar.import_theme.title"), "", "JSON Files (*.json)")
         if path:
             themes_dir = self._get_user_themes_dir()
             filename = os.path.basename(path)
@@ -533,9 +532,9 @@ class Sidebar(QWidget):
                 ThemeManager.load_themes(built_in, themes_dir)
                 self._refresh_themes()
                 self.cmb_theme.setCurrentText(filename.replace(".json", ""))
-                QMessageBox.information(self, "Успех", f"Тема {filename} импортирована!")
+                QMessageBox.information(self, tr("sidebar.success.title"), tr("sidebar.import_theme.success", filename=filename))
             except Exception as e:
-                QMessageBox.warning(self, "Ошибка", f"Не удалось импортировать тему:\n{e}")
+                QMessageBox.warning(self, tr("sidebar.error.title"), tr("sidebar.import_theme.error", error=e))
 
     def _refresh_ext_presets(self):
         current = self.cmb_preset.currentText()

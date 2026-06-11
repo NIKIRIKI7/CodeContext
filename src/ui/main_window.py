@@ -20,6 +20,7 @@ from .components.analytics_panel import AnalyticsPanel
 from .dialogs import AdvancedPreviewDialog, InteractiveTourDialog, EditFolderDialog, UpdateDialog, CommandPaletteDialog
 from .theme_manager import ThemeManager, theme_bus
 from ..utils.config import PricingManager, get_app_version
+from src.i18n import tr
 
 
 class ToastNotification(QLabel):
@@ -126,9 +127,9 @@ class MainWindow(QMainWindow):
         self.status_bar = StatusBar()
 
         self.tree_tabs = QTabWidget()
-        self.tree_tabs.addTab(self.file_tree, "📂 Дерево файлов")
+        self.tree_tabs.addTab(self.file_tree, tr("main_window.tab.file_tree"))
         self.analytics_panel = AnalyticsPanel()
-        self.tree_tabs.addTab(self.analytics_panel, "📊 Аналитика токенов")
+        self.tree_tabs.addTab(self.analytics_panel, tr("main_window.tab.analytics"))
 
         self.right_layout.addWidget(self.folder_list, 1)
         self.right_layout.addWidget(self.tree_tabs, 4)
@@ -201,18 +202,18 @@ class MainWindow(QMainWindow):
         if getattr(state, 'show_command_palette', False):
             if not self._command_palette:
                 commands = {
-                    "Сгенерировать: Скопировать в буфер": lambda: self._on_run('clipboard'),
-                    "Сгенерировать: Открыть в Редакторе (VS Code)": lambda: self._on_run('editor'),
-                    "Сгенерировать: Предпросмотр (Safety Diff)": lambda: self._on_run('preview'),
-                    "Сгенерировать: Отправить в AI Чат": lambda: self._on_run('chat'),
-                    "Сгенерировать: Сохранить в файл": lambda: self._on_run('file'),
-                    "Опции: Включить/Выключить Minify": lambda: self.action_panel.chk_minify.setChecked(not self.action_panel.chk_minify.isChecked()),
-                    "Опции: Включить/Выключить Skeleton ☠️": lambda: self.action_panel.chk_skeleton.setChecked(not self.action_panel.chk_skeleton.isChecked()),
-                    "Опции: Включить/Выключить Mermaid": lambda: self.sidebar.chk_mermaid.setChecked(not self.sidebar.chk_mermaid.isChecked()),
-                    "Действие: Очистить рабочую область": self.controller.clear_folders,
-                    "Действие: Применить JSON патч от LLM": self.sidebar._open_patch_dialog,
-                    "Настройки: Переключить Светлую/Темную тему": lambda: ThemeManager.apply_theme(mode="dark" if ThemeManager._current_mode == "light" else "light"),
-                    "Система: Проверить обновления": lambda: self.controller.check_for_updates(get_app_version()),
+                    tr("main_window.command.copy_to_clipboard"): lambda: self._on_run('clipboard'),
+                    tr("main_window.command.open_in_editor"): lambda: self._on_run('editor'),
+                    tr("main_window.command.preview"): lambda: self._on_run('preview'),
+                    tr("main_window.command.send_to_chat"): lambda: self._on_run('chat'),
+                    tr("main_window.command.save_to_file"): lambda: self._on_run('file'),
+                    tr("main_window.command.toggle_minify"): lambda: self.action_panel.chk_minify.setChecked(not self.action_panel.chk_minify.isChecked()),
+                    tr("main_window.command.toggle_skeleton"): lambda: self.action_panel.chk_skeleton.setChecked(not self.action_panel.chk_skeleton.isChecked()),
+                    tr("main_window.command.toggle_mermaid"): lambda: self.sidebar.chk_mermaid.setChecked(not self.sidebar.chk_mermaid.isChecked()),
+                    tr("main_window.command.clear_workspace"): self.controller.clear_folders,
+                    tr("main_window.command.apply_json_patch"): self.sidebar._open_patch_dialog,
+                    tr("main_window.command.toggle_theme"): lambda: ThemeManager.apply_theme(mode="dark" if ThemeManager._current_mode == "light" else "light"),
+                    tr("main_window.command.check_updates"): lambda: self.controller.check_for_updates(get_app_version()),
                 }
                 self._command_palette = CommandPaletteDialog(
                     self,
@@ -279,7 +280,7 @@ class MainWindow(QMainWindow):
     def _on_run(self, target):
         self._on_ui_settings_change()
         if target in ('file', 'pdf'):
-            path, _ = QFileDialog.getSaveFileName(self, "Сохранить файл", "", "All Files (*.*)")
+            path, _ = QFileDialog.getSaveFileName(self, tr("main_window.save_file.title"), "", "All Files (*.*)")
             if path:
                 self.controller.start_processing(target, path)
         else:

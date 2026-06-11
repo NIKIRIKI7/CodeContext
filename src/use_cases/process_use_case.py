@@ -17,6 +17,7 @@ from ..services.skeleton_service import SkeletonService
 from ..services.token_service import TokenService
 from ..store.state import AppState, ProcessedFile
 from ..utils.pipeline_utils import PipelineUtils
+from src.i18n import tr
 
 
 class ProcessWorkspaceUseCase:
@@ -50,7 +51,7 @@ class ProcessWorkspaceUseCase:
     ) -> None:
         self._dispatcher.dispatch(UI_SET_LOADING, True)
         self._dispatcher.dispatch(WORKFLOW_STARTED, {
-            'message': "Подготовка файлов...", 'progress': 0.1
+            'message': tr("process_use_case.workflow.preparing"), 'progress': 0.1
         })
 
         try:
@@ -60,11 +61,11 @@ class ProcessWorkspaceUseCase:
             ]
 
             if not files_to_process:
-                self._dispatcher.dispatch(UI_ADD_LOG, "⚠️ Нет файлов для обработки (все исключены?)")
+                self._dispatcher.dispatch(UI_ADD_LOG, tr("process_use_case.workflow.no_files"))
                 return
 
             self._dispatcher.dispatch(WORKFLOW_PROGRESS, {
-                'message': f"Чтение {len(files_to_process)} файлов...", 'progress': 0.3
+                'message': tr("process_use_case.workflow.reading", count=len(files_to_process)), 'progress': 0.3
             })
 
             raw_files = await self._process_service.read_files_async(files_to_process)
@@ -72,12 +73,12 @@ class ProcessWorkspaceUseCase:
             dependency_map: Optional[Dict[str, Set[str]]] = None
             if state.settings.include_dependencies or state.settings.include_mermaid:
                 self._dispatcher.dispatch(WORKFLOW_PROGRESS, {
-                    'message': "Анализ зависимостей...", 'progress': 0.5
+                    'message': tr("process_use_case.workflow.analyzing"), 'progress': 0.5
                 })
                 dependency_map = await self._dependency_service.resolve_dependencies(raw_files)
 
             self._dispatcher.dispatch(WORKFLOW_PROGRESS, {
-                'message': "Обработка и минификация...", 'progress': 0.6
+                'message': tr("process_use_case.workflow.processing_minifying"), 'progress': 0.6
             })
 
             processed: List[ProcessedFile] = await asyncio.to_thread(
@@ -87,7 +88,7 @@ class ProcessWorkspaceUseCase:
             self._dispatcher.dispatch(PROCESSING_SUCCESS, processed)
 
             self._dispatcher.dispatch(WORKFLOW_PROGRESS, {
-                'message': "Форматирование...", 'progress': 0.85
+                'message': tr("process_use_case.workflow.formatting"), 'progress': 0.85
             })
 
             text_result: str = await asyncio.to_thread(
@@ -112,17 +113,17 @@ class ProcessWorkspaceUseCase:
             })
 
             self._dispatcher.dispatch(WORKFLOW_PROGRESS, {
-                'message': "Сохранение...", 'progress': 0.95
+                'message': tr("process_use_case.workflow.saving"), 'progress': 0.95
             })
 
             await self._export(target, text_result, save_path)
 
             self._dispatcher.dispatch(WORKFLOW_FINISHED, None)
-            self._dispatcher.dispatch(UI_ADD_LOG, f"✅ Готово. Итоговых токенов: {final_tokens}")
+            self._dispatcher.dispatch(UI_ADD_LOG, tr("process_use_case.workflow.done", count=final_tokens))
 
         except Exception as exc:
             self._dispatcher.dispatch(WORKFLOW_ERROR, str(exc))
-            self._dispatcher.dispatch(UI_ADD_LOG, f"🔥 Ошибка обработки: {exc}")
+            self._dispatcher.dispatch(UI_ADD_LOG, tr("process_use_case.workflow.error", error=exc))
         finally:
             self._dispatcher.dispatch(UI_SET_LOADING, False)
 
@@ -150,7 +151,7 @@ class ProcessWorkspaceUseCase:
         if target == 'editor':
             external_cmd = self._dispatcher._store.state.settings.external_editor
             await asyncio.to_thread(self._output_service.open_in_editor, text, external_cmd)
-            self._dispatcher.dispatch(UI_ADD_LOG, "💻 Промпт открыт во внешнем редакторе")
+            self._dispatcher.dispatch(UI_ADD_LOG, tr("process_use_case.export.editor"))
         elif target == 'clipboard':
             self._output_service.copy_to_clipboard(text)
         elif target == 'stdout':
@@ -164,10 +165,10 @@ class ProcessWorkspaceUseCase:
             self._dispatcher.dispatch(UI_SHOW_PREVIEW, text)
         elif target == 'chat':
             self._dispatcher.dispatch(UI_SHOW_CHAT, text)
-            self._dispatcher.dispatch(UI_ADD_LOG, "💬 Контекст загружен в чат")
+            self._dispatcher.dispatch(UI_ADD_LOG, tr("process_use_case.export.chat_loaded"))
         elif target == 'file' and save_path:
             self._output_service.save_to_file(text, save_path)
-            self._dispatcher.dispatch(UI_ADD_LOG, f"💾 Сохранено в {save_path}")
+            self._dispatcher.dispatch(UI_ADD_LOG, tr("process_use_case.export.saved", path=save_path))
         elif target == 'pdf' and save_path:
             await asyncio.to_thread(self._output_service.save_to_pdf, text, save_path)
-            self._dispatcher.dispatch(UI_ADD_LOG, f"📄 PDF создан: {save_path}")
+            self._dispatcher.dispatch(UI_ADD_LOG, tr("process_use_case.export.pdf_created", path=save_path))

@@ -1,5 +1,6 @@
 import json
 import re
+from src.i18n import tr
 from ..actions.dispatcher import Dispatcher
 from ..actions.action_types import UI_ADD_LOG
 from ..services.patch_service import PatchService
@@ -14,10 +15,10 @@ class PatchUseCase:
 
     def prepare_json_patch(self, patch_str: str, base_folders: list) -> list:
         if not patch_str or not patch_str.strip():
-            self._dispatcher.dispatch(UI_ADD_LOG, "⚠️ Пустая строка патча.")
+            self._dispatcher.dispatch(UI_ADD_LOG, tr("patch_use_case.patch.empty"))
             return []
 
-        self._dispatcher.dispatch(UI_ADD_LOG, "🔍 Парсинг ответа LLM...")
+        self._dispatcher.dispatch(UI_ADD_LOG, tr("patch_use_case.parsing.parsing_llm"))
 
         # 1. Попытка найти JSON-блоки (маркдаун)
         blocks = re.findall(r'```(?:json)?\s*(.*?)\s*```', patch_str, re.DOTALL)
@@ -49,14 +50,14 @@ class PatchUseCase:
                 elif isinstance(data, dict):
                     all_patches.append(data)
             except json.JSONDecodeError as e:
-                self._dispatcher.dispatch(UI_ADD_LOG, f"⚠️ Ошибка парсинга блока: {e}")
+                self._dispatcher.dispatch(UI_ADD_LOG, tr("patch_use_case.parsing.parse_error", error=e))
                 continue
 
         if not all_patches:
-            self._dispatcher.dispatch(UI_ADD_LOG, "❌ Ошибка: Не найдено валидных JSON-инструкций в тексте.")
+            self._dispatcher.dispatch(UI_ADD_LOG, tr("patch_use_case.parsing.no_valid_json"))
             return []
 
-        self._dispatcher.dispatch(UI_ADD_LOG, f"⚙️ Подготовка {len(all_patches)} патчей для предпросмотра...")
+        self._dispatcher.dispatch(UI_ADD_LOG, tr("patch_use_case.patch.preparing", count=len(all_patches)))
         return self._patch_service.prepare_patches(all_patches, base_folders)
 
     def apply_prepared(self, prepared_patches: list):
@@ -67,6 +68,6 @@ class PatchUseCase:
         for log in logs:
             self._dispatcher.dispatch(UI_ADD_LOG, log)
 
-        self._dispatcher.dispatch(UI_ADD_LOG, f"🎉 Итог: Успешно сохранено на диск {applied_count} патчей!")
+        self._dispatcher.dispatch(UI_ADD_LOG, tr("patch_use_case.patch.applied", count=applied_count))
 
         return applied_count, logs

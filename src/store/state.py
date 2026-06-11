@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from typing import List, Set, Dict
+from src.i18n import tr
 
 
 @dataclass
@@ -67,7 +68,7 @@ class AppState:
     final_output_text: str = ""
     total_tokens: int = 0
     selected_tokens: int = 0
-    status_message: str = "Готов к работе"
+    status_message: str = tr("state.status.ready")
     progress: float = 0.0
     is_loading: bool = False
     logs: List[str] = field(default_factory=list)

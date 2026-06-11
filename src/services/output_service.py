@@ -6,6 +6,7 @@ import tempfile
 import subprocess
 from fpdf import FPDF
 from ..utils.config import FONT_PATH
+from src.i18n import tr
 
 
 class OutputService:
@@ -17,8 +18,8 @@ class OutputService:
             pyperclip.copy(text)
         except Exception as e:
             if platform.system() == "Linux":
-                raise RuntimeError("Для работы буфера обмена на Linux установите утилиту 'xclip' или 'wl-clipboard'.") from e
-            raise RuntimeError(f"Ошибка копирования в буфер обмена: {e}") from e
+                raise RuntimeError(tr("output_service.clipboard.linux_install")) from e
+            raise RuntimeError(tr("output_service.clipboard.copy_error", error=e)) from e
 
     @staticmethod
     def save_to_file(text: str, path: str):
@@ -40,7 +41,7 @@ class OutputService:
             else:
                 subprocess.Popen(["xdg-open", tmp_path])
         except Exception as e:
-            raise RuntimeError(f"Не удалось открыть редактор '{editor_cmd}': {e}")
+            raise RuntimeError(tr("output_service.editor.open_error", editor_cmd=editor_cmd, error=e))
 
     @staticmethod
     def save_to_pdf(text: str, path: str):

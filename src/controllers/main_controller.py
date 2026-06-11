@@ -1,6 +1,8 @@
 import os
 from typing import Optional, Tuple, List
 from PySide6.QtCore import QTimer
+ 
+from src.i18n import tr
 
 from ..actions.action_types import (
     FOLDER_ADD, FOLDER_REMOVE, FOLDER_UPDATE, FOLDER_CLEAR,
@@ -109,7 +111,7 @@ class MainController:
 
         temp = self._store.state.temp_folders
         if temp:
-            self._dispatcher.dispatch(UI_ADD_LOG, "Очистка временных файлов...")
+            self._dispatcher.dispatch(UI_ADD_LOG, tr("main_controller.clear_temp_files"))
             AsyncRuntime.run_coroutine(self._clear_temp_async(temp))
         else:
             self._dispatcher.dispatch(FOLDER_CLEAR, None)
@@ -121,7 +123,7 @@ class MainController:
 
     def scan_only(self):
         if not self._store.state.selected_folders:
-            self._dispatcher.dispatch(UI_ADD_LOG, "⚠️ Выберите папки для сканирования")
+            self._dispatcher.dispatch(UI_ADD_LOG, tr("main_controller.choose_folders"))
             return
         state = self._store.state
         async def _scan_and_filter():
@@ -131,7 +133,7 @@ class MainController:
 
     def start_processing(self, target: str, save_path: Optional[str] = None) -> Tuple[bool, str]:
         if not self._store.state.selected_folders:
-            return False, "Выберите папки или URL для сканирования"
+            return False, tr("main_controller.choose_folders_or_url")
         state = self._store.state
         if not state.scanned_files_paths:
             AsyncRuntime.run_coroutine(self._scan_then_process(target, save_path))
@@ -168,9 +170,9 @@ class MainController:
                 )
                 self.copy_to_clipboard(text)
             else:
-                self._dispatcher.dispatch(UI_ADD_LOG, f"⚠️ Не удалось прочитать файл: {target_file}")
+                self._dispatcher.dispatch(UI_ADD_LOG, tr("main_controller.read_file_error", target_file=target_file))
         else:
-            self._dispatcher.dispatch(UI_ADD_LOG, f"copy_with_deps (mode: {mode}): используйте CopyWithDepsUseCase")
+            self._dispatcher.dispatch(UI_ADD_LOG, tr("main_controller.use_copy_deps_use_case", mode=mode))
 
     def add_github_repo(self, url: str, dest_path: str = ""):
         AsyncRuntime.run_coroutine(self._github_uc.execute(url, dest_path))
@@ -180,7 +182,7 @@ class MainController:
         if state.selected_folders:
             self._settings_uc.save_local_config(state.selected_folders[0])
         else:
-            self._dispatcher.dispatch(UI_ADD_LOG, "⚠️ Нет добавленных папок для сохранения конфига.")
+            self._dispatcher.dispatch(UI_ADD_LOG, tr("main_controller.no_folders_config"))
 
     def install_context_menu(self) -> Tuple[bool, str]:
         python_path = self._store.state.settings.python_interpreter
@@ -222,7 +224,7 @@ class MainController:
     def parse_error_log(self, text: str):
         state = self._store.state
         if not state.scanned_files_paths:
-            self._dispatcher.dispatch(UI_ADD_LOG, "⚠️ Сначала отсканируйте файлы!")
+            self._dispatcher.dispatch(UI_ADD_LOG, tr("main_controller.scan_first"))
             return
         matched = []
         for path in state.scanned_files_paths:
@@ -230,13 +232,13 @@ class MainController:
             if basename in text:
                 matched.append(path)
         if not matched:
-            self._dispatcher.dispatch(UI_ADD_LOG, "⚠️ В логе не найдены файлы проекта.")
+            self._dispatcher.dispatch(UI_ADD_LOG, tr("main_controller.no_files_in_log"))
             return
         self._dispatcher.dispatch(EXCLUSION_CLEAR, None)
         all_paths = set(state.scanned_files_paths)
         for p in (all_paths - set(matched)):
             self._dispatcher.dispatch(EXCLUSION_ADD, p)
-        self._dispatcher.dispatch(UI_ADD_LOG, f"🎯 Найдено {len(matched)} файлов из лога ошибки!")
+        self._dispatcher.dispatch(UI_ADD_LOG, tr("main_controller.files_matched", count=len(matched)))
 
     def show_tour(self):
         steps = self._tour_service.get_tour_steps()
@@ -249,11 +251,11 @@ class MainController:
         try:
             self._output_service.copy_to_clipboard(text)
             tokens = self._store.state.selected_tokens if self._store.state.selected_tokens > 0 else self._store.state.total_tokens
-            self._dispatcher.dispatch(UI_ADD_LOG, "📋 Текст скопирован в буфер обмена")
-            self._dispatcher.dispatch(UI_SHOW_TOAST, f"📋 Скопировано ({tokens} токенов)")
+            self._dispatcher.dispatch(UI_ADD_LOG, tr("main_controller.copied_to_clipboard"))
+            self._dispatcher.dispatch(UI_SHOW_TOAST, tr("main_controller.copied_tokens", tokens=tokens))
         except Exception as e:
-            self._dispatcher.dispatch(UI_ADD_LOG, f"❌ {str(e)}")
-            self._dispatcher.dispatch(UI_SHOW_TOAST, "❌ Ошибка буфера обмена")
+            self._dispatcher.dispatch(UI_ADD_LOG, tr("main_controller.clipboard_error", error=str(e)))
+            self._dispatcher.dispatch(UI_SHOW_TOAST, tr("main_controller.clipboard_error_generic"))
 
     def _apply_pr_filter(self):
         state = self._store.state
@@ -264,7 +266,7 @@ class MainController:
         for p in state.scanned_files_paths:
             if not any(p.endswith(pr_f) for pr_f in pr_files_norm):
                 self._dispatcher.dispatch(EXCLUSION_ADD, p)
-        self._dispatcher.dispatch(UI_ADD_LOG, f"🐙 Применен фильтр Pull Request. Оставлено {len(state.pr_target_files)} файлов.")
+        self._dispatcher.dispatch(UI_ADD_LOG, tr("main_controller.pr_filter_applied", count=len(state.pr_target_files)))
         self._dispatcher.dispatch(SET_PR_TARGET_FILES, [])
 
     def clear_toast(self):
