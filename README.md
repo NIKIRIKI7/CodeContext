@@ -1,6 +1,6 @@
 <div align="center">
 
-[🇷🇺 Русский](README.ru.md)
+[🇷🇺 Русский](l10n/README.ru.md)
 
 <br>
 
