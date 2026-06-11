@@ -44,6 +44,7 @@ class AppSettings:
     visible_actions: List[str] = field(default_factory=lambda: ["preview", "clipboard", "chat", "editor", "file"])
     custom_presets: Dict[str, dict] = field(default_factory=dict)
     custom_prompt_presets: Dict[str, str] = field(default_factory=dict)
+    language: str = ""
 
 
 @dataclass

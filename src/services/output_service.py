@@ -6,6 +6,7 @@ import tempfile
 import subprocess
 from fpdf import FPDF
 from ..utils.config import FONT_PATH
+from ..utils.logger import app_logger
 from src.i18n import tr
 
 
@@ -56,7 +57,7 @@ class OutputService:
                 pdf.set_font("CustomFont", size=10)
                 font_loaded = True
             except Exception:
-                pass
+                app_logger.warning(f"[Output] Custom font not loaded: {FONT_PATH}")
 
         if not font_loaded:
             pdf.set_font("Courier", size=10)

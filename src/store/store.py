@@ -119,6 +119,13 @@ class Store:
         valid_keys = set(AppSettings.__dataclass_fields__.keys())
         filtered = {k: v for k, v in payload.items() if k in valid_keys}
         self._state.settings = AppSettings(**filtered)
+        lang = filtered.get('language', '')
+        if not lang:
+            from src.i18n import load_translations
+            load_translations()
+        else:
+            from src.i18n import set_language
+            set_language(lang)
 
     def _handle_settings_update(self, payload: dict):
         current = self._state.settings.__dict__.copy()

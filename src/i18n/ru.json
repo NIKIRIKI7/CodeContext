@@ -159,6 +159,7 @@
   "sidebar.llm_os.prerelease": "🧪 Получать pre-release версии",
   "sidebar.appearance.theme_label": "🎨 Тема:",
   "sidebar.appearance.mode_label": "🌙 Режим:",
+  "sidebar.appearance.language_label": "🌐 Язык:",
   "sidebar.appearance.open_themes_folder": "📂 Открыть папку тем",
   "sidebar.appearance.import_theme": "📥 Импортировать тему",
   "sidebar.add_folder.title": "📂 Выберите папку проекта",

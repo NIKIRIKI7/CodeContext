@@ -11,7 +11,7 @@
 **Herramienta de análisis de código fuente y preparación de prompts impulsada por IA**
 
 [![AUR](https://img.shields.io/aur/version/codecontext-ai?style=flat-square&logo=archlinux&label=AUR)](https://aur.archlinux.org/packages/codecontext-ai)
-[![Version](https://img.shields.io/badge/version-1.15.0-blue?style=flat-square)](../VERSION.txt)
+[![Version](https://img.shields.io/badge/version-1.17.0-blue?style=flat-square)](../VERSION.txt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](../LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square&logo=python)](https://www.python.org/downloads/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20|%20Linux%20|%20macOS-lightgrey?style=flat-square)]()
@@ -39,6 +39,7 @@
 <tr><td>🖱️ Menú contextual</td><td>Windows / Linux</td><td>Ninguno</td></tr>
 <tr><td>🎨 Temas</td><td>Apple, Modern, JSON personalizado</td><td>IU fija</td></tr>
 <tr><td>⚙️ Personalización de IU (v1.14+)</td><td>Estilo Premiere Pro</td><td>IU fija</td></tr>
+<tr><td>🌐 i18n (v1.17+)</td><td>15 languages, system auto-detect</td><td>Single language</td></tr>
 </tbody>
 </table>
 

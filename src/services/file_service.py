@@ -49,10 +49,11 @@ class FileService:
                     if not spec.match_file(rel_path):
                         kept_files.append(file_abs_path)
                 except ValueError:
+                    app_logger.warning(f"[FileService] relpath failed for: {file_abs_path}")
                     kept_files.append(file_abs_path)
             return kept_files
         except Exception as e:
-            print(f"Error processing .gitignore in {root_folder}: {e}")
+            app_logger.error(f"[FileService] Error processing .gitignore in {root_folder}: {e}")
             return files
 
     def find_project_root(self, file_path: str) -> str:

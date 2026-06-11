@@ -11,7 +11,7 @@ from PySide6.QtCore import Qt
 from ...utils.config import PRESETS, PROMPT_PRESETS, get_app_version
 from ..theme_manager import ThemeManager, theme_bus
 from ..dialogs import UICustomizationDialog
-from src.i18n import tr
+from src.i18n import tr, set_language, current_lang, available_languages
 
 
 class Sidebar(QWidget):
@@ -321,8 +321,17 @@ class Sidebar(QWidget):
         self.cmb_mode.setCurrentText(ThemeManager._current_mode)
         self.cmb_mode.currentTextChanged.connect(lambda m: ThemeManager.apply_theme(mode=m))
 
+        self.cmb_lang = QComboBox()
+        self._lang_codes = list(available_languages().keys())
+        self.cmb_lang.addItems([f"{code} - {available_languages()[code]}" for code in self._lang_codes])
+        current_code = current_lang()
+        idx = next((i for i, c in enumerate(self._lang_codes) if c == current_code), 0)
+        self.cmb_lang.setCurrentIndex(idx)
+        self.cmb_lang.currentIndexChanged.connect(self._on_language_change)
+
         form.addRow(tr("sidebar.appearance.theme_label"), self.cmb_theme)
         form.addRow(tr("sidebar.appearance.mode_label"), self.cmb_mode)
+        form.addRow(tr("sidebar.appearance.language_label"), self.cmb_lang)
         layout.addLayout(form)
 
         layout.addSpacing(20)
@@ -337,6 +346,21 @@ class Sidebar(QWidget):
         layout.addWidget(btn_themes_folder)
         layout.addWidget(btn_import_theme)
         layout.addStretch()
+
+    def _on_language_change(self, idx):
+        if idx < 0 or idx >= len(self._lang_codes):
+            return
+        new_lang = self._lang_codes[idx]
+        if new_lang == current_lang():
+            return
+        set_language(new_lang)
+        self.controller.update_settings({'language': new_lang})
+        self.controller.save_settings()
+        self._rebuild_tabs(getattr(self.controller._store.state.settings, 'visible_tabs', ["sources", "filters", "prompts", "llm_os", "appearance"]))
+        self.update_ui(self.controller._store.state.settings)
+        mw = self.window()
+        if hasattr(mw, 'retranslate_ui'):
+            mw.retranslate_ui()
 
     def _add_folder(self):
         path = QFileDialog.getExistingDirectory(self, tr("sidebar.add_folder.title"))

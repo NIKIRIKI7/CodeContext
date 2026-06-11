@@ -147,6 +147,11 @@ class MainWindow(QMainWindow):
         QShortcut(QKeySequence("Ctrl+F"), self, activated=self.file_tree.search.setFocus)
         QShortcut(QKeySequence("Ctrl+Shift+P"), self, activated=lambda: self.store.dispatch('UI_SHOW_COMMAND_PALETTE'))
 
+    def retranslate_ui(self):
+        self.tree_tabs.setTabText(0, tr("main_window.tab.file_tree"))
+        self.tree_tabs.setTabText(1, tr("main_window.tab.analytics"))
+        self.setWindowTitle("CodeContext AI")
+
     def _update_theme_metrics(self):
         m = ThemeManager.get_layout("main_margin", 16)
         s = ThemeManager.get_layout("main_spacing", 12)

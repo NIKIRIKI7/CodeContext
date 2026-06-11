@@ -1,4 +1,4 @@
-{
+﻿{
   "main.cli_mode": "CLI mode",
   "main.path": "Path to project",
   "main.patch": "JSON patch file",
@@ -159,6 +159,7 @@
   "sidebar.llm_os.prerelease": "🧪 Receive pre-release versions",
   "sidebar.appearance.theme_label": "🎨 Theme:",
   "sidebar.appearance.mode_label": "🌙 Mode:",
+  "sidebar.appearance.language_label": "🌐 Language:",
   "sidebar.appearance.open_themes_folder": "📂 Open themes folder",
   "sidebar.appearance.import_theme": "📥 Import Theme",
   "sidebar.add_folder.title": "📂 Select project folder",
