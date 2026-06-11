@@ -46,45 +46,43 @@ sudo pacman -Rns codecontext-ai
 
 ## Быстрый способ (рекомендуется)
 
-Версия задаётся **только** в `VERSION.txt`. Остальные файлы синхронизируются скриптом.
+Версия задаётся **только** в `VERSION.txt`. Остальные файлы обновляются вручную.
 
 ```powershell
 # 1. Обновить версию
-Set-Content VERSION.txt -Value "1.15.0"
+Set-Content VERSION.txt -Value "1.19.0"
 
-# 2. Синхронизировать все сборки
-.\scripts\sync-version.ps1 -CommitAur
-
-# 3. Закоммитить в GitHub
-git add VERSION.txt
-git commit -m "Bump version: 1.14.0 → 1.15.0"
+# 2. Обновить pkgver в aur_build/PKGBUILD и aur_build/.SRCINFO
+# 3. Закоммитить
+git add VERSION.txt aur_build/
+git commit -m "Bump version: 1.14.0 → 1.19.0"
 git push
 ```
 
-Убедись, что тег `v1.15.0` существует на GitHub.
+Убедись, что тег `v1.19.0` существует на GitHub.
 
 ## Пошагово
 
 ### 1. Обновить VERSION.txt
 
 ```bash
-echo "1.15.0" > VERSION.txt
+echo "1.19.0" > VERSION.txt
 ```
 
-### 2. Синхронизировать сборки
+### 2. Обновить AUR-сборки
 
-Скрипт обновит PKGBUILD и .SRCINFO в AUR-репозитории:
-
-```powershell
-.\scripts\sync-version.ps1
-```
+Вручную изменить `pkgver` в:
+- `aur_build/PKGBUILD`
+- `aur_build/.SRCINFO`
+- `aur_build/codecontext-ai/PKGBUILD`
+- `aur_build/codecontext-ai/.SRCINFO`
 
 ### 3. Закоммитить и запушить в AUR
 
 ```bash
 cd aur_build/codecontext-ai
 git add PKGBUILD .SRCINFO
-git commit -m "update to v1.15.0"
+git commit -m "update to v1.19.0"
 git push
 cd ../..
 ```
@@ -93,7 +91,7 @@ cd ../..
 
 ```bash
 bumpversion patch  # или minor, или major
-.\scripts\sync-version.ps1 -CommitAur
+# Затем вручную обновить AUR-файлы
 ```
 
 ### 5. Проверить

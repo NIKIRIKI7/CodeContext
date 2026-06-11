@@ -45,14 +45,14 @@ codecontext --cli --path ./project  # CLI-режим
 
 ### Обновление версии
 
-Версия задаётся **только** в `VERSION.txt`. Остальные файлы синхронизируются автоматически.
+Версия задаётся **только** в `VERSION.txt`.
 
 ```bash
 # 1. Обновить версию
-echo "1.15.0" > VERSION.txt
+echo "1.19.0" > VERSION.txt
 
-# 2. Синхронизировать сборки (AUR, PyPI)
-.\scripts\sync-version.ps1
+# 2. Вручную обновить AUR-файлы (PKGBUILD, .SRCINFO)
+#    Заменить pkgver в aur_build/PKGBUILD и aur_build/.SRCINFO
 
 # 3. Пересобрать для PyPI
 python -m build
