@@ -25,6 +25,10 @@ class StatusBar(QWidget):
         self._update_metrics()
         theme_bus.theme_changed.connect(self._update_metrics)
 
+    def retranslate_ui(self):
+        if self.lbl_status.text() == "Idle" or self.lbl_status.text() == tr("status_bar.idle"):
+            self.lbl_status.setText(tr("status_bar.idle"))
+
     def _update_metrics(self):
         s = ThemeManager.get_layout("main_spacing", 12)
         self.layout.setSpacing(s)

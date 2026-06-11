@@ -32,6 +32,7 @@
   "main_window.save_file.title": "保存文件",
 
   "dialogs.ai_chat_title": "AI 聊天 (CodeContext)",
+  "dialogs.chat.title": "AI 聊天",
 
   "dialogs.chat.placeholder": "询问关于代码的问题...",
   "dialogs.chat.send": "发送",
@@ -206,9 +207,13 @@
   "sidebar.import_theme.error": "导入主题时出错：{error}",
 
   "action_panel.minify": "压缩",
+  "action_panel.chk_minify": "压缩",
   "action_panel.no_comments": "无注释",
+  "action_panel.chk_comments": "无注释",
   "action_panel.no_secrets": "无密钥",
+  "action_panel.chk_secrets": "无密钥",
   "action_panel.skeleton": "骨架",
+  "action_panel.chk_skeleton": "骨架",
 
   "action_panel.template.tooltip": "📁 选择 Jinja2 模板",
   "action_panel.preview.button": "👁 预览",
@@ -227,6 +232,7 @@
 
   "status_bar.idle": "空闲",
   "status_bar.tokens_count": "令牌: {tokens}",
+  "status_bar.tokens": "令牌: {tokens}",
 
   "status_bar.local_model": "（本地模型）",
 

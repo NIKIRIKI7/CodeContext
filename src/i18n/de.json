@@ -32,6 +32,7 @@
   "main_window.save_file.title": "Datei speichern",
 
   "dialogs.ai_chat_title": "KI-Chat (CodeContext)",
+  "dialogs.chat.title": "KI-Chat",
 
   "dialogs.chat.placeholder": "Stelle eine Frage zum Code...",
   "dialogs.chat.send": "Senden",
@@ -206,9 +207,13 @@
   "sidebar.import_theme.error": "Fehler beim Importieren des Designs: {error}",
 
   "action_panel.minify": "Minimieren",
+  "action_panel.chk_minify": "Minimieren",
   "action_panel.no_comments": "Keine Kommentare",
+  "action_panel.chk_comments": "Keine Kommentare",
   "action_panel.no_secrets": "Keine Geheimnisse",
+  "action_panel.chk_secrets": "Keine Geheimnisse",
   "action_panel.skeleton": "Grundgerüst",
+  "action_panel.chk_skeleton": "Grundgerüst",
 
   "action_panel.template.tooltip": "📁 Jinja2-Vorlage auswählen",
   "action_panel.preview.button": "👁 Vorschau",
@@ -227,6 +232,7 @@
 
   "status_bar.idle": "Bereit",
   "status_bar.tokens_count": "Token: {tokens}",
+  "status_bar.tokens": "Token: {tokens}",
 
   "status_bar.local_model": " (lokales Modell)",
 

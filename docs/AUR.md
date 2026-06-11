@@ -50,23 +50,23 @@ sudo pacman -Rns codecontext-ai
 
 ```powershell
 # 1. Обновить версию
-Set-Content VERSION.txt -Value "1.19.0"
+Set-Content VERSION.txt -Value "1.21.0"
 
 # 2. Обновить pkgver в aur_build/PKGBUILD и aur_build/.SRCINFO
 # 3. Закоммитить
 git add VERSION.txt aur_build/
-git commit -m "Bump version: 1.14.0 → 1.19.0"
+git commit -m "Bump version: 1.20.0 → 1.21.0"
 git push
 ```
 
-Убедись, что тег `v1.19.0` существует на GitHub.
+Убедись, что тег `v1.21.0` существует на GitHub.
 
 ## Пошагово
 
 ### 1. Обновить VERSION.txt
 
 ```bash
-echo "1.19.0" > VERSION.txt
+echo "1.21.0" > VERSION.txt
 ```
 
 ### 2. Обновить AUR-сборки
@@ -82,7 +82,7 @@ echo "1.19.0" > VERSION.txt
 ```bash
 cd aur_build/codecontext-ai
 git add PKGBUILD .SRCINFO
-git commit -m "update to v1.19.0"
+git commit -m "update to v1.21.0"
 git push
 cd ../..
 ```

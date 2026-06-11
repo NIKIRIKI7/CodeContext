@@ -78,6 +78,13 @@ class AnalyticsPanel(QWidget):
 
         self._update_progress_bars_style()
 
+    def retranslate_ui(self):
+        self.table.setHorizontalHeaderLabels([
+            tr("analytics_panel.header.file"),
+            tr("analytics_panel.header.tokens"),
+            tr("analytics_panel.header.weight")
+        ])
+
     def _update_progress_bars_style(self):
         colors = ThemeManager.get_current_colors()
         c_primary = colors.get('primary', '#0071e3')

@@ -32,6 +32,7 @@
   "main_window.save_file.title": "Dosyayı Kaydet",
 
   "dialogs.ai_chat_title": "AI Sohbet (CodeContext)",
+  "dialogs.chat.title": "AI Sohbet",
 
   "dialogs.chat.placeholder": "Kod hakkında bir soru sorun...",
   "dialogs.chat.send": "Gönder",
@@ -206,9 +207,13 @@
   "sidebar.import_theme.error": "Tema içe aktarılırken hata: {error}",
 
   "action_panel.minify": "Küçült",
+  "action_panel.chk_minify": "Küçült",
   "action_panel.no_comments": "Yorum yok",
+  "action_panel.chk_comments": "Yorum yok",
   "action_panel.no_secrets": "Sır yok",
+  "action_panel.chk_secrets": "Sır yok",
   "action_panel.skeleton": "İskelet",
+  "action_panel.chk_skeleton": "İskelet",
 
   "action_panel.template.tooltip": "📁 Jinja2 şablonu seç",
   "action_panel.preview.button": "👁 Önizleme",
@@ -227,6 +232,7 @@
 
   "status_bar.idle": "Boşta",
   "status_bar.tokens_count": "Token: {tokens}",
+  "status_bar.tokens": "Token: {tokens}",
 
   "status_bar.local_model": " (yerel model)",
 

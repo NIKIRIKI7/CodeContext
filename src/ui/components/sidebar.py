@@ -51,38 +51,100 @@ class Sidebar(QWidget):
         self._rebuild_tabs(visible_tabs)
 
         bottom_layout = QHBoxLayout()
-        btn_ui_settings = QPushButton("\u2699")
-        btn_ui_settings.setProperty("cssClass", "icon")
-        btn_ui_settings.setToolTip(tr("sidebar.ui_settings.tooltip"))
-        btn_ui_settings.clicked.connect(self._open_ui_settings)
-
-        btn_tour = QPushButton(tr("sidebar.tour.button"))
-        btn_tour.setProperty("cssClass", "ghost")
-        btn_tour.clicked.connect(self.controller.show_tour)
-
+        self.btn_ui_settings = QPushButton("\u2699")
+        self.btn_ui_settings.setProperty("cssClass", "icon")
+        self.btn_ui_settings.setToolTip(tr("sidebar.ui_settings.tooltip"))
+        self.btn_ui_settings.clicked.connect(self._open_ui_settings)
+        
+        self.btn_tour = QPushButton(tr("sidebar.tour.button"))
+        self.btn_tour.setProperty("cssClass", "ghost")
+        self.btn_tour.clicked.connect(self.controller.show_tour)
+        
         version_str = get_app_version()
-        lbl_version = QLabel(tr("sidebar.version.label", version=version_str))
-        lbl_version.setProperty("cssClass", "muted")
-
-        btn_update = QPushButton(tr("sidebar.update.button"))
-        btn_update.setProperty("cssClass", "ghost")
-        btn_update.clicked.connect(self._check_updates)
-
-        btn_bug = QPushButton("\U0001F41E")
-        btn_bug.setProperty("cssClass", "icon")
-        btn_bug.setToolTip(tr("sidebar.bug_report.tooltip"))
-        btn_bug.clicked.connect(self._open_bug_report)
-
-        bottom_layout.addWidget(btn_ui_settings)
-        bottom_layout.addWidget(lbl_version)
+        self.lbl_version = QLabel(tr("sidebar.version.label", version=version_str))
+        self.lbl_version.setProperty("cssClass", "muted")
+        
+        self.btn_update = QPushButton(tr("sidebar.update.button"))
+        self.btn_update.setProperty("cssClass", "ghost")
+        self.btn_update.clicked.connect(self._check_updates)
+        
+        self.btn_bug = QPushButton("\U0001F41E")
+        self.btn_bug.setProperty("cssClass", "icon")
+        self.btn_bug.setToolTip(tr("sidebar.bug_report.tooltip"))
+        self.btn_bug.clicked.connect(self._open_bug_report)
+        
+        bottom_layout.addWidget(self.btn_ui_settings)
+        bottom_layout.addWidget(self.lbl_version)
         bottom_layout.addStretch()
-        bottom_layout.addWidget(btn_bug)
-        bottom_layout.addWidget(btn_update)
-        bottom_layout.addWidget(btn_tour)
+        bottom_layout.addWidget(self.btn_bug)
+        bottom_layout.addWidget(self.btn_update)
+        bottom_layout.addWidget(self.btn_tour)
         self.layout.addLayout(bottom_layout)
 
         self._update_metrics()
         theme_bus.theme_changed.connect(self._update_metrics)
+
+    def retranslate_ui(self):
+        for tab_id, label, _ in self.TAB_DEFS:
+            idx = self.tabs.indexOf(self.tab_widgets[tab_id])
+            if idx >= 0:
+                self.tabs.setTabText(idx, tr(label))
+                
+        self.btn_ui_settings.setToolTip(tr("sidebar.ui_settings.tooltip"))
+        self.btn_tour.setText(tr("sidebar.tour.button"))
+        self.lbl_version.setText(tr("sidebar.version.label", version=get_app_version()))
+        self.btn_update.setText(tr("sidebar.update.button"))
+        self.btn_bug.setToolTip(tr("sidebar.bug_report.tooltip"))
+        
+        self.btn_add.setText(tr("sidebar.sources.add_folder"))
+        self.btn_gh.setText(tr("sidebar.sources.add_github"))
+        self.btn_gh.setToolTip(tr("sidebar.sources.github_tooltip"))
+        self.chk_git.setText(tr("sidebar.sources.git_only"))
+        self.chk_gitignore.setText(tr("sidebar.sources.respect_gitignore"))
+        self.btn_scan.setText(tr("sidebar.sources.scan_files"))
+        self.btn_save_local.setText(tr("sidebar.sources.save_config"))
+        self.btn_clear.setText(tr("sidebar.sources.clear_project"))
+        
+        self.btn_save_preset.setToolTip(tr("sidebar.filters.save_preset_tooltip"))
+        self.btn_del_preset.setToolTip(tr("sidebar.filters.delete_preset_tooltip"))
+        self.lbl_ext_preset.setText(tr("sidebar.filters.preset_label"))
+        self.lbl_ext.setText(tr("sidebar.filters.extensions_label"))
+        self.entry_ext.setPlaceholderText(tr("sidebar.filters.extensions_placeholder"))
+        self.lbl_ign.setText(tr("sidebar.filters.ignore_paths_label"))
+        self.entry_ign.setPlaceholderText(tr("sidebar.filters.ignore_paths_placeholder"))
+        self.chk_tree.setText(tr("sidebar.filters.include_tree"))
+        self.chk_dependencies.setText(tr("sidebar.filters.include_deps"))
+        self.chk_mermaid.setText(tr("sidebar.filters.include_mermaid"))
+        
+        self.btn_save_prompt.setToolTip(tr("sidebar.prompts.save_preset_tooltip"))
+        self.btn_del_prompt.setToolTip(tr("sidebar.prompts.delete_preset_tooltip"))
+        self.lbl_prompt_preset.setText(tr("sidebar.prompts.preset_label"))
+        self.lbl_sys_prompt.setText(tr("sidebar.prompts.system_prompt_label"))
+        self.btn_patch.setText(tr("sidebar.prompts.apply_patch"))
+        
+        self.lbl_llm.setText(tr("sidebar.llm_os.llm_validator"))
+        self.chk_llm_check.setText(tr("sidebar.llm_os.enable_llm_check"))
+        self.lbl_llm_url.setText(tr("sidebar.llm_os.url_label"))
+        self.lbl_llm_key.setText(tr("sidebar.llm_os.key_label"))
+        self.lbl_llm_model.setText(tr("sidebar.llm_os.model_label"))
+        self.btn_ollama.setText(tr("sidebar.llm_os.ollama_preset"))
+        self.btn_lmstudio.setText(tr("sidebar.llm_os.lmstudio_preset"))
+        self.lbl_os.setText(tr("sidebar.llm_os.os_integration", os_name=platform.system()))
+        self.btn_install_ctx.setText(tr("sidebar.llm_os.install_context_menu"))
+        self.btn_remove_ctx.setText(tr("sidebar.llm_os.remove_context_menu"))
+        self.lbl_cli.setText(tr("sidebar.llm_os.cli_global"))
+        self.btn_install_cli.setText(tr("sidebar.llm_os.install_cli"))
+        self.btn_remove_cli.setText(tr("sidebar.llm_os.remove_cli"))
+        self.lbl_editor.setText(tr("sidebar.llm_os.editor_label"))
+        self.entry_editor.setPlaceholderText(tr("sidebar.llm_os.editor_placeholder"))
+        self.lbl_upd.setText(tr("sidebar.llm_os.update_settings"))
+        self.chk_prerelease.setText(tr("sidebar.llm_os.prerelease"))
+        
+        self.lbl_theme.setText(tr("sidebar.appearance.theme_label"))
+        self.lbl_mode.setText(tr("sidebar.appearance.mode_label"))
+        self.lbl_lang.setText(tr("sidebar.appearance.language_label"))
+        self.btn_themes_folder.setText(tr("sidebar.appearance.open_themes_folder"))
+        self.btn_import_theme.setText(tr("sidebar.appearance.import_theme"))
 
     def _open_ui_settings(self):
         settings = self.controller._store.state.settings
@@ -123,38 +185,38 @@ class Sidebar(QWidget):
         btn_layout = QHBoxLayout()
         btn_layout.setContentsMargins(0, 0, 0, 10)
 
-        btn_add = QPushButton(tr("sidebar.sources.add_folder"))
-        btn_add.setProperty("cssClass", "ghost")
-        btn_add.clicked.connect(self._add_folder)
-
-        btn_gh = QPushButton(tr("sidebar.sources.add_github"))
-        btn_gh.setProperty("cssClass", "success")
-        btn_gh.setToolTip(tr("sidebar.sources.github_tooltip"))
-        btn_gh.clicked.connect(self._add_github)
-
-        btn_layout.addWidget(btn_add)
-        btn_layout.addWidget(btn_gh)
+        self.btn_add = QPushButton(tr("sidebar.sources.add_folder"))
+        self.btn_add.setProperty("cssClass", "ghost")
+        self.btn_add.clicked.connect(self._add_folder)
+        
+        self.btn_gh = QPushButton(tr("sidebar.sources.add_github"))
+        self.btn_gh.setProperty("cssClass", "success")
+        self.btn_gh.setToolTip(tr("sidebar.sources.github_tooltip"))
+        self.btn_gh.clicked.connect(self._add_github)
+        
+        btn_layout.addWidget(self.btn_add)
+        btn_layout.addWidget(self.btn_gh)
         layout.addLayout(btn_layout)
-
+        
         self.chk_git = QCheckBox(tr("sidebar.sources.git_only"))
         self.chk_gitignore = QCheckBox(tr("sidebar.sources.respect_gitignore"))
         layout.addWidget(self.chk_git)
         layout.addWidget(self.chk_gitignore)
-
+        
         layout.addSpacing(10)
-        btn_scan = QPushButton(tr("sidebar.sources.scan_files"))
-        btn_scan.clicked.connect(self._trigger_scan)
-        layout.addWidget(btn_scan)
-
-        btn_save_local = QPushButton(tr("sidebar.sources.save_config"))
-        btn_save_local.setProperty("cssClass", "ghost")
-        btn_save_local.clicked.connect(self.controller.save_local_config)
-        layout.addWidget(btn_save_local)
-
-        btn_clear = QPushButton(tr("sidebar.sources.clear_project"))
-        btn_clear.setProperty("cssClass", "ghost")
-        btn_clear.clicked.connect(self.controller.clear_folders)
-        layout.addWidget(btn_clear)
+        self.btn_scan = QPushButton(tr("sidebar.sources.scan_files"))
+        self.btn_scan.clicked.connect(self._trigger_scan)
+        layout.addWidget(self.btn_scan)
+        
+        self.btn_save_local = QPushButton(tr("sidebar.sources.save_config"))
+        self.btn_save_local.setProperty("cssClass", "ghost")
+        self.btn_save_local.clicked.connect(self.controller.save_local_config)
+        layout.addWidget(self.btn_save_local)
+        
+        self.btn_clear = QPushButton(tr("sidebar.sources.clear_project"))
+        self.btn_clear.setProperty("cssClass", "ghost")
+        self.btn_clear.clicked.connect(self.controller.clear_folders)
+        layout.addWidget(self.btn_clear)
 
         layout.addStretch()
 
@@ -167,29 +229,32 @@ class Sidebar(QWidget):
         self.cmb_preset.setSizeAdjustPolicy(QComboBox.AdjustToContents)
         self.cmb_preset.currentTextChanged.connect(self._on_ext_preset_change)
 
-        btn_save_preset = QPushButton("\U0001F4BE")
-        btn_save_preset.setProperty("cssClass", "icon")
-        btn_save_preset.setToolTip(tr("sidebar.filters.save_preset_tooltip"))
-        btn_save_preset.clicked.connect(self._save_ext_preset)
+        self.btn_save_preset = QPushButton("\U0001F4BE")
+        self.btn_save_preset.setProperty("cssClass", "icon")
+        self.btn_save_preset.setToolTip(tr("sidebar.filters.save_preset_tooltip"))
+        self.btn_save_preset.clicked.connect(self._save_ext_preset)
 
-        btn_del_preset = QPushButton("\U0001F5D1")
-        btn_del_preset.setProperty("cssClass", "icon")
-        btn_del_preset.setToolTip(tr("sidebar.filters.delete_preset_tooltip"))
-        btn_del_preset.clicked.connect(self._del_ext_preset)
+        self.btn_del_preset = QPushButton("\U0001F5D1")
+        self.btn_del_preset.setProperty("cssClass", "icon")
+        self.btn_del_preset.setToolTip(tr("sidebar.filters.delete_preset_tooltip"))
+        self.btn_del_preset.clicked.connect(self._del_ext_preset)
 
-        preset_layout.addWidget(QLabel(tr("sidebar.filters.preset_label")))
+        self.lbl_ext_preset = QLabel(tr("sidebar.filters.preset_label"))
+        preset_layout.addWidget(self.lbl_ext_preset)
         preset_layout.addWidget(self.cmb_preset, 1)
-        preset_layout.addWidget(btn_save_preset)
-        preset_layout.addWidget(btn_del_preset)
+        preset_layout.addWidget(self.btn_save_preset)
+        preset_layout.addWidget(self.btn_del_preset)
         layout.addLayout(preset_layout)
 
-        layout.addWidget(QLabel(tr("sidebar.filters.extensions_label")))
+        self.lbl_ext = QLabel(tr("sidebar.filters.extensions_label"))
+        layout.addWidget(self.lbl_ext)
         self.entry_ext = QPlainTextEdit()
         self.entry_ext.setProperty("cssClass", "textarea_small")
         self.entry_ext.setPlaceholderText(tr("sidebar.filters.extensions_placeholder"))
         layout.addWidget(self.entry_ext)
 
-        layout.addWidget(QLabel(tr("sidebar.filters.ignore_paths_label")))
+        self.lbl_ign = QLabel(tr("sidebar.filters.ignore_paths_label"))
+        layout.addWidget(self.lbl_ign)
         self.entry_ign = QPlainTextEdit()
         self.entry_ign.setProperty("cssClass", "textarea_small")
         self.entry_ign.setPlaceholderText(tr("sidebar.filters.ignore_paths_placeholder"))
@@ -212,44 +277,46 @@ class Sidebar(QWidget):
         self.cmb_prompt = QComboBox()
         self.cmb_prompt.currentTextChanged.connect(self._on_prompt_preset_change)
 
-        btn_save_prompt = QPushButton("\U0001F4BE")
-        btn_save_prompt.setProperty("cssClass", "icon")
-        btn_save_prompt.setToolTip(tr("sidebar.prompts.save_preset_tooltip"))
-        btn_save_prompt.clicked.connect(self._save_prompt_preset)
-
-        btn_del_prompt = QPushButton("\U0001F5D1")
-        btn_del_prompt.setProperty("cssClass", "icon")
-        btn_del_prompt.setToolTip(tr("sidebar.prompts.delete_preset_tooltip"))
-        btn_del_prompt.clicked.connect(self._del_prompt_preset)
-
-        preset_layout.addWidget(QLabel(tr("sidebar.prompts.preset_label")))
+        self.btn_save_prompt = QPushButton("\U0001F4BE")
+        self.btn_save_prompt.setProperty("cssClass", "icon")
+        self.btn_save_prompt.setToolTip(tr("sidebar.prompts.save_preset_tooltip"))
+        self.btn_save_prompt.clicked.connect(self._save_prompt_preset)
+        
+        self.btn_del_prompt = QPushButton("\U0001F5D1")
+        self.btn_del_prompt.setProperty("cssClass", "icon")
+        self.btn_del_prompt.setToolTip(tr("sidebar.prompts.delete_preset_tooltip"))
+        self.btn_del_prompt.clicked.connect(self._del_prompt_preset)
+        
+        self.lbl_prompt_preset = QLabel(tr("sidebar.prompts.preset_label"))
+        preset_layout.addWidget(self.lbl_prompt_preset)
         preset_layout.addWidget(self.cmb_prompt, 1)
-        preset_layout.addWidget(btn_save_prompt)
-        preset_layout.addWidget(btn_del_prompt)
+        preset_layout.addWidget(self.btn_save_prompt)
+        preset_layout.addWidget(self.btn_del_prompt)
         layout.addLayout(preset_layout)
-
-        layout.addWidget(QLabel(tr("sidebar.prompts.system_prompt_label")))
+        
+        self.lbl_sys_prompt = QLabel(tr("sidebar.prompts.system_prompt_label"))
+        layout.addWidget(self.lbl_sys_prompt)
         self.txt_system_prompt = QTextEdit()
         layout.addWidget(self.txt_system_prompt)
-
-        btn_patch = QPushButton(tr("sidebar.prompts.apply_patch"))
-        btn_patch.setProperty("cssClass", "success")
-        btn_patch.clicked.connect(self._open_patch_dialog)
-        layout.addWidget(btn_patch)
+        
+        self.btn_patch = QPushButton(tr("sidebar.prompts.apply_patch"))
+        self.btn_patch.setProperty("cssClass", "success")
+        self.btn_patch.clicked.connect(self._open_patch_dialog)
+        layout.addWidget(self.btn_patch)
 
     def _build_llm_os_tab(self, tab):
         layout = QVBoxLayout(tab)
         layout.setContentsMargins(0, 10, 0, 0)
 
-        lbl_llm = QLabel(tr("sidebar.llm_os.llm_validator"))
-        lbl_llm.setProperty("cssClass", "heading")
-        layout.addWidget(lbl_llm)
+        self.lbl_llm = QLabel(tr("sidebar.llm_os.llm_validator"))
+        self.lbl_llm.setProperty("cssClass", "heading")
+        layout.addWidget(self.lbl_llm)
 
         self.chk_llm_check = QCheckBox(tr("sidebar.llm_os.enable_llm_check"))
         layout.addWidget(self.chk_llm_check)
 
-        form_llm = QFormLayout()
-        form_llm.setContentsMargins(0, 0, 0, 0)
+        self.form_llm = QFormLayout()
+        self.form_llm.setContentsMargins(0, 0, 0, 0)
         self.entry_llm_url = QLineEdit()
         self.entry_llm_url.setPlaceholderText("https://api.openai.com/v1")
         self.entry_llm_key = QLineEdit()
@@ -257,29 +324,32 @@ class Sidebar(QWidget):
         self.entry_llm_key.setPlaceholderText("sk-...")
         self.entry_llm_model = QLineEdit()
         self.entry_llm_model.setPlaceholderText("gpt-4o-mini / local-model")
-        form_llm.addRow(tr("sidebar.llm_os.url_label"), self.entry_llm_url)
-        form_llm.addRow(tr("sidebar.llm_os.key_label"), self.entry_llm_key)
-        form_llm.addRow(tr("sidebar.llm_os.model_label"), self.entry_llm_model)
-        layout.addLayout(form_llm)
+        self.lbl_llm_url = QLabel(tr("sidebar.llm_os.url_label"))
+        self.lbl_llm_key = QLabel(tr("sidebar.llm_os.key_label"))
+        self.lbl_llm_model = QLabel(tr("sidebar.llm_os.model_label"))
+        self.form_llm.addRow(self.lbl_llm_url, self.entry_llm_url)
+        self.form_llm.addRow(self.lbl_llm_key, self.entry_llm_key)
+        self.form_llm.addRow(self.lbl_llm_model, self.entry_llm_model)
+        layout.addLayout(self.form_llm)
 
         llm_presets_layout = QHBoxLayout()
-        btn_ollama = QPushButton(tr("sidebar.llm_os.ollama_preset"))
-        btn_ollama.setProperty("cssClass", "ghost")
-        btn_ollama.clicked.connect(lambda: self._apply_llm_preset("http://localhost:11434/v1", "llama3"))
+        self.btn_ollama = QPushButton(tr("sidebar.llm_os.ollama_preset"))
+        self.btn_ollama.setProperty("cssClass", "ghost")
+        self.btn_ollama.clicked.connect(lambda: self._apply_llm_preset("http://localhost:11434/v1", "llama3"))
 
-        btn_lmstudio = QPushButton(tr("sidebar.llm_os.lmstudio_preset"))
-        btn_lmstudio.setProperty("cssClass", "ghost")
-        btn_lmstudio.clicked.connect(lambda: self._apply_llm_preset("http://localhost:1234/v1", "local-model"))
+        self.btn_lmstudio = QPushButton(tr("sidebar.llm_os.lmstudio_preset"))
+        self.btn_lmstudio.setProperty("cssClass", "ghost")
+        self.btn_lmstudio.clicked.connect(lambda: self._apply_llm_preset("http://localhost:1234/v1", "local-model"))
 
-        llm_presets_layout.addWidget(btn_ollama)
-        llm_presets_layout.addWidget(btn_lmstudio)
+        llm_presets_layout.addWidget(self.btn_ollama)
+        llm_presets_layout.addWidget(self.btn_lmstudio)
         llm_presets_layout.addStretch()
         layout.addLayout(llm_presets_layout)
 
         layout.addSpacing(10)
-        lbl_os = QLabel(tr("sidebar.llm_os.os_integration", os_name=platform.system()))
-        lbl_os.setProperty("cssClass", "heading")
-        layout.addWidget(lbl_os)
+        self.lbl_os = QLabel(tr("sidebar.llm_os.os_integration", os_name=platform.system()))
+        self.lbl_os.setProperty("cssClass", "heading")
+        layout.addWidget(self.lbl_os)
 
         btn_ctx_layout = QHBoxLayout()
         self.btn_install_ctx = QPushButton(tr("sidebar.llm_os.install_context_menu"))
@@ -293,9 +363,9 @@ class Sidebar(QWidget):
         layout.addLayout(btn_ctx_layout)
 
         layout.addSpacing(10)
-        lbl_cli = QLabel(tr("sidebar.llm_os.cli_global"))
-        lbl_cli.setProperty("cssClass", "heading")
-        layout.addWidget(lbl_cli)
+        self.lbl_cli = QLabel(tr("sidebar.llm_os.cli_global"))
+        self.lbl_cli.setProperty("cssClass", "heading")
+        layout.addWidget(self.lbl_cli)
 
         btn_cli_layout = QHBoxLayout()
         self.btn_install_cli = QPushButton(tr("sidebar.llm_os.install_cli"))
@@ -309,16 +379,17 @@ class Sidebar(QWidget):
         layout.addLayout(btn_cli_layout)
 
         layout.addSpacing(10)
-        editor_form = QFormLayout()
+        self.editor_form = QFormLayout()
         self.entry_editor = QLineEdit()
         self.entry_editor.setPlaceholderText(tr("sidebar.llm_os.editor_placeholder"))
-        editor_form.addRow(tr("sidebar.llm_os.editor_label"), self.entry_editor)
-        layout.addLayout(editor_form)
+        self.lbl_editor = QLabel(tr("sidebar.llm_os.editor_label"))
+        self.editor_form.addRow(self.lbl_editor, self.entry_editor)
+        layout.addLayout(self.editor_form)
 
         layout.addSpacing(10)
-        lbl_upd = QLabel(tr("sidebar.llm_os.update_settings"))
-        lbl_upd.setProperty("cssClass", "heading")
-        layout.addWidget(lbl_upd)
+        self.lbl_upd = QLabel(tr("sidebar.llm_os.update_settings"))
+        self.lbl_upd.setProperty("cssClass", "heading")
+        layout.addWidget(self.lbl_upd)
 
         self.chk_prerelease = QCheckBox(tr("sidebar.llm_os.prerelease"))
         layout.addWidget(self.chk_prerelease)
@@ -349,22 +420,25 @@ class Sidebar(QWidget):
         self.cmb_lang.setCurrentIndex(idx)
         self.cmb_lang.currentIndexChanged.connect(self._on_language_change)
 
-        form.addRow(tr("sidebar.appearance.theme_label"), self.cmb_theme)
-        form.addRow(tr("sidebar.appearance.mode_label"), self.cmb_mode)
-        form.addRow(tr("sidebar.appearance.language_label"), self.cmb_lang)
+        self.lbl_theme = QLabel(tr("sidebar.appearance.theme_label"))
+        self.lbl_mode = QLabel(tr("sidebar.appearance.mode_label"))
+        self.lbl_lang = QLabel(tr("sidebar.appearance.language_label"))
+        form.addRow(self.lbl_theme, self.cmb_theme)
+        form.addRow(self.lbl_mode, self.cmb_mode)
+        form.addRow(self.lbl_lang, self.cmb_lang)
         layout.addLayout(form)
-
+        
         layout.addSpacing(20)
-        btn_themes_folder = QPushButton(tr("sidebar.appearance.open_themes_folder"))
-        btn_themes_folder.setProperty("cssClass", "ghost")
-        btn_themes_folder.clicked.connect(self._open_themes_folder)
-
-        btn_import_theme = QPushButton(tr("sidebar.appearance.import_theme"))
-        btn_import_theme.setProperty("cssClass", "success")
-        btn_import_theme.clicked.connect(self._import_theme)
-
-        layout.addWidget(btn_themes_folder)
-        layout.addWidget(btn_import_theme)
+        self.btn_themes_folder = QPushButton(tr("sidebar.appearance.open_themes_folder"))
+        self.btn_themes_folder.setProperty("cssClass", "ghost")
+        self.btn_themes_folder.clicked.connect(self._open_themes_folder)
+        
+        self.btn_import_theme = QPushButton(tr("sidebar.appearance.import_theme"))
+        self.btn_import_theme.setProperty("cssClass", "success")
+        self.btn_import_theme.clicked.connect(self._import_theme)
+        
+        layout.addWidget(self.btn_themes_folder)
+        layout.addWidget(self.btn_import_theme)
         layout.addStretch()
 
     def _on_language_change(self, idx):
@@ -382,6 +456,9 @@ class Sidebar(QWidget):
         mw = self.window()
         if hasattr(mw, 'retranslate_ui'):
             mw.retranslate_ui()
+            
+        if self.controller and self.controller._store:
+            self.controller._store._notify()
 
     def _add_folder(self):
         path = QFileDialog.getExistingDirectory(self, tr("sidebar.add_folder.title"))

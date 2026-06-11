@@ -280,6 +280,13 @@ class FileTree(QWidget):
     def _select_git_modified(self):
         pass
 
+    def retranslate_ui(self):
+        self.search.setPlaceholderText(tr("file_tree.search.placeholder"))
+        self.btn_expand.setText(tr("file_tree.expand_all"))
+        self.btn_collapse.setText(tr("file_tree.collapse_all"))
+        self.btn_exclude_tests.setText(tr("file_tree.exclude_tests"))
+        self.btn_git_modified.setText(tr("file_tree.git_modified"))
+
     def clear(self):
         self._is_updating = True
         self.model.clear()

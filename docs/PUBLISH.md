@@ -49,7 +49,7 @@ codecontext --cli --path ./project  # CLI-режим
 
 ```bash
 # 1. Обновить версию
-echo "1.19.0" > VERSION.txt
+echo "1.21.0" > VERSION.txt
 
 # 2. Вручную обновить AUR-файлы (PKGBUILD, .SRCINFO)
 #    Заменить pkgver в aur_build/PKGBUILD и aur_build/.SRCINFO

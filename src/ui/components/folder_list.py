@@ -29,6 +29,9 @@ class FolderList(QScrollArea):
         self.layout.setContentsMargins(m, m, m, m)
         self.layout.setSpacing(int(s / 2))
 
+    def retranslate_ui(self):
+        pass
+
     def update_ui(self, selected_folders, temp_folders):
         while self.layout.count():
             item = self.layout.takeAt(0)

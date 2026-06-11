@@ -49,38 +49,37 @@ class EmptyState(QWidget):
         icon_lbl = QLabel("📁")
         icon_lbl.setProperty("cssClass", "empty_icon")
         icon_lbl.setAlignment(Qt.AlignCenter)
-
-        title_lbl = QLabel(tr("empty_state.drop.title"))
-        title_lbl.setProperty("cssClass", "empty_title")
-        title_lbl.setAlignment(Qt.AlignCenter)
-
-        subtitle_lbl = QLabel(tr("empty_state.drop.subtitle"))
-        subtitle_lbl.setProperty("cssClass", "empty_subtitle")
-        subtitle_lbl.setAlignment(Qt.AlignCenter)
-
-        btn_browse = QPushButton(tr("empty_state.browse.button"))
-        btn_browse.setProperty("cssClass", "success")
-        btn_browse.setCursor(Qt.PointingHandCursor)
-        btn_browse.clicked.connect(self._browse)
-
+        
+        self.title_lbl = QLabel(tr("empty_state.drop.title"))
+        self.title_lbl.setProperty("cssClass", "empty_title")
+        self.title_lbl.setAlignment(Qt.AlignCenter)
+        
+        self.subtitle_lbl = QLabel(tr("empty_state.drop.subtitle"))
+        self.subtitle_lbl.setProperty("cssClass", "empty_subtitle")
+        self.subtitle_lbl.setAlignment(Qt.AlignCenter)
+        
+        self.btn_browse = QPushButton(tr("empty_state.browse.button"))
+        self.btn_browse.setProperty("cssClass", "success")
+        self.btn_browse.setCursor(Qt.PointingHandCursor)
+        self.btn_browse.clicked.connect(self._browse)
+        
         drop_layout.addStretch()
         drop_layout.addWidget(icon_lbl)
         drop_layout.addSpacing(16)
-        drop_layout.addWidget(title_lbl)
+        drop_layout.addWidget(self.title_lbl)
         drop_layout.addSpacing(8)
-        drop_layout.addWidget(subtitle_lbl)
+        drop_layout.addWidget(self.subtitle_lbl)
         drop_layout.addSpacing(24)
-        drop_layout.addWidget(btn_browse, 0, Qt.AlignCenter)
+        drop_layout.addWidget(self.btn_browse, 0, Qt.AlignCenter)
         drop_layout.addStretch()
 
-        # 2. Недавние проекты
         self.recent_container = QWidget()
         self.recent_layout = QVBoxLayout(self.recent_container)
         self.recent_layout.setContentsMargins(0, 0, 0, 0)
-
-        recent_title = QLabel(tr("empty_state.recent.title"))
-        recent_title.setProperty("cssClass", "heading")
-        self.recent_layout.addWidget(recent_title)
+        
+        self.recent_title = QLabel(tr("empty_state.recent.title"))
+        self.recent_title.setProperty("cssClass", "heading")
+        self.recent_layout.addWidget(self.recent_title)
 
         self.recent_grid = QGridLayout()
         self.recent_grid.setSpacing(12)
@@ -129,6 +128,12 @@ class EmptyState(QWidget):
 
         if added == 0:
             self.recent_container.hide()
+
+    def retranslate_ui(self):
+        self.title_lbl.setText(tr("empty_state.drop.title"))
+        self.subtitle_lbl.setText(tr("empty_state.drop.subtitle"))
+        self.btn_browse.setText(tr("empty_state.browse.button"))
+        self.recent_title.setText(tr("empty_state.recent.title"))
 
     def _browse(self):
         from PySide6.QtWidgets import QFileDialog

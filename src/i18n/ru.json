@@ -32,6 +32,7 @@
   "main_window.save_file.title": "Сохранить файл",
 
   "dialogs.ai_chat_title": "AI Чат (CodeContext)",
+  "dialogs.chat.title": "AI Чат",
   "dialogs.chat.placeholder": "Задайте вопрос по коду...",
   "dialogs.chat.send": "Отправить",
   "dialogs.chat.system_loaded": "📎 Системный контекст загружен. Можете задать вопрос.",
@@ -205,9 +206,13 @@
   "sidebar.import_theme.error": "Ошибка импорта темы: {error}",
 
   "action_panel.minify": "Минифицировать",
+  "action_panel.chk_minify": "Минифицировать",
   "action_panel.no_comments": "Без комментариев",
+  "action_panel.chk_comments": "Без комментариев",
   "action_panel.no_secrets": "Без секретов",
+  "action_panel.chk_secrets": "Без секретов",
   "action_panel.skeleton": "Скелет",
+  "action_panel.chk_skeleton": "Скелет",
   "action_panel.template.tooltip": "📁 Выбрать Jinja2 шаблон",
   "action_panel.preview.button": "👁 Предпросмотр",
   "action_panel.clipboard.button": "📋 Копировать",
@@ -225,6 +230,7 @@
 
   "status_bar.idle": "Ожидание",
   "status_bar.tokens_count": "Токены: {tokens}",
+  "status_bar.tokens": "Токены: {tokens}",
   "status_bar.local_model": " (локальная модель)",
 
   "analytics_panel.header.file": "Файл",

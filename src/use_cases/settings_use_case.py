@@ -92,6 +92,10 @@ class SettingsUseCase:
             content = self._fs_repo._read_file_sync(target_path)
             if content:
                 local_settings = json.loads(content)
+                if not local_settings.get('extensions', "").strip():
+                    local_settings.pop('extensions', None)
+                if not local_settings.get('ignored_paths', "").strip():
+                    local_settings.pop('ignored_paths', None)
                 self._dispatcher.dispatch(SETTINGS_UPDATE, local_settings)
                 self._dispatcher.dispatch(UI_ADD_LOG, tr("settings_use_case.local_config_applied", path=os.path.basename(target_path)))
         except json.JSONDecodeError as exc:

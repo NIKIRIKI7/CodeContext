@@ -32,6 +32,7 @@
   "main_window.save_file.title": "파일 저장",
 
   "dialogs.ai_chat_title": "AI 채팅 (CodeContext)",
+  "dialogs.chat.title": "AI 채팅",
 
   "dialogs.chat.placeholder": "코드에 대해 질문하세요...",
   "dialogs.chat.send": "보내기",
@@ -206,9 +207,13 @@
   "sidebar.import_theme.error": "테마 가져오기 오류: {error}",
 
   "action_panel.minify": "최소화",
+  "action_panel.chk_minify": "최소화",
   "action_panel.no_comments": "주석 없음",
+  "action_panel.chk_comments": "주석 없음",
   "action_panel.no_secrets": "비밀 값 숨김",
+  "action_panel.chk_secrets": "비밀 값 숨김",
   "action_panel.skeleton": "스켈레톤",
+  "action_panel.chk_skeleton": "스켈레톤",
 
   "action_panel.template.tooltip": "📁 Jinja2 템플릿 선택",
   "action_panel.preview.button": "👁 미리보기",
@@ -227,6 +232,7 @@
 
   "status_bar.idle": "대기 중",
   "status_bar.tokens_count": "토큰: {tokens}",
+  "status_bar.tokens": "토큰: {tokens}",
 
   "status_bar.local_model": " (로컬 모델)",
 

@@ -32,6 +32,7 @@
   "main_window.save_file.title": "Bestand opslaan",
 
   "dialogs.ai_chat_title": "AI-chat (CodeContext)",
+  "dialogs.chat.title": "AI-chat",
 
   "dialogs.chat.placeholder": "Stel een vraag over de code...",
   "dialogs.chat.send": "Verzenden",
@@ -206,9 +207,13 @@
   "sidebar.import_theme.error": "Fout bij importeren thema: {error}",
 
   "action_panel.minify": "Minimaliseren",
+  "action_panel.chk_minify": "Minimaliseren",
   "action_panel.no_comments": "Geen opmerkingen",
+  "action_panel.chk_comments": "Geen opmerkingen",
   "action_panel.no_secrets": "Geen geheimen",
+  "action_panel.chk_secrets": "Geen geheimen",
   "action_panel.skeleton": "Skelet",
+  "action_panel.chk_skeleton": "Skelet",
 
   "action_panel.template.tooltip": "📁 Jinja2-sjabloon selecteren",
   "action_panel.preview.button": "👁 Voorbeeld",
@@ -227,6 +232,7 @@
 
   "status_bar.idle": "Inactief",
   "status_bar.tokens_count": "Tokens: {tokens}",
+  "status_bar.tokens": "Tokens: {tokens}",
 
   "status_bar.local_model": " (lokaal model)",
 

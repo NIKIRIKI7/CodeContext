@@ -32,6 +32,7 @@
   "main_window.save_file.title": "ファイルを保存",
 
   "dialogs.ai_chat_title": "AI チャット (CodeContext)",
+  "dialogs.chat.title": "AI チャット",
 
   "dialogs.chat.placeholder": "コードについて質問してください...",
   "dialogs.chat.send": "送信",
@@ -206,9 +207,13 @@
   "sidebar.import_theme.error": "テーマのインポート中にエラーが発生しました: {error}",
 
   "action_panel.minify": "最小化",
+  "action_panel.chk_minify": "最小化",
   "action_panel.no_comments": "コメントなし",
+  "action_panel.chk_comments": "コメントなし",
   "action_panel.no_secrets": "シークレットなし",
+  "action_panel.chk_secrets": "シークレットなし",
   "action_panel.skeleton": "スケルトン",
+  "action_panel.chk_skeleton": "スケルトン",
 
   "action_panel.template.tooltip": "📁 Jinja2テンプレートを選択",
   "action_panel.preview.button": "👁 プレビュー",
@@ -227,6 +232,7 @@
 
   "status_bar.idle": "待機中",
   "status_bar.tokens_count": "トークン: {tokens}",
+  "status_bar.tokens": "トークン: {tokens}",
 
   "status_bar.local_model": "（ローカルモデル）",
 

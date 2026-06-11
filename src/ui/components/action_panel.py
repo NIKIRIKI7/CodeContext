@@ -115,6 +115,19 @@ class ActionPanel(QWidget):
         for act_id, btn in self.action_buttons.items():
             btn.setVisible(act_id in visible_actions)
 
+    def retranslate_ui(self):
+        self.chk_minify.setText(tr("action_panel.chk_minify"))
+        self.chk_comments.setText(tr("action_panel.chk_comments"))
+        self.chk_secrets.setText(tr("action_panel.chk_secrets"))
+        self.chk_skeleton.setText(tr("action_panel.chk_skeleton"))
+        self.btn_template.setToolTip(tr("action_panel.template.tooltip"))
+        self.btn_preview.setText(tr("action_panel.preview.button"))
+        self.btn_copy.setText(tr("action_panel.clipboard.button"))
+        self.btn_chat.setText(tr("action_panel.chat.button"))
+        self.btn_editor.setText(tr("action_panel.editor.button"))
+        self.btn_editor.setToolTip(tr("action_panel.editor.tooltip"))
+        self.btn_file.setText(tr("action_panel.file.button"))
+
     def get_settings(self):
         return {
             'minify': self.chk_minify.isChecked(),

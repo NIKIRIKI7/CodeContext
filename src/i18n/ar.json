@@ -32,6 +32,7 @@
   "main_window.save_file.title": "حفظ ملف",
 
   "dialogs.ai_chat_title": "الدردشة الذكية (CodeContext)",
+  "dialogs.chat.title": "الدردشة الذكية",
 
   "dialogs.chat.placeholder": "اسأل سؤالاً عن الكود...",
   "dialogs.chat.send": "إرسال",
@@ -206,9 +207,13 @@
   "sidebar.import_theme.error": "خطأ في استيراد السمة: {error}",
 
   "action_panel.minify": "تصغير",
+  "action_panel.chk_minify": "تصغير",
   "action_panel.no_comments": "بدون تعليقات",
+  "action_panel.chk_comments": "بدون تعليقات",
   "action_panel.no_secrets": "بدون أسرار",
+  "action_panel.chk_secrets": "بدون أسرار",
   "action_panel.skeleton": "هيكل",
+  "action_panel.chk_skeleton": "هيكل",
 
   "action_panel.template.tooltip": "📁 تحديد قالب Jinja2",
   "action_panel.preview.button": "👁 معاينة",
@@ -227,6 +232,7 @@
 
   "status_bar.idle": "خامل",
   "status_bar.tokens_count": "الرموز: {tokens}",
+  "status_bar.tokens": "الرموز: {tokens}",
 
   "status_bar.local_model": " (نموذج محلي)",
 

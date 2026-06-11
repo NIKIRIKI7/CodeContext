@@ -32,6 +32,7 @@
   "main_window.save_file.title": "Zapisz plik",
 
   "dialogs.ai_chat_title": "Czat AI (CodeContext)",
+  "dialogs.chat.title": "Czat AI",
 
   "dialogs.chat.placeholder": "Zadaj pytanie o kodzie...",
   "dialogs.chat.send": "Wyślij",
@@ -206,9 +207,13 @@
   "sidebar.import_theme.error": "Błąd importowania motywu: {error}",
 
   "action_panel.minify": "Minifikuj",
+  "action_panel.chk_minify": "Minifikuj",
   "action_panel.no_comments": "Bez komentarzy",
+  "action_panel.chk_comments": "Bez komentarzy",
   "action_panel.no_secrets": "Bez tajemnic",
+  "action_panel.chk_secrets": "Bez tajemnic",
   "action_panel.skeleton": "Szkielet",
+  "action_panel.chk_skeleton": "Szkielet",
 
   "action_panel.template.tooltip": "📁 Wybierz szablon Jinja2",
   "action_panel.preview.button": "👁 Podgląd",
@@ -227,6 +232,7 @@
 
   "status_bar.idle": "Bezczynny",
   "status_bar.tokens_count": "Tokeny: {tokens}",
+  "status_bar.tokens": "Tokeny: {tokens}",
 
   "status_bar.local_model": " (model lokalny)",
 

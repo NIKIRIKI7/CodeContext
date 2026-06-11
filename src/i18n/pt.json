@@ -32,6 +32,7 @@
   "main_window.save_file.title": "Salvar Arquivo",
 
   "dialogs.ai_chat_title": "Chat IA (CodeContext)",
+  "dialogs.chat.title": "Chat IA",
 
   "dialogs.chat.placeholder": "Faça uma pergunta sobre o código...",
   "dialogs.chat.send": "Enviar",
@@ -206,9 +207,13 @@
   "sidebar.import_theme.error": "Erro ao importar tema: {error}",
 
   "action_panel.minify": "Minificar",
+  "action_panel.chk_minify": "Minificar",
   "action_panel.no_comments": "Sem comentários",
+  "action_panel.chk_comments": "Sem comentários",
   "action_panel.no_secrets": "Sem segredos",
+  "action_panel.chk_secrets": "Sem segredos",
   "action_panel.skeleton": "Esqueleto",
+  "action_panel.chk_skeleton": "Esqueleto",
 
   "action_panel.template.tooltip": "📁 Selecionar template Jinja2",
   "action_panel.preview.button": "👁 Visualizar",
@@ -227,6 +232,7 @@
 
   "status_bar.idle": "Ocioso",
   "status_bar.tokens_count": "Tokens: {tokens}",
+  "status_bar.tokens": "Tokens: {tokens}",
 
   "status_bar.local_model": " (modelo local)",
 

@@ -11,6 +11,10 @@ class FileService:
 
     async def scan_folders_async(self, paths: List[str], extensions_str: str, ignored_str: str, use_git: bool,
                                  use_gitignore: bool) -> List[str]:
+        if not extensions_str.strip():
+            from ..utils.config import PRESETS
+            extensions_str = PRESETS['Default']['ext']
+            
         exts = [e.strip().lower() for e in extensions_str.split()]
         ign = {i.strip() for i in ignored_str.split(',') if i.strip()}
         all_files = []

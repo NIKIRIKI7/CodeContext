@@ -153,6 +153,13 @@ class MainWindow(QMainWindow):
         self.tree_tabs.setTabText(0, tr("main_window.tab.file_tree"))
         self.tree_tabs.setTabText(1, tr("main_window.tab.analytics"))
         self.setWindowTitle(tr("main_window.title"))
+        self.sidebar.retranslate_ui()
+        self.action_panel.retranslate_ui()
+        self.empty_state.retranslate_ui()
+        self.file_tree.retranslate_ui()
+        self.analytics_panel.retranslate_ui()
+        self.folder_list.retranslate_ui()
+        self.status_bar.retranslate_ui()
 
     def _update_theme_metrics(self):
         m = ThemeManager.get_layout("main_margin", 16)

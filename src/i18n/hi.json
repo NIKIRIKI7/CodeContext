@@ -32,6 +32,7 @@
   "main_window.save_file.title": "फ़ाइल सहेजें",
 
   "dialogs.ai_chat_title": "AI चैट (CodeContext)",
+  "dialogs.chat.title": "AI चैट",
 
   "dialogs.chat.placeholder": "कोड के बारे में प्रश्न पूछें...",
   "dialogs.chat.send": "भेजें",
@@ -206,9 +207,13 @@
   "sidebar.import_theme.error": "थीम आयात करने में त्रुटि: {error}",
 
   "action_panel.minify": "मिनिफ़ाई",
+  "action_panel.chk_minify": "मिनिफ़ाई",
   "action_panel.no_comments": "कोई टिप्पणी नहीं",
+  "action_panel.chk_comments": "कोई टिप्पणी नहीं",
   "action_panel.no_secrets": "कोई रहस्य नहीं",
+  "action_panel.chk_secrets": "कोई रहस्य नहीं",
   "action_panel.skeleton": "कंकाल",
+  "action_panel.chk_skeleton": "कंकाल",
 
   "action_panel.template.tooltip": "📁 Jinja2 टेम्पलेट चुनें",
   "action_panel.preview.button": "👁 पूर्वावलोकन",
@@ -227,6 +232,7 @@
 
   "status_bar.idle": "निष्क्रिय",
   "status_bar.tokens_count": "टोकन: {tokens}",
+  "status_bar.tokens": "टोकन: {tokens}",
 
   "status_bar.local_model": " (स्थानीय मॉडल)",
 
