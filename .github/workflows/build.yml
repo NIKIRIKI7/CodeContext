@@ -189,9 +189,9 @@ jobs:
           name: bin-macos-arm64
           path: build_output/*
 
-  # 5. Публикация релиза
+  # 5. Публикация релиза (только при пуше тега)
   release:
-    if: github.ref_name == 'main' || startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v')
     needs: [prepare, build-linux, build-windows, build-macos]
     runs-on: ubuntu-latest
     steps:
