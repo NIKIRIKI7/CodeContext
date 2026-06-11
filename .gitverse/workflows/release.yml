@@ -1,0 +1,214 @@
+name: Build and Release for GitVerse
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.set_ver.outputs.version }}
+      tag_name: ${{ steps.set_ver.outputs.tag_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read Version (clean BOM)
+        id: set_ver
+        shell: bash
+        run: |
+          if [ -f "VERSION.txt" ]; then
+            VER="v$(cat VERSION.txt | tr -d '\357\273\277[:space:]')"
+          else
+            VER="v1.0.0"
+          fi
+          echo "version=$VER" >> "$GITVERSE_OUTPUT"
+          echo "tag_name=$VER" >> "$GITVERSE_OUTPUT"
+
+  build-linux:
+    needs: prepare
+    runs-on: ubuntu-latest
+    container: ${{ matrix.container }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distro: ubuntu
+            container: ubuntu:22.04
+          - distro: debian
+            container: debian:latest
+          - distro: arch
+            container: archlinux:latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install System Dependencies & Python
+        shell: bash
+        run: |
+          if command -v apt-get >/dev/null 2>&1; then
+            export DEBIAN_FRONTEND=noninteractive
+            apt-get update
+            apt-get install -y python3 python3-pip python3-venv build-essential git
+          elif command -v pacman >/dev/null 2>&1; then
+            pacman -Syu --noconfirm python python-pip base-devel git
+          else
+            echo "Package manager not found!"
+            exit 1
+          fi
+
+      - name: Build with PyInstaller
+        shell: bash
+        run: |
+          if command -v python3 >/dev/null 2>&1; then
+            PYTHON_CMD=python3
+          else
+            PYTHON_CMD=python
+          fi
+
+          $PYTHON_CMD -m venv venv
+          source venv/bin/activate
+          pip install --upgrade pip
+          pip install pyinstaller PySide6 tiktoken pathspec pyperclip fpdf2 jinja2
+
+          BIN_NAME="CodeContext-${{ needs.prepare.outputs.version }}-${{ matrix.distro }}"
+          pyinstaller --noconfirm --onefile --windowed --icon="assets/images/logo.png" \
+            --name "$BIN_NAME" \
+            --add-data "themes:themes" \
+            --add-data "assets:assets" \
+            --add-data "user_settings.json:." \
+            --add-data "VERSION.txt:." \
+            main.py
+
+          mkdir -p build_output
+          cp "dist/$BIN_NAME" build_output/
+
+      - name: Upload Linux Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bin-linux-${{ matrix.distro }}
+          path: build_output/*
+
+  build-windows:
+    needs: prepare
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller PySide6 tiktoken pathspec pyperclip fpdf2 jinja2 Pillow
+
+      - name: Build with PyInstaller
+        shell: bash
+        run: |
+          BIN_NAME="CodeContext-${{ needs.prepare.outputs.version }}-windows.exe"
+          pyinstaller --noconfirm --onefile --windowed --icon="assets/images/logo.png" \
+            --name "$BIN_NAME" \
+            --add-data "themes;themes" \
+            --add-data "assets;assets" \
+            --add-data "user_settings.json;." \
+            --add-data "VERSION.txt;." \
+            main.py
+
+          mkdir -p build_output
+          cp "dist/$BIN_NAME" build_output/
+
+      - name: Upload Windows Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bin-windows
+          path: build_output/*
+
+  build-macos:
+    needs: prepare
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller PySide6 tiktoken pathspec pyperclip fpdf2 jinja2 Pillow
+
+      - name: Build with PyInstaller
+        shell: bash
+        run: |
+          BIN_NAME="CodeContext-${{ needs.prepare.outputs.version }}-macos-arm64"
+          pyinstaller --noconfirm --onefile --windowed --icon="assets/images/logo.png" \
+            --name "$BIN_NAME" \
+            --add-data "themes:themes" \
+            --add-data "assets:assets" \
+            --add-data "user_settings.json:." \
+            --add-data "VERSION.txt:." \
+            main.py
+
+          mkdir -p build_output
+          cd dist
+          zip -r "../build_output/${BIN_NAME}.zip" "${BIN_NAME}.app"
+
+      - name: Upload macOS Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bin-macos-arm64
+          path: build_output/*
+
+  release:
+    if: startsWith(gitverse.ref, 'refs/tags/v')
+    needs: [prepare, build-linux, build-windows, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./release-assets/
+          merge-multiple: true
+
+      - name: List files for release
+        id: list_files
+        shell: bash
+        run: |
+          ls -la ./release-assets/
+          # Build a multi-line file list for the release action
+          for f in ./release-assets/*; do
+            echo "$f" >> filelist.txt
+          done
+          echo "files<<EOF" >> "$GITVERSE_OUTPUT"
+          cat filelist.txt >> "$GITVERSE_OUTPUT"
+          echo "EOF" >> "$GITVERSE_OUTPUT"
+
+      - name: Create GitVerse Release
+        uses: actions/create-release@v1
+        with:
+          api_key: ${{ secrets.GITVERSE_API_KEY }}
+          title: CodeContext ${{ needs.prepare.outputs.tag_name }}
+          body: |
+            ## Changes
+            Auto-built release ${{ needs.prepare.outputs.tag_name }}
+
+            ### Platforms
+            - Windows (.exe)
+            - macOS (Apple Silicon, .zip)
+            - Linux: ubuntu, debian, arch
+          files: |
+            release-assets/CodeContext-${{ needs.prepare.outputs.version }}-ubuntu
+            release-assets/CodeContext-${{ needs.prepare.outputs.version }}-debian
+            release-assets/CodeContext-${{ needs.prepare.outputs.version }}-arch
+            release-assets/CodeContext-${{ needs.prepare.outputs.version }}-windows.exe
+            release-assets/CodeContext-${{ needs.prepare.outputs.version }}-macos-arm64.zip
+          draft: false
+          pre_release: false
