@@ -15,7 +15,7 @@
   "main.sent_to_existing": "📤 Pad verzonden naar bestaande applicatie-instantie",
 
   "main_window.tab.file_tree": "📂 Bestanden",
-  "main_window.tab.analytics": "📊 Analytics",
+  "main_window.tab.analytics": "📊 Analyses",
   "main_window.command.copy_to_clipboard": "📋 Kopiëren naar klembord",
   "main_window.command.open_in_editor": "📝 Openen in editor",
   "main_window.command.preview": "👁 Voorbeeld",
@@ -39,11 +39,11 @@
   "dialogs.chat.waiting": "⏳ Bezig met wachten...",
 
   "dialogs.preview.title": "👁 Voorbeeld",
-  "dialogs.preview.tab_prompt": "📝 Prompt",
+  "dialogs.preview.tab_prompt": "📝 Prompttekst",
   "dialogs.preview.files_in_prompt": "📄 Bestanden in prompt:",
   "dialogs.preview.copy_all": "📋 Alles kopiëren",
   "dialogs.preview.copy_file": "📄 Bestand kopiëren",
-  "dialogs.preview.tab_diff": "📊 Diff",
+  "dialogs.preview.tab_diff": "📊 Verschillen",
   "dialogs.preview.select_file": "Bestand:",
   "dialogs.preview.savings_initial": "📊 Originele en gecomprimeerde versie vergelijken",
   "dialogs.preview.savings": "Besparing: {original} → {processed} tokens ({percent:.1f}%)",
@@ -91,7 +91,7 @@
   "dialogs.diff.suggestion_applied": "✅ Voorstel toegepast",
   "dialogs.diff.suggestion_rejected": "❌ Voorstel afgewezen",
 
-  "dialogs.update.title": "🔄 Update",
+  "dialogs.update.title": "🔄 Bijwerken",
   "dialogs.update.checking": "🔍 Update {version} controleren...",
   "dialogs.update.cancel": "Annuleren",
   "dialogs.update.available": "🎉 Update {version} beschikbaar",
@@ -110,7 +110,7 @@
   "dialogs.ui_customization.visible_tabs": "Zichtbare tabbladen:",
   "dialogs.ui_customization.tab_sources": "📂 Bronnen",
   "dialogs.ui_customization.tab_filters": "🔧 Filters",
-  "dialogs.ui_customization.tab_prompts": "📝 Prompts",
+  "dialogs.ui_customization.tab_prompts": "📝 Promptteksten",
   "dialogs.ui_customization.tab_llm_os": "🤖 LLM & besturingssysteem",
   "dialogs.ui_customization.tab_appearance": "🎨 Weergave",
   "dialogs.ui_customization.visible_actions": "Zichtbare acties:",
@@ -124,7 +124,7 @@
 
   "sidebar.tab.sources": "📂 Bronnen",
   "sidebar.tab.filters": "🔧 Filters",
-  "sidebar.tab.prompts": "📝 Prompts",
+  "sidebar.tab.prompts": "📝 Promptteksten",
   "sidebar.tab.llm_os": "🤖 LLM & besturingssysteem",
   "sidebar.tab.appearance": "🎨 Weergave",
 

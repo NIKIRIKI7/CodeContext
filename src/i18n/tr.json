@@ -165,7 +165,7 @@
   "sidebar.llm_os.os_integration": "🖥 {os_name} Entegrasyonu",
   "sidebar.llm_os.install_context_menu": "📋 Bağlam Menüsünü Yükle",
   "sidebar.llm_os.remove_context_menu": "🗑 Bağlam Menüsünü Kaldır",
-  "sidebar.llm_os.cli_global": "💻 Global CLI",
+  "sidebar.llm_os.cli_global": "💻 Genel CLI",
   "sidebar.llm_os.install_cli": "⚙️ CLI Yükle",
   "sidebar.llm_os.remove_cli": "🗑 CLI Kaldır",
   "sidebar.llm_os.editor_placeholder": "code --wait",

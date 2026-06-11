@@ -43,7 +43,7 @@
   "dialogs.preview.files_in_prompt": "📄 プロンプト内のファイル:",
   "dialogs.preview.copy_all": "📋 すべてコピー",
   "dialogs.preview.copy_file": "📄 ファイルをコピー",
-  "dialogs.preview.tab_diff": "📊 Diff",
+  "dialogs.preview.tab_diff": "📊 差分",
   "dialogs.preview.select_file": "ファイル:",
   "dialogs.preview.savings_initial": "📊 オリジナルと圧縮版の比較",
   "dialogs.preview.savings": "削減量: {original} → {processed} トークン ({percent:.1f}%)",

@@ -39,7 +39,7 @@
   "dialogs.chat.waiting": "⏳ Warten...",
 
   "dialogs.preview.title": "👁 Vorschau",
-  "dialogs.preview.tab_prompt": "📝 Prompt",
+  "dialogs.preview.tab_prompt": "📝 Eingabeaufforderung",
   "dialogs.preview.files_in_prompt": "📄 Dateien im Prompt:",
   "dialogs.preview.copy_all": "📋 Alle kopieren",
   "dialogs.preview.copy_file": "📄 Datei kopieren",
@@ -91,7 +91,7 @@
   "dialogs.diff.suggestion_applied": "✅ Vorschlag übernommen",
   "dialogs.diff.suggestion_rejected": "❌ Vorschlag abgelehnt",
 
-  "dialogs.update.title": "🔄 Update",
+  "dialogs.update.title": "🔄 Aktualisierung",
   "dialogs.update.checking": "🔍 Prüfe Update {version}...",
   "dialogs.update.cancel": "Abbrechen",
   "dialogs.update.available": "🎉 Update {version} verfügbar",
@@ -110,8 +110,8 @@
   "dialogs.ui_customization.visible_tabs": "Sichtbare Tabs:",
   "dialogs.ui_customization.tab_sources": "📂 Quellen",
   "dialogs.ui_customization.tab_filters": "🔧 Filter",
-  "dialogs.ui_customization.tab_prompts": "📝 Prompts",
-  "dialogs.ui_customization.tab_llm_os": "🤖 LLM & OS",
+  "dialogs.ui_customization.tab_prompts": "📝 Eingabeaufforderungen",
+  "dialogs.ui_customization.tab_llm_os": "🤖 LLM & BS",
   "dialogs.ui_customization.tab_appearance": "🎨 Erscheinungsbild",
   "dialogs.ui_customization.visible_actions": "Sichtbare Aktionen:",
   "dialogs.ui_customization.action_preview": "👁 Vorschau",
@@ -124,12 +124,12 @@
 
   "sidebar.tab.sources": "📂 Quellen",
   "sidebar.tab.filters": "🔧 Filter",
-  "sidebar.tab.prompts": "📝 Prompts",
-  "sidebar.tab.llm_os": "🤖 LLM & OS",
+  "sidebar.tab.prompts": "📝 Eingabeaufforderungen",
+  "sidebar.tab.llm_os": "🤖 LLM & BS",
   "sidebar.tab.appearance": "🎨 Erscheinungsbild",
 
   "sidebar.ui_settings.tooltip": "⚙️ Oberflächeneinstellungen",
-  "sidebar.tour.button": "🎓 Tour",
+  "sidebar.tour.button": "🎓 Rundgang",
   "sidebar.version.label": "v{version}",
   "sidebar.update.button": "🔄",
   "sidebar.sources.add_folder": "📂 Ordner hinzufügen",
@@ -227,7 +227,7 @@
   "status_bar.local_model": " (lokales Modell)",
 
   "analytics_panel.header.file": "Datei",
-  "analytics_panel.header.tokens": "Tokens",
+  "analytics_panel.header.tokens": "Token",
   "analytics_panel.header.weight": "Gewicht",
 
   "file_tree.search.placeholder": "🔍 Datei suchen...",
