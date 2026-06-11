@@ -5,6 +5,8 @@ on:
     branches:
       - main
       - dev
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 permissions:
@@ -32,12 +34,22 @@ jobs:
           fi
           echo "version=$VER" >> $GITHUB_OUTPUT
 
-      - name: Set Release Info based on Branch
+      - name: Set Release Info based on Branch or Tag
         id: set_rel
         shell: bash
         run: |
           VER="${{ steps.set_ver.outputs.version }}"
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          # Если запуск по тегу — используем имя тега
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG="${GITHUB_REF_NAME}"
+            echo "tag_name=$TAG" >> $GITHUB_OUTPUT
+            # pre-release если тег содержит pre, alpha, beta, rc
+            if echo "$TAG" | grep -qiE '\-(pre|alpha|beta|rc)'; then
+              echo "is_prerelease=true" >> $GITHUB_OUTPUT
+            else
+              echo "is_prerelease=false" >> $GITHUB_OUTPUT
+            fi
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
             echo "is_prerelease=false" >> $GITHUB_OUTPUT
             echo "tag_name=$VER" >> $GITHUB_OUTPUT
           else
@@ -163,12 +175,12 @@ jobs:
         shell: bash
         run: |
           BIN_NAME="CodeContext-${{ needs.prepare.outputs.version }}-macos-arm64"
-          
+
           pyinstaller --noconfirm --onefile --windowed --icon="assets/images/logo.png" --name "$BIN_NAME" --add-data "themes:themes" --add-data "assets:assets" --add-data "user_settings.json:." --add-data "VERSION.txt:." main.py
 
           mkdir -p build_output
           cd dist
-          
+
           zip -r "../build_output/${BIN_NAME}.zip" "${BIN_NAME}.app"
 
       - name: Upload macOS Artifact
@@ -179,6 +191,7 @@ jobs:
 
   # 5. Публикация релиза
   release:
+    if: github.ref_name == 'main' || startsWith(github.ref, 'refs/tags/v')
     needs: [prepare, build-linux, build-windows, build-macos]
     runs-on: ubuntu-latest
     steps:
@@ -196,5 +209,6 @@ jobs:
           prerelease: ${{ needs.prepare.outputs.is_prerelease == 'true' }}
           generate_release_notes: true
           files: ./release-assets/*
+          fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
