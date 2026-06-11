@@ -18,12 +18,21 @@ from src.ui.main_window import MainWindow
 
 
 def get_resource_path(relative_path: str) -> str:
-    """Универсальная функция для получения абсолютного пути к ресурсам (Themes, Assets)"""
+    """Поиск ресурса с подъёмом вверх от main.py (Themes, Assets, VERSION.txt)"""
     if getattr(sys, 'frozen', False):
-        base_path = sys._MEIPASS
-    else:
-        base_path = os.path.dirname(os.path.abspath(__file__))
-    return os.path.join(base_path, relative_path)
+        return os.path.join(sys._MEIPASS, relative_path)
+
+    start = os.path.dirname(os.path.abspath(__file__))
+    d = start
+    while True:
+        candidate = os.path.join(d, relative_path)
+        if os.path.exists(candidate):
+            return candidate
+        parent = os.path.dirname(d)
+        if parent == d:
+            break
+        d = parent
+    return os.path.join(start, relative_path)
 
 
 def create_default_logo(path: str):

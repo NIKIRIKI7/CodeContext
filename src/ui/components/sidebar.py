@@ -40,7 +40,14 @@ class Sidebar(QWidget):
         self.tabs = QTabWidget()
         self.layout.addWidget(self.tabs)
 
-        visible_tabs = getattr(self.controller._store.state.settings, 'visible_tabs', ["sources", "filters", "prompts", "llm_os", "appearance"])
+        self.tab_widgets = {}
+        for tab_id, label, method_name in self.TAB_DEFS:
+            tab = QWidget()
+            getattr(self, method_name)(tab)
+            self.tab_widgets[tab_id] = tab
+
+        visible_tabs = getattr(self.controller._store.state.settings, 'visible_tabs',
+                               ["sources", "filters", "prompts", "llm_os", "appearance"])
         self._rebuild_tabs(visible_tabs)
 
         bottom_layout = QHBoxLayout()
@@ -86,16 +93,10 @@ class Sidebar(QWidget):
     def _rebuild_tabs(self, visible_tabs):
         self.tabs.blockSignals(True)
         self.tabs.clear()
-
-        self.tab_widgets = {}
-        for tab_id, label, method_name in self.TAB_DEFS:
-            tab = QWidget()
-            getattr(self, method_name)(tab)
-            self.tab_widgets[tab_id] = tab
+        for tab_id, label, _ in self.TAB_DEFS:
             if tab_id in visible_tabs:
-                self.tabs.addTab(tab, tr(label))
-
-        self._current_visible_tabs = visible_tabs
+                self.tabs.addTab(self.tab_widgets[tab_id], tr(label))
+        self._current_visible_tabs = list(visible_tabs)
         self.tabs.blockSignals(False)
 
     def _update_metrics(self):
@@ -454,7 +455,8 @@ class Sidebar(QWidget):
         self.controller.check_for_updates(version)
 
     def _on_ext_preset_change(self, text):
-        if not text: return
+        if not text:
+            return
         custom = self.controller._store.state.settings.custom_presets
         if text in PRESETS:
             self.entry_ext.setPlainText(PRESETS[text]['ext'].replace(' ', '\n'))
@@ -494,7 +496,8 @@ class Sidebar(QWidget):
             self._refresh_ext_presets()
 
     def _on_prompt_preset_change(self, text):
-        if not text: return
+        if not text:
+            return
         custom = self.controller._store.state.settings.custom_prompt_presets
         if text == "Custom":
             pass
@@ -560,10 +563,7 @@ class Sidebar(QWidget):
             try:
                 shutil.copy2(path, dest)
                 from ...utils.config import get_app_data_dir
-                if getattr(sys, 'frozen', False):
-                    built_in = os.path.join(sys._MEIPASS, "themes")
-                else:
-                    built_in = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "themes")
+                built_in = get_resource_path_fn("themes")
                 ThemeManager.load_themes(built_in, themes_dir)
                 self._refresh_themes()
                 self.cmb_theme.setCurrentText(filename.replace(".json", ""))
@@ -581,28 +581,22 @@ class Sidebar(QWidget):
             self.cmb_preset.insertSeparator(self.cmb_preset.count())
             self.cmb_preset.addItems(list(custom.keys()))
 
-        idx = self.cmb_preset.findText(current)
-        if idx >= 0:
-            self.cmb_preset.setCurrentIndex(idx)
+        if current and self.cmb_preset.findText(current) >= 0:
+            self.cmb_preset.setCurrentText(current)
         else:
             settings_ext = self.controller._store.state.settings.extensions
             settings_ign = self.controller._store.state.settings.ignored_paths
             matched = False
-            for k, v in PRESETS.items():
-                if v['ext'] == settings_ext and v['ign'] == settings_ign:
-                    idx = self.cmb_preset.findText(k)
-                    if idx >= 0:
-                        self.cmb_preset.setCurrentIndex(idx)
-                        matched = True
-                        break
-            if not matched and custom:
-                for k, v in custom.items():
+            for pool in [PRESETS, custom or {}]:
+                for k, v in pool.items():
                     if v['ext'] == settings_ext and v['ign'] == settings_ign:
                         idx = self.cmb_preset.findText(k)
                         if idx >= 0:
                             self.cmb_preset.setCurrentIndex(idx)
                             matched = True
                             break
+                if matched:
+                    break
             if not matched:
                 self.cmb_preset.setCurrentIndex(0)
         self.cmb_preset.blockSignals(False)
@@ -617,9 +611,8 @@ class Sidebar(QWidget):
             self.cmb_prompt.insertSeparator(self.cmb_prompt.count())
             self.cmb_prompt.addItems(list(custom.keys()))
 
-        idx = self.cmb_prompt.findText(current)
-        if idx >= 0:
-            self.cmb_prompt.setCurrentIndex(idx)
+        if current and self.cmb_prompt.findText(current) >= 0:
+            self.cmb_prompt.setCurrentText(current)
         else:
             self.cmb_prompt.setCurrentIndex(0)
         self.cmb_prompt.blockSignals(False)
@@ -631,15 +624,15 @@ class Sidebar(QWidget):
         themes = ThemeManager.get_available_themes()
         self.cmb_theme.addItems(themes)
 
-        idx = self.cmb_theme.findText(current)
-        if idx >= 0:
-            self.cmb_theme.setCurrentIndex(idx)
+        if current and self.cmb_theme.findText(current) >= 0:
+            self.cmb_theme.setCurrentText(current)
         elif themes:
             self.cmb_theme.setCurrentIndex(0)
         self.cmb_theme.blockSignals(False)
 
     def update_ui(self, settings):
-        visible_tabs = getattr(settings, 'visible_tabs', ["sources", "filters", "prompts", "llm_os", "appearance"])
+        visible_tabs = getattr(settings, 'visible_tabs',
+                               ["sources", "filters", "prompts", "llm_os", "appearance"])
 
         if getattr(self, '_current_visible_tabs', None) != visible_tabs:
             self._rebuild_tabs(visible_tabs)
@@ -689,3 +682,18 @@ class Sidebar(QWidget):
             'external_editor': self.entry_editor.text().strip(),
             'receive_prereleases': self.chk_prerelease.isChecked()
         }
+
+
+def get_resource_path_fn(relative_path: str) -> str:
+    """Поиск ресурса с подъёмом вверх от этого файла (Themes)"""
+    start = os.path.dirname(os.path.abspath(__file__))
+    d = start
+    while True:
+        candidate = os.path.join(d, relative_path)
+        if os.path.exists(candidate):
+            return candidate
+        parent = os.path.dirname(d)
+        if parent == d:
+            break
+        d = parent
+    return os.path.join(start, relative_path)

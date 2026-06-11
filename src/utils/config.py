@@ -82,17 +82,26 @@ def get_app_data_dir() -> str:
     return app_dir
 
 def get_app_version() -> str:
-    """Динамическое получение текущей версии из файла VERSION.txt"""
+    """Поиск VERSION.txt с подъёмом вверх от текущего файла"""
     try:
-        if getattr(sys, 'frozen', False):
-            base_dir = sys._MEIPASS
-        else:
-            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-        version_file = os.path.join(base_dir, "VERSION.txt")
-        if os.path.exists(version_file):
-            with open(version_file, "r", encoding="utf-8") as f:
-                return f.read().strip()
+        start = os.path.dirname(os.path.abspath(__file__))
+        d = start
+        for enc in ("utf-8-sig", "utf-16", "utf-8", "cp1252"):
+            try:
+                while True:
+                    candidate = os.path.join(d, "VERSION.txt")
+                    if os.path.exists(candidate):
+                        with open(candidate, "r", encoding=enc) as f:
+                            ver = f.read().strip()
+                            if ver:
+                                return ver
+                    parent = os.path.dirname(d)
+                    if parent == d:
+                        break
+                    d = parent
+            except (UnicodeDecodeError, UnicodeError):
+                d = start
+                continue
     except Exception:
         pass
     return "1.0.0"
