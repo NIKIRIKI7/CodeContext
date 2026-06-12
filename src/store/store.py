@@ -124,6 +124,11 @@ class Store:
     def _handle_settings_loaded(self, payload: dict):
         valid_keys = set(AppSettings.__dataclass_fields__.keys())
         filtered = {k: v for k, v in payload.items() if k in valid_keys}
+
+        if "approved_plugins" not in payload and "visible_tabs" in filtered:
+            if "plugins" not in filtered["visible_tabs"]:
+                filtered["visible_tabs"].append("plugins")
+
         self._state.settings = AppSettings(**filtered)
         lang = filtered.get('language', '')
         if not lang:
@@ -146,6 +151,11 @@ class Store:
         settings_payload = payload.get('settings', {})
         valid_keys = set(AppSettings.__dataclass_fields__.keys())
         filtered = {k: v for k, v in settings_payload.items() if k in valid_keys}
+
+        if "approved_plugins" not in settings_payload and "visible_tabs" in filtered:
+            if "plugins" not in filtered["visible_tabs"]:
+                filtered["visible_tabs"].append("plugins")
+
         current.update(filtered)
         self._state.settings = AppSettings(**current)
         self._state.temp_folders = []

@@ -3,6 +3,10 @@ from .store.store import Store
 from .actions.dispatcher import Dispatcher
 from .data.file_system_repository import FileSystemRepository
 from .data.settings_repository import SettingsRepository
+
+from .api.plugin_api import PluginAPI, UIRegistry
+from .services.plugin_manager import PluginManager
+
 from .services.cleaner_service import CleanerService
 from .services.dependency_service import DependencyService
 from .services.file_service import FileService
@@ -43,13 +47,16 @@ def _make_integration_strategy():
 
 
 class DIContainer:
-    """Граф зависимостей приложения."""
-
     def __init__(self):
         self.store = Store()
         self.dispatcher = Dispatcher(self.store)
         self.fs_repo = FileSystemRepository()
         self.settings_repo = SettingsRepository()
+
+        self.ui_registry = UIRegistry()
+        self.plugin_api = PluginAPI("core", self.store, self.dispatcher, self, self.ui_registry)
+        self.plugin_manager = PluginManager(self.store, self.dispatcher, self, self.ui_registry)
+
         self.file_service = FileService(self.fs_repo)
         self.process_service = ProcessingService(self.fs_repo)
         self.cleaner_service = CleanerService()
@@ -64,7 +71,6 @@ class DIContainer:
         self.tour_service = TourService()
         self.llm_checker = LlmCheckerService()
         self.updater_service = UpdaterService()
-
         self.integration_service = IntegrationService(
             strategy=_make_integration_strategy()
         )
@@ -102,6 +108,7 @@ class DIContainer:
             dispatcher=self.dispatcher,
             updater_service=self.updater_service
         )
+
         self.main_controller = MainController(
             store=self.store,
             dispatcher=self.dispatcher,
@@ -110,14 +117,17 @@ class DIContainer:
             github_use_case=self.github_use_case,
             settings_use_case=self.settings_use_case,
             patch_use_case=self.patch_use_case,
+            updater_use_case=self.updater_use_case,
             integration_service=self.integration_service,
             fs_repo=self.fs_repo,
             tour_service=self.tour_service,
             llm_checker=self.llm_checker,
             format_service=self.format_service,
             output_service=self.output_service,
-            updater_use_case=self.updater_use_case
+            plugin_api=self.plugin_api,
+            plugin_manager=self.plugin_manager
         )
+
         self.cli_controller = CliController(
             store=self.store,
             dispatcher=self.dispatcher,

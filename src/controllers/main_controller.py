@@ -1,7 +1,7 @@
 import os
 from typing import Optional, Tuple, List
 from PySide6.QtCore import QTimer
- 
+
 from src.i18n import tr
 
 from ..actions.action_types import (
@@ -12,7 +12,7 @@ from ..actions.action_types import (
 )
 from ..actions.dispatcher import Dispatcher
 from ..store.store import Store
-from ..store.state import ProcessedFile  # Добавлен импорт для режима "none"
+from ..store.state import ProcessedFile
 from ..use_cases.scan_use_case import ScanWorkspaceUseCase
 from ..use_cases.process_use_case import ProcessWorkspaceUseCase
 from ..use_cases.github_use_case import GitHubUseCase
@@ -27,6 +27,9 @@ from ..services.llm_checker_service import LlmCheckerService
 from ..services.formatting_service import FormattingService
 from ..services.output_service import OutputService
 from ..data.file_system_repository import FileSystemRepository
+from ..api.plugin_api import PluginAPI
+from ..services.plugin_manager import PluginManager
+
 
 class MainController:
     def __init__(
@@ -45,6 +48,8 @@ class MainController:
         llm_checker: LlmCheckerService,
         format_service: FormattingService,
         output_service: OutputService,
+        plugin_api: PluginAPI,
+        plugin_manager: PluginManager
     ):
         self._store = store
         self._dispatcher = dispatcher
@@ -60,6 +65,60 @@ class MainController:
         self._llm_checker = llm_checker
         self._format_service = format_service
         self._output_service = output_service
+        self._plugin_api = plugin_api
+        self._plugin_manager = plugin_manager
+
+    def init_plugins(self, parent_widget):
+        manifests = self._plugin_manager.discover_plugins()
+        settings = self._store.state.settings
+        approved = list(settings.approved_plugins)
+        changed = False
+
+        for manifest in manifests:
+            p_id = manifest.get("id")
+            newly_approved = False
+
+            if p_id not in approved:
+                from src.ui.dialogs import PluginApprovalDialog
+                dlg = PluginApprovalDialog(parent_widget, manifest)
+                if dlg.exec():
+                    approved.append(p_id)
+                    changed = True
+                    newly_approved = True
+                else:
+                    continue
+
+            req_path = os.path.join(manifest['_dir'], "requirements.txt")
+            if newly_approved and os.path.exists(req_path):
+                from src.ui.dialogs import PluginInstallDialog
+                dlg = PluginInstallDialog(parent_widget, manifest, req_path)
+                dlg.exec()
+
+            old_tabs = set(self._plugin_api.ui.sidebar_tabs.keys())
+            old_actions = set(self._plugin_api.ui.action_buttons.keys())
+
+            self._plugin_manager.load_plugin(manifest)
+
+            new_tabs = set(self._plugin_api.ui.sidebar_tabs.keys()) - old_tabs
+            new_actions = set(self._plugin_api.ui.action_buttons.keys()) - old_actions
+
+            if newly_approved and (new_tabs or new_actions):
+                vis_tabs = list(self._store.state.settings.visible_tabs) + list(new_tabs)
+                vis_acts = list(self._store.state.settings.visible_actions) + list(new_actions)
+                self.update_settings({
+                    "visible_tabs": vis_tabs,
+                    "visible_actions": vis_acts,
+                    "approved_plugins": approved
+                })
+                self.save_settings()
+                changed = False
+
+        if changed:
+            self.update_settings({"approved_plugins": approved})
+            self.save_settings()
+
+    def shutdown(self):
+        self._plugin_manager.shutdown_all()
 
     def load_initial_settings(self):
         self._settings_uc.load_initial()
@@ -87,9 +146,7 @@ class MainController:
         clean = self._normalize_path(path)
         if clean and os.path.exists(clean):
             self._dispatcher.dispatch(FOLDER_ADD, clean)
-
             self._settings_uc.load_local_config(clean)
-
             recent = list(self._store.state.settings.recent_workspaces)
             if clean in recent:
                 recent.remove(clean)
@@ -108,7 +165,6 @@ class MainController:
 
     def clear_folders(self):
         self._settings_uc.load_initial()
-
         temp = self._store.state.temp_folders
         if temp:
             self._dispatcher.dispatch(UI_ADD_LOG, tr("main_controller.clear_temp_files"))
@@ -226,18 +282,22 @@ class MainController:
         if not state.scanned_files_paths:
             self._dispatcher.dispatch(UI_ADD_LOG, tr("main_controller.scan_first"))
             return
+
         matched = []
         for path in state.scanned_files_paths:
             basename = os.path.basename(path)
             if basename in text:
                 matched.append(path)
+
         if not matched:
             self._dispatcher.dispatch(UI_ADD_LOG, tr("main_controller.no_files_in_log"))
             return
+
         self._dispatcher.dispatch(EXCLUSION_CLEAR, None)
         all_paths = set(state.scanned_files_paths)
         for p in (all_paths - set(matched)):
             self._dispatcher.dispatch(EXCLUSION_ADD, p)
+
         self._dispatcher.dispatch(UI_ADD_LOG, tr("main_controller.files_matched", count=len(matched)))
 
     def show_tour(self):
@@ -261,11 +321,14 @@ class MainController:
         state = self._store.state
         if not state.pr_target_files or not state.scanned_files_paths:
             return
+
         self._dispatcher.dispatch(EXCLUSION_CLEAR, None)
         pr_files_norm = [p.replace('/', os.sep) for p in state.pr_target_files]
+
         for p in state.scanned_files_paths:
             if not any(p.endswith(pr_f) for pr_f in pr_files_norm):
                 self._dispatcher.dispatch(EXCLUSION_ADD, p)
+
         self._dispatcher.dispatch(UI_ADD_LOG, tr("main_controller.pr_filter_applied", count=len(state.pr_target_files)))
         self._dispatcher.dispatch(SET_PR_TARGET_FILES, [])
 

@@ -7,7 +7,6 @@ from PySide6.QtGui import QKeySequence, QShortcut
 
 from ..store.store import Store
 from ..controllers.main_controller import MainController
-
 from .components.sidebar import Sidebar
 from .components.folder_list import FolderList
 from .components.action_panel import ActionPanel
@@ -16,7 +15,6 @@ from .components.status_bar import StatusBar
 from .components.file_tree import FileTree
 from .components.empty_state import EmptyState
 from .components.analytics_panel import AnalyticsPanel
-
 from .dialogs import AdvancedPreviewDialog, InteractiveTourDialog, EditFolderDialog, UpdateDialog, CommandPaletteDialog
 from .theme_manager import ThemeManager, theme_bus
 from ..utils.config import PricingManager, get_app_version
@@ -29,6 +27,7 @@ class ToastNotification(QLabel):
         self.setProperty("cssClass", "toast")
         self.setAlignment(Qt.AlignCenter)
         self.hide()
+
         self.opacity_effect = QGraphicsOpacityEffect(self)
         self.setGraphicsEffect(self.opacity_effect)
         self.animation = QPropertyAnimation(self.opacity_effect, b"opacity")
@@ -66,13 +65,15 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.store = store
         self.controller = controller
-        self.setWindowTitle(tr("main_window.title"))
+
+        self.setWindowTitle(tr("main_window.title", default="CodeContext AI"))
         self.setAcceptDrops(True)
         self._apply_adaptive_size()
 
         self.bridge = UIBridge()
         self.bridge.state_changed.connect(self._on_store_changed)
         self.unsubscribe = self.store.subscribe(self.bridge.state_changed.emit)
+
         self._last_scanned_paths = []
         self._last_manual_exclusions = set()
 
@@ -82,12 +83,18 @@ class MainWindow(QMainWindow):
         self._chat_dialog = None
         self._command_palette = None
 
-        self._init_ui()
-        self._update_theme_metrics()
-        theme_bus.theme_changed.connect(self._update_theme_metrics)
+        self._ui_ready = False
+
         PricingManager.fetch_prices_background()
+        self.controller.init_plugins(self)
+
+        self._init_ui()
+        self._ui_ready = True
 
         self.controller.load_initial_settings()
+
+        self._update_theme_metrics()
+        theme_bus.theme_changed.connect(self._update_theme_metrics)
 
     def _apply_adaptive_size(self):
         from PySide6.QtGui import QScreen
@@ -124,14 +131,16 @@ class MainWindow(QMainWindow):
 
         self.folder_list = FolderList(self._on_edit_folder, self.controller.remove_folder)
         self.file_tree = FileTree(self.controller.toggle_file_exclusion, self.controller.copy_file_with_dependencies)
-        self.action_panel = ActionPanel(self._on_run)
+
+        self.action_panel = ActionPanel(self._on_run, self.controller._plugin_api)
         self.log_panel = LogPanel()
         self.status_bar = StatusBar()
 
         self.tree_tabs = QTabWidget()
-        self.tree_tabs.addTab(self.file_tree, tr("main_window.tab.file_tree"))
+        self.tree_tabs.addTab(self.file_tree, tr("main_window.tab.file_tree", default="Files"))
+
         self.analytics_panel = AnalyticsPanel()
-        self.tree_tabs.addTab(self.analytics_panel, tr("main_window.tab.analytics"))
+        self.tree_tabs.addTab(self.analytics_panel, tr("main_window.tab.analytics", default="Analytics"))
 
         self.right_layout.addWidget(self.folder_list, 1)
         self.right_layout.addWidget(self.tree_tabs, 4)
@@ -150,9 +159,9 @@ class MainWindow(QMainWindow):
         QShortcut(QKeySequence("Ctrl+Shift+P"), self, activated=lambda: self.store.dispatch('UI_SHOW_COMMAND_PALETTE'))
 
     def retranslate_ui(self):
-        self.tree_tabs.setTabText(0, tr("main_window.tab.file_tree"))
-        self.tree_tabs.setTabText(1, tr("main_window.tab.analytics"))
-        self.setWindowTitle(tr("main_window.title"))
+        self.tree_tabs.setTabText(0, tr("main_window.tab.file_tree", default="Files"))
+        self.tree_tabs.setTabText(1, tr("main_window.tab.analytics", default="Analytics"))
+        self.setWindowTitle(tr("main_window.title", default="CodeContext AI"))
         self.sidebar.retranslate_ui()
         self.action_panel.retranslate_ui()
         self.empty_state.retranslate_ui()
@@ -165,7 +174,6 @@ class MainWindow(QMainWindow):
         m = ThemeManager.get_layout("main_margin", 16)
         s = ThemeManager.get_layout("main_spacing", 12)
         w = ThemeManager.get_layout("sidebar_width", 340)
-
         self.main_layout.setContentsMargins(m, m, m, m)
         self.right_layout.setContentsMargins(0, 0, 0, 0)
         self.right_layout.setSpacing(s)
@@ -185,6 +193,8 @@ class MainWindow(QMainWindow):
         event.acceptProposedAction()
 
     def _on_store_changed(self, state):
+        if not self._ui_ready:
+            return
         if state.selected_folders:
             self.right_stack.setCurrentIndex(1)
         else:
@@ -229,19 +239,23 @@ class MainWindow(QMainWindow):
         if getattr(state, 'show_command_palette', False):
             if not self._command_palette:
                 commands = {
-                    tr("main_window.command.copy_to_clipboard"): lambda: self._on_run('clipboard'),
-                    tr("main_window.command.open_in_editor"): lambda: self._on_run('editor'),
-                    tr("main_window.command.preview"): lambda: self._on_run('preview'),
-                    tr("main_window.command.send_to_chat"): lambda: self._on_run('chat'),
-                    tr("main_window.command.save_to_file"): lambda: self._on_run('file'),
-                    tr("main_window.command.toggle_minify"): lambda: self.action_panel.chk_minify.setChecked(not self.action_panel.chk_minify.isChecked()),
-                    tr("main_window.command.toggle_skeleton"): lambda: self.action_panel.chk_skeleton.setChecked(not self.action_panel.chk_skeleton.isChecked()),
-                    tr("main_window.command.toggle_mermaid"): lambda: self.sidebar.chk_mermaid.setChecked(not self.sidebar.chk_mermaid.isChecked()),
-                    tr("main_window.command.clear_workspace"): self.controller.clear_folders,
-                    tr("main_window.command.apply_json_patch"): self.sidebar._open_patch_dialog,
-                    tr("main_window.command.toggle_theme"): lambda: ThemeManager.apply_theme(mode="dark" if ThemeManager._current_mode == "light" else "light"),
-                    tr("main_window.command.check_updates"): lambda: self.controller.check_for_updates(get_app_version()),
+                    tr("main_window.command.copy_to_clipboard", default="Copy"): lambda: self._on_run('clipboard'),
+                    tr("main_window.command.open_in_editor", default="Editor"): lambda: self._on_run('editor'),
+                    tr("main_window.command.preview", default="Preview"): lambda: self._on_run('preview'),
+                    tr("main_window.command.send_to_chat", default="Chat"): lambda: self._on_run('chat'),
+                    tr("main_window.command.save_to_file", default="Save"): lambda: self._on_run('file'),
+                    tr("main_window.command.toggle_minify", default="Minify"): lambda: self.action_panel.chk_minify.setChecked(not self.action_panel.chk_minify.isChecked()),
+                    tr("main_window.command.toggle_skeleton", default="Skeleton"): lambda: self.action_panel.chk_skeleton.setChecked(not self.action_panel.chk_skeleton.isChecked()),
+                    tr("main_window.command.toggle_mermaid", default="Mermaid"): lambda: self.sidebar.chk_mermaid.setChecked(not self.sidebar.chk_mermaid.isChecked()),
+                    tr("main_window.command.clear_workspace", default="Clear"): self.controller.clear_folders,
+                    tr("main_window.command.apply_json_patch", default="JSON Patch"): self.sidebar._open_patch_dialog,
+                    tr("main_window.command.toggle_theme", default="Theme"): lambda: ThemeManager.apply_theme(mode="dark" if ThemeManager._current_mode == "light" else "light"),
+                    tr("main_window.command.check_updates", default="Update"): lambda: self.controller.check_for_updates(get_app_version()),
                 }
+
+                for a_id, a_data in self.controller._plugin_api.ui.action_buttons.items():
+                    commands[a_data["label"]] = a_data["callback"]
+
                 self._command_palette = CommandPaletteDialog(
                     self,
                     commands,
@@ -307,7 +321,7 @@ class MainWindow(QMainWindow):
     def _on_run(self, target):
         self._on_ui_settings_change()
         if target in ('file', 'pdf'):
-            path, _ = QFileDialog.getSaveFileName(self, tr("main_window.save_file.title"), "", "All Files (*.*)")
+            path, _ = QFileDialog.getSaveFileName(self, tr("main_window.save_file.title", default="Save File"), "", "All Files (*.*)")
             if path:
                 self.controller.start_processing(target, path)
         else:
@@ -321,6 +335,7 @@ class MainWindow(QMainWindow):
                 self.controller.edit_folder(path, new_path)
 
     def closeEvent(self, event):
+        self.controller.shutdown()
         self.controller.clear_folders()
         if self.unsubscribe:
             self.unsubscribe()

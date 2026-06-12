@@ -5,7 +5,8 @@ import platform
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QTabWidget, QFormLayout,
                                QCheckBox, QComboBox, QLineEdit, QTextEdit,
                                QPushButton, QHBoxLayout, QLabel, QFileDialog,
-                               QInputDialog, QMessageBox, QPlainTextEdit)
+                               QInputDialog, QMessageBox, QPlainTextEdit, QScrollArea,
+                               QListWidget, QListWidgetItem)
 from PySide6.QtCore import Qt
 
 from ...utils.config import PRESETS, PROMPT_PRESETS, get_app_version
@@ -21,12 +22,28 @@ class Sidebar(QWidget):
         ("prompts", "sidebar.tab.prompts", "_build_prompts_tab"),
         ("llm_os", "sidebar.tab.llm_os", "_build_llm_os_tab"),
         ("appearance", "sidebar.tab.appearance", "_build_appearance_tab"),
+        ("plugins", "sidebar.tab.plugins", "_build_plugins_tab"),
     ]
 
-    def __init__(self, controller, on_settings_change):
+    @property
+    def _plugin_tabs(self):
+        api = self._plugin_api or getattr(self.controller, '_plugin_api', None)
+        if api is None:
+            return []
+        return list(api.ui.sidebar_tabs.values())
+
+    @property
+    def _plugin_actions(self):
+        api = self._plugin_api or getattr(self.controller, '_plugin_api', None)
+        if api is None:
+            return []
+        return list(api.ui.action_buttons.values())
+
+    def __init__(self, controller, on_settings_change, plugin_api=None):
         super().__init__()
         self.controller = controller
         self.on_settings_change = on_settings_change
+        self._plugin_api = plugin_api
 
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.setProperty("cssClass", "card")
@@ -45,6 +62,26 @@ class Sidebar(QWidget):
             tab = QWidget()
             getattr(self, method_name)(tab)
             self.tab_widgets[tab_id] = tab
+
+        api = self._plugin_api or getattr(self.controller, '_plugin_api', None)
+        plugin_tabs_dict = getattr(api.ui, 'sidebar_tabs', {}) if api else {}
+        for tab_id, pt in plugin_tabs_dict.items():
+            tab = QWidget()
+            layout = QVBoxLayout(tab)
+            layout.setContentsMargins(0, 10, 0, 0)
+            heading = QLabel(pt.get("label", ""))
+            heading.setProperty("cssClass", "heading")
+            layout.addWidget(heading)
+            factory = pt.get("factory")
+            if factory:
+                try:
+                    widget = factory()
+                    if widget:
+                        layout.addWidget(widget)
+                except Exception:
+                    pass
+            layout.addStretch()
+            self.tab_widgets[pt["id"]] = tab
 
         visible_tabs = getattr(self.controller._store.state.settings, 'visible_tabs',
                                ["sources", "filters", "prompts", "llm_os", "appearance"])
@@ -85,10 +122,17 @@ class Sidebar(QWidget):
         theme_bus.theme_changed.connect(self._update_metrics)
 
     def retranslate_ui(self):
+        if hasattr(self, 'btn_plugins_folder'):
+            self.btn_plugins_folder.setText(tr("sidebar.plugins.open_folder", default="📂 Open plugins folder"))
+
         for tab_id, label, _ in self.TAB_DEFS:
             idx = self.tabs.indexOf(self.tab_widgets[tab_id])
             if idx >= 0:
                 self.tabs.setTabText(idx, tr(label))
+        for pt in self._plugin_tabs:
+            idx = self.tabs.indexOf(self.tab_widgets[pt["id"]])
+            if idx >= 0:
+                self.tabs.setTabText(idx, pt.get("label", pt["id"]))
                 
         self.btn_ui_settings.setToolTip(tr("sidebar.ui_settings.tooltip"))
         self.btn_tour.setText(tr("sidebar.tour.button"))
@@ -148,7 +192,10 @@ class Sidebar(QWidget):
 
     def _open_ui_settings(self):
         settings = self.controller._store.state.settings
-        dialog = UICustomizationDialog(self, settings, self._on_ui_settings_saved)
+        plugin_tabs_meta = [(pt["id"], pt["label"]) for pt in self._plugin_tabs]
+        plugin_actions_meta = [(pa["id"], pa["label"]) for pa in getattr(self, '_plugin_actions', [])]
+        dialog = UICustomizationDialog(self, settings, self._on_ui_settings_saved,
+                                       available_tabs=plugin_tabs_meta, available_actions=plugin_actions_meta)
         dialog.exec()
 
     def _open_bug_report(self):
@@ -170,6 +217,9 @@ class Sidebar(QWidget):
         for tab_id, label, _ in self.TAB_DEFS:
             if tab_id in visible_tabs:
                 self.tabs.addTab(self.tab_widgets[tab_id], tr(label))
+        for pt in self._plugin_tabs:
+            if pt["id"] in visible_tabs:
+                self.tabs.addTab(self.tab_widgets[pt["id"]], pt.get("label", pt["id"]))
         self._current_visible_tabs = list(visible_tabs)
         self.tabs.blockSignals(False)
 
@@ -396,6 +446,95 @@ class Sidebar(QWidget):
         layout.addWidget(self.chk_prerelease)
 
         layout.addStretch()
+
+    def _build_plugins_tab(self, tab):
+        layout = QVBoxLayout(tab)
+        layout.setContentsMargins(0, 10, 0, 0)
+
+        lbl = QLabel(tr("sidebar.tab.plugins", default="🔌 Plugins"))
+        lbl.setProperty("cssClass", "heading")
+        layout.addWidget(lbl)
+
+        self.list_plugins = QListWidget()
+        self.list_plugins.itemChanged.connect(self._on_plugin_item_changed)
+        layout.addWidget(self.list_plugins)
+
+        btn_layout = QHBoxLayout()
+        self.btn_plugins_folder = QPushButton(tr("sidebar.plugins.open_folder", default="📂 Open plugins folder"))
+        self.btn_plugins_folder.setProperty("cssClass", "ghost")
+        self.btn_plugins_folder.clicked.connect(self._open_plugins_folder)
+        btn_layout.addWidget(self.btn_plugins_folder)
+        btn_layout.addStretch()
+        layout.addLayout(btn_layout)
+        layout.addStretch()
+
+    def _refresh_plugins_list(self, approved_plugins):
+        api = self._plugin_api or getattr(self.controller, '_plugin_api', None)
+        if not api or not hasattr(api.container, 'plugin_manager'):
+            return
+
+        pm = api.container.plugin_manager
+        manifests = pm.discover_plugins()
+
+        current_ids = [self.list_plugins.item(i).data(Qt.UserRole) for i in range(self.list_plugins.count())]
+        manifest_ids = [m.get("id") for m in manifests]
+
+        if current_ids != manifest_ids:
+            self.list_plugins.blockSignals(True)
+            self.list_plugins.clear()
+            for manifest in manifests:
+                p_id = manifest.get("id")
+                p_name = manifest.get("name", p_id)
+                item = QListWidgetItem(f"{p_name} (v{manifest.get('version', '?')})")
+                item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
+                item.setCheckState(Qt.Checked if p_id in approved_plugins else Qt.Unchecked)
+                item.setData(Qt.UserRole, p_id)
+                self.list_plugins.addItem(item)
+            self.list_plugins.blockSignals(False)
+        else:
+            self.list_plugins.blockSignals(True)
+            for i in range(self.list_plugins.count()):
+                item = self.list_plugins.item(i)
+                p_id = item.data(Qt.UserRole)
+                item.setCheckState(Qt.Checked if p_id in approved_plugins else Qt.Unchecked)
+            self.list_plugins.blockSignals(False)
+
+    def _on_plugin_item_changed(self, item):
+        p_id = item.data(Qt.UserRole)
+        approved = list(self.controller._store.state.settings.approved_plugins)
+        changed = False
+        if item.checkState() == Qt.Checked:
+            if p_id not in approved:
+                approved.append(p_id)
+                changed = True
+        else:
+            if p_id in approved:
+                approved.remove(p_id)
+                changed = True
+        if changed:
+            self.controller.update_settings({"approved_plugins": approved})
+            self.controller.save_settings()
+            QMessageBox.information(
+                self,
+                tr("sidebar.plugins.restart_required", default="⚠️ Restart Required"),
+                tr("sidebar.plugins.restart_msg", default="Please restart the application to apply plugin changes.")
+            )
+
+    def _open_plugins_folder(self):
+        import subprocess
+        import platform
+        plugins_dir = os.path.join(os.getcwd(), "plugins")
+        os.makedirs(plugins_dir, exist_ok=True)
+        system = platform.system()
+        try:
+            if system == "Windows":
+                os.startfile(plugins_dir)
+            elif system == "Darwin":
+                subprocess.call(["open", plugins_dir])
+            else:
+                subprocess.call(["xdg-open", plugins_dir])
+        except Exception as e:
+            QMessageBox.warning(self, tr("sidebar.error.title"), tr("sidebar.open_folder.error", error=str(e)))
 
     def _build_appearance_tab(self, tab):
         layout = QVBoxLayout(tab)
@@ -724,10 +863,12 @@ class Sidebar(QWidget):
 
     def update_ui(self, settings):
         visible_tabs = getattr(settings, 'visible_tabs',
-                               ["sources", "filters", "prompts", "llm_os", "appearance"])
-
+                               ["sources", "filters", "prompts", "llm_os", "appearance", "plugins"])
         if getattr(self, '_current_visible_tabs', None) != visible_tabs:
             self._rebuild_tabs(visible_tabs)
+
+        if hasattr(self, 'list_plugins'):
+            self._refresh_plugins_list(settings.approved_plugins)
 
         self.cmb_preset.blockSignals(True)
         self._refresh_ext_presets()

@@ -1,9 +1,12 @@
+import os
 import re
+import subprocess
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QTextEdit,
                                QPushButton, QTabWidget, QWidget, QLabel, QLineEdit,
                                QListWidget, QListWidgetItem, QTextBrowser, QSplitter,
-                               QPlainTextEdit, QComboBox, QCheckBox, QMessageBox)
-from PySide6.QtCore import Qt
+                               QPlainTextEdit, QComboBox, QCheckBox, QMessageBox,
+                               QProgressBar, QGroupBox)
+from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QSyntaxHighlighter, QTextCharFormat, QColor, QFont
 from .theme_manager import ThemeManager
 from src.i18n import tr
@@ -546,6 +549,117 @@ class InteractiveDiffDialog(QDialog):
         return selected
 
 
+class PluginApprovalDialog(QDialog):
+    """Dialog asking user to approve a plugin before loading."""
+    def __init__(self, parent, manifest):
+        super().__init__(parent)
+        self.setWindowTitle(tr("plugins.approval.title"))
+        self.resize(480, 320)
+
+        layout = QVBoxLayout(self)
+
+        heading = QLabel(tr("plugins.approval.heading"))
+        heading.setProperty("cssClass", "heading")
+        layout.addWidget(heading)
+
+        info_group = QGroupBox(tr("plugins.approval.info"))
+        info_layout = QVBoxLayout(info_group)
+        p_id = manifest.get('id', '?')
+        info_layout.addWidget(QLabel(f"<b>{tr('plugins.approval.name')}:</b> {manifest.get('name', p_id)}"))
+        info_layout.addWidget(QLabel(f"<b>{tr('plugins.approval.id')}:</b> {p_id}"))
+        info_layout.addWidget(QLabel(f"<b>{tr('plugins.approval.version')}:</b> {manifest.get('version', '?')}"))
+        desc = manifest.get("description", "")
+        if desc:
+            info_layout.addWidget(QLabel(f"<b>{tr('plugins.approval.description')}:</b> {desc}"))
+        info_layout.addStretch()
+        layout.addWidget(info_group)
+
+        layout.addWidget(QLabel(tr("plugins.approval.warning")))
+
+        btn_layout = QHBoxLayout()
+        btn_deny = QPushButton(tr("plugins.approval.deny"))
+        btn_deny.setProperty("cssClass", "ghost")
+        btn_deny.clicked.connect(self.reject)
+        btn_allow = QPushButton(tr("plugins.approval.allow"))
+        btn_allow.setProperty("cssClass", "success")
+        btn_allow.clicked.connect(self.accept)
+        btn_layout.addStretch()
+        btn_layout.addWidget(btn_deny)
+        btn_layout.addWidget(btn_allow)
+        layout.addLayout(btn_layout)
+
+
+class PipInstallThread(QThread):
+    log_signal = Signal(str)
+    finished_signal = Signal(bool, str)
+
+    def __init__(self, req_path):
+        super().__init__()
+        self._req_path = req_path
+
+    def run(self):
+        try:
+            proc = subprocess.Popen(
+                [sys.executable, "-m", "pip", "install", "-r", self._req_path],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+            )
+            for line in proc.stdout:
+                self.log_signal.emit(line.rstrip())
+            proc.wait()
+            if proc.returncode == 0:
+                self.finished_signal.emit(True, tr("plugins.install.success"))
+            else:
+                self.finished_signal.emit(False, tr("plugins.install.error", code=proc.returncode))
+        except Exception as exc:
+            self.finished_signal.emit(False, str(exc))
+
+
+class PluginInstallDialog(QDialog):
+    """Dialog showing pip install progress for a plugin."""
+    def __init__(self, parent, manifest, req_path):
+        super().__init__(parent)
+        p_id = manifest.get('id', '?')
+        self.setWindowTitle(tr("plugins.install.title", name=manifest.get("name", p_id)))
+        self.resize(550, 350)
+
+        layout = QVBoxLayout(self)
+
+        self.log_text = QTextEdit()
+        self.log_text.setReadOnly(True)
+        layout.addWidget(self.log_text)
+
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setRange(0, 0)
+        layout.addWidget(self.progress_bar)
+
+        btn_layout = QHBoxLayout()
+        self.btn_close = QPushButton(tr("plugins.install.close"))
+        self.btn_close.setProperty("cssClass", "ghost")
+        self.btn_close.clicked.connect(self.accept)
+        self.btn_close.setEnabled(False)
+        btn_layout.addStretch()
+        btn_layout.addWidget(self.btn_close)
+        layout.addLayout(btn_layout)
+
+        self._thread = PipInstallThread(req_path)
+        self._thread.log_signal.connect(self._on_log)
+        self._thread.finished_signal.connect(self._on_finished)
+        self._thread.start()
+
+    def _on_log(self, line: str):
+        self.log_text.append(line)
+
+    def _on_finished(self, success: bool, msg: str):
+        self.progress_bar.setRange(0, 100)
+        self.progress_bar.setValue(100)
+        self.log_text.append(f"\n{'✅' if success else '❌'} {msg}")
+        self.btn_close.setEnabled(True)
+
+
 class UpdateDialog(QDialog):
     """Диалог обновления с полной поддержкой ThemeManager и Redux State."""
 
@@ -722,11 +836,11 @@ class CommandPaletteDialog(QDialog):
 
 
 class UICustomizationDialog(QDialog):
-    def __init__(self, parent, settings, on_save):
+    def __init__(self, parent, settings, on_save, available_tabs=None, available_actions=None):
         super().__init__(parent)
         self.on_save = on_save
         self.setWindowTitle(tr("dialogs.ui_customization.title"))
-        self.resize(420, 480)
+        self.resize(420, 540 + (len(available_tabs or []) + len(available_actions or [])) * 24)
 
         layout = QVBoxLayout(self)
 
@@ -741,7 +855,10 @@ class UICustomizationDialog(QDialog):
             ("prompts", tr("dialogs.ui_customization.tab_prompts")),
             ("llm_os", tr("dialogs.ui_customization.tab_llm_os")),
             ("appearance", tr("dialogs.ui_customization.tab_appearance")),
+            ("plugins", tr("sidebar.tab.plugins", default="🔌 Plugins")),
         ]
+        if available_tabs:
+            tab_defs.extend(available_tabs)
         for tab_id, tab_label in tab_defs:
             chk = QCheckBox(tab_label)
             chk.setChecked(tab_id in settings.visible_tabs)
@@ -761,6 +878,8 @@ class UICustomizationDialog(QDialog):
             ("editor", tr("dialogs.ui_customization.action_editor")),
             ("file", tr("dialogs.ui_customization.action_file")),
         ]
+        if available_actions:
+            action_defs.extend(available_actions)
         for act_id, act_label in action_defs:
             chk = QCheckBox(act_label)
             chk.setChecked(act_id in settings.visible_actions)

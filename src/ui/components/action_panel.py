@@ -1,14 +1,24 @@
-from PySide6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QCheckBox, QComboBox, QPushButton, QFileDialog
+from PySide6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QCheckBox, QComboBox, QPushButton, QFileDialog, QMenu
 from PySide6.QtCore import Qt
 from ..theme_manager import ThemeManager, theme_bus
 from src.i18n import tr
 
 
 class ActionPanel(QWidget):
-    def __init__(self, on_run_callback):
+    @staticmethod
+    def _plugin_action_buttons(plugin_api):
+        if plugin_api is None:
+            return {}
+        ui = getattr(plugin_api, 'ui', None)
+        if ui is None:
+            return {}
+        return getattr(ui, 'action_buttons', {})
+
+    def __init__(self, on_run_callback, plugin_api=None):
         super().__init__()
         self.on_run = on_run_callback
         self._current_template_path = ""
+        self._plugin_api = plugin_api
 
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.setProperty("cssClass", "card")
@@ -98,6 +108,20 @@ class ActionPanel(QWidget):
         row2.addWidget(self.btn_editor)
         row2.addWidget(self.btn_chat)
         row2.addWidget(self.btn_file)
+
+        plugin_actions = self._plugin_action_buttons(self._plugin_api)
+        if plugin_actions:
+            self.btn_plugins = QPushButton(tr("action_panel.plugins.button"))
+            self.btn_plugins.setProperty("cssClass", "ghost")
+            self._plugin_menu = QMenu()
+            for a_id, pa in plugin_actions.items():
+                action = self._plugin_menu.addAction(pa.get("label", a_id))
+                cb = pa.get("callback")
+                if cb:
+                    action.triggered.connect(cb)
+            self.btn_plugins.setMenu(self._plugin_menu)
+            row2.addWidget(self.btn_plugins)
+
         row2.addStretch()
 
         self.layout.addLayout(row1)
@@ -159,6 +183,8 @@ class ActionPanel(QWidget):
         self.btn_editor.setText(tr("action_panel.editor.button"))
         self.btn_editor.setToolTip(tr("action_panel.editor.tooltip"))
         self.btn_file.setText(tr("action_panel.file.button"))
+        if self._plugin_action_buttons(self._plugin_api):
+            self.btn_plugins.setText(tr("action_panel.plugins.button"))
 
     def get_settings(self):
         return {

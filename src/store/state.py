@@ -40,7 +40,7 @@ class AppSettings:
     llm_base_url: str = "https://api.openai.com/v1"
     llm_model: str = "gpt-4o-mini"
     recent_workspaces: List[str] = field(default_factory=list)
-    visible_tabs: List[str] = field(default_factory=lambda: ["sources", "filters", "prompts", "llm_os", "appearance"])
+    visible_tabs: List[str] = field(default_factory=lambda: ["sources", "filters", "prompts", "llm_os", "appearance", "plugins"])
     visible_actions: List[str] = field(default_factory=lambda: ["preview", "clipboard", "chat", "editor", "file"])
     visible_checkboxes: List[str] = field(default_factory=lambda: ["dedup", "aggressive", "checkpoints", "watch"])
     custom_presets: Dict[str, dict] = field(default_factory=dict)
@@ -55,6 +55,9 @@ class AppSettings:
     preserve_docstrings: bool = False
     preserve_imports: bool = False
     aggressive_minify: bool = False
+
+    # === Plugin system (v1.25+) ===
+    approved_plugins: List[str] = field(default_factory=list)
 
 
 @dataclass
