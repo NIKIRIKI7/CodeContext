@@ -1,4 +1,4 @@
-﻿{
+{
   "main.cli_mode": "CLI 모드",
   "main.path": "프로젝트 경로",
   "main.patch": "JSON 패치 파일",
@@ -13,7 +13,6 @@
   "main.stdout": "stdout으로 출력",
   "main.fail_if_exceeds": "토큰 한도 초과 시 실패",
   "main.sent_to_existing": "📤 기존 애플리케이션 인스턴스로 경로 전송됨",
-
   "main_window.title": "CodeContext AI",
   "main_window.tab.file_tree": "📂 파일",
   "main_window.tab.analytics": "📊 분석",
@@ -30,16 +29,13 @@
   "main_window.command.toggle_theme": "🎨 테마 전환",
   "main_window.command.check_updates": "🔄 업데이트 확인",
   "main_window.save_file.title": "파일 저장",
-
   "dialogs.ai_chat_title": "AI 채팅 (CodeContext)",
   "dialogs.chat.title": "AI 채팅",
-
   "dialogs.chat.placeholder": "코드에 대해 질문하세요...",
   "dialogs.chat.send": "보내기",
   "dialogs.chat.system_loaded": "📎 시스템 컨텍스트가 로드되었습니다. 질문할 수 있습니다.",
   "dialogs.chat.you_label": "나",
   "dialogs.chat.waiting": "⏳ 기다리는 중...",
-
   "dialogs.preview.title": "👁 미리보기",
   "dialogs.preview.tab_prompt": "📝 프롬프트",
   "dialogs.preview.files_in_prompt": "📄 프롬프트의 파일:",
@@ -49,7 +45,6 @@
   "dialogs.preview.select_file": "파일:",
   "dialogs.preview.savings_initial": "📊 원본과 압축 버전 비교",
   "dialogs.preview.savings": "절약: {original} → {processed} 토큰 ({percent:.1f}%)",
-
   "dialogs.bug_report.title": "버그 신고",
   "dialogs.bug_report.description": "발생한 버그를 설명해주세요:",
   "dialogs.bug_report.placeholder": "재현 단계, 예상 동작 등...",
@@ -63,20 +58,16 @@
   "dialogs.bug_report.copied_msg": "Issue 템플릿이 복사되었습니다. GitHub Issue 본문에 붙여넣으세요.",
   "dialogs.clipboard_error": "❌ 클립보드 오류: {error}",
   "sidebar.bug_report.tooltip": "버그를 찾으셨나요? Issue로 보내기",
-
   "dialogs.tour.title": "🎓 대화형 둘러보기",
   "dialogs.tour.prev": "← 뒤로",
   "dialogs.tour.next": "다음 ➡",
   "dialogs.tour.finish": "🎉 완료",
-
   "dialogs.edit_folder.title": "✏️ 폴더 편집",
   "dialogs.edit_folder.ok": "✅ 확인",
-
   "dialogs.json_patch.title": "🔧 JSON 패치",
   "dialogs.json_patch.instruction": "JSON 패치를 작업 목록으로 입력하세요:",
   "dialogs.json_patch.cancel": "취소",
   "dialogs.json_patch.apply": "✅ 적용",
-
   "dialogs.diff.title": "🛡 안전한 Diff 검토",
   "dialogs.diff.check_llm": "🔍 LLM으로 확인",
   "dialogs.diff.verdict_placeholder": "판정...",
@@ -93,7 +84,6 @@
   "dialogs.diff.updated_by_ai": " [AI에 의해 업데이트됨]",
   "dialogs.diff.suggestion_applied": "✅ 제안이 적용됨",
   "dialogs.diff.suggestion_rejected": "❌ 제안이 거부됨",
-
   "dialogs.update.title": "🔄 업데이트",
   "dialogs.update.checking": "🔍 업데이트 확인 중 {version}...",
   "dialogs.update.cancel": "취소",
@@ -106,9 +96,7 @@
   "dialogs.update.downloading": "⬇️ 다운로드 중...",
   "dialogs.update.installing": "⚙️ 업데이트 설치 중...",
   "dialogs.update.install_notes": "잠시 기다려 주세요. 업데이트가 설치 중입니다...",
-
   "dialogs.command_palette.placeholder": "🔍 명령어 검색...",
-
   "dialogs.ui_customization.title": "⚙️ 인터페이스 사용자 지정",
   "dialogs.ui_customization.visible_tabs": "표시 탭:",
   "dialogs.ui_customization.tab_sources": "📂 소스",
@@ -129,14 +117,12 @@
   "dialogs.ui_customization.checkbox_watch": "☑ 자동 감시",
   "dialogs.ui_customization.cancel": "취소",
   "dialogs.ui_customization.save": "💾 저장",
-
   "sidebar.title": "CodeContext AI",
   "sidebar.tab.sources": "📂 소스",
   "sidebar.tab.filters": "🔧 필터",
   "sidebar.tab.prompts": "📝 프롬프트",
   "sidebar.tab.llm_os": "🤖 LLM 및 OS",
   "sidebar.tab.appearance": "🎨 모양",
-
   "sidebar.ui_settings.tooltip": "⚙️ 인터페이스 설정",
   "sidebar.tour.button": "🎓 둘러보기",
   "sidebar.version.label": "v{version}",
@@ -210,7 +196,6 @@
   "sidebar.success.title": "✅ 성공",
   "sidebar.import_theme.success": "테마 \"{filename}\"을(를) 성공적으로 가져왔습니다.",
   "sidebar.import_theme.error": "테마 가져오기 오류: {error}",
-
   "action_panel.minify": "최소화",
   "action_panel.chk_minify": "최소화",
   "action_panel.no_comments": "주석 없음",
@@ -219,7 +204,6 @@
   "action_panel.chk_secrets": "비밀 값 숨김",
   "action_panel.skeleton": "스켈레톤",
   "action_panel.chk_skeleton": "스켈레톤",
-
   "action_panel.template.tooltip": "📁 Jinja2 템플릿 선택",
   "action_panel.preview.button": "👁 미리보기",
   "action_panel.clipboard.button": "📋 복사",
@@ -232,23 +216,18 @@
   "action_panel.chk_checkpoints": "체크포인트",
   "action_panel.chk_watch": "자동 감시",
   "action_panel.template.dialog_title": "Jinja2 템플릿 선택",
-
   "empty_state.drop.title": "📂 여기에 폴더를 드롭하세요",
   "empty_state.drop.subtitle": "또는 아래 버튼을 클릭하세요",
   "empty_state.browse.button": "📂 폴더 찾아보기",
   "empty_state.recent.title": "🕐 최근 프로젝트",
   "empty_state.browse.dialog_title": "📂 프로젝트 폴더 선택",
-
   "status_bar.idle": "대기 중",
   "status_bar.tokens_count": "토큰: {tokens}",
   "status_bar.tokens": "토큰: {tokens}",
-
   "status_bar.local_model": " (로컬 모델)",
-
   "analytics_panel.header.file": "파일",
   "analytics_panel.header.tokens": "토큰",
   "analytics_panel.header.weight": "비중",
-
   "file_tree.search.placeholder": "🔍 파일 검색...",
   "file_tree.expand_all": "▶ 모두 펼치기",
   "file_tree.collapse_all": "▼ 모두 접기",
@@ -264,11 +243,9 @@
   "file_tree.context.select_js": "🌐 JS/TS만",
   "file_tree.context.exclude_heavy": "🚫 무거운 항목 제외",
   "file_tree.context.exclude_all": "🚫 모두 제외",
-
   "folder_list.no_sources": "📂 추가된 폴더 없음",
   "folder_list.edit.tooltip": "✏️ 경로 편집",
   "folder_list.delete.tooltip": "🗑 삭제",
-
   "main_controller.clear_temp_files": "🧹 임시 폴더 정리 중...",
   "main_controller.choose_folders": "⚠️ 폴더를 하나 이상 선택하세요.",
   "main_controller.choose_folders_or_url": "⚠️ 폴더를 선택하거나 URL을 입력하세요.",
@@ -283,7 +260,6 @@
   "main_controller.clipboard_error": "❌ 복사 오류: {error}",
   "main_controller.clipboard_error_generic": "❌ 클립보드 복사 중 오류 발생",
   "main_controller.pr_filter_applied": "🔍 PR 필터 적용됨: {count}개 파일",
-
   "cli_controller.starting": "🚀 CLI 시작 중 (모드: {mode})",
   "cli_controller.target": "🎯 대상: {target_path}",
   "cli_controller.critical_error": "❌ 치명적 오류: {exc}",
@@ -313,7 +289,6 @@
   "cli_controller.project_copied": "📋 {tokens} 토큰 복사됨",
   "cli_controller.path_not_found": "❌ 경로를 찾을 수 없음: {path}",
   "cli_controller.window_closing": "⏳ 3초 후 창이 닫힙니다...",
-
   "store.status.done": "✅ 완료",
   "store.status.scan_error": "❌ 스캔 오류: {error}",
   "store.status.scan_error_log": "오류: {error}",
@@ -323,7 +298,6 @@
   "store.status.files_found": "📄 찾은 파일: {count}",
   "store.status.error_with_msg": "❌ 오류: {error_msg}",
   "state.status.ready": "✅ 준비 완료",
-
   "process_use_case.workflow.preparing": "⚙️ 준비 중...",
   "process_use_case.workflow.no_files": "⚠️ 처리할 파일이 없습니다.",
   "process_use_case.workflow.reading": "📖 {count}개 파일 읽는 중...",
@@ -337,19 +311,16 @@
   "process_use_case.export.chat_loaded": "💬 채팅에 로드됨",
   "process_use_case.export.saved": "💾 저장됨: {path}",
   "process_use_case.export.pdf_created": "📄 PDF 생성됨: {path}",
-
   "patch_use_case.patch.empty": "⚠️ 빈 패치입니다.",
   "patch_use_case.parsing.parsing_llm": "🔍 LLM 응답 구문 분석 중...",
   "patch_use_case.parsing.parse_error": "⚠️ JSON 구문 분석 오류: {error}",
   "patch_use_case.parsing.no_valid_json": "❌ 유효한 JSON을 찾을 수 없습니다.",
   "patch_use_case.patch.preparing": "⚙️ {count}개 패치 준비 중...",
   "patch_use_case.patch.applied": "✅ 적용된 패치: {count}",
-
   "llm_checker.send.no_url": "⚠️ LLM URL이 구성되지 않았습니다.",
   "llm_checker.check.disabled": "설정에서 LLM 확인이 비활성화되어 있습니다.",
   "llm_checker.check.no_url_short": "LLM URL이 구성되지 않음",
   "llm_checker.check.invalid_json": "LLM의 JSON 응답이 유효하지 않음",
-
   "patch_service.prepare.missing_file": "패치에 지정된 파일이 없습니다.",
   "patch_service.prepare.no_folders": "파일을 검색할 기본 폴더가 없습니다.",
   "patch_service.prepare.created": "✅ 생성됨: {clean_target}",
@@ -366,20 +337,16 @@
   "patch_service.prepare.unknown_action": "❌ 알 수 없는 작업: {action}",
   "patch_service.prepare.fuzzy_match": " (퍼지 일치: {fuzzy_marker:.0%})",
   "patch_service.apply.error": "❌ {file_target}에 패치 적용 중 오류: {e}",
-
   "output_service.clipboard.linux_install": "Linux에서 클립보드를 사용하려면 설치: sudo apt install xclip",
   "output_service.clipboard.copy_error": "클립보드 복사 오류: {error}",
   "output_service.editor.open_error": "편집기 '{editor_cmd}'을(를) 열 수 없습니다: {error}",
-
   "updater_service.check.no_description": "설명 없음",
   "updater_service.check.github_api_error": "GitHub API 오류 (코드 {code})",
   "updater_service.check.connection_error": "연결 오류: {error}",
   "updater_service.download.not_compiled": "자동 업데이트는 컴파일된 버전에서만 사용할 수 있습니다.",
   "updater_service.download.no_app_in_archive": "아카이브에서 .app을 찾을 수 없음",
   "updater_service.download.download_failed": "다운로드 오류: {error}",
-
   "github_service.invalid_url": "잘못된 URL",
-
   "github_use_case.preparing": "GitHub 준비 중...",
   "github_use_case.pr_detected": "🐙 Pull Request가 감지되었습니다. 파일 목록을 가져오는 중...",
   "github_use_case.pr_files_count": "PR에서 {count}개 파일을 가져왔습니다.",
@@ -387,7 +354,6 @@
   "github_use_case.cloning_url": "GitHub: {url} 복제 중",
   "github_use_case.repo_loaded": "✅ 저장소 로드됨: {path}",
   "github_use_case.github_error": "❌ GitHub 오류: {error}",
-
   "updater_use_case.checking": "🔍 GitHub에서 업데이트 확인 중 (v{version})...",
   "updater_use_case.connecting": "GitHub 서버에 연결 중입니다. 잠시 기다려 주세요...",
   "updater_use_case.update_found": "🎉 새 버전 발견: {version}",
@@ -401,7 +367,6 @@
   "updater_use_case.restarting": "다시 시작하는 중...",
   "updater_use_case.install_error": "❌ 설치 오류: {error}",
   "updater_use_case.install_error_notes": "**업데이트를 다운로드하거나 설치하지 못했습니다.**\n\n롤백이 성공적으로 완료되었습니다.\n\n`{error}`",
-
   "settings_use_case.reset": "설정이 초기화됨",
   "settings_use_case.local_config_applied": "⚙️ 로컬 설정이 적용됨: {path}",
   "settings_use_case.config_parse_error": "⚠️ {path} 구문 분석 오류: {error}",
@@ -413,13 +378,11 @@
   "settings_use_case.workspace_save_error": "작업공간 저장 오류: {error}",
   "settings_use_case.workspace_loaded": "작업공간 로드됨: {path}",
   "settings_use_case.workspace_load_error": "작업공간 로드 오류: {error}",
-
   "scan_use_case.scanning": "스캔 중...",
   "scan_use_case.scan_started": "스캔 시작됨...",
   "scan_use_case.no_files": "⚠️ 파일을 찾을 수 없습니다",
   "scan_use_case.analyzing": "토큰 및 Git 분석 중...",
   "scan_use_case.scan_complete": "스캔 완료",
-
   "tour_service.welcome.title": "👋 CodeContext AI에 오신 것을 환영합니다!",
   "tour_service.welcome.text": "CodeContext AI는 코드베이스를 분석하는 도구입니다. 프로젝트를 스캔하고 컨텍스트를 수집하여 LLM으로 보내 분석, 채팅 또는 패치 생성을 할 수 있습니다.\n\n\"다음\"을 클릭하여 기능을 알아보세요.",
   "tour_service.folders_pr.title": "📂 폴더 및 GitHub PR",
@@ -442,7 +405,6 @@
   "tour_service.safety_diff.text": "각 패치는 diff 미리보기를 거칩니다. LLM을 통해 변경사항을 확인할 수 있습니다.\n\n변경사항을 선택적으로 수락 또는 거부하세요.",
   "tour_service.os_integration.title": "🖥 OS 통합",
   "tour_service.os_integration.text": "컨텍스트 메뉴(폴더를 마우스 오른쪽 버튼으로 클릭 시 \"CodeContext AI\") 및 전역 CLI를 설치하세요.\n\nWindows: 레지스트리. macOS: Automator. Linux: .desktop 파일.",
-
   "integration_strategies.windows.elevate_error": "❌ 관리자 권한 요청 오류: {exc}",
   "integration_strategies.windows.admin_required_install": "⚠️ 컨텍스트 메뉴를 설치하려면 관리자 권한이 필요합니다. 애플리케이션을 관리자로 실행하세요.",
   "integration_strategies.windows.menu_open_ui": "CodeContext AI 열기",
@@ -472,5 +434,27 @@
   "integration_strategies.linux.cli_remove_success": "✅ CLI가 제거되었습니다.",
   "integration_strategies.linux.cli_remove_error": "❌ CLI 제거 오류: {error}",
   "integration_strategies.macos.install_success": "✅ 컨텍스트 메뉴가 설치되었습니다.",
-  "integration_strategies.macos.remove_success": "✅ 컨텍스트 메뉴가 제거되었습니다."
+  "integration_strategies.macos.remove_success": "✅ 컨텍스트 메뉴가 제거되었습니다.",
+  "formatting.hidden_lines": "... {c_start}개의 동일한 줄 숨김 ...",
+  "dialogs.preview.generating_diff": "차이점 생성 중...",
+  "action_panel.plugins.button": "🔌 플러그인",
+  "process_use_case.workflow.writing": "✍️ 파일 쓰기 중...",
+  "plugins.approval.title": "🔌 플러그인 승인",
+  "plugins.approval.heading": "새 플러그인: {name}",
+  "plugins.approval.info": "이 플러그인이 프로젝트에 대한 액세스를 요청합니다:",
+  "plugins.approval.name": "이름:",
+  "plugins.approval.id": "ID:",
+  "plugins.approval.version": "버전:",
+  "plugins.approval.description": "설명:",
+  "plugins.approval.warning": "⚠️ 이 플러그인의 소스를 신뢰할 수 있는지 확인하세요. 플러그인은 파일 시스템 및 애플리케이션 API에 액세스할 수 있습니다.",
+  "plugins.approval.deny": "🚫 거부",
+  "plugins.approval.allow": "✅ 허용",
+  "plugins.install.success": "✅ 플러그인이 설치되었습니다.",
+  "plugins.install.error": "❌ 플러그인 설치 오류: {error}",
+  "plugins.install.title": "📦 플러그인 종속성 설치",
+  "plugins.install.close": "닫기",
+  "sidebar.tab.plugins": "🔌 플러그인",
+  "sidebar.plugins.open_folder": "📂 플러그인 폴더 열기",
+  "sidebar.plugins.restart_required": "⚠️ 재시작 필요",
+  "sidebar.plugins.restart_msg": "플러그인 변경 사항을 적용하려면 애플리케이션을 다시 시작하세요."
 }

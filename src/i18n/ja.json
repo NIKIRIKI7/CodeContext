@@ -1,4 +1,4 @@
-﻿{
+{
   "main.cli_mode": "CLIモード",
   "main.path": "プロジェクトへのパス",
   "main.patch": "JSONパッチファイル",
@@ -13,7 +13,6 @@
   "main.stdout": "標準出力に出力",
   "main.fail_if_exceeds": "トークン制限を超えた場合に失敗",
   "main.sent_to_existing": "📤 パスを既存のアプリケーションインスタンスに送信しました",
-
   "main_window.title": "CodeContext AI",
   "main_window.tab.file_tree": "📂 ファイル",
   "main_window.tab.analytics": "📊 分析",
@@ -30,16 +29,13 @@
   "main_window.command.toggle_theme": "🎨 テーマの切り替え",
   "main_window.command.check_updates": "🔄 アップデートを確認",
   "main_window.save_file.title": "ファイルを保存",
-
   "dialogs.ai_chat_title": "AI チャット (CodeContext)",
   "dialogs.chat.title": "AI チャット",
-
   "dialogs.chat.placeholder": "コードについて質問してください...",
   "dialogs.chat.send": "送信",
   "dialogs.chat.system_loaded": "📎 システムコンテキストが読み込まれました。質問できます。",
   "dialogs.chat.you_label": "あなた",
   "dialogs.chat.waiting": "⏳ 待機中...",
-
   "dialogs.preview.title": "👁 プレビュー",
   "dialogs.preview.tab_prompt": "📝 プロンプト",
   "dialogs.preview.files_in_prompt": "📄 プロンプト内のファイル:",
@@ -49,7 +45,6 @@
   "dialogs.preview.select_file": "ファイル:",
   "dialogs.preview.savings_initial": "📊 オリジナルと圧縮版の比較",
   "dialogs.preview.savings": "削減量: {original} → {processed} トークン ({percent:.1f}%)",
-
   "dialogs.bug_report.title": "バグ報告",
   "dialogs.bug_report.description": "発生したバグを説明してください：",
   "dialogs.bug_report.placeholder": "再現手順、期待される動作など...",
@@ -63,20 +58,16 @@
   "dialogs.bug_report.copied_msg": "Issue テンプレートをコピーしました。GitHub Issue 本文に貼り付けてください。",
   "dialogs.clipboard_error": "❌ クリップボードエラー: {error}",
   "sidebar.bug_report.tooltip": "バグを見つけましたか？ Issue に送信",
-
   "dialogs.tour.title": "🎓 インタラクティブツアー",
   "dialogs.tour.prev": "← 戻る",
   "dialogs.tour.next": "次へ ➡",
   "dialogs.tour.finish": "🎉 完了",
-
   "dialogs.edit_folder.title": "✏️ フォルダを編集",
   "dialogs.edit_folder.ok": "✅ OK",
-
   "dialogs.json_patch.title": "🔧 JSONパッチ",
   "dialogs.json_patch.instruction": "JSONパッチをアクションのリストとして入力:",
   "dialogs.json_patch.cancel": "キャンセル",
   "dialogs.json_patch.apply": "✅ 適用",
-
   "dialogs.diff.title": "🛡 安全なDiffレビュー",
   "dialogs.diff.check_llm": "🔍 LLMで確認",
   "dialogs.diff.verdict_placeholder": "判定...",
@@ -93,7 +84,6 @@
   "dialogs.diff.updated_by_ai": " [AIにより更新]",
   "dialogs.diff.suggestion_applied": "✅ 提案が適用されました",
   "dialogs.diff.suggestion_rejected": "❌ 提案が拒否されました",
-
   "dialogs.update.title": "🔄 アップデート",
   "dialogs.update.checking": "🔍 アップデート {version} を確認中...",
   "dialogs.update.cancel": "キャンセル",
@@ -106,9 +96,7 @@
   "dialogs.update.downloading": "⬇️ ダウンロード中...",
   "dialogs.update.installing": "⚙️ アップデートをインストール中...",
   "dialogs.update.install_notes": "お待ちください、アップデートをインストール中です...",
-
   "dialogs.command_palette.placeholder": "🔍 コマンドを検索...",
-
   "dialogs.ui_customization.title": "⚙️ インターフェースのカスタマイズ",
   "dialogs.ui_customization.visible_tabs": "表示タブ:",
   "dialogs.ui_customization.tab_sources": "📂 ソース",
@@ -129,14 +117,12 @@
   "dialogs.ui_customization.checkbox_watch": "☑ 自動監視",
   "dialogs.ui_customization.cancel": "キャンセル",
   "dialogs.ui_customization.save": "💾 保存",
-
   "sidebar.title": "CodeContext AI",
   "sidebar.tab.sources": "📂 ソース",
   "sidebar.tab.filters": "🔧 フィルター",
   "sidebar.tab.prompts": "📝 プロンプト",
   "sidebar.tab.llm_os": "🤖 LLM & OS",
   "sidebar.tab.appearance": "🎨 外観",
-
   "sidebar.ui_settings.tooltip": "⚙️ インターフェース設定",
   "sidebar.tour.button": "🎓 ツアー",
   "sidebar.version.label": "v{version}",
@@ -210,7 +196,6 @@
   "sidebar.success.title": "✅ 成功",
   "sidebar.import_theme.success": "テーマ「{filename}」が正常にインポートされました。",
   "sidebar.import_theme.error": "テーマのインポート中にエラーが発生しました: {error}",
-
   "action_panel.minify": "最小化",
   "action_panel.chk_minify": "最小化",
   "action_panel.no_comments": "コメントなし",
@@ -219,7 +204,6 @@
   "action_panel.chk_secrets": "シークレットなし",
   "action_panel.skeleton": "スケルトン",
   "action_panel.chk_skeleton": "スケルトン",
-
   "action_panel.template.tooltip": "📁 Jinja2テンプレートを選択",
   "action_panel.preview.button": "👁 プレビュー",
   "action_panel.clipboard.button": "📋 コピー",
@@ -232,23 +216,18 @@
   "action_panel.chk_checkpoints": "チェックポイント",
   "action_panel.chk_watch": "自動監視",
   "action_panel.template.dialog_title": "Jinja2テンプレートを選択",
-
   "empty_state.drop.title": "📂 ここにフォルダをドロップ",
   "empty_state.drop.subtitle": "または下のボタンをクリック",
   "empty_state.browse.button": "📂 フォルダを参照",
   "empty_state.recent.title": "🕐 最近のプロジェクト",
   "empty_state.browse.dialog_title": "📂 プロジェクトフォルダを選択",
-
   "status_bar.idle": "待機中",
   "status_bar.tokens_count": "トークン: {tokens}",
   "status_bar.tokens": "トークン: {tokens}",
-
   "status_bar.local_model": "（ローカルモデル）",
-
   "analytics_panel.header.file": "ファイル",
   "analytics_panel.header.tokens": "トークン",
   "analytics_panel.header.weight": "重み",
-
   "file_tree.search.placeholder": "🔍 ファイルを検索...",
   "file_tree.expand_all": "▶ すべて展開",
   "file_tree.collapse_all": "▼ すべて折りたたむ",
@@ -264,11 +243,9 @@
   "file_tree.context.select_js": "🌐 JS/TSのみ",
   "file_tree.context.exclude_heavy": "🚫 重いものを除外",
   "file_tree.context.exclude_all": "🚫 すべて除外",
-
   "folder_list.no_sources": "📂 フォルダが追加されていません",
   "folder_list.edit.tooltip": "✏️ パスを編集",
   "folder_list.delete.tooltip": "🗑 削除",
-
   "main_controller.clear_temp_files": "🧹 一時フォルダをクリーンアップ中...",
   "main_controller.choose_folders": "⚠️ 少なくとも1つのフォルダを選択してください。",
   "main_controller.choose_folders_or_url": "⚠️ フォルダを選択するかURLを指定してください。",
@@ -283,7 +260,6 @@
   "main_controller.clipboard_error": "❌ コピーエラー: {error}",
   "main_controller.clipboard_error_generic": "❌ クリップボードへのコピー中にエラーが発生しました",
   "main_controller.pr_filter_applied": "🔍 PRフィルターが適用されました: {count} ファイル",
-
   "cli_controller.starting": "🚀 CLIを起動中（モード: {mode}）",
   "cli_controller.target": "🎯 ターゲット: {target_path}",
   "cli_controller.critical_error": "❌ 重大なエラー: {exc}",
@@ -313,7 +289,6 @@
   "cli_controller.project_copied": "📋 {tokens} トークンをコピーしました",
   "cli_controller.path_not_found": "❌ パスが見つかりません: {path}",
   "cli_controller.window_closing": "⏳ 3秒後にウィンドウを閉じます...",
-
   "store.status.done": "✅ 完了",
   "store.status.scan_error": "❌ スキャンエラー: {error}",
   "store.status.scan_error_log": "エラー: {error}",
@@ -323,7 +298,6 @@
   "store.status.files_found": "📄 見つかったファイル: {count}",
   "store.status.error_with_msg": "❌ エラー: {error_msg}",
   "state.status.ready": "✅ 準備完了",
-
   "process_use_case.workflow.preparing": "⚙️ 準備中...",
   "process_use_case.workflow.no_files": "⚠️ 処理するファイルがありません。",
   "process_use_case.workflow.reading": "📖 {count} 個のファイルを読み込み中...",
@@ -337,19 +311,16 @@
   "process_use_case.export.chat_loaded": "💬 チャットに読み込まれました",
   "process_use_case.export.saved": "💾 保存: {path}",
   "process_use_case.export.pdf_created": "📄 PDF作成: {path}",
-
   "patch_use_case.patch.empty": "⚠️ 空のパッチです。",
   "patch_use_case.parsing.parsing_llm": "🔍 LLM応答を解析中...",
   "patch_use_case.parsing.parse_error": "⚠️ JSON解析エラー: {error}",
   "patch_use_case.parsing.no_valid_json": "❌ 有効なJSONが見つかりませんでした。",
   "patch_use_case.patch.preparing": "⚙️ {count} 個のパッチを準備中...",
   "patch_use_case.patch.applied": "✅ 適用済みパッチ: {count}",
-
   "llm_checker.send.no_url": "⚠️ LLMのURLが設定されていません。",
   "llm_checker.check.disabled": "設定でLLMチェックが無効になっています。",
   "llm_checker.check.no_url_short": "LLMのURLが設定されていません",
   "llm_checker.check.invalid_json": "LLMからのJSON応答が無効です",
-
   "patch_service.prepare.missing_file": "パッチのファイルが指定されていません。",
   "patch_service.prepare.no_folders": "ファイルを検索するベースフォルダがありません。",
   "patch_service.prepare.created": "✅ 作成されます: {clean_target}",
@@ -366,20 +337,16 @@
   "patch_service.prepare.unknown_action": "❌ 不明なアクション: {action}",
   "patch_service.prepare.fuzzy_match": "（あいまい一致: {fuzzy_marker:.0%}）",
   "patch_service.apply.error": "❌ {file_target} へのパッチ適用エラー: {e}",
-
   "output_service.clipboard.linux_install": "Linuxでクリップボードを使用するには: sudo apt install xclip",
   "output_service.clipboard.copy_error": "クリップボードへのコピーエラー: {error}",
   "output_service.editor.open_error": "エディタ '{editor_cmd}' を開けませんでした: {error}",
-
   "updater_service.check.no_description": "説明なし",
   "updater_service.check.github_api_error": "GitHub APIエラー（コード {code}）",
   "updater_service.check.connection_error": "接続エラー: {error}",
   "updater_service.download.not_compiled": "自動アップデートはコンパイル版でのみ利用可能です。",
   "updater_service.download.no_app_in_archive": "アーカイブ内に.appが見つかりません",
   "updater_service.download.download_failed": "ダウンロードエラー: {error}",
-
   "github_service.invalid_url": "無効なURL",
-
   "github_use_case.preparing": "GitHubを準備中...",
   "github_use_case.pr_detected": "🐙 プルリクエストが検出されました。ファイル一覧を取得中...",
   "github_use_case.pr_files_count": "PRから {count} 個のファイルを取得しました。",
@@ -387,7 +354,6 @@
   "github_use_case.cloning_url": "GitHub: {url} をクローン中",
   "github_use_case.repo_loaded": "✅ リポジトリが読み込まれました: {path}",
   "github_use_case.github_error": "❌ GitHubエラー: {error}",
-
   "updater_use_case.checking": "🔍 GitHubでアップデートを確認中（v{version}）...",
   "updater_use_case.connecting": "GitHubサーバーに接続中。お待ちください...",
   "updater_use_case.update_found": "🎉 新しいバージョンが見つかりました: {version}",
@@ -401,7 +367,6 @@
   "updater_use_case.restarting": "再起動中...",
   "updater_use_case.install_error": "❌ インストールエラー: {error}",
   "updater_use_case.install_error_notes": "**アップデートのダウンロードまたはインストールに失敗しました。**\n\nロールバックは正常に完了しました。\n\n`{error}`",
-
   "settings_use_case.reset": "設定がリセットされました",
   "settings_use_case.local_config_applied": "⚙️ ローカル設定が適用されました: {path}",
   "settings_use_case.config_parse_error": "⚠️ {path} の解析エラー: {error}",
@@ -413,13 +378,11 @@
   "settings_use_case.workspace_save_error": "ワークスペースの保存エラー: {error}",
   "settings_use_case.workspace_loaded": "ワークスペースを読み込みました: {path}",
   "settings_use_case.workspace_load_error": "ワークスペースの読み込みエラー: {error}",
-
   "scan_use_case.scanning": "スキャン中...",
   "scan_use_case.scan_started": "スキャンを開始...",
   "scan_use_case.no_files": "⚠️ ファイルが見つかりませんでした",
   "scan_use_case.analyzing": "トークンとGitを分析中...",
   "scan_use_case.scan_complete": "スキャン完了",
-
   "tour_service.welcome.title": "👋 CodeContext AIへようこそ！",
   "tour_service.welcome.text": "CodeContext AIはコードベースを分析するツールです。プロジェクトをスキャンし、コンテキストを収集して、分析、チャット、パッチ作成のためにLLMに送信できます。\n\n「次へ」をクリックして機能を確認してください。",
   "tour_service.folders_pr.title": "📂 フォルダとGitHub PR",
@@ -442,7 +405,6 @@
   "tour_service.safety_diff.text": "各パッチはDiffプレビューで確認できます。LLM経由で変更を検証できます。\n\n変更を選択的に承認または拒否できます。",
   "tour_service.os_integration.title": "🖥 OS統合",
   "tour_service.os_integration.text": "コンテキストメニュー（フォルダを右クリックしたときの「CodeContext AI」）とグローバルCLIをインストールします。\n\nWindows: レジストリ経由。macOS: Automator経由。Linux: .desktopファイル経由。",
-
   "integration_strategies.windows.elevate_error": "❌ 管理者権限の要求エラー: {exc}",
   "integration_strategies.windows.admin_required_install": "⚠️ コンテキストメニューをインストールするには管理者権限が必要です。アプリケーションを管理者として実行してください。",
   "integration_strategies.windows.menu_open_ui": "CodeContext AIを開く",
@@ -472,5 +434,27 @@
   "integration_strategies.linux.cli_remove_success": "✅ CLIが削除されました。",
   "integration_strategies.linux.cli_remove_error": "❌ CLIの削除エラー: {error}",
   "integration_strategies.macos.install_success": "✅ コンテキストメニューがインストールされました。",
-  "integration_strategies.macos.remove_success": "✅ コンテキストメニューが削除されました。"
+  "integration_strategies.macos.remove_success": "✅ コンテキストメニューが削除されました。",
+  "formatting.hidden_lines": "... {c_start} 個の同一行を非表示 ...",
+  "dialogs.preview.generating_diff": "差分を生成中...",
+  "action_panel.plugins.button": "🔌 プラグイン",
+  "process_use_case.workflow.writing": "✍️ ファイル書き込み中...",
+  "plugins.approval.title": "🔌 プラグインの承認",
+  "plugins.approval.heading": "新しいプラグイン: {name}",
+  "plugins.approval.info": "このプラグインがプロジェクトへのアクセスを要求しています:",
+  "plugins.approval.name": "名前:",
+  "plugins.approval.id": "ID:",
+  "plugins.approval.version": "バージョン:",
+  "plugins.approval.description": "説明:",
+  "plugins.approval.warning": "⚠️ このプラグインのソースを信頼できることを確認してください。プラグインはファイルシステムとアプリケーションAPIにアクセスできます。",
+  "plugins.approval.deny": "🚫 拒否",
+  "plugins.approval.allow": "✅ 許可",
+  "plugins.install.success": "✅ プラグインがインストールされました。",
+  "plugins.install.error": "❌ プラグインのインストールエラー: {error}",
+  "plugins.install.title": "📦 プラグイン依存関係のインストール",
+  "plugins.install.close": "閉じる",
+  "sidebar.tab.plugins": "🔌 プラグイン",
+  "sidebar.plugins.open_folder": "📂 プラグインフォルダを開く",
+  "sidebar.plugins.restart_required": "⚠️ 再起動が必要です",
+  "sidebar.plugins.restart_msg": "プラグインの変更を適用するにはアプリケーションを再起動してください。"
 }

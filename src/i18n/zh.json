@@ -1,4 +1,4 @@
-﻿{
+{
   "main.cli_mode": "CLI 模式",
   "main.path": "项目路径",
   "main.patch": "JSON 补丁文件",
@@ -13,7 +13,6 @@
   "main.stdout": "输出到标准输出",
   "main.fail_if_exceeds": "超出令牌限制时报错",
   "main.sent_to_existing": "📤 路径已发送到现有应用实例",
-
   "main_window.title": "CodeContext AI",
   "main_window.tab.file_tree": "📂 文件",
   "main_window.tab.analytics": "📊 分析",
@@ -30,16 +29,13 @@
   "main_window.command.toggle_theme": "🎨 切换主题",
   "main_window.command.check_updates": "🔄 检查更新",
   "main_window.save_file.title": "保存文件",
-
   "dialogs.ai_chat_title": "AI 聊天 (CodeContext)",
   "dialogs.chat.title": "AI 聊天",
-
   "dialogs.chat.placeholder": "询问关于代码的问题...",
   "dialogs.chat.send": "发送",
   "dialogs.chat.system_loaded": "📎 系统上下文已加载。您可以提问了。",
   "dialogs.chat.you_label": "你",
   "dialogs.chat.waiting": "⏳ 等待中...",
-
   "dialogs.preview.title": "👁 预览",
   "dialogs.preview.tab_prompt": "📝 提示",
   "dialogs.preview.files_in_prompt": "📄 提示中的文件：",
@@ -49,7 +45,6 @@
   "dialogs.preview.select_file": "文件：",
   "dialogs.preview.savings_initial": "📊 比较原始版本和压缩版本",
   "dialogs.preview.savings": "节省：{original} → {processed} 个令牌（{percent:.1f}%）",
-
   "dialogs.bug_report.title": "错误报告",
   "dialogs.bug_report.description": "描述您遇到的错误：",
   "dialogs.bug_report.placeholder": "重现步骤、预期行为等...",
@@ -63,20 +58,16 @@
   "dialogs.bug_report.copied_msg": "Issue 模板已复制。请粘贴到 GitHub Issue 正文中。",
   "dialogs.clipboard_error": "❌ 剪贴板错误: {error}",
   "sidebar.bug_report.tooltip": "发现错误？提交 Issue",
-
   "dialogs.tour.title": "🎓 交互式导览",
   "dialogs.tour.prev": "← 上一步",
   "dialogs.tour.next": "下一步 ➡",
   "dialogs.tour.finish": "🎉 完成",
-
   "dialogs.edit_folder.title": "✏️ 编辑文件夹",
   "dialogs.edit_folder.ok": "✅ 确定",
-
   "dialogs.json_patch.title": "🔧 JSON 补丁",
   "dialogs.json_patch.instruction": "输入 JSON 补丁（操作列表）：",
   "dialogs.json_patch.cancel": "取消",
   "dialogs.json_patch.apply": "✅ 应用",
-
   "dialogs.diff.title": "🛡 安全差异审核",
   "dialogs.diff.check_llm": "🔍 用 LLM 检查",
   "dialogs.diff.verdict_placeholder": "判断结果...",
@@ -93,7 +84,6 @@
   "dialogs.diff.updated_by_ai": " [已由 AI 更新]",
   "dialogs.diff.suggestion_applied": "✅ 建议已应用",
   "dialogs.diff.suggestion_rejected": "❌ 建议已拒绝",
-
   "dialogs.update.title": "🔄 更新",
   "dialogs.update.checking": "🔍 正在检查更新 {version}...",
   "dialogs.update.cancel": "取消",
@@ -106,9 +96,7 @@
   "dialogs.update.downloading": "⬇️ 下载中...",
   "dialogs.update.installing": "⚙️ 正在安装更新...",
   "dialogs.update.install_notes": "请稍候，更新正在安装...",
-
   "dialogs.command_palette.placeholder": "🔍 搜索命令...",
-
   "dialogs.ui_customization.title": "⚙️ 界面自定义",
   "dialogs.ui_customization.visible_tabs": "可见标签页：",
   "dialogs.ui_customization.tab_sources": "📂 源文件",
@@ -129,14 +117,12 @@
   "dialogs.ui_customization.checkbox_watch": "☑ 自动监视",
   "dialogs.ui_customization.cancel": "取消",
   "dialogs.ui_customization.save": "💾 保存",
-
   "sidebar.title": "CodeContext AI",
   "sidebar.tab.sources": "📂 源文件",
   "sidebar.tab.filters": "🔧 筛选器",
   "sidebar.tab.prompts": "📝 提示",
   "sidebar.tab.llm_os": "🤖 LLM 和 OS",
   "sidebar.tab.appearance": "🎨 外观",
-
   "sidebar.ui_settings.tooltip": "⚙️ 界面设置",
   "sidebar.tour.button": "🎓 导览",
   "sidebar.version.label": "v{version}",
@@ -210,7 +196,6 @@
   "sidebar.success.title": "✅ 成功",
   "sidebar.import_theme.success": "主题 \"{filename}\" 导入成功。",
   "sidebar.import_theme.error": "导入主题时出错：{error}",
-
   "action_panel.minify": "压缩",
   "action_panel.chk_minify": "压缩",
   "action_panel.no_comments": "无注释",
@@ -219,7 +204,6 @@
   "action_panel.chk_secrets": "无密钥",
   "action_panel.skeleton": "骨架",
   "action_panel.chk_skeleton": "骨架",
-
   "action_panel.template.tooltip": "📁 选择 Jinja2 模板",
   "action_panel.preview.button": "👁 预览",
   "action_panel.clipboard.button": "📋 复制",
@@ -232,23 +216,18 @@
   "action_panel.chk_checkpoints": "检查点",
   "action_panel.chk_watch": "自动监视",
   "action_panel.template.dialog_title": "选择 Jinja2 模板",
-
   "empty_state.drop.title": "📂 将文件夹拖放到此处",
   "empty_state.drop.subtitle": "或点击下方按钮",
   "empty_state.browse.button": "📂 浏览文件夹",
   "empty_state.recent.title": "🕐 最近的项目",
   "empty_state.browse.dialog_title": "📂 选择项目文件夹",
-
   "status_bar.idle": "空闲",
   "status_bar.tokens_count": "令牌: {tokens}",
   "status_bar.tokens": "令牌: {tokens}",
-
   "status_bar.local_model": "（本地模型）",
-
   "analytics_panel.header.file": "文件",
   "analytics_panel.header.tokens": "令牌",
   "analytics_panel.header.weight": "权重",
-
   "file_tree.search.placeholder": "🔍 搜索文件...",
   "file_tree.expand_all": "▶ 全部展开",
   "file_tree.collapse_all": "▼ 全部折叠",
@@ -264,11 +243,9 @@
   "file_tree.context.select_js": "🌐 仅 JS/TS",
   "file_tree.context.exclude_heavy": "🚫 排除大文件",
   "file_tree.context.exclude_all": "🚫 全部排除",
-
   "folder_list.no_sources": "📂 未添加文件夹",
   "folder_list.edit.tooltip": "✏️ 编辑路径",
   "folder_list.delete.tooltip": "🗑 删除",
-
   "main_controller.clear_temp_files": "🧹 正在清理临时文件夹...",
   "main_controller.choose_folders": "⚠️ 请至少选择一个文件夹。",
   "main_controller.choose_folders_or_url": "⚠️ 请选择一个文件夹或提供 URL。",
@@ -283,7 +260,6 @@
   "main_controller.clipboard_error": "❌ 复制错误：{error}",
   "main_controller.clipboard_error_generic": "❌ 复制到剪贴板时出错",
   "main_controller.pr_filter_applied": "🔍 已应用 PR 筛选：{count} 个文件",
-
   "cli_controller.starting": "🚀 正在启动 CLI（模式：{mode}）",
   "cli_controller.target": "🎯 目标：{target_path}",
   "cli_controller.critical_error": "❌ 严重错误：{exc}",
@@ -313,7 +289,6 @@
   "cli_controller.project_copied": "📋 已复制 {tokens} 个令牌",
   "cli_controller.path_not_found": "❌ 未找到路径：{path}",
   "cli_controller.window_closing": "⏳ 窗口将在 3 秒后关闭...",
-
   "store.status.done": "✅ 完成",
   "store.status.scan_error": "❌ 扫描错误：{error}",
   "store.status.scan_error_log": "错误: {error}",
@@ -323,7 +298,6 @@
   "store.status.files_found": "📄 找到的文件：{count}",
   "store.status.error_with_msg": "❌ 错误：{error_msg}",
   "state.status.ready": "✅ 就绪",
-
   "process_use_case.workflow.preparing": "⚙️ 准备中...",
   "process_use_case.workflow.no_files": "⚠️ 没有要处理的文件。",
   "process_use_case.workflow.reading": "📖 正在读取 {count} 个文件...",
@@ -337,19 +311,16 @@
   "process_use_case.export.chat_loaded": "💬 已加载到聊天",
   "process_use_case.export.saved": "💾 已保存：{path}",
   "process_use_case.export.pdf_created": "📄 PDF 已创建：{path}",
-
   "patch_use_case.patch.empty": "⚠️ 空白补丁。",
   "patch_use_case.parsing.parsing_llm": "🔍 正在解析 LLM 响应...",
   "patch_use_case.parsing.parse_error": "⚠️ JSON 解析错误：{error}",
   "patch_use_case.parsing.no_valid_json": "❌ 未找到有效的 JSON。",
   "patch_use_case.patch.preparing": "⚙️ 正在准备 {count} 个补丁...",
   "patch_use_case.patch.applied": "✅ 已应用的补丁：{count}",
-
   "llm_checker.send.no_url": "⚠️ LLM URL 未配置。",
   "llm_checker.check.disabled": "LLM 检查已在设置中禁用。",
   "llm_checker.check.no_url_short": "LLM URL 未配置",
   "llm_checker.check.invalid_json": "来自 LLM 的 JSON 响应无效",
-
   "patch_service.prepare.missing_file": "未指定要修补的文件。",
   "patch_service.prepare.no_folders": "没有可用于搜索文件的基础文件夹。",
   "patch_service.prepare.created": "✅ 将被创建：{clean_target}",
@@ -366,20 +337,16 @@
   "patch_service.prepare.unknown_action": "❌ 未知操作：{action}",
   "patch_service.prepare.fuzzy_match": "（模糊匹配：{fuzzy_marker:.0%}）",
   "patch_service.apply.error": "❌ 应用补丁到 {file_target} 时出错：{e}",
-
   "output_service.clipboard.linux_install": "要在 Linux 上使用剪贴板功能，请安装：sudo apt install xclip",
   "output_service.clipboard.copy_error": "复制到剪贴板时出错：{error}",
   "output_service.editor.open_error": "无法打开编辑器 '{editor_cmd}'：{error}",
-
   "updater_service.check.no_description": "无描述",
   "updater_service.check.github_api_error": "GitHub API 错误（代码 {code}）",
   "updater_service.check.connection_error": "连接错误：{error}",
   "updater_service.download.not_compiled": "自动更新仅在编译版本中可用。",
   "updater_service.download.no_app_in_archive": "在存档中未找到 .app",
   "updater_service.download.download_failed": "下载错误：{error}",
-
   "github_service.invalid_url": "无效的 URL",
-
   "github_use_case.preparing": "正在准备 GitHub...",
   "github_use_case.pr_detected": "🐙 检测到 Pull Request，正在获取文件列表...",
   "github_use_case.pr_files_count": "已从 PR 获取 {count} 个文件。",
@@ -387,7 +354,6 @@
   "github_use_case.cloning_url": "GitHub：正在克隆 {url}",
   "github_use_case.repo_loaded": "✅ 仓库已加载：{path}",
   "github_use_case.github_error": "❌ GitHub 错误：{error}",
-
   "updater_use_case.checking": "🔍 正在检查 GitHub 上的更新（v{version}）...",
   "updater_use_case.connecting": "正在连接到 GitHub 服务器，请稍候...",
   "updater_use_case.update_found": "🎉 找到新版本：{version}",
@@ -401,7 +367,6 @@
   "updater_use_case.restarting": "正在重启...",
   "updater_use_case.install_error": "❌ 安装错误：{error}",
   "updater_use_case.install_error_notes": "**下载或安装更新失败。**\n\n回滚已成功完成。\n\n`{error}`",
-
   "settings_use_case.reset": "设置已重置",
   "settings_use_case.local_config_applied": "⚙️ 已应用来自 {path} 的本地设置",
   "settings_use_case.config_parse_error": "⚠️ {path} 中的解析错误：{error}",
@@ -413,13 +378,11 @@
   "settings_use_case.workspace_save_error": "保存工作区时出错：{error}",
   "settings_use_case.workspace_loaded": "工作区已加载：{path}",
   "settings_use_case.workspace_load_error": "加载工作区时出错：{error}",
-
   "scan_use_case.scanning": "正在扫描...",
   "scan_use_case.scan_started": "扫描已开始...",
   "scan_use_case.no_files": "⚠️ 未找到文件",
   "scan_use_case.analyzing": "正在分析令牌和 Git...",
   "scan_use_case.scan_complete": "扫描完成",
-
   "tour_service.welcome.title": "👋 欢迎使用 CodeContext AI！",
   "tour_service.welcome.text": "CodeContext AI 是一款用于分析代码库的工具。它可以扫描您的项目、收集上下文，并让您将其发送到 LLM 进行分析、聊天或创建补丁。\n\n点击\"下一步\"了解各项功能。",
   "tour_service.folders_pr.title": "📂 文件夹和 GitHub PR",
@@ -442,7 +405,6 @@
   "tour_service.safety_diff.text": "每个补丁都会经过差异预览。您可以通过 LLM 验证更改。\n\n可以选择接受或拒绝更改。",
   "tour_service.os_integration.title": "🖥 操作系统集成",
   "tour_service.os_integration.text": "安装上下文菜单（右键单击文件夹时的\"CodeContext AI\"）和全局 CLI。\n\nWindows：通过注册表。macOS：通过 Automator。Linux：通过 .desktop 文件。",
-
   "integration_strategies.windows.elevate_error": "❌ 请求管理员权限时出错：{exc}",
   "integration_strategies.windows.admin_required_install": "⚠️ 安装上下文菜单需要管理员权限。请以管理员身份运行应用程序。",
   "integration_strategies.windows.menu_open_ui": "打开 CodeContext AI",
@@ -472,5 +434,27 @@
   "integration_strategies.linux.cli_remove_success": "✅ CLI 已移除。",
   "integration_strategies.linux.cli_remove_error": "❌ 移除 CLI 时出错：{error}",
   "integration_strategies.macos.install_success": "✅ 上下文菜单已安装。",
-  "integration_strategies.macos.remove_success": "✅ 上下文菜单已移除。"
+  "integration_strategies.macos.remove_success": "✅ 上下文菜单已移除。",
+  "formatting.hidden_lines": "... 隐藏了 {c_start} 行相同内容 ...",
+  "dialogs.preview.generating_diff": "正在生成差异...",
+  "action_panel.plugins.button": "🔌 插件",
+  "process_use_case.workflow.writing": "✍️ 正在写入文件...",
+  "plugins.approval.title": "🔌 插件批准",
+  "plugins.approval.heading": "新插件: {name}",
+  "plugins.approval.info": "此插件正在请求访问您的项目:",
+  "plugins.approval.name": "名称:",
+  "plugins.approval.id": "ID:",
+  "plugins.approval.version": "版本:",
+  "plugins.approval.description": "描述:",
+  "plugins.approval.warning": "⚠️ 请确保您信任此插件的来源。插件可以访问文件系统和应用程序API。",
+  "plugins.approval.deny": "🚫 拒绝",
+  "plugins.approval.allow": "✅ 允许",
+  "plugins.install.success": "✅ 插件已安装。",
+  "plugins.install.error": "❌ 插件安装错误: {error}",
+  "plugins.install.title": "📦 插件依赖安装",
+  "plugins.install.close": "关闭",
+  "sidebar.tab.plugins": "🔌 插件",
+  "sidebar.plugins.open_folder": "📂 打开插件文件夹",
+  "sidebar.plugins.restart_required": "⚠️ 需要重启",
+  "sidebar.plugins.restart_msg": "请重新启动应用程序以应用插件更改。"
 }

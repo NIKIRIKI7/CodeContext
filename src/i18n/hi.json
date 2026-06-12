@@ -1,4 +1,4 @@
-﻿{
+{
   "main.cli_mode": "CLI मोड",
   "main.path": "प्रोजेक्ट का पथ",
   "main.patch": "JSON पैच फ़ाइल",
@@ -13,7 +13,6 @@
   "main.stdout": "stdout पर आउटपुट",
   "main.fail_if_exceeds": "टोकन सीमा पार होने पर विफल",
   "main.sent_to_existing": "📤 पथ मौजूदा एप्लिकेशन इंस्टेंस को भेजा गया",
-
   "main_window.title": "CodeContext AI",
   "main_window.tab.file_tree": "📂 फ़ाइलें",
   "main_window.tab.analytics": "📊 एनालिटिक्स",
@@ -30,16 +29,13 @@
   "main_window.command.toggle_theme": "🎨 थीम टॉगल करें",
   "main_window.command.check_updates": "🔄 अपडेट जांचें",
   "main_window.save_file.title": "फ़ाइल सहेजें",
-
   "dialogs.ai_chat_title": "AI चैट (CodeContext)",
   "dialogs.chat.title": "AI चैट",
-
   "dialogs.chat.placeholder": "कोड के बारे में प्रश्न पूछें...",
   "dialogs.chat.send": "भेजें",
   "dialogs.chat.system_loaded": "📎 सिस्टम कॉन्टेक्स्ट लोड हुआ। आप प्रश्न पूछ सकते हैं।",
   "dialogs.chat.you_label": "आप",
   "dialogs.chat.waiting": "⏳ प्रतीक्षा...",
-
   "dialogs.preview.title": "👁 पूर्वावलोकन",
   "dialogs.preview.tab_prompt": "📝 प्रॉम्प्ट",
   "dialogs.preview.files_in_prompt": "📄 प्रॉम्प्ट में फ़ाइलें:",
@@ -49,7 +45,6 @@
   "dialogs.preview.select_file": "फ़ाइल:",
   "dialogs.preview.savings_initial": "📊 मूल और संपीड़ित संस्करण की तुलना करें",
   "dialogs.preview.savings": "बचत: {original} → {processed} टोकन ({percent:.1f}%)",
-
   "dialogs.bug_report.title": "बग रिपोर्ट",
   "dialogs.bug_report.description": "आपको जो बग मिला उसका वर्णन करें:",
   "dialogs.bug_report.placeholder": "पुनरुत्पादन के चरण, अपेक्षित व्यवहार, आदि...",
@@ -63,20 +58,16 @@
   "dialogs.bug_report.copied_msg": "Issue टेम्पलेट कॉपी हो गया। इसे GitHub Issue बॉडी में पेस्ट करें।",
   "dialogs.clipboard_error": "❌ क्लिपबोर्ड त्रुटि: {error}",
   "sidebar.bug_report.tooltip": "बग मिला? Issue पर भेजें",
-
   "dialogs.tour.title": "🎓 इंटरैक्टिव टूर",
   "dialogs.tour.prev": "← पीछे",
   "dialogs.tour.next": "आगे ➡",
   "dialogs.tour.finish": "🎉 समाप्त",
-
   "dialogs.edit_folder.title": "✏️ फ़ोल्डर संपादित करें",
   "dialogs.edit_folder.ok": "✅ ठीक है",
-
   "dialogs.json_patch.title": "🔧 JSON पैच",
   "dialogs.json_patch.instruction": "JSON पैच को क्रियाओं की सूची के रूप में दर्ज करें:",
   "dialogs.json_patch.cancel": "रद्द करें",
   "dialogs.json_patch.apply": "✅ लागू करें",
-
   "dialogs.diff.title": "🛡 सुरक्षित डिफ़ समीक्षा",
   "dialogs.diff.check_llm": "🔍 LLM से जांचें",
   "dialogs.diff.verdict_placeholder": "निर्णय...",
@@ -93,7 +84,6 @@
   "dialogs.diff.updated_by_ai": " [AI द्वारा अपडेट]",
   "dialogs.diff.suggestion_applied": "✅ सुझाव लागू",
   "dialogs.diff.suggestion_rejected": "❌ सुझाव अस्वीकृत",
-
   "dialogs.update.title": "🔄 अपडेट",
   "dialogs.update.checking": "🔍 अपडेट {version} जाँचा जा रहा है...",
   "dialogs.update.cancel": "रद्द करें",
@@ -106,9 +96,7 @@
   "dialogs.update.downloading": "⬇️ डाउनलोड हो रहा है...",
   "dialogs.update.installing": "⚙️ अपडेट इंस्टॉल हो रहा है...",
   "dialogs.update.install_notes": "कृपया प्रतीक्षा करें, अपडेट इंस्टॉल हो रहा है...",
-
   "dialogs.command_palette.placeholder": "🔍 कमांड खोजें...",
-
   "dialogs.ui_customization.title": "⚙️ इंटरफ़ेस अनुकूलन",
   "dialogs.ui_customization.visible_tabs": "दृश्यमान टैब:",
   "dialogs.ui_customization.tab_sources": "📂 स्रोत",
@@ -129,14 +117,12 @@
   "dialogs.ui_customization.checkbox_watch": "☑ ऑटो-वॉच",
   "dialogs.ui_customization.cancel": "रद्द करें",
   "dialogs.ui_customization.save": "💾 सहेजें",
-
   "sidebar.title": "CodeContext AI",
   "sidebar.tab.sources": "📂 स्रोत",
   "sidebar.tab.filters": "🔧 फ़िल्टर",
   "sidebar.tab.prompts": "📝 प्रॉम्प्ट",
   "sidebar.tab.llm_os": "🤖 LLM और OS",
   "sidebar.tab.appearance": "🎨 दिखावट",
-
   "sidebar.ui_settings.tooltip": "⚙️ इंटरफ़ेस सेटिंग्स",
   "sidebar.tour.button": "🎓 टूर",
   "sidebar.version.label": "v{version}",
@@ -210,7 +196,6 @@
   "sidebar.success.title": "✅ सफलता",
   "sidebar.import_theme.success": "थीम \"{filename}\" सफलतापूर्वक आयात हुई।",
   "sidebar.import_theme.error": "थीम आयात करने में त्रुटि: {error}",
-
   "action_panel.minify": "मिनिफ़ाई",
   "action_panel.chk_minify": "मिनिफ़ाई",
   "action_panel.no_comments": "कोई टिप्पणी नहीं",
@@ -219,7 +204,6 @@
   "action_panel.chk_secrets": "कोई रहस्य नहीं",
   "action_panel.skeleton": "कंकाल",
   "action_panel.chk_skeleton": "कंकाल",
-
   "action_panel.template.tooltip": "📁 Jinja2 टेम्पलेट चुनें",
   "action_panel.preview.button": "👁 पूर्वावलोकन",
   "action_panel.clipboard.button": "📋 कॉपी करें",
@@ -232,23 +216,18 @@
   "action_panel.chk_checkpoints": "चेकपॉइंट",
   "action_panel.chk_watch": "ऑटो-वॉच",
   "action_panel.template.dialog_title": "Jinja2 टेम्पलेट चुनें",
-
   "empty_state.drop.title": "📂 यहाँ एक फ़ोल्डर छोड़ें",
   "empty_state.drop.subtitle": "या नीचे दिए गए बटन पर क्लिक करें",
   "empty_state.browse.button": "📂 फ़ोल्डर ब्राउज़ करें",
   "empty_state.recent.title": "🕐 हाल के प्रोजेक्ट",
   "empty_state.browse.dialog_title": "📂 प्रोजेक्ट फ़ोल्डर चुनें",
-
   "status_bar.idle": "निष्क्रिय",
   "status_bar.tokens_count": "टोकन: {tokens}",
   "status_bar.tokens": "टोकन: {tokens}",
-
   "status_bar.local_model": " (स्थानीय मॉडल)",
-
   "analytics_panel.header.file": "फ़ाइल",
   "analytics_panel.header.tokens": "टोकन",
   "analytics_panel.header.weight": "वज़न",
-
   "file_tree.search.placeholder": "🔍 फ़ाइल खोजें...",
   "file_tree.expand_all": "▶ सभी विस्तृत करें",
   "file_tree.collapse_all": "▼ सभी संक्षिप्त करें",
@@ -264,11 +243,9 @@
   "file_tree.context.select_js": "🌐 केवल JS/TS",
   "file_tree.context.exclude_heavy": "🚫 भारी फ़ाइलें बाहर करें",
   "file_tree.context.exclude_all": "🚫 सभी बाहर करें",
-
   "folder_list.no_sources": "📂 कोई फ़ोल्डर नहीं जोड़ा गया",
   "folder_list.edit.tooltip": "✏️ पथ संपादित करें",
   "folder_list.delete.tooltip": "🗑 हटाएं",
-
   "main_controller.clear_temp_files": "🧹 अस्थायी फ़ोल्डर साफ़ किए जा रहे हैं...",
   "main_controller.choose_folders": "⚠️ कम से कम एक फ़ोल्डर चुनें।",
   "main_controller.choose_folders_or_url": "⚠️ कोई फ़ोल्डर चुनें या URL प्रदान करें।",
@@ -283,7 +260,6 @@
   "main_controller.clipboard_error": "❌ कॉपी त्रुटि: {error}",
   "main_controller.clipboard_error_generic": "❌ क्लिपबोर्ड पर कॉपी करने में त्रुटि",
   "main_controller.pr_filter_applied": "🔍 PR फ़िल्टर लागू: {count} फ़ाइलें",
-
   "cli_controller.starting": "🚀 CLI शुरू हो रहा है (मोड: {mode})",
   "cli_controller.target": "🎯 लक्ष्य: {target_path}",
   "cli_controller.critical_error": "❌ गंभीर त्रुटि: {exc}",
@@ -313,7 +289,6 @@
   "cli_controller.project_copied": "📋 {tokens} टोकन कॉपी किए गए",
   "cli_controller.path_not_found": "❌ पथ नहीं मिला: {path}",
   "cli_controller.window_closing": "⏳ विंडो 3 सेकंड में बंद हो जाएगी...",
-
   "store.status.done": "✅ हो गया",
   "store.status.scan_error": "❌ स्कैन त्रुटि: {error}",
   "store.status.scan_error_log": "त्रुटि: {error}",
@@ -323,7 +298,6 @@
   "store.status.files_found": "📄 फ़ाइलें मिलीं: {count}",
   "store.status.error_with_msg": "❌ त्रुटि: {error_msg}",
   "state.status.ready": "✅ तैयार",
-
   "process_use_case.workflow.preparing": "⚙️ तैयार किया जा रहा है...",
   "process_use_case.workflow.no_files": "⚠️ प्रक्रिया करने के लिए कोई फ़ाइल नहीं।",
   "process_use_case.workflow.reading": "📖 {count} फ़ाइलें पढ़ी जा रही हैं...",
@@ -337,19 +311,16 @@
   "process_use_case.export.chat_loaded": "💬 चैट में लोड हुआ",
   "process_use_case.export.saved": "💾 सहेजा गया: {path}",
   "process_use_case.export.pdf_created": "📄 PDF बनाई गई: {path}",
-
   "patch_use_case.patch.empty": "⚠️ खाली पैच।",
   "patch_use_case.parsing.parsing_llm": "🔍 LLM प्रतिक्रिया पार्स की जा रही है...",
   "patch_use_case.parsing.parse_error": "⚠️ JSON पार्स त्रुटि: {error}",
   "patch_use_case.parsing.no_valid_json": "❌ कोई वैध JSON नहीं मिला।",
   "patch_use_case.patch.preparing": "⚙️ {count} पैच तैयार किए जा रहे हैं...",
   "patch_use_case.patch.applied": "✅ पैच लागू: {count}",
-
   "llm_checker.send.no_url": "⚠️ LLM URL कॉन्फ़िगर नहीं है।",
   "llm_checker.check.disabled": "सेटिंग्स में LLM जांच अक्षम है।",
   "llm_checker.check.no_url_short": "LLM URL कॉन्फ़िगर नहीं है",
   "llm_checker.check.invalid_json": "LLM से अमान्य JSON प्रतिक्रिया",
-
   "patch_service.prepare.missing_file": "पैच के लिए कोई फ़ाइल निर्दिष्ट नहीं।",
   "patch_service.prepare.no_folders": "फ़ाइलों की खोज के लिए कोई बेस फ़ोल्डर नहीं।",
   "patch_service.prepare.created": "✅ बनाया जाएगा: {clean_target}",
@@ -366,20 +337,16 @@
   "patch_service.prepare.unknown_action": "❌ अज्ञात क्रिया: {action}",
   "patch_service.prepare.fuzzy_match": " (फ़ज़ी मैच: {fuzzy_marker:.0%})",
   "patch_service.apply.error": "❌ {file_target} पर पैच लागू करने में त्रुटि: {e}",
-
   "output_service.clipboard.linux_install": "Linux पर क्लिपबोर्ड समर्थन के लिए इंस्टॉल करें: sudo apt install xclip",
   "output_service.clipboard.copy_error": "क्लिपबोर्ड पर कॉपी करने में त्रुटि: {error}",
   "output_service.editor.open_error": "एडिटर '{editor_cmd}' नहीं खोला जा सका: {error}",
-
   "updater_service.check.no_description": "कोई विवरण नहीं",
   "updater_service.check.github_api_error": "GitHub API त्रुटि (कोड {code})",
   "updater_service.check.connection_error": "कनेक्शन त्रुटि: {error}",
   "updater_service.download.not_compiled": "ऑटो-अपडेट केवल संकलित संस्करण में उपलब्ध है।",
   "updater_service.download.no_app_in_archive": "आर्काइव में कोई .app नहीं मिला",
   "updater_service.download.download_failed": "डाउनलोड त्रुटि: {error}",
-
   "github_service.invalid_url": "अमान्य URL",
-
   "github_use_case.preparing": "GitHub तैयार किया जा रहा है...",
   "github_use_case.pr_detected": "🐙 Pull Request का पता चला। फ़ाइल सूची प्राप्त की जा रही है...",
   "github_use_case.pr_files_count": "PR से {count} फ़ाइलें प्राप्त हुईं।",
@@ -387,7 +354,6 @@
   "github_use_case.cloning_url": "GitHub: {url} क्लोन किया जा रहा है",
   "github_use_case.repo_loaded": "✅ रिपॉजिटरी लोड हुई: {path}",
   "github_use_case.github_error": "❌ GitHub त्रुटि: {error}",
-
   "updater_use_case.checking": "🔍 GitHub पर अपडेट की जाँच हो रही है (v{version})...",
   "updater_use_case.connecting": "GitHub सर्वर से कनेक्ट हो रहा है। कृपया प्रतीक्षा करें...",
   "updater_use_case.update_found": "🎉 नया संस्करण मिला: {version}",
@@ -401,7 +367,6 @@
   "updater_use_case.restarting": "पुनः आरंभ हो रहा है...",
   "updater_use_case.install_error": "❌ इंस्टॉलेशन त्रुटि: {error}",
   "updater_use_case.install_error_notes": "**अपडेट डाउनलोड या इंस्टॉल करने में विफल।**\n\nरोलबैक सफलतापूर्वक पूर्ण हुआ।\n\n`{error}`",
-
   "settings_use_case.reset": "सेटिंग्स रीसेट",
   "settings_use_case.local_config_applied": "⚙️ स्थानीय सेटिंग्स लागू: {path}",
   "settings_use_case.config_parse_error": "⚠️ {path} में पार्स त्रुटि: {error}",
@@ -413,13 +378,11 @@
   "settings_use_case.workspace_save_error": "वर्कस्पेस सहेजने में त्रुटि: {error}",
   "settings_use_case.workspace_loaded": "वर्कस्पेस लोड हुआ: {path}",
   "settings_use_case.workspace_load_error": "वर्कस्पेस लोड करने में त्रुटि: {error}",
-
   "scan_use_case.scanning": "स्कैन किया जा रहा है...",
   "scan_use_case.scan_started": "स्कैन शुरू हुआ...",
   "scan_use_case.no_files": "⚠️ कोई फ़ाइल नहीं मिली",
   "scan_use_case.analyzing": "टोकन और Git का विश्लेषण किया जा रहा है...",
   "scan_use_case.scan_complete": "स्कैन पूर्ण",
-
   "tour_service.welcome.title": "👋 CodeContext AI में आपका स्वागत है!",
   "tour_service.welcome.text": "CodeContext AI आपके कोडबेस का विश्लेषण करने का एक उपकरण है। यह आपके प्रोजेक्ट को स्कैन करता है, कॉन्टेक्स्ट एकत्र करता है, और आपको विश्लेषण, चैट या पैच निर्माण के लिए LLM को भेजने देता है।\n\nसुविधाओं के बारे में जानने के लिए \"आगे\" पर क्लिक करें।",
   "tour_service.folders_pr.title": "📂 फ़ोल्डर और GitHub PR",
@@ -442,7 +405,6 @@
   "tour_service.safety_diff.text": "प्रत्येक पैच डिफ़ पूर्वावलोकन से गुज़रता है। आप LLM के माध्यम से बदलावों की पुष्टि कर सकते हैं।\n\nचुनिंदा रूप से बदलाव स्वीकार या अस्वीकार करें।",
   "tour_service.os_integration.title": "🖥 OS एकीकरण",
   "tour_service.os_integration.text": "कॉन्टेक्स्ट मेनू (फ़ोल्डर पर राइट-क्लिक पर \"CodeContext AI\") और वैश्विक CLI इंस्टॉल करें।\n\nWindows: रजिस्ट्री के माध्यम से। macOS: Automator के माध्यम से। Linux: .desktop फ़ाइलों के माध्यम से।",
-
   "integration_strategies.windows.elevate_error": "❌ व्यवस्थापक अधिकारों का अनुरोध करने में त्रुटि: {exc}",
   "integration_strategies.windows.admin_required_install": "⚠️ कॉन्टेक्स्ट मेनू इंस्टॉल करने के लिए व्यवस्थापक अधिकार आवश्यक हैं। कृपया एप्लिकेशन को व्यवस्थापक के रूप में चलाएं।",
   "integration_strategies.windows.menu_open_ui": "CodeContext AI खोलें",
@@ -472,5 +434,27 @@
   "integration_strategies.linux.cli_remove_success": "✅ CLI हटा दिया गया।",
   "integration_strategies.linux.cli_remove_error": "❌ CLI हटाने में त्रुटि: {error}",
   "integration_strategies.macos.install_success": "✅ कॉन्टेक्स्ट मेनू इंस्टॉल हुआ।",
-  "integration_strategies.macos.remove_success": "✅ कॉन्टेक्स्ट मेनू हटा दिया गया।"
+  "integration_strategies.macos.remove_success": "✅ कॉन्टेक्स्ट मेनू हटा दिया गया।",
+  "formatting.hidden_lines": "... {c_start} समान पंक्तियाँ छिपाई गईं ...",
+  "dialogs.preview.generating_diff": "अंतर उत्पन्न हो रहा है...",
+  "action_panel.plugins.button": "🔌 प्लगइन्स",
+  "process_use_case.workflow.writing": "✍️ फ़ाइल लिखी जा रही है...",
+  "plugins.approval.title": "🔌 प्लगइन स्वीकृति",
+  "plugins.approval.heading": "नया प्लगइन: {name}",
+  "plugins.approval.info": "यह प्लगइन आपके प्रोजेक्ट तक पहुँच का अनुरोध कर रहा है:",
+  "plugins.approval.name": "नाम:",
+  "plugins.approval.id": "आईडी:",
+  "plugins.approval.version": "संस्करण:",
+  "plugins.approval.description": "विवरण:",
+  "plugins.approval.warning": "⚠️ सुनिश्चित करें कि आप इस प्लगइन के स्रोत पर भरोसा करते हैं। प्लगइन्स को फ़ाइल सिस्टम और एप्लिकेशन API तक पहुँच प्राप्त है।",
+  "plugins.approval.deny": "🚫 अस्वीकार करें",
+  "plugins.approval.allow": "✅ अनुमति दें",
+  "plugins.install.success": "✅ प्लगइन स्थापित हो गया।",
+  "plugins.install.error": "❌ प्लगइन स्थापित करने में त्रुटि: {error}",
+  "plugins.install.title": "📦 प्लगइन निर्भरता स्थापना",
+  "plugins.install.close": "बंद करें",
+  "sidebar.tab.plugins": "🔌 प्लगइन्स",
+  "sidebar.plugins.open_folder": "📂 प्लगइन फ़ोल्डर खोलें",
+  "sidebar.plugins.restart_required": "⚠️ पुनरारंभ आवश्यक",
+  "sidebar.plugins.restart_msg": "प्लगइन परिवर्तन लागू करने के लिए कृपया एप्लिकेशन को पुनरारंभ करें।"
 }

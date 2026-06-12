@@ -13,7 +13,6 @@
   "main.stdout": "Output to stdout",
   "main.fail_if_exceeds": "Fail if token limit exceeded",
   "main.sent_to_existing": "📤 Path sent to existing application instance",
-
   "main_window.title": "CodeContext AI",
   "main_window.tab.file_tree": "📂 Files",
   "main_window.tab.analytics": "📊 Analytics",
@@ -30,7 +29,6 @@
   "main_window.command.toggle_theme": "🎨 Toggle Theme",
   "main_window.command.check_updates": "🔄 Check for Updates",
   "main_window.save_file.title": "Save File",
-
   "dialogs.ai_chat_title": "AI Chat (CodeContext)",
   "dialogs.chat.title": "AI Chat",
   "dialogs.chat.placeholder": "Ask a question about the code...",
@@ -38,7 +36,6 @@
   "dialogs.chat.system_loaded": "📎 System context loaded. You can ask a question.",
   "dialogs.chat.you_label": "You",
   "dialogs.chat.waiting": "⏳ Waiting...",
-
   "dialogs.preview.title": "👁 Preview",
   "dialogs.preview.tab_prompt": "📝 Prompt",
   "dialogs.preview.files_in_prompt": "📄 Files in prompt:",
@@ -48,7 +45,7 @@
   "dialogs.preview.select_file": "File:",
   "dialogs.preview.savings_initial": "📊 Compare original and compressed version",
   "dialogs.preview.savings": "Savings: {original} → {processed} tokens ({percent:.1f}%)",
-
+  "dialogs.preview.generating_diff": "Generating diff...",
   "dialogs.bug_report.title": "Bug Report",
   "dialogs.bug_report.description": "Describe the bug you encountered:",
   "dialogs.bug_report.placeholder": "Steps to reproduce, expected behavior, etc...",
@@ -62,20 +59,16 @@
   "dialogs.bug_report.copied_msg": "Issue template copied. Paste it into the GitHub issue body.",
   "dialogs.clipboard_error": "❌ Clipboard error: {error}",
   "sidebar.bug_report.tooltip": "Found a bug? Send to Issue",
-
   "dialogs.tour.title": "🎓 Interactive Tour",
   "dialogs.tour.prev": "← Back",
   "dialogs.tour.next": "Next ➡",
   "dialogs.tour.finish": "🎉 Finish",
-
   "dialogs.edit_folder.title": "✏️ Edit Folder",
   "dialogs.edit_folder.ok": "✅ OK",
-
   "dialogs.json_patch.title": "🔧 JSON Patch",
   "dialogs.json_patch.instruction": "Enter JSON patch as a list of actions:",
   "dialogs.json_patch.cancel": "Cancel",
   "dialogs.json_patch.apply": "✅ Apply",
-
   "dialogs.diff.title": "🛡 Safe Diff Review",
   "dialogs.diff.check_llm": "🔍 Check with LLM",
   "dialogs.diff.verdict_placeholder": "Verdict...",
@@ -92,7 +85,6 @@
   "dialogs.diff.updated_by_ai": " [Updated by AI]",
   "dialogs.diff.suggestion_applied": "✅ Suggestion Applied",
   "dialogs.diff.suggestion_rejected": "❌ Suggestion Rejected",
-
   "dialogs.update.title": "🔄 Update",
   "dialogs.update.checking": "🔍 Checking update {version}...",
   "dialogs.update.cancel": "Cancel",
@@ -105,9 +97,7 @@
   "dialogs.update.downloading": "⬇️ Downloading...",
   "dialogs.update.installing": "⚙️ Installing update...",
   "dialogs.update.install_notes": "Please wait, the update is being installed...",
-
   "dialogs.command_palette.placeholder": "🔍 Search command...",
-
   "dialogs.ui_customization.title": "⚙️ Interface Customization",
   "dialogs.ui_customization.visible_tabs": "Visible tabs:",
   "dialogs.ui_customization.tab_sources": "📂 Sources",
@@ -128,14 +118,26 @@
   "dialogs.ui_customization.checkbox_watch": "☑ Auto-Watch",
   "dialogs.ui_customization.cancel": "Cancel",
   "dialogs.ui_customization.save": "💾 Save",
-
+  "plugins.approval.title": "🔌 Plugin Approval",
+  "plugins.approval.heading": "New Plugin: {name}",
+  "plugins.approval.info": "This plugin is requesting access to your project:",
+  "plugins.approval.name": "Name:",
+  "plugins.approval.id": "ID:",
+  "plugins.approval.version": "Version:",
+  "plugins.approval.description": "Description:",
+  "plugins.approval.warning": "⚠️ Make sure you trust the source of this plugin. Plugins have access to the file system and application API.",
+  "plugins.approval.deny": "🚫 Deny",
+  "plugins.approval.allow": "✅ Allow",
+  "plugins.install.success": "✅ Plugin installed.",
+  "plugins.install.error": "❌ Error installing plugin: {error}",
+  "plugins.install.title": "📦 Plugin Dependency Installation",
+  "plugins.install.close": "Close",
   "sidebar.title": "CodeContext AI",
   "sidebar.tab.sources": "📂 Sources",
   "sidebar.tab.filters": "🔧 Filters",
   "sidebar.tab.prompts": "📝 Prompts",
   "sidebar.tab.llm_os": "🤖 LLM & OS",
   "sidebar.tab.appearance": "🎨 Appearance",
-
   "sidebar.ui_settings.tooltip": "⚙️ Interface Settings",
   "sidebar.tour.button": "🎓 Tour",
   "sidebar.version.label": "v{version}",
@@ -209,7 +211,6 @@
   "sidebar.success.title": "✅ Success",
   "sidebar.import_theme.success": "Theme \"{filename}\" imported successfully.",
   "sidebar.import_theme.error": "Error importing theme: {error}",
-
   "action_panel.minify": "Minify",
   "action_panel.chk_minify": "Minify",
   "action_panel.no_comments": "No Comments",
@@ -230,22 +231,19 @@
   "action_panel.chk_checkpoints": "Checkpoints",
   "action_panel.chk_watch": "Auto-Watch",
   "action_panel.template.dialog_title": "Select Jinja2 template",
-
+  "action_panel.plugins.button": "🔌 Plugins",
   "empty_state.drop.title": "📂 Drop a folder here",
   "empty_state.drop.subtitle": "or click the button below",
   "empty_state.browse.button": "📂 Browse Folder",
   "empty_state.recent.title": "🕐 Recent Projects",
   "empty_state.browse.dialog_title": "📂 Select project folder",
-
   "status_bar.idle": "Idle",
   "status_bar.tokens_count": "Tokens: {tokens}",
   "status_bar.tokens": "Tokens: {tokens}",
   "status_bar.local_model": " (local model)",
-
   "analytics_panel.header.file": "File",
   "analytics_panel.header.tokens": "Tokens",
   "analytics_panel.header.weight": "Weight",
-
   "file_tree.search.placeholder": "🔍 Search file...",
   "file_tree.expand_all": "▶ Expand All",
   "file_tree.collapse_all": "▼ Collapse All",
@@ -261,11 +259,10 @@
   "file_tree.context.select_js": "🌐 JS/TS only",
   "file_tree.context.exclude_heavy": "🚫 Exclude heavy",
   "file_tree.context.exclude_all": "🚫 Exclude all",
-
   "folder_list.no_sources": "📂 No folders added",
   "folder_list.edit.tooltip": "✏️ Edit path",
   "folder_list.delete.tooltip": "🗑 Delete",
-
+  "formatting.hidden_lines": "... {c_start} identical lines hidden ...",
   "main_controller.clear_temp_files": "🧹 Cleaning temporary folders...",
   "main_controller.choose_folders": "⚠️ Select at least one folder.",
   "main_controller.choose_folders_or_url": "⚠️ Select a folder or provide a URL.",
@@ -280,7 +277,6 @@
   "main_controller.clipboard_error": "❌ Copy error: {error}",
   "main_controller.clipboard_error_generic": "❌ Error copying to clipboard",
   "main_controller.pr_filter_applied": "🔍 PR filter applied: {count} files",
-
   "cli_controller.starting": "🚀 Starting CLI (mode: {mode})",
   "cli_controller.target": "🎯 Target: {target_path}",
   "cli_controller.critical_error": "❌ Critical error: {exc}",
@@ -310,7 +306,6 @@
   "cli_controller.project_copied": "📋 Copied {tokens} tokens",
   "cli_controller.path_not_found": "❌ Path not found: {path}",
   "cli_controller.window_closing": "⏳ Window will close in 3 seconds...",
-
   "store.status.done": "✅ Done",
   "store.status.scan_error": "❌ Scan error: {error}",
   "store.status.scan_error_log": "Error: {error}",
@@ -320,7 +315,6 @@
   "store.status.files_found": "📄 Files found: {count}",
   "store.status.error_with_msg": "❌ Error: {error_msg}",
   "state.status.ready": "✅ Ready",
-
   "process_use_case.workflow.preparing": "⚙️ Preparing...",
   "process_use_case.workflow.no_files": "⚠️ No files to process.",
   "process_use_case.workflow.reading": "📖 Reading {count} files...",
@@ -328,25 +322,23 @@
   "process_use_case.workflow.processing_minifying": "⚙️ Processing and minifying...",
   "process_use_case.workflow.formatting": "📝 Formatting...",
   "process_use_case.workflow.saving": "💾 Saving...",
+  "process_use_case.workflow.writing": "✍️ Writing file...",
   "process_use_case.workflow.done": "✅ Done ({count} tokens)",
   "process_use_case.workflow.error": "❌ Error: {error}",
   "process_use_case.export.editor": "📝 Opened in editor",
   "process_use_case.export.chat_loaded": "💬 Loaded into chat",
   "process_use_case.export.saved": "💾 Saved: {path}",
   "process_use_case.export.pdf_created": "📄 PDF created: {path}",
-
   "patch_use_case.patch.empty": "⚠️ Empty patch.",
   "patch_use_case.parsing.parsing_llm": "🔍 Parsing LLM response...",
   "patch_use_case.parsing.parse_error": "⚠️ JSON parse error: {error}",
   "patch_use_case.parsing.no_valid_json": "❌ No valid JSON found.",
   "patch_use_case.patch.preparing": "⚙️ Preparing {count} patches...",
   "patch_use_case.patch.applied": "✅ Patches applied: {count}",
-
   "llm_checker.send.no_url": "⚠️ LLM URL not configured.",
   "llm_checker.check.disabled": "LLM check is disabled in settings.",
   "llm_checker.check.no_url_short": "LLM URL not configured",
   "llm_checker.check.invalid_json": "Invalid JSON response from LLM",
-
   "patch_service.prepare.missing_file": "No file specified for patch.",
   "patch_service.prepare.no_folders": "No base folders to search for files.",
   "patch_service.prepare.created": "✅ Will be created: {clean_target}",
@@ -363,20 +355,16 @@
   "patch_service.prepare.unknown_action": "❌ Unknown action: {action}",
   "patch_service.prepare.fuzzy_match": " (fuzzy match: {fuzzy_marker:.0%})",
   "patch_service.apply.error": "❌ Error applying patch to {file_target}: {e}",
-
   "output_service.clipboard.linux_install": "For clipboard support on Linux, install: sudo apt install xclip",
   "output_service.clipboard.copy_error": "Error copying to clipboard: {error}",
   "output_service.editor.open_error": "Could not open editor '{editor_cmd}': {error}",
-
   "updater_service.check.no_description": "No description",
   "updater_service.check.github_api_error": "GitHub API error (code {code})",
   "updater_service.check.connection_error": "Connection error: {error}",
   "updater_service.download.not_compiled": "Auto-update is only available in compiled version.",
   "updater_service.download.no_app_in_archive": "No .app found in archive",
   "updater_service.download.download_failed": "Download error: {error}",
-
   "github_service.invalid_url": "Invalid URL",
-
   "github_use_case.preparing": "Preparing GitHub...",
   "github_use_case.pr_detected": "🐙 Pull Request detected. Fetching file list...",
   "github_use_case.pr_files_count": "Retrieved {count} files from PR.",
@@ -384,7 +372,6 @@
   "github_use_case.cloning_url": "GitHub: cloning {url}",
   "github_use_case.repo_loaded": "✅ Repository loaded: {path}",
   "github_use_case.github_error": "❌ GitHub Error: {error}",
-
   "updater_use_case.checking": "🔍 Checking for updates on GitHub (v{version})...",
   "updater_use_case.connecting": "Connecting to GitHub server. Please wait...",
   "updater_use_case.update_found": "🎉 New version found: {version}",
@@ -398,7 +385,6 @@
   "updater_use_case.restarting": "Restarting...",
   "updater_use_case.install_error": "❌ Installation error: {error}",
   "updater_use_case.install_error_notes": "**Failed to download or install update.**\n\nRollback completed successfully.\n\n`{error}`",
-
   "settings_use_case.reset": "Settings reset",
   "settings_use_case.local_config_applied": "⚙️ Local settings applied from: {path}",
   "settings_use_case.config_parse_error": "⚠️ Parse error in {path}: {error}",
@@ -410,13 +396,11 @@
   "settings_use_case.workspace_save_error": "Error saving workspace: {error}",
   "settings_use_case.workspace_loaded": "Workspace loaded: {path}",
   "settings_use_case.workspace_load_error": "Error loading workspace: {error}",
-
   "scan_use_case.scanning": "Scanning...",
   "scan_use_case.scan_started": "Scan started...",
   "scan_use_case.no_files": "⚠️ No files found",
   "scan_use_case.analyzing": "Analyzing tokens and Git...",
   "scan_use_case.scan_complete": "Scan complete",
-
   "tour_service.welcome.title": "👋 Welcome to CodeContext AI!",
   "tour_service.welcome.text": "CodeContext AI is a tool for analyzing your codebase. It scans your project, gathers context, and lets you send it to an LLM for analysis, chat, or patch creation.\n\nClick \"Next\" to learn about the features.",
   "tour_service.folders_pr.title": "📂 Folders and GitHub PR",
@@ -439,7 +423,6 @@
   "tour_service.safety_diff.text": "Each patch goes through a diff preview. You can verify changes via LLM.\n\nAccept or reject changes selectively.",
   "tour_service.os_integration.title": "🖥 OS Integration",
   "tour_service.os_integration.text": "Install the context menu (\"CodeContext AI\" on right-click of a folder) and a global CLI.\n\nWindows: via registry. macOS: via Automator. Linux: via .desktop files.",
-
   "integration_strategies.windows.elevate_error": "❌ Error requesting admin privileges: {exc}",
   "integration_strategies.windows.admin_required_install": "⚠️ Administrator privileges are required to install the context menu. Please run the application as administrator.",
   "integration_strategies.windows.menu_open_ui": "Open CodeContext AI",
@@ -469,5 +452,9 @@
   "integration_strategies.linux.cli_remove_success": "✅ CLI removed.",
   "integration_strategies.linux.cli_remove_error": "❌ Error removing CLI: {error}",
   "integration_strategies.macos.install_success": "✅ Context menu installed.",
-  "integration_strategies.macos.remove_success": "✅ Context menu removed."
+  "integration_strategies.macos.remove_success": "✅ Context menu removed.",
+  "sidebar.tab.plugins": "🔌 Plugins",
+  "sidebar.plugins.open_folder": "📂 Open plugins folder",
+  "sidebar.plugins.restart_required": "⚠️ Restart Required",
+  "sidebar.plugins.restart_msg": "Please restart the application to apply plugin changes."
 }

@@ -4,6 +4,7 @@ import os
 import sys
 
 _translations: dict[str, str] = {}
+_plugin_translations: dict[str, dict[str, str]] = {}
 _current_lang: str = "ru"
 _loaded: set[str] = set()
 
@@ -58,10 +59,16 @@ def load_translations(lang: str | None = None) -> None:
         _translations.update(json.load(f))
     _loaded.add(path)
 
+def add_plugin_translations(lang: str, data: dict) -> None:
+    _plugin_translations.setdefault(lang, {}).update(data)
+
 def tr(key: str, default: str = None, **kwargs) -> str:
     if not _translations:
         load_translations()
-    text = _translations.get(key, default if default is not None else key)
+    text = _translations.get(key)
+    if text is None:
+        plugin_dict = _plugin_translations.get(_current_lang, {})
+        text = plugin_dict.get(key, default if default is not None else key)
     if kwargs:
         try:
             return text.format(**kwargs)

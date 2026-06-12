@@ -1,4 +1,4 @@
-﻿{
+{
   "main.cli_mode": "CLI modu",
   "main.path": "Proje yolu",
   "main.patch": "JSON yama dosyası",
@@ -13,7 +13,6 @@
   "main.stdout": "Stdout'a çıktı",
   "main.fail_if_exceeds": "Token sınırı aşılırsa hata ver",
   "main.sent_to_existing": "📤 Yol mevcut uygulama örneğine gönderildi",
-
   "main_window.title": "CodeContext AI",
   "main_window.tab.file_tree": "📂 Dosyalar",
   "main_window.tab.analytics": "📊 Analiz",
@@ -30,16 +29,13 @@
   "main_window.command.toggle_theme": "🎨 Temayı Değiştir",
   "main_window.command.check_updates": "🔄 Güncellemeleri Kontrol Et",
   "main_window.save_file.title": "Dosyayı Kaydet",
-
   "dialogs.ai_chat_title": "AI Sohbet (CodeContext)",
   "dialogs.chat.title": "AI Sohbet",
-
   "dialogs.chat.placeholder": "Kod hakkında bir soru sorun...",
   "dialogs.chat.send": "Gönder",
   "dialogs.chat.system_loaded": "📎 Sistem bağlamı yüklendi. Bir soru sorabilirsiniz.",
   "dialogs.chat.you_label": "Siz",
   "dialogs.chat.waiting": "⏳ Bekleniyor...",
-
   "dialogs.preview.title": "👁 Önizleme",
   "dialogs.preview.tab_prompt": "📝 İstem",
   "dialogs.preview.files_in_prompt": "📄 İstemdeki dosyalar:",
@@ -49,7 +45,6 @@
   "dialogs.preview.select_file": "Dosya:",
   "dialogs.preview.savings_initial": "📊 Orijinal ve sıkıştırılmış sürümü karşılaştır",
   "dialogs.preview.savings": "Tasarruf: {original} → {processed} token ({percent:.1f}%)",
-
   "dialogs.bug_report.title": "Hata Bildir",
   "dialogs.bug_report.description": "Karşılaştığın hatayı açıkla:",
   "dialogs.bug_report.placeholder": "Tekrarlama adımları, beklenen davranış, vb...",
@@ -63,20 +58,16 @@
   "dialogs.bug_report.copied_msg": "Issue şablonu kopyalandı. GitHub Issue gövdesine yapıştır.",
   "dialogs.clipboard_error": "❌ Pano hatası: {error}",
   "sidebar.bug_report.tooltip": "Hata buldun mu? Issue'a gönder",
-
   "dialogs.tour.title": "🎓 Etkileşimli Tur",
   "dialogs.tour.prev": "← Geri",
   "dialogs.tour.next": "İleri ➡",
   "dialogs.tour.finish": "🎉 Bitir",
-
   "dialogs.edit_folder.title": "✏️ Klasörü Düzenle",
   "dialogs.edit_folder.ok": "✅ Tamam",
-
   "dialogs.json_patch.title": "🔧 JSON Yama",
   "dialogs.json_patch.instruction": "JSON yamayı eylem listesi olarak girin:",
   "dialogs.json_patch.cancel": "İptal",
   "dialogs.json_patch.apply": "✅ Uygula",
-
   "dialogs.diff.title": "🛡 Güvenli Fark İncelemesi",
   "dialogs.diff.check_llm": "🔍 LLM ile Kontrol Et",
   "dialogs.diff.verdict_placeholder": "Karar...",
@@ -93,7 +84,6 @@
   "dialogs.diff.updated_by_ai": " [AI Tarafından Güncellendi]",
   "dialogs.diff.suggestion_applied": "✅ Öneri Uygulandı",
   "dialogs.diff.suggestion_rejected": "❌ Öneri Reddedildi",
-
   "dialogs.update.title": "🔄 Güncelleme",
   "dialogs.update.checking": "🔍 {version} güncellemesi kontrol ediliyor...",
   "dialogs.update.cancel": "İptal",
@@ -106,9 +96,7 @@
   "dialogs.update.downloading": "⬇️ İndiriliyor...",
   "dialogs.update.installing": "⚙️ Güncelleme yükleniyor...",
   "dialogs.update.install_notes": "Lütfen bekleyin, güncelleme yükleniyor...",
-
   "dialogs.command_palette.placeholder": "🔍 Komut ara...",
-
   "dialogs.ui_customization.title": "⚙️ Arayüz Özelleştirme",
   "dialogs.ui_customization.visible_tabs": "Görünür sekmeler:",
   "dialogs.ui_customization.tab_sources": "📂 Kaynaklar",
@@ -129,14 +117,12 @@
   "dialogs.ui_customization.checkbox_watch": "☑ Otomatik izle",
   "dialogs.ui_customization.cancel": "İptal",
   "dialogs.ui_customization.save": "💾 Kaydet",
-
   "sidebar.title": "CodeContext AI",
   "sidebar.tab.sources": "📂 Kaynaklar",
   "sidebar.tab.filters": "🔧 Filtreler",
   "sidebar.tab.prompts": "📝 İstemler",
   "sidebar.tab.llm_os": "🤖 LLM ve İS",
   "sidebar.tab.appearance": "🎨 Görünüm",
-
   "sidebar.ui_settings.tooltip": "⚙️ Arayüz Ayarları",
   "sidebar.tour.button": "🎓 Tur",
   "sidebar.version.label": "v{version}",
@@ -210,7 +196,6 @@
   "sidebar.success.title": "✅ Başarılı",
   "sidebar.import_theme.success": "\"{filename}\" teması başarıyla içe aktarıldı.",
   "sidebar.import_theme.error": "Tema içe aktarılırken hata: {error}",
-
   "action_panel.minify": "Küçült",
   "action_panel.chk_minify": "Küçült",
   "action_panel.no_comments": "Yorum yok",
@@ -219,7 +204,6 @@
   "action_panel.chk_secrets": "Sır yok",
   "action_panel.skeleton": "İskelet",
   "action_panel.chk_skeleton": "İskelet",
-
   "action_panel.template.tooltip": "📁 Jinja2 şablonu seç",
   "action_panel.preview.button": "👁 Önizleme",
   "action_panel.clipboard.button": "📋 Kopyala",
@@ -232,23 +216,18 @@
   "action_panel.chk_checkpoints": "Kontrol noktaları",
   "action_panel.chk_watch": "Otomatik izle",
   "action_panel.template.dialog_title": "Jinja2 şablonu seç",
-
   "empty_state.drop.title": "📂 Bir klasörü buraya bırakın",
   "empty_state.drop.subtitle": "veya aşağıdaki düğmeye tıklayın",
   "empty_state.browse.button": "📂 Klasöre Gözat",
   "empty_state.recent.title": "🕐 Son Projeler",
   "empty_state.browse.dialog_title": "📂 Proje klasörünü seç",
-
   "status_bar.idle": "Boşta",
   "status_bar.tokens_count": "Token: {tokens}",
   "status_bar.tokens": "Token: {tokens}",
-
   "status_bar.local_model": " (yerel model)",
-
   "analytics_panel.header.file": "Dosya",
   "analytics_panel.header.tokens": "Tokenler",
   "analytics_panel.header.weight": "Ağırlık",
-
   "file_tree.search.placeholder": "🔍 Dosya ara...",
   "file_tree.expand_all": "▶ Tümünü Genişlet",
   "file_tree.collapse_all": "▼ Tümünü Daralt",
@@ -264,11 +243,9 @@
   "file_tree.context.select_js": "🌐 Yalnızca JS/TS",
   "file_tree.context.exclude_heavy": "🚫 Ağır olanları hariç tut",
   "file_tree.context.exclude_all": "🚫 Tümünü hariç tut",
-
   "folder_list.no_sources": "📂 Klasör eklenmemiş",
   "folder_list.edit.tooltip": "✏️ Yolu düzenle",
   "folder_list.delete.tooltip": "🗑 Sil",
-
   "main_controller.clear_temp_files": "🧹 Geçici klasörler temizleniyor...",
   "main_controller.choose_folders": "⚠️ En az bir klasör seçin.",
   "main_controller.choose_folders_or_url": "⚠️ Bir klasör seçin veya bir URL girin.",
@@ -283,7 +260,6 @@
   "main_controller.clipboard_error": "❌ Kopyalama hatası: {error}",
   "main_controller.clipboard_error_generic": "❌ Panoya kopyalama hatası",
   "main_controller.pr_filter_applied": "🔍 PR filtresi uygulandı: {count} dosya",
-
   "cli_controller.starting": "🚀 CLI başlatılıyor (mod: {mode})",
   "cli_controller.target": "🎯 Hedef: {target_path}",
   "cli_controller.critical_error": "❌ Kritik hata: {exc}",
@@ -313,7 +289,6 @@
   "cli_controller.project_copied": "📋 {tokens} token kopyalandı",
   "cli_controller.path_not_found": "❌ Yol bulunamadı: {path}",
   "cli_controller.window_closing": "⏳ Pencere 3 saniye içinde kapanacak...",
-
   "store.status.done": "✅ Tamam",
   "store.status.scan_error": "❌ Tarama hatası: {error}",
   "store.status.scan_error_log": "Hata: {error}",
@@ -323,7 +298,6 @@
   "store.status.files_found": "📄 Bulunan dosya: {count}",
   "store.status.error_with_msg": "❌ Hata: {error_msg}",
   "state.status.ready": "✅ Hazır",
-
   "process_use_case.workflow.preparing": "⚙️ Hazırlanıyor...",
   "process_use_case.workflow.no_files": "⚠️ İşlenecek dosya yok.",
   "process_use_case.workflow.reading": "📖 {count} dosya okunuyor...",
@@ -337,19 +311,16 @@
   "process_use_case.export.chat_loaded": "💬 Sohbete yüklendi",
   "process_use_case.export.saved": "💾 Kaydedildi: {path}",
   "process_use_case.export.pdf_created": "📄 PDF oluşturuldu: {path}",
-
   "patch_use_case.patch.empty": "⚠️ Boş yama.",
   "patch_use_case.parsing.parsing_llm": "🔍 LLM yanıtı ayrıştırılıyor...",
   "patch_use_case.parsing.parse_error": "⚠️ JSON ayrıştırma hatası: {error}",
   "patch_use_case.parsing.no_valid_json": "❌ Geçerli JSON bulunamadı.",
   "patch_use_case.patch.preparing": "⚙️ {count} yama hazırlanıyor...",
   "patch_use_case.patch.applied": "✅ Yamalar uygulandı: {count}",
-
   "llm_checker.send.no_url": "⚠️ LLM URL'si yapılandırılmamış.",
   "llm_checker.check.disabled": "LLM kontrolü ayarlarda devre dışı.",
   "llm_checker.check.no_url_short": "LLM URL'si yapılandırılmamış",
   "llm_checker.check.invalid_json": "LLM'den geçersiz JSON yanıtı",
-
   "patch_service.prepare.missing_file": "Yama için dosya belirtilmemiş.",
   "patch_service.prepare.no_folders": "Dosyaları aramak için temel klasör yok.",
   "patch_service.prepare.created": "✅ Oluşturulacak: {clean_target}",
@@ -366,20 +337,16 @@
   "patch_service.prepare.unknown_action": "❌ Bilinmeyen eylem: {action}",
   "patch_service.prepare.fuzzy_match": " (bulanık eşleşme: {fuzzy_marker:.0%})",
   "patch_service.apply.error": "❌ {file_target} dosyasına yama uygulanırken hata: {e}",
-
   "output_service.clipboard.linux_install": "Linux'ta pano desteği için kurun: sudo apt install xclip",
   "output_service.clipboard.copy_error": "Panoya kopyalama hatası: {error}",
   "output_service.editor.open_error": "'{editor_cmd}' düzenleyicisi açılamadı: {error}",
-
   "updater_service.check.no_description": "Açıklama yok",
   "updater_service.check.github_api_error": "GitHub API hatası (kod {code})",
   "updater_service.check.connection_error": "Bağlantı hatası: {error}",
   "updater_service.download.not_compiled": "Otomatik güncelleme yalnızca derlenmiş sürümde kullanılabilir.",
   "updater_service.download.no_app_in_archive": "Arşivde .app bulunamadı",
   "updater_service.download.download_failed": "İndirme hatası: {error}",
-
   "github_service.invalid_url": "Geçersiz URL",
-
   "github_use_case.preparing": "GitHub hazırlanıyor...",
   "github_use_case.pr_detected": "🐙 Pull Request algılandı. Dosya listesi alınıyor...",
   "github_use_case.pr_files_count": "PR'den {count} dosya alındı.",
@@ -387,7 +354,6 @@
   "github_use_case.cloning_url": "GitHub: {url} klonlanıyor",
   "github_use_case.repo_loaded": "✅ Depo yüklendi: {path}",
   "github_use_case.github_error": "❌ GitHub Hatası: {error}",
-
   "updater_use_case.checking": "🔍 GitHub'da güncellemeler kontrol ediliyor (v{version})...",
   "updater_use_case.connecting": "GitHub sunucusuna bağlanılıyor. Lütfen bekleyin...",
   "updater_use_case.update_found": "🎉 Yeni sürüm bulundu: {version}",
@@ -401,7 +367,6 @@
   "updater_use_case.restarting": "Yeniden başlatılıyor...",
   "updater_use_case.install_error": "❌ Yükleme hatası: {error}",
   "updater_use_case.install_error_notes": "**Güncelleme indirilemedi veya yüklenemedi.**\n\nGeri alma başarıyla tamamlandı.\n\n`{error}`",
-
   "settings_use_case.reset": "Ayarlar sıfırlandı",
   "settings_use_case.local_config_applied": "⚙️ Yerel ayarlar uygulandı: {path}",
   "settings_use_case.config_parse_error": "⚠️ {path} dosyasında ayrıştırma hatası: {error}",
@@ -413,13 +378,11 @@
   "settings_use_case.workspace_save_error": "Çalışma alanı kaydedilirken hata: {error}",
   "settings_use_case.workspace_loaded": "Çalışma alanı yüklendi: {path}",
   "settings_use_case.workspace_load_error": "Çalışma alanı yüklenirken hata: {error}",
-
   "scan_use_case.scanning": "Taranıyor...",
   "scan_use_case.scan_started": "Tarama başladı...",
   "scan_use_case.no_files": "⚠️ Dosya bulunamadı",
   "scan_use_case.analyzing": "Tokenler ve Git analiz ediliyor...",
   "scan_use_case.scan_complete": "Tarama tamamlandı",
-
   "tour_service.welcome.title": "👋 CodeContext AI'ya Hoş Geldiniz!",
   "tour_service.welcome.text": "CodeContext AI, kod tabanınızı analiz etmek için bir araçtır. Projenizi tarar, bağlamı toplar ve analiz, sohbet veya yama oluşturma için bir LLM'ye göndermenizi sağlar.\n\nÖzellikler hakkında bilgi edinmek için \"İleri\"ye tıklayın.",
   "tour_service.folders_pr.title": "📂 Klasörler ve GitHub PR",
@@ -442,7 +405,6 @@
   "tour_service.safety_diff.text": "Her yama bir fark önizlemesinden geçer. Değişiklikleri LLM aracılığıyla doğrulayabilirsiniz.\n\nDeğişiklikleri seçerek kabul edin veya reddedin.",
   "tour_service.os_integration.title": "🖥 İşletim Sistemi Entegrasyonu",
   "tour_service.os_integration.text": "Bağlam menüsünü (bir klasöre sağ tıkladığınızda \"CodeContext AI\") ve global CLI'yi kurun.\n\nWindows: kayıt defteri ile. macOS: Automator ile. Linux: .desktop dosyaları ile.",
-
   "integration_strategies.windows.elevate_error": "❌ Yönetici ayrıcalıkları istenirken hata: {exc}",
   "integration_strategies.windows.admin_required_install": "⚠️ Bağlam menüsünü yüklemek için yönetici ayrıcalıkları gereklidir. Lütfen uygulamayı yönetici olarak çalıştırın.",
   "integration_strategies.windows.menu_open_ui": "CodeContext AI'yı Aç",
@@ -472,5 +434,27 @@
   "integration_strategies.linux.cli_remove_success": "✅ CLI kaldırıldı.",
   "integration_strategies.linux.cli_remove_error": "❌ CLI kaldırılırken hata: {error}",
   "integration_strategies.macos.install_success": "✅ Bağlam menüsü yüklendi.",
-  "integration_strategies.macos.remove_success": "✅ Bağlam menüsü kaldırıldı."
+  "integration_strategies.macos.remove_success": "✅ Bağlam menüsü kaldırıldı.",
+  "formatting.hidden_lines": "... {c_start} aynı satır gizlendi ...",
+  "dialogs.preview.generating_diff": "Farklar oluşturuluyor...",
+  "action_panel.plugins.button": "🔌 Eklentiler",
+  "process_use_case.workflow.writing": "✍️ Dosya yazılıyor...",
+  "plugins.approval.title": "🔌 Eklenti Onayı",
+  "plugins.approval.heading": "Yeni eklenti: {name}",
+  "plugins.approval.info": "Bu eklenti projenize erişim talep ediyor:",
+  "plugins.approval.name": "Ad:",
+  "plugins.approval.id": "ID:",
+  "plugins.approval.version": "Sürüm:",
+  "plugins.approval.description": "Açıklama:",
+  "plugins.approval.warning": "⚠️ Bu eklentinin kaynağına güvendiğinizden emin olun. Eklentiler dosya sistemine ve uygulama API'sine erişebilir.",
+  "plugins.approval.deny": "🚫 Reddet",
+  "plugins.approval.allow": "✅ İzin Ver",
+  "plugins.install.success": "✅ Eklenti yüklendi.",
+  "plugins.install.error": "❌ Eklenti yüklenirken hata: {error}",
+  "plugins.install.title": "📦 Eklenti Bağımlılık Yüklemesi",
+  "plugins.install.close": "Kapat",
+  "sidebar.tab.plugins": "🔌 Eklentiler",
+  "sidebar.plugins.open_folder": "📂 Eklenti klasörünü aç",
+  "sidebar.plugins.restart_required": "⚠️ Yeniden başlatma gerekli",
+  "sidebar.plugins.restart_msg": "Plugin değişikliklerini uygulamak için uygulamayı yeniden başlatın."
 }

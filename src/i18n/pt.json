@@ -1,4 +1,4 @@
-﻿{
+{
   "main.cli_mode": "Modo CLI",
   "main.path": "Caminho do projeto",
   "main.patch": "Arquivo de patch JSON",
@@ -13,7 +13,6 @@
   "main.stdout": "Saída para stdout",
   "main.fail_if_exceeds": "Falhar se limite de tokens excedido",
   "main.sent_to_existing": "📤 Caminho enviado para instância existente do aplicativo",
-
   "main_window.title": "CodeContext AI",
   "main_window.tab.file_tree": "📂 Arquivos",
   "main_window.tab.analytics": "📊 Análises",
@@ -30,16 +29,13 @@
   "main_window.command.toggle_theme": "🎨 Alternar Tema",
   "main_window.command.check_updates": "🔄 Verificar Atualizações",
   "main_window.save_file.title": "Salvar Arquivo",
-
   "dialogs.ai_chat_title": "Chat IA (CodeContext)",
   "dialogs.chat.title": "Chat IA",
-
   "dialogs.chat.placeholder": "Faça uma pergunta sobre o código...",
   "dialogs.chat.send": "Enviar",
   "dialogs.chat.system_loaded": "📎 Contexto do sistema carregado. Você pode fazer uma pergunta.",
   "dialogs.chat.you_label": "Você",
   "dialogs.chat.waiting": "⏳ Aguardando...",
-
   "dialogs.preview.title": "👁 Visualizar",
   "dialogs.preview.tab_prompt": "📝 Prompt",
   "dialogs.preview.files_in_prompt": "📄 Arquivos no prompt:",
@@ -49,7 +45,6 @@
   "dialogs.preview.select_file": "Arquivo:",
   "dialogs.preview.savings_initial": "📊 Comparar versão original e compactada",
   "dialogs.preview.savings": "Economia: {original} → {processed} tokens ({percent:.1f}%)",
-
   "dialogs.bug_report.title": "Relatório de bug",
   "dialogs.bug_report.description": "Descreva o bug que você encontrou:",
   "dialogs.bug_report.placeholder": "Passos para reproduzir, comportamento esperado, etc...",
@@ -63,20 +58,16 @@
   "dialogs.bug_report.copied_msg": "Modelo de Issue copiado. Cole no corpo da Issue do GitHub.",
   "dialogs.clipboard_error": "❌ Erro da área de transferência: {error}",
   "sidebar.bug_report.tooltip": "Encontrou um bug? Enviar para Issue",
-
   "dialogs.tour.title": "🎓 Tour Interativo",
   "dialogs.tour.prev": "← Voltar",
   "dialogs.tour.next": "Avançar ➡",
   "dialogs.tour.finish": "🎉 Concluir",
-
   "dialogs.edit_folder.title": "✏️ Editar Pasta",
   "dialogs.edit_folder.ok": "✅ OK",
-
   "dialogs.json_patch.title": "🔧 Patch JSON",
   "dialogs.json_patch.instruction": "Insira o JSON patch como uma lista de ações:",
   "dialogs.json_patch.cancel": "Cancelar",
   "dialogs.json_patch.apply": "✅ Aplicar",
-
   "dialogs.diff.title": "🛡 Revisão Segura de Diff",
   "dialogs.diff.check_llm": "🔍 Verificar com LLM",
   "dialogs.diff.verdict_placeholder": "Veredito...",
@@ -93,7 +84,6 @@
   "dialogs.diff.updated_by_ai": " [Atualizado pela IA]",
   "dialogs.diff.suggestion_applied": "✅ Sugestão Aplicada",
   "dialogs.diff.suggestion_rejected": "❌ Sugestão Rejeitada",
-
   "dialogs.update.title": "🔄 Atualização",
   "dialogs.update.checking": "🔍 Verificando atualização {version}...",
   "dialogs.update.cancel": "Cancelar",
@@ -106,9 +96,7 @@
   "dialogs.update.downloading": "⬇️ Baixando...",
   "dialogs.update.installing": "⚙️ Instalando atualização...",
   "dialogs.update.install_notes": "Aguarde, a atualização está sendo instalada...",
-
   "dialogs.command_palette.placeholder": "🔍 Pesquisar comando...",
-
   "dialogs.ui_customization.title": "⚙️ Personalização da Interface",
   "dialogs.ui_customization.visible_tabs": "Guias visíveis:",
   "dialogs.ui_customization.tab_sources": "📂 Origens",
@@ -129,14 +117,12 @@
   "dialogs.ui_customization.checkbox_watch": "☑ Vigilância auto.",
   "dialogs.ui_customization.cancel": "Cancelar",
   "dialogs.ui_customization.save": "💾 Salvar",
-
   "sidebar.title": "CodeContext AI",
   "sidebar.tab.sources": "📂 Origens",
   "sidebar.tab.filters": "🔧 Filtros",
   "sidebar.tab.prompts": "📝 Prompts",
   "sidebar.tab.llm_os": "🤖 LLM e SO",
   "sidebar.tab.appearance": "🎨 Aparência",
-
   "sidebar.ui_settings.tooltip": "⚙️ Configurações da Interface",
   "sidebar.tour.button": "🎓 Tour",
   "sidebar.version.label": "v{version}",
@@ -210,7 +196,6 @@
   "sidebar.success.title": "✅ Sucesso",
   "sidebar.import_theme.success": "Tema \"{filename}\" importado com sucesso.",
   "sidebar.import_theme.error": "Erro ao importar tema: {error}",
-
   "action_panel.minify": "Minificar",
   "action_panel.chk_minify": "Minificar",
   "action_panel.no_comments": "Sem comentários",
@@ -219,7 +204,6 @@
   "action_panel.chk_secrets": "Sem segredos",
   "action_panel.skeleton": "Esqueleto",
   "action_panel.chk_skeleton": "Esqueleto",
-
   "action_panel.template.tooltip": "📁 Selecionar template Jinja2",
   "action_panel.preview.button": "👁 Visualizar",
   "action_panel.clipboard.button": "📋 Copiar",
@@ -232,23 +216,18 @@
   "action_panel.chk_checkpoints": "Checkpoints",
   "action_panel.chk_watch": "Auto-vigiar",
   "action_panel.template.dialog_title": "Selecionar template Jinja2",
-
   "empty_state.drop.title": "📂 Solte uma pasta aqui",
   "empty_state.drop.subtitle": "ou clique no botão abaixo",
   "empty_state.browse.button": "📂 Procurar Pasta",
   "empty_state.recent.title": "🕐 Projetos Recentes",
   "empty_state.browse.dialog_title": "📂 Selecionar pasta do projeto",
-
   "status_bar.idle": "Ocioso",
   "status_bar.tokens_count": "Tokens: {tokens}",
   "status_bar.tokens": "Tokens: {tokens}",
-
   "status_bar.local_model": " (modelo local)",
-
   "analytics_panel.header.file": "Arquivo",
   "analytics_panel.header.tokens": "Tokens",
   "analytics_panel.header.weight": "Peso",
-
   "file_tree.search.placeholder": "🔍 Pesquisar arquivo...",
   "file_tree.expand_all": "▶ Expandir Tudo",
   "file_tree.collapse_all": "▼ Recolher Tudo",
@@ -264,11 +243,9 @@
   "file_tree.context.select_js": "🌐 Apenas JS/TS",
   "file_tree.context.exclude_heavy": "🚫 Excluir pesados",
   "file_tree.context.exclude_all": "🚫 Excluir todos",
-
   "folder_list.no_sources": "📂 Nenhuma pasta adicionada",
   "folder_list.edit.tooltip": "✏️ Editar caminho",
   "folder_list.delete.tooltip": "🗑 Excluir",
-
   "main_controller.clear_temp_files": "🧹 Limpando pastas temporárias...",
   "main_controller.choose_folders": "⚠️ Selecione pelo menos uma pasta.",
   "main_controller.choose_folders_or_url": "⚠️ Selecione uma pasta ou forneça uma URL.",
@@ -283,7 +260,6 @@
   "main_controller.clipboard_error": "❌ Erro de cópia: {error}",
   "main_controller.clipboard_error_generic": "❌ Erro ao copiar para área de transferência",
   "main_controller.pr_filter_applied": "🔍 Filtro de PR aplicado: {count} arquivos",
-
   "cli_controller.starting": "🚀 Iniciando CLI (modo: {mode})",
   "cli_controller.target": "🎯 Alvo: {target_path}",
   "cli_controller.critical_error": "❌ Erro crítico: {exc}",
@@ -313,7 +289,6 @@
   "cli_controller.project_copied": "📋 Copiados {tokens} tokens",
   "cli_controller.path_not_found": "❌ Caminho não encontrado: {path}",
   "cli_controller.window_closing": "⏳ A janela será fechada em 3 segundos...",
-
   "store.status.done": "✅ Concluído",
   "store.status.scan_error": "❌ Erro de escaneamento: {error}",
   "store.status.scan_error_log": "Erro: {error}",
@@ -323,7 +298,6 @@
   "store.status.files_found": "📄 Arquivos encontrados: {count}",
   "store.status.error_with_msg": "❌ Erro: {error_msg}",
   "state.status.ready": "✅ Pronto",
-
   "process_use_case.workflow.preparing": "⚙️ Preparando...",
   "process_use_case.workflow.no_files": "⚠️ Nenhum arquivo para processar.",
   "process_use_case.workflow.reading": "📖 Lendo {count} arquivos...",
@@ -337,19 +311,16 @@
   "process_use_case.export.chat_loaded": "💬 Carregado no chat",
   "process_use_case.export.saved": "💾 Salvo: {path}",
   "process_use_case.export.pdf_created": "📄 PDF criado: {path}",
-
   "patch_use_case.patch.empty": "⚠️ Patch vazio.",
   "patch_use_case.parsing.parsing_llm": "🔍 Analisando resposta do LLM...",
   "patch_use_case.parsing.parse_error": "⚠️ Erro de análise JSON: {error}",
   "patch_use_case.parsing.no_valid_json": "❌ Nenhum JSON válido encontrado.",
   "patch_use_case.patch.preparing": "⚙️ Preparando {count} patches...",
   "patch_use_case.patch.applied": "✅ Patches aplicados: {count}",
-
   "llm_checker.send.no_url": "⚠️ URL do LLM não configurada.",
   "llm_checker.check.disabled": "A verificação LLM está desabilitada nas configurações.",
   "llm_checker.check.no_url_short": "URL do LLM não configurada",
   "llm_checker.check.invalid_json": "Resposta JSON inválida do LLM",
-
   "patch_service.prepare.missing_file": "Nenhum arquivo especificado para o patch.",
   "patch_service.prepare.no_folders": "Nenhuma pasta base para procurar arquivos.",
   "patch_service.prepare.created": "✅ Será criado: {clean_target}",
@@ -366,20 +337,16 @@
   "patch_service.prepare.unknown_action": "❌ Ação desconhecida: {action}",
   "patch_service.prepare.fuzzy_match": " (correspondência aproximada: {fuzzy_marker:.0%})",
   "patch_service.apply.error": "❌ Erro ao aplicar patch em {file_target}: {e}",
-
   "output_service.clipboard.linux_install": "Para suporte à área de transferência no Linux, instale: sudo apt install xclip",
   "output_service.clipboard.copy_error": "Erro ao copiar para área de transferência: {error}",
   "output_service.editor.open_error": "Não foi possível abrir o editor '{editor_cmd}': {error}",
-
   "updater_service.check.no_description": "Sem descrição",
   "updater_service.check.github_api_error": "Erro da API do GitHub (código {code})",
   "updater_service.check.connection_error": "Erro de conexão: {error}",
   "updater_service.download.not_compiled": "A atualização automática está disponível apenas na versão compilada.",
   "updater_service.download.no_app_in_archive": "Nenhum .app encontrado no arquivo",
   "updater_service.download.download_failed": "Erro de download: {error}",
-
   "github_service.invalid_url": "URL inválida",
-
   "github_use_case.preparing": "Preparando GitHub...",
   "github_use_case.pr_detected": "🐙 Pull Request detectado. Obtendo lista de arquivos...",
   "github_use_case.pr_files_count": "Obtidos {count} arquivos do PR.",
@@ -387,7 +354,6 @@
   "github_use_case.cloning_url": "GitHub: clonando {url}",
   "github_use_case.repo_loaded": "✅ Repositório carregado: {path}",
   "github_use_case.github_error": "❌ Erro do GitHub: {error}",
-
   "updater_use_case.checking": "🔍 Verificando atualizações no GitHub (v{version})...",
   "updater_use_case.connecting": "Conectando ao servidor do GitHub. Aguarde...",
   "updater_use_case.update_found": "🎉 Nova versão encontrada: {version}",
@@ -401,7 +367,6 @@
   "updater_use_case.restarting": "Reiniciando...",
   "updater_use_case.install_error": "❌ Erro de instalação: {error}",
   "updater_use_case.install_error_notes": "**Falha ao baixar ou instalar a atualização.**\n\nReversão concluída com sucesso.\n\n`{error}`",
-
   "settings_use_case.reset": "Configurações redefinidas",
   "settings_use_case.local_config_applied": "⚙️ Configurações locais aplicadas de: {path}",
   "settings_use_case.config_parse_error": "⚠️ Erro de análise em {path}: {error}",
@@ -413,13 +378,11 @@
   "settings_use_case.workspace_save_error": "Erro ao salvar espaço de trabalho: {error}",
   "settings_use_case.workspace_loaded": "Espaço de trabalho carregado: {path}",
   "settings_use_case.workspace_load_error": "Erro ao carregar espaço de trabalho: {error}",
-
   "scan_use_case.scanning": "Escaneando...",
   "scan_use_case.scan_started": "Escaneamento iniciado...",
   "scan_use_case.no_files": "⚠️ Nenhum arquivo encontrado",
   "scan_use_case.analyzing": "Analisando tokens e Git...",
   "scan_use_case.scan_complete": "Escaneamento concluído",
-
   "tour_service.welcome.title": "👋 Bem-vindo ao CodeContext AI!",
   "tour_service.welcome.text": "O CodeContext AI é uma ferramenta para analisar sua base de código. Ele escaneia seu projeto, reúne contexto e permite que você o envie para um LLM para análise, chat ou criação de patches.\n\nClique em \"Avançar\" para conhecer os recursos.",
   "tour_service.folders_pr.title": "📂 Pastas e GitHub PR",
@@ -442,7 +405,6 @@
   "tour_service.safety_diff.text": "Cada patch passa por uma visualização de diff. Você pode verificar alterações via LLM.\n\nAceite ou rejeite alterações seletivamente.",
   "tour_service.os_integration.title": "🖥 Integração com o SO",
   "tour_service.os_integration.text": "Instale o menu de contexto (\"CodeContext AI\" ao clicar com o botão direito em uma pasta) e uma CLI global.\n\nWindows: via registro. macOS: via Automator. Linux: via arquivos .desktop.",
-
   "integration_strategies.windows.elevate_error": "❌ Erro ao solicitar privilégios de administrador: {exc}",
   "integration_strategies.windows.admin_required_install": "⚠️ Privilégios de administrador são necessários para instalar o menu de contexto. Execute o aplicativo como administrador.",
   "integration_strategies.windows.menu_open_ui": "Abrir CodeContext AI",
@@ -472,5 +434,27 @@
   "integration_strategies.linux.cli_remove_success": "✅ CLI removida.",
   "integration_strategies.linux.cli_remove_error": "❌ Erro ao remover CLI: {error}",
   "integration_strategies.macos.install_success": "✅ Menu de contexto instalado.",
-  "integration_strategies.macos.remove_success": "✅ Menu de contexto removido."
+  "integration_strategies.macos.remove_success": "✅ Menu de contexto removido.",
+  "formatting.hidden_lines": "... {c_start} linhas idênticas ocultas ...",
+  "dialogs.preview.generating_diff": "Gerando diferenças...",
+  "action_panel.plugins.button": "🔌 Plugins",
+  "process_use_case.workflow.writing": "✍️ Escrevendo arquivo...",
+  "plugins.approval.title": "🔌 Aprovação de plugin",
+  "plugins.approval.heading": "Novo plugin: {name}",
+  "plugins.approval.info": "Este plugin está solicitando acesso ao seu projeto:",
+  "plugins.approval.name": "Nome:",
+  "plugins.approval.id": "ID:",
+  "plugins.approval.version": "Versão:",
+  "plugins.approval.description": "Descrição:",
+  "plugins.approval.warning": "⚠️ Certifique-se de confiar na fonte deste plugin. Os plugins têm acesso ao sistema de arquivos e à API do aplicativo.",
+  "plugins.approval.deny": "🚫 Negar",
+  "plugins.approval.allow": "✅ Permitir",
+  "plugins.install.success": "✅ Plugin instalado.",
+  "plugins.install.error": "❌ Erro ao instalar plugin: {error}",
+  "plugins.install.title": "📦 Instalação de dependências do plugin",
+  "plugins.install.close": "Fechar",
+  "sidebar.tab.plugins": "🔌 Plugins",
+  "sidebar.plugins.open_folder": "📂 Abrir pasta de plugins",
+  "sidebar.plugins.restart_required": "⚠️ Reinício necessário",
+  "sidebar.plugins.restart_msg": "Reinicie o aplicativo para aplicar as alterações dos plugins."
 }

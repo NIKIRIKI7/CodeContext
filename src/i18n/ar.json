@@ -1,4 +1,4 @@
-﻿{
+{
   "main.cli_mode": "وضع CLI",
   "main.path": "المسار إلى المشروع",
   "main.patch": "ملف التصحيح JSON",
@@ -13,7 +13,6 @@
   "main.stdout": "إخراج إلى stdout",
   "main.fail_if_exceeds": "فشل إذا تجاوز حد الرموز",
   "main.sent_to_existing": "📤 تم إرسال المسار إلى نسخة التطبيق الحالية",
-
   "main_window.title": "CodeContext AI",
   "main_window.tab.file_tree": "📂 الملفات",
   "main_window.tab.analytics": "📊 التحليلات",
@@ -30,16 +29,13 @@
   "main_window.command.toggle_theme": "🎨 تبديل السمة",
   "main_window.command.check_updates": "🔄 التحقق من التحديثات",
   "main_window.save_file.title": "حفظ ملف",
-
   "dialogs.ai_chat_title": "الدردشة الذكية (CodeContext)",
   "dialogs.chat.title": "الدردشة الذكية",
-
   "dialogs.chat.placeholder": "اسأل سؤالاً عن الكود...",
   "dialogs.chat.send": "إرسال",
   "dialogs.chat.system_loaded": "📎 تم تحميل سياق النظام. يمكنك طرح سؤال.",
   "dialogs.chat.you_label": "أنت",
   "dialogs.chat.waiting": "⏳ انتظار...",
-
   "dialogs.preview.title": "👁 معاينة",
   "dialogs.preview.tab_prompt": "📝 الطلب",
   "dialogs.preview.files_in_prompt": "📄 الملفات في الطلب:",
@@ -49,7 +45,6 @@
   "dialogs.preview.select_file": "الملف:",
   "dialogs.preview.savings_initial": "📊 مقارنة النسخة الأصلية والنسخة المضغوطة",
   "dialogs.preview.savings": "التوفير: {original} ← {processed} رمز ({percent:.1f}%)",
-
   "dialogs.bug_report.title": "الإبلاغ عن خطأ",
   "dialogs.bug_report.description": "صف الخطأ الذي واجهته:",
   "dialogs.bug_report.placeholder": "خطوات إعادة الإنتاج، السلوك المتوقع، إلخ...",
@@ -63,20 +58,16 @@
   "dialogs.bug_report.copied_msg": "تم نسخ قالب Issue. الصقه في نص Issue على GitHub.",
   "dialogs.clipboard_error": "❌ خطأ في الحافظة: {error}",
   "sidebar.bug_report.tooltip": "وجدت خطأ؟ أرسل إلى Issue",
-
   "dialogs.tour.title": "🎓 جولة تفاعلية",
   "dialogs.tour.prev": "← رجوع",
   "dialogs.tour.next": "التالي ➡",
   "dialogs.tour.finish": "🎉 إنهاء",
-
   "dialogs.edit_folder.title": "✏️ تعديل المجلد",
   "dialogs.edit_folder.ok": "✅ موافق",
-
   "dialogs.json_patch.title": "🔧 تصحيح JSON",
   "dialogs.json_patch.instruction": "أدخل تصحيح JSON كقائمة من الإجراءات:",
   "dialogs.json_patch.cancel": "إلغاء",
   "dialogs.json_patch.apply": "✅ تطبيق",
-
   "dialogs.diff.title": "🛡 مراجعة الفروقات الآمنة",
   "dialogs.diff.check_llm": "🔍 التحقق مع LLM",
   "dialogs.diff.verdict_placeholder": "الحكم...",
@@ -93,7 +84,6 @@
   "dialogs.diff.updated_by_ai": " [مُحدَّث بواسطة AI]",
   "dialogs.diff.suggestion_applied": "✅ تم تطبيق الاقتراح",
   "dialogs.diff.suggestion_rejected": "❌ تم رفض الاقتراح",
-
   "dialogs.update.title": "🔄 تحديث",
   "dialogs.update.checking": "🔍 جارٍ التحقق من التحديث {version}...",
   "dialogs.update.cancel": "إلغاء",
@@ -106,9 +96,7 @@
   "dialogs.update.downloading": "⬇️ جارٍ التحميل...",
   "dialogs.update.installing": "⚙️ جارٍ تثبيت التحديث...",
   "dialogs.update.install_notes": "يرجى الانتظار، يتم تثبيت التحديث...",
-
   "dialogs.command_palette.placeholder": "🔍 ابحث عن أمر...",
-
   "dialogs.ui_customization.title": "⚙️ تخصيص الواجهة",
   "dialogs.ui_customization.visible_tabs": "العلامات المرئية:",
   "dialogs.ui_customization.tab_sources": "📂 المصادر",
@@ -129,14 +117,12 @@
   "dialogs.ui_customization.checkbox_watch": "☑ مراقبة تلقائية",
   "dialogs.ui_customization.cancel": "إلغاء",
   "dialogs.ui_customization.save": "💾 حفظ",
-
   "sidebar.title": "CodeContext AI",
   "sidebar.tab.sources": "📂 المصادر",
   "sidebar.tab.filters": "🔧 المرشحات",
   "sidebar.tab.prompts": "📝 الطلبات",
   "sidebar.tab.llm_os": "🤖 LLM ونظام التشغيل",
   "sidebar.tab.appearance": "🎨 المظهر",
-
   "sidebar.ui_settings.tooltip": "⚙️ إعدادات الواجهة",
   "sidebar.tour.button": "🎓 جولة",
   "sidebar.version.label": "v{version}",
@@ -210,7 +196,6 @@
   "sidebar.success.title": "✅ نجاح",
   "sidebar.import_theme.success": "تم استيراد السمة \"{filename}\" بنجاح.",
   "sidebar.import_theme.error": "خطأ في استيراد السمة: {error}",
-
   "action_panel.minify": "تصغير",
   "action_panel.chk_minify": "تصغير",
   "action_panel.no_comments": "بدون تعليقات",
@@ -219,7 +204,6 @@
   "action_panel.chk_secrets": "بدون أسرار",
   "action_panel.skeleton": "هيكل",
   "action_panel.chk_skeleton": "هيكل",
-
   "action_panel.template.tooltip": "📁 تحديد قالب Jinja2",
   "action_panel.preview.button": "👁 معاينة",
   "action_panel.clipboard.button": "📋 نسخ",
@@ -232,23 +216,18 @@
   "action_panel.chk_checkpoints": "نقاط التحقق",
   "action_panel.chk_watch": "مراقبة تلقائية",
   "action_panel.template.dialog_title": "تحديد قالب Jinja2",
-
   "empty_state.drop.title": "📂 أسقط مجلداً هنا",
   "empty_state.drop.subtitle": "أو انقر على الزر أدناه",
   "empty_state.browse.button": "📂 تصفح المجلد",
   "empty_state.recent.title": "🕐 المشاريع الأخيرة",
   "empty_state.browse.dialog_title": "📂 تحديد مجلد المشروع",
-
   "status_bar.idle": "خامل",
   "status_bar.tokens_count": "الرموز: {tokens}",
   "status_bar.tokens": "الرموز: {tokens}",
-
   "status_bar.local_model": " (نموذج محلي)",
-
   "analytics_panel.header.file": "الملف",
   "analytics_panel.header.tokens": "الرموز",
   "analytics_panel.header.weight": "الوزن",
-
   "file_tree.search.placeholder": "🔍 ابحث عن ملف...",
   "file_tree.expand_all": "▶ توسيع الكل",
   "file_tree.collapse_all": "▼ طي الكل",
@@ -264,11 +243,9 @@
   "file_tree.context.select_js": "🌐 JS/TS فقط",
   "file_tree.context.exclude_heavy": "🚫 استبعاد الثقيل",
   "file_tree.context.exclude_all": "🚫 استبعاد الكل",
-
   "folder_list.no_sources": "📂 لم تتم إضافة مجلدات",
   "folder_list.edit.tooltip": "✏️ تعديل المسار",
   "folder_list.delete.tooltip": "🗑 حذف",
-
   "main_controller.clear_temp_files": "🧹 جارٍ تنظيف المجلدات المؤقتة...",
   "main_controller.choose_folders": "⚠️ اختر مجلداً واحداً على الأقل.",
   "main_controller.choose_folders_or_url": "⚠️ اختر مجلداً أو قدم رابطاً.",
@@ -283,7 +260,6 @@
   "main_controller.clipboard_error": "❌ خطأ في النسخ: {error}",
   "main_controller.clipboard_error_generic": "❌ خطأ في النسخ إلى الحافظة",
   "main_controller.pr_filter_applied": "🔍 تم تطبيق مرشح PR: {count} ملف",
-
   "cli_controller.starting": "🚀 بدء CLI (الوضع: {mode})",
   "cli_controller.target": "🎯 الهدف: {target_path}",
   "cli_controller.critical_error": "❌ خطأ حرج: {exc}",
@@ -313,7 +289,6 @@
   "cli_controller.project_copied": "📋 تم نسخ {tokens} رمز",
   "cli_controller.path_not_found": "❌ المسار غير موجود: {path}",
   "cli_controller.window_closing": "⏳ سيتم إغلاق النافذة خلال 3 ثوانٍ...",
-
   "store.status.done": "✅ تم",
   "store.status.scan_error": "❌ خطأ في الفحص: {error}",
   "store.status.scan_error_log": "خطأ: {error}",
@@ -323,7 +298,6 @@
   "store.status.files_found": "📄 الملفات التي تم العثور عليها: {count}",
   "store.status.error_with_msg": "❌ خطأ: {error_msg}",
   "state.status.ready": "✅ جاهز",
-
   "process_use_case.workflow.preparing": "⚙️ جارٍ التحضير...",
   "process_use_case.workflow.no_files": "⚠️ لا توجد ملفات للمعالجة.",
   "process_use_case.workflow.reading": "📖 جارٍ قراءة {count} ملف...",
@@ -337,19 +311,16 @@
   "process_use_case.export.chat_loaded": "💬 تم التحميل في الدردشة",
   "process_use_case.export.saved": "💾 تم الحفظ: {path}",
   "process_use_case.export.pdf_created": "📄 تم إنشاء PDF: {path}",
-
   "patch_use_case.patch.empty": "⚠️ تصحيح فارغ.",
   "patch_use_case.parsing.parsing_llm": "🔍 جارٍ تحليل رد LLM...",
   "patch_use_case.parsing.parse_error": "⚠️ خطأ في تحليل JSON: {error}",
   "patch_use_case.parsing.no_valid_json": "❌ لم يتم العثور على JSON صالح.",
   "patch_use_case.patch.preparing": "⚙️ جارٍ تحضير {count} تصحيح...",
   "patch_use_case.patch.applied": "✅ تم تطبيق التصحيحات: {count}",
-
   "llm_checker.send.no_url": "⚠️ رابط LLM غير مهيأ.",
   "llm_checker.check.disabled": "فحص LLM معطل في الإعدادات.",
   "llm_checker.check.no_url_short": "رابط LLM غير مهيأ",
   "llm_checker.check.invalid_json": "رد JSON غير صالح من LLM",
-
   "patch_service.prepare.missing_file": "لم يتم تحديد ملف للتصحيح.",
   "patch_service.prepare.no_folders": "لا توجد مجلدات أساسية للبحث عن ملفات.",
   "patch_service.prepare.created": "✅ سيتم إنشاؤه: {clean_target}",
@@ -366,20 +337,16 @@
   "patch_service.prepare.unknown_action": "❌ إجراء غير معروف: {action}",
   "patch_service.prepare.fuzzy_match": " (مطابقة تقريبية: {fuzzy_marker:.0%})",
   "patch_service.apply.error": "❌ خطأ في تطبيق التصحيح على {file_target}: {e}",
-
   "output_service.clipboard.linux_install": "لدعم الحافظة على Linux، قم بتثبيت: sudo apt install xclip",
   "output_service.clipboard.copy_error": "خطأ في النسخ إلى الحافظة: {error}",
   "output_service.editor.open_error": "تعذر فتح المحرر '{editor_cmd}': {error}",
-
   "updater_service.check.no_description": "لا يوجد وصف",
   "updater_service.check.github_api_error": "خطأ في GitHub API (الكود {code})",
   "updater_service.check.connection_error": "خطأ في الاتصال: {error}",
   "updater_service.download.not_compiled": "التحديث التلقائي متاح فقط في الإصدار المُجمَّع.",
   "updater_service.download.no_app_in_archive": "لم يتم العثور على .app في الأرشيف",
   "updater_service.download.download_failed": "خطأ في التحميل: {error}",
-
   "github_service.invalid_url": "رابط غير صالح",
-
   "github_use_case.preparing": "جارٍ تحضير GitHub...",
   "github_use_case.pr_detected": "🐙 تم الكشف عن Pull Request. جارٍ جلب قائمة الملفات...",
   "github_use_case.pr_files_count": "تم استرجاع {count} ملف من PR.",
@@ -387,7 +354,6 @@
   "github_use_case.cloning_url": "GitHub: استنساخ {url}",
   "github_use_case.repo_loaded": "✅ تم تحميل المستودع: {path}",
   "github_use_case.github_error": "❌ خطأ GitHub: {error}",
-
   "updater_use_case.checking": "🔍 جارٍ التحقق من التحديثات على GitHub (v{version})...",
   "updater_use_case.connecting": "جارٍ الاتصال بخادم GitHub. يرجى الانتظار...",
   "updater_use_case.update_found": "🎉 تم العثور على إصدار جديد: {version}",
@@ -401,7 +367,6 @@
   "updater_use_case.restarting": "جارٍ إعادة التشغيل...",
   "updater_use_case.install_error": "❌ خطأ في التثبيت: {error}",
   "updater_use_case.install_error_notes": "**فشل تحميل أو تثبيت التحديث.**\n\nتمت عملية الاسترجاع بنجاح.\n\n`{error}`",
-
   "settings_use_case.reset": "تمت إعادة تعيين الإعدادات",
   "settings_use_case.local_config_applied": "⚙️ تم تطبيق الإعدادات المحلية من: {path}",
   "settings_use_case.config_parse_error": "⚠️ خطأ في تحليل {path}: {error}",
@@ -413,13 +378,11 @@
   "settings_use_case.workspace_save_error": "خطأ في حفظ مساحة العمل: {error}",
   "settings_use_case.workspace_loaded": "تم تحميل مساحة العمل: {path}",
   "settings_use_case.workspace_load_error": "خطأ في تحميل مساحة العمل: {error}",
-
   "scan_use_case.scanning": "جارٍ الفحص...",
   "scan_use_case.scan_started": "بدأ الفحص...",
   "scan_use_case.no_files": "⚠️ لم يتم العثور على ملفات",
   "scan_use_case.analyzing": "جارٍ تحليل الرموز و Git...",
   "scan_use_case.scan_complete": "اكتمل الفحص",
-
   "tour_service.welcome.title": "👋 مرحباً بك في CodeContext AI!",
   "tour_service.welcome.text": "CodeContext AI هي أداة لتحليل قاعدة الكود الخاصة بك. تقوم بمسح مشروعك، وجمع السياق، وتسمح لك بإرساله إلى LLM للتحليل أو الدردشة أو إنشاء التصحيحات.\n\nانقر \"التالي\" لمعرفة المزيد عن الميزات.",
   "tour_service.folders_pr.title": "📂 المجلدات و GitHub PR",
@@ -442,7 +405,6 @@
   "tour_service.safety_diff.text": "كل تصحيح يمر عبر معاينة الفروقات. يمكنك التحقق من التغييرات عبر LLM.\n\nاقبل أو ارفض التغييرات بشكل انتقائي.",
   "tour_service.os_integration.title": "🖥 تكامل نظام التشغيل",
   "tour_service.os_integration.text": "قم بتثبيت قائمة السياق (\"CodeContext AI\" عند النقر بزر الماوس الأيمن على مجلد) وCLI عام.\n\nWindows: عبر التسجيل. macOS: عبر Automator. Linux: عبر ملفات .desktop.",
-
   "integration_strategies.windows.elevate_error": "❌ خطأ في طلب صلاحيات المسؤول: {exc}",
   "integration_strategies.windows.admin_required_install": "⚠️ صلاحيات المسؤول مطلوبة لتثبيت قائمة السياق. يرجى تشغيل التطبيق كمسؤول.",
   "integration_strategies.windows.menu_open_ui": "فتح CodeContext AI",
@@ -472,5 +434,27 @@
   "integration_strategies.linux.cli_remove_success": "✅ تمت إزالة CLI.",
   "integration_strategies.linux.cli_remove_error": "❌ خطأ في إزالة CLI: {error}",
   "integration_strategies.macos.install_success": "✅ تم تثبيت قائمة السياق.",
-  "integration_strategies.macos.remove_success": "✅ تمت إزالة قائمة السياق."
+  "integration_strategies.macos.remove_success": "✅ تمت إزالة قائمة السياق.",
+  "formatting.hidden_lines": "... {c_start} سطراً متطابقاً مخفياً ...",
+  "dialogs.preview.generating_diff": "جاري إنشاء الفروقات...",
+  "action_panel.plugins.button": "🔌 الإضافات",
+  "process_use_case.workflow.writing": "✍️ جاري كتابة الملف...",
+  "plugins.approval.title": "🔌 الموافقة على الإضافة",
+  "plugins.approval.heading": "إضافة جديدة: {name}",
+  "plugins.approval.info": "تطلب هذه الإضافة الوصول إلى مشروعك:",
+  "plugins.approval.name": "الاسم:",
+  "plugins.approval.id": "المعرف:",
+  "plugins.approval.version": "الإصدار:",
+  "plugins.approval.description": "الوصف:",
+  "plugins.approval.warning": "⚠️ تأكد من أنك تثق بمصدر هذه الإضافة. الإضافات لديها إمكانية الوصول إلى نظام الملفات وواجهة برمجة التطبيقات.",
+  "plugins.approval.deny": "🚫 رفض",
+  "plugins.approval.allow": "✅ سماح",
+  "plugins.install.success": "✅ تم تثبيت الإضافة.",
+  "plugins.install.error": "❌ خطأ في تثبيت الإضافة: {error}",
+  "plugins.install.title": "📦 تثبيت تبعيات الإضافة",
+  "plugins.install.close": "إغلاق",
+  "sidebar.tab.plugins": "🔌 الإضافات",
+  "sidebar.plugins.open_folder": "📂 فتح مجلد الإضافات",
+  "sidebar.plugins.restart_required": "⚠️ إعادة التشغيل مطلوبة",
+  "sidebar.plugins.restart_msg": "يرجى إعادة تشغيل التطبيق لتطبيق تغييرات الإضافات."
 }

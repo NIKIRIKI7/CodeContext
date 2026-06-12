@@ -13,7 +13,6 @@
   "main.stdout": "Вывод в stdout",
   "main.fail_if_exceeds": "Ошибка при превышении лимита токенов",
   "main.sent_to_existing": "📤 Путь отправлен существующему экземпляру приложения",
-
   "main_window.title": "CodeContext AI",
   "main_window.tab.file_tree": "📂 Файлы",
   "main_window.tab.analytics": "📊 Аналитика",
@@ -30,7 +29,6 @@
   "main_window.command.toggle_theme": "🎨 Переключить тему",
   "main_window.command.check_updates": "🔄 Проверить обновления",
   "main_window.save_file.title": "Сохранить файл",
-
   "dialogs.ai_chat_title": "AI Чат (CodeContext)",
   "dialogs.chat.title": "AI Чат",
   "dialogs.chat.placeholder": "Задайте вопрос по коду...",
@@ -38,7 +36,6 @@
   "dialogs.chat.system_loaded": "📎 Системный контекст загружен. Можете задать вопрос.",
   "dialogs.chat.you_label": "Вы",
   "dialogs.chat.waiting": "⏳ Ожидание...",
-
   "dialogs.preview.title": "👁 Предпросмотр",
   "dialogs.preview.tab_prompt": "📝 Промпт",
   "dialogs.preview.files_in_prompt": "📄 Файлы в промпте:",
@@ -48,7 +45,7 @@
   "dialogs.preview.select_file": "Файл:",
   "dialogs.preview.savings_initial": "📊 Сравните оригинал и сжатый вариант",
   "dialogs.preview.savings": "Экономия: {original} → {processed} токенов ({percent:.1f}%)",
-
+  "dialogs.preview.generating_diff": "Генерация различий...",
   "dialogs.bug_report.title": "Сообщить о баге",
   "dialogs.bug_report.description": "Опишите проблему, с которой вы столкнулись:",
   "dialogs.bug_report.placeholder": "Шаги для воспроизведения, ожидаемое поведение...",
@@ -62,20 +59,16 @@
   "dialogs.bug_report.copied_msg": "Шаблон Issue скопирован. Вставьте его в описание на GitHub.",
   "dialogs.clipboard_error": "❌ Ошибка буфера обмена: {error}",
   "sidebar.bug_report.tooltip": "Нашли баг? Отправить в Issue",
-
   "dialogs.tour.title": "🎓 Интерактивный тур",
   "dialogs.tour.prev": "← Назад",
   "dialogs.tour.next": "Далее ➡",
   "dialogs.tour.finish": "🎉 Завершить",
-
   "dialogs.edit_folder.title": "✏️ Редактировать папку",
   "dialogs.edit_folder.ok": "✅ Готово",
-
   "dialogs.json_patch.title": "🔧 JSON-патч",
   "dialogs.json_patch.instruction": "Введите JSON-патч в формате списка действий:",
   "dialogs.json_patch.cancel": "Отмена",
   "dialogs.json_patch.apply": "✅ Применить",
-
   "dialogs.diff.title": "🛡 Безопасный просмотр изменений",
   "dialogs.diff.check_llm": "🔍 Проверить LLM",
   "dialogs.diff.verdict_placeholder": "Результат проверки...",
@@ -92,7 +85,6 @@
   "dialogs.diff.updated_by_ai": " [Обновлено AI]",
   "dialogs.diff.suggestion_applied": "✅ Предложение принято",
   "dialogs.diff.suggestion_rejected": "❌ Предложение отклонено",
-
   "dialogs.update.title": "🔄 Обновление",
   "dialogs.update.checking": "🔍 Проверка обновления {version}...",
   "dialogs.update.cancel": "Отмена",
@@ -105,9 +97,7 @@
   "dialogs.update.downloading": "⬇️ Загрузка...",
   "dialogs.update.installing": "⚙️ Установка обновления...",
   "dialogs.update.install_notes": "Пожалуйста, подождите, обновление устанавливается...",
-
   "dialogs.command_palette.placeholder": "🔍 Поиск команды...",
-
   "dialogs.ui_customization.title": "⚙️ Настройка интерфейса",
   "dialogs.ui_customization.visible_tabs": "Видимые вкладки:",
   "dialogs.ui_customization.tab_sources": "📂 Источники",
@@ -128,14 +118,26 @@
   "dialogs.ui_customization.checkbox_watch": "☑ Авто-слежка",
   "dialogs.ui_customization.cancel": "Отмена",
   "dialogs.ui_customization.save": "💾 Сохранить",
-
+  "plugins.approval.title": "🔌 Подтверждение плагина",
+  "plugins.approval.heading": "Новый плагин: {name}",
+  "plugins.approval.info": "Этот плагин запрашивает доступ к вашему проекту:",
+  "plugins.approval.name": "Название:",
+  "plugins.approval.id": "ID:",
+  "plugins.approval.version": "Версия:",
+  "plugins.approval.description": "Описание:",
+  "plugins.approval.warning": "⚠️ Убедитесь, что вы доверяете источнику этого плагина. Плагины имеют доступ к файловой системе и API приложения.",
+  "plugins.approval.deny": "🚫 Запретить",
+  "plugins.approval.allow": "✅ Разрешить",
+  "plugins.install.success": "✅ Плагин установлен.",
+  "plugins.install.error": "❌ Ошибка установки плагина: {error}",
+  "plugins.install.title": "📦 Установка зависимостей плагина",
+  "plugins.install.close": "Закрыть",
   "sidebar.title": "CodeContext AI",
   "sidebar.tab.sources": "📂 Источники",
   "sidebar.tab.filters": "🔧 Фильтры",
   "sidebar.tab.prompts": "📝 Промпты",
   "sidebar.tab.llm_os": "🤖 LLM и ОС",
   "sidebar.tab.appearance": "🎨 Внешний вид",
-
   "sidebar.ui_settings.tooltip": "⚙️ Настройка интерфейса",
   "sidebar.tour.button": "🎓 Тур",
   "sidebar.version.label": "v{version}",
@@ -209,7 +211,6 @@
   "sidebar.success.title": "✅ Успех",
   "sidebar.import_theme.success": "Тема \"{filename}\" успешно импортирована.",
   "sidebar.import_theme.error": "Ошибка импорта темы: {error}",
-
   "action_panel.minify": "Минифицировать",
   "action_panel.chk_minify": "Минифицировать",
   "action_panel.no_comments": "Без комментариев",
@@ -230,22 +231,19 @@
   "action_panel.chk_checkpoints": "Контр. точки",
   "action_panel.chk_watch": "Авто-слежка",
   "action_panel.template.dialog_title": "Выберите Jinja2 шаблон",
-
+  "action_panel.plugins.button": "🔌 Плагины",
   "empty_state.drop.title": "📂 Перетащите папку сюда",
   "empty_state.drop.subtitle": "или нажмите кнопку ниже",
   "empty_state.browse.button": "📂 Выбрать папку",
   "empty_state.recent.title": "🕐 Недавние проекты",
   "empty_state.browse.dialog_title": "📂 Выберите папку проекта",
-
   "status_bar.idle": "Ожидание",
   "status_bar.tokens_count": "Токены: {tokens}",
   "status_bar.tokens": "Токены: {tokens}",
   "status_bar.local_model": " (локальная модель)",
-
   "analytics_panel.header.file": "Файл",
   "analytics_panel.header.tokens": "Токены",
   "analytics_panel.header.weight": "Вес",
-
   "file_tree.search.placeholder": "🔍 Поиск файла...",
   "file_tree.expand_all": "▶ Развернуть всё",
   "file_tree.collapse_all": "▼ Свернуть всё",
@@ -261,11 +259,10 @@
   "file_tree.context.select_js": "🌐 Только JS/TS",
   "file_tree.context.exclude_heavy": "🚫 Исключить тяжёлые",
   "file_tree.context.exclude_all": "🚫 Исключить все",
-
   "folder_list.no_sources": "📂 Нет добавленных папок",
   "folder_list.edit.tooltip": "✏️ Редактировать путь",
   "folder_list.delete.tooltip": "🗑 Удалить",
-
+  "formatting.hidden_lines": "... {c_start} идентичных строк скрыто ...",
   "main_controller.clear_temp_files": "🧹 Очистка временных папок...",
   "main_controller.choose_folders": "⚠️ Выберите хотя бы одну папку.",
   "main_controller.choose_folders_or_url": "⚠️ Выберите папку или укажите URL.",
@@ -280,7 +277,6 @@
   "main_controller.clipboard_error": "❌ Ошибка копирования: {error}",
   "main_controller.clipboard_error_generic": "❌ Ошибка копирования в буфер обмена",
   "main_controller.pr_filter_applied": "🔍 Применён PR-фильтр: {count} файлов",
-
   "cli_controller.starting": "🚀 Запуск CLI (режим: {mode})",
   "cli_controller.target": "🎯 Цель: {target_path}",
   "cli_controller.critical_error": "❌ Критическая ошибка: {exc}",
@@ -310,7 +306,6 @@
   "cli_controller.project_copied": "📋 Скопировано {tokens} токенов",
   "cli_controller.path_not_found": "❌ Путь не найден: {path}",
   "cli_controller.window_closing": "⏳ Окно закроется через 3 секунды...",
-
   "store.status.done": "✅ Готово",
   "store.status.scan_error": "❌ Ошибка сканирования: {error}",
   "store.status.scan_error_log": "Ошибка: {error}",
@@ -320,7 +315,6 @@
   "store.status.files_found": "📄 Найдено файлов: {count}",
   "store.status.error_with_msg": "❌ Ошибка: {error_msg}",
   "state.status.ready": "✅ Готов к работе",
-
   "process_use_case.workflow.preparing": "⚙️ Подготовка...",
   "process_use_case.workflow.no_files": "⚠️ Нет файлов для обработки.",
   "process_use_case.workflow.reading": "📖 Чтение {count} файлов...",
@@ -328,25 +322,23 @@
   "process_use_case.workflow.processing_minifying": "⚙️ Обработка и минификация...",
   "process_use_case.workflow.formatting": "📝 Форматирование...",
   "process_use_case.workflow.saving": "💾 Сохранение...",
+  "process_use_case.workflow.writing": "✍️ Запись файла...",
   "process_use_case.workflow.done": "✅ Готово ({count} токенов)",
   "process_use_case.workflow.error": "❌ Ошибка: {error}",
   "process_use_case.export.editor": "📝 Открыто в редакторе",
   "process_use_case.export.chat_loaded": "💬 Загружено в чат",
   "process_use_case.export.saved": "💾 Сохранено: {path}",
   "process_use_case.export.pdf_created": "📄 PDF создан: {path}",
-
   "patch_use_case.patch.empty": "⚠️ Пустой патч.",
   "patch_use_case.parsing.parsing_llm": "🔍 Парсинг ответа LLM...",
   "patch_use_case.parsing.parse_error": "⚠️ Ошибка парсинга JSON: {error}",
   "patch_use_case.parsing.no_valid_json": "❌ Не найден валидный JSON.",
   "patch_use_case.patch.preparing": "⚙️ Подготовка {count} патчей...",
   "patch_use_case.patch.applied": "✅ Применено патчей: {count}",
-
   "llm_checker.send.no_url": "⚠️ LLM URL не настроен.",
   "llm_checker.check.disabled": "Проверка LLM отключена в настройках.",
   "llm_checker.check.no_url_short": "LLM URL не настроен",
   "llm_checker.check.invalid_json": "Неверный JSON ответ от LLM",
-
   "patch_service.prepare.missing_file": "Не указан файл для патча.",
   "patch_service.prepare.no_folders": "Нет базовых папок для поиска файлов.",
   "patch_service.prepare.created": "✅ Будет создан: {clean_target}",
@@ -363,20 +355,16 @@
   "patch_service.prepare.unknown_action": "❌ Неизвестное действие: {action}",
   "patch_service.prepare.fuzzy_match": " (нечёткое совпадение: {fuzzy_marker:.0%})",
   "patch_service.apply.error": "❌ Ошибка применения патча к {file_target}: {e}",
-
   "output_service.clipboard.linux_install": "Для работы с буфером обмена на Linux установите: sudo apt install xclip",
   "output_service.clipboard.copy_error": "Ошибка копирования в буфер: {error}",
   "output_service.editor.open_error": "Не удалось открыть редактор '{editor_cmd}': {error}",
-
   "updater_service.check.no_description": "Описание отсутствует",
   "updater_service.check.github_api_error": "Ошибка GitHub API (код {code})",
   "updater_service.check.connection_error": "Ошибка подключения: {error}",
   "updater_service.download.not_compiled": "Автообновление доступно только в скомпилированной версии.",
   "updater_service.download.no_app_in_archive": "Не найден .app в архиве",
   "updater_service.download.download_failed": "Ошибка загрузки: {error}",
-
   "github_service.invalid_url": "Некорректный URL",
-
   "github_use_case.preparing": "Подготовка GitHub...",
   "github_use_case.pr_detected": "🐙 Обнаружен Pull Request. Получение списка файлов...",
   "github_use_case.pr_files_count": "Получено {count} файлов из PR.",
@@ -384,7 +372,6 @@
   "github_use_case.cloning_url": "GitHub: клонирование {url}",
   "github_use_case.repo_loaded": "✅ Репозиторий загружен: {path}",
   "github_use_case.github_error": "❌ Ошибка GitHub: {error}",
-
   "updater_use_case.checking": "🔍 Проверка обновлений на GitHub (v{version})...",
   "updater_use_case.connecting": "Связь с сервером GitHub. Пожалуйста, подождите...",
   "updater_use_case.update_found": "🎉 Найдена новая версия: {version}",
@@ -398,7 +385,6 @@
   "updater_use_case.restarting": "Перезапуск...",
   "updater_use_case.install_error": "❌ Ошибка установки: {error}",
   "updater_use_case.install_error_notes": "**Сбой при загрузке или установке обновления.**\n\nОткат изменений выполнен успешно.\n\n`{error}`",
-
   "settings_use_case.reset": "Настройки сброшены",
   "settings_use_case.local_config_applied": "⚙️ Применены локальные настройки из: {path}",
   "settings_use_case.config_parse_error": "⚠️ Ошибка парсинга {path}: {error}",
@@ -410,13 +396,11 @@
   "settings_use_case.workspace_save_error": "Ошибка сохранения Workspace: {error}",
   "settings_use_case.workspace_loaded": "Workspace загружен: {path}",
   "settings_use_case.workspace_load_error": "Ошибка загрузки Workspace: {error}",
-
   "scan_use_case.scanning": "Сканирование...",
   "scan_use_case.scan_started": "Начало сканирования...",
   "scan_use_case.no_files": "⚠️ Файлы не найдены",
   "scan_use_case.analyzing": "Анализ токенов и Git...",
   "scan_use_case.scan_complete": "Сканирование завершено",
-
   "tour_service.welcome.title": "👋 Добро пожаловать в CodeContext AI!",
   "tour_service.welcome.text": "CodeContext AI — это инструмент для анализа кодовой базы. Он сканирует ваш проект, собирает контекст и позволяет отправить его в LLM для анализа, чата или создания патчей.\n\nНажмите «Далее», чтобы узнать о возможностях.",
   "tour_service.folders_pr.title": "📂 Папки и GitHub PR",
@@ -439,7 +423,6 @@
   "tour_service.safety_diff.text": "Каждый патч проходит предпросмотр Diff. Вы можете проверить изменения через LLM.\n\nПринимайте или отклоняйте изменения точечно.",
   "tour_service.os_integration.title": "🖥 Интеграция с ОС",
   "tour_service.os_integration.text": "Установите контекстное меню («CodeContext AI» по правому клику на папке) и глобальный CLI.\n\nДля Windows: работает через реестр. Для macOS: через Automator. Для Linux: через .desktop файлы.",
-
   "integration_strategies.windows.elevate_error": "❌ Ошибка при запросе прав администратора: {exc}",
   "integration_strategies.windows.admin_required_install": "⚠️ Для установки контекстного меню требуются права администратора. Запустите приложение от имени администратора.",
   "integration_strategies.windows.menu_open_ui": "Открыть CodeContext AI",
@@ -469,5 +452,9 @@
   "integration_strategies.linux.cli_remove_success": "✅ CLI удалён.",
   "integration_strategies.linux.cli_remove_error": "❌ Ошибка удаления CLI: {error}",
   "integration_strategies.macos.install_success": "✅ Контекстное меню установлено.",
-  "integration_strategies.macos.remove_success": "✅ Контекстное меню удалено."
+  "integration_strategies.macos.remove_success": "✅ Контекстное меню удалено.",
+  "sidebar.tab.plugins": "🔌 Плагины",
+  "sidebar.plugins.open_folder": "📂 Открыть папку плагинов",
+  "sidebar.plugins.restart_required": "⚠️ Требуется перезапуск",
+  "sidebar.plugins.restart_msg": "Пожалуйста, перезапустите приложение, чтобы изменения плагинов вступили в силу."
 }

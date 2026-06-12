@@ -1,4 +1,4 @@
-﻿{
+{
   "main.cli_mode": "CLI-modus",
   "main.path": "Pad naar project",
   "main.patch": "JSON-patchbestand",
@@ -13,7 +13,6 @@
   "main.stdout": "Uitvoer naar stdout",
   "main.fail_if_exceeds": "Mislukken als tokenlimiet wordt overschreden",
   "main.sent_to_existing": "📤 Pad verzonden naar bestaande applicatie-instantie",
-
   "main_window.title": "CodeContext AI",
   "main_window.tab.file_tree": "📂 Bestanden",
   "main_window.tab.analytics": "📊 Analyses",
@@ -30,16 +29,13 @@
   "main_window.command.toggle_theme": "🎨 Thema schakelen",
   "main_window.command.check_updates": "🔄 Controleren op updates",
   "main_window.save_file.title": "Bestand opslaan",
-
   "dialogs.ai_chat_title": "AI-chat (CodeContext)",
   "dialogs.chat.title": "AI-chat",
-
   "dialogs.chat.placeholder": "Stel een vraag over de code...",
   "dialogs.chat.send": "Verzenden",
   "dialogs.chat.system_loaded": "📎 Systeemcontext geladen. U kunt een vraag stellen.",
   "dialogs.chat.you_label": "U",
   "dialogs.chat.waiting": "⏳ Bezig met wachten...",
-
   "dialogs.preview.title": "👁 Voorbeeld",
   "dialogs.preview.tab_prompt": "📝 Prompttekst",
   "dialogs.preview.files_in_prompt": "📄 Bestanden in prompt:",
@@ -49,7 +45,6 @@
   "dialogs.preview.select_file": "Bestand:",
   "dialogs.preview.savings_initial": "📊 Originele en gecomprimeerde versie vergelijken",
   "dialogs.preview.savings": "Besparing: {original} → {processed} tokens ({percent:.1f}%)",
-
   "dialogs.bug_report.title": "Bug melden",
   "dialogs.bug_report.description": "Beschrijf de bug die je tegenkwam:",
   "dialogs.bug_report.placeholder": "Stappen om te reproduceren, verwacht gedrag, enz...",
@@ -63,20 +58,16 @@
   "dialogs.bug_report.copied_msg": "Issue-sjabloon gekopieerd. Plak het in de GitHub Issue-body.",
   "dialogs.clipboard_error": "❌ Klembordfout: {error}",
   "sidebar.bug_report.tooltip": "Bug gevonden? Naar Issue sturen",
-
   "dialogs.tour.title": "🎓 Interactieve rondleiding",
   "dialogs.tour.prev": "← Terug",
   "dialogs.tour.next": "Volgende ➡",
   "dialogs.tour.finish": "🎉 Voltooien",
-
   "dialogs.edit_folder.title": "✏️ Map bewerken",
   "dialogs.edit_folder.ok": "✅ OK",
-
   "dialogs.json_patch.title": "🔧 JSON-patch",
   "dialogs.json_patch.instruction": "Voer JSON-patch in als een lijst met acties:",
   "dialogs.json_patch.cancel": "Annuleren",
   "dialogs.json_patch.apply": "✅ Toepassen",
-
   "dialogs.diff.title": "🛡 Veilige diff-beoordeling",
   "dialogs.diff.check_llm": "🔍 Controleren met LLM",
   "dialogs.diff.verdict_placeholder": "Oordeel...",
@@ -93,7 +84,6 @@
   "dialogs.diff.updated_by_ai": " [Bijgewerkt door AI]",
   "dialogs.diff.suggestion_applied": "✅ Voorstel toegepast",
   "dialogs.diff.suggestion_rejected": "❌ Voorstel afgewezen",
-
   "dialogs.update.title": "🔄 Bijwerken",
   "dialogs.update.checking": "🔍 Update {version} controleren...",
   "dialogs.update.cancel": "Annuleren",
@@ -106,9 +96,7 @@
   "dialogs.update.downloading": "⬇️ Bezig met downloaden...",
   "dialogs.update.installing": "⚙️ Update installeren...",
   "dialogs.update.install_notes": "Even geduld, de update wordt geïnstalleerd...",
-
   "dialogs.command_palette.placeholder": "🔍 Opdracht zoeken...",
-
   "dialogs.ui_customization.title": "⚙️ Interface aanpassen",
   "dialogs.ui_customization.visible_tabs": "Zichtbare tabbladen:",
   "dialogs.ui_customization.tab_sources": "📂 Bronnen",
@@ -129,14 +117,12 @@
   "dialogs.ui_customization.checkbox_watch": "☑ Auto-bewaken",
   "dialogs.ui_customization.cancel": "Annuleren",
   "dialogs.ui_customization.save": "💾 Opslaan",
-
   "sidebar.title": "CodeContext AI",
   "sidebar.tab.sources": "📂 Bronnen",
   "sidebar.tab.filters": "🔧 Filters",
   "sidebar.tab.prompts": "📝 Promptteksten",
   "sidebar.tab.llm_os": "🤖 LLM & besturingssysteem",
   "sidebar.tab.appearance": "🎨 Weergave",
-
   "sidebar.ui_settings.tooltip": "⚙️ Interface-instellingen",
   "sidebar.tour.button": "🎓 Rondleiding",
   "sidebar.version.label": "v{version}",
@@ -210,7 +196,6 @@
   "sidebar.success.title": "✅ Gelukt",
   "sidebar.import_theme.success": "Thema \"{filename}\" succesvol geïmporteerd.",
   "sidebar.import_theme.error": "Fout bij importeren thema: {error}",
-
   "action_panel.minify": "Minimaliseren",
   "action_panel.chk_minify": "Minimaliseren",
   "action_panel.no_comments": "Geen opmerkingen",
@@ -219,7 +204,6 @@
   "action_panel.chk_secrets": "Geen geheimen",
   "action_panel.skeleton": "Skelet",
   "action_panel.chk_skeleton": "Skelet",
-
   "action_panel.template.tooltip": "📁 Jinja2-sjabloon selecteren",
   "action_panel.preview.button": "👁 Voorbeeld",
   "action_panel.clipboard.button": "📋 Kopiëren",
@@ -232,23 +216,18 @@
   "action_panel.chk_checkpoints": "Checkpoints",
   "action_panel.chk_watch": "Auto-bewaken",
   "action_panel.template.dialog_title": "Jinja2-sjabloon selecteren",
-
   "empty_state.drop.title": "📂 Sleep een map hiernaartoe",
   "empty_state.drop.subtitle": "of klik op de knop hieronder",
   "empty_state.browse.button": "📂 Map bladeren",
   "empty_state.recent.title": "🕐 Recente projecten",
   "empty_state.browse.dialog_title": "📂 Projectmap selecteren",
-
   "status_bar.idle": "Inactief",
   "status_bar.tokens_count": "Tokens: {tokens}",
   "status_bar.tokens": "Tokens: {tokens}",
-
   "status_bar.local_model": " (lokaal model)",
-
   "analytics_panel.header.file": "Bestand",
   "analytics_panel.header.tokens": "Tokens",
   "analytics_panel.header.weight": "Gewicht",
-
   "file_tree.search.placeholder": "🔍 Bestand zoeken...",
   "file_tree.expand_all": "▶ Alles uitvouwen",
   "file_tree.collapse_all": "▼ Alles invouwen",
@@ -264,11 +243,9 @@
   "file_tree.context.select_js": "🌐 Alleen JS/TS",
   "file_tree.context.exclude_heavy": "🚫 Zware uitsluiten",
   "file_tree.context.exclude_all": "🚫 Alles uitsluiten",
-
   "folder_list.no_sources": "📂 Geen mappen toegevoegd",
   "folder_list.edit.tooltip": "✏️ Pad bewerken",
   "folder_list.delete.tooltip": "🗑 Verwijderen",
-
   "main_controller.clear_temp_files": "🧹 Tijdelijke mappen opschonen...",
   "main_controller.choose_folders": "⚠️ Selecteer ten minste één map.",
   "main_controller.choose_folders_or_url": "⚠️ Selecteer een map of geef een URL op.",
@@ -283,7 +260,6 @@
   "main_controller.clipboard_error": "❌ Kopieerfout: {error}",
   "main_controller.clipboard_error_generic": "❌ Fout bij kopiëren naar klembord",
   "main_controller.pr_filter_applied": "🔍 PR-filter toegepast: {count} bestanden",
-
   "cli_controller.starting": "🚀 CLI starten (modus: {mode})",
   "cli_controller.target": "🎯 Doel: {target_path}",
   "cli_controller.critical_error": "❌ Kritieke fout: {exc}",
@@ -313,7 +289,6 @@
   "cli_controller.project_copied": "📋 {tokens} tokens gekopieerd",
   "cli_controller.path_not_found": "❌ Pad niet gevonden: {path}",
   "cli_controller.window_closing": "⏳ Venster sluit over 3 seconden...",
-
   "store.status.done": "✅ Gereed",
   "store.status.scan_error": "❌ Scansfout: {error}",
   "store.status.scan_error_log": "Fout: {error}",
@@ -323,7 +298,6 @@
   "store.status.files_found": "📄 Bestanden gevonden: {count}",
   "store.status.error_with_msg": "❌ Fout: {error_msg}",
   "state.status.ready": "✅ Gereed",
-
   "process_use_case.workflow.preparing": "⚙️ Voorbereiden...",
   "process_use_case.workflow.no_files": "⚠️ Geen bestanden om te verwerken.",
   "process_use_case.workflow.reading": "📖 {count} bestanden lezen...",
@@ -337,19 +311,16 @@
   "process_use_case.export.chat_loaded": "💬 In chat geladen",
   "process_use_case.export.saved": "💾 Opgeslagen: {path}",
   "process_use_case.export.pdf_created": "📄 PDF gemaakt: {path}",
-
   "patch_use_case.patch.empty": "⚠️ Lege patch.",
   "patch_use_case.parsing.parsing_llm": "🔍 LLM-antwoord verwerken...",
   "patch_use_case.parsing.parse_error": "⚠️ JSON-parseerfout: {error}",
   "patch_use_case.parsing.no_valid_json": "❌ Geen geldige JSON gevonden.",
   "patch_use_case.patch.preparing": "⚙️ {count} patches voorbereiden...",
   "patch_use_case.patch.applied": "✅ Patches toegepast: {count}",
-
   "llm_checker.send.no_url": "⚠️ LLM-URL niet geconfigureerd.",
   "llm_checker.check.disabled": "LLM-controle is uitgeschakeld in instellingen.",
   "llm_checker.check.no_url_short": "LLM-URL niet geconfigureerd",
   "llm_checker.check.invalid_json": "Ongeldige JSON-respons van LLM",
-
   "patch_service.prepare.missing_file": "Geen bestand opgegeven voor patch.",
   "patch_service.prepare.no_folders": "Geen basismappen om naar bestanden te zoeken.",
   "patch_service.prepare.created": "✅ Wordt aangemaakt: {clean_target}",
@@ -366,20 +337,16 @@
   "patch_service.prepare.unknown_action": "❌ Onbekende actie: {action}",
   "patch_service.prepare.fuzzy_match": " (fuzzy match: {fuzzy_marker:.0%})",
   "patch_service.apply.error": "❌ Fout bij toepassen patch op {file_target}: {e}",
-
   "output_service.clipboard.linux_install": "Voor klembordondersteuning op Linux, installeer: sudo apt install xclip",
   "output_service.clipboard.copy_error": "Fout bij kopiëren naar klembord: {error}",
   "output_service.editor.open_error": "Kon editor '{editor_cmd}' niet openen: {error}",
-
   "updater_service.check.no_description": "Geen beschrijving",
   "updater_service.check.github_api_error": "GitHub API-fout (code {code})",
   "updater_service.check.connection_error": "Verbindingsfout: {error}",
   "updater_service.download.not_compiled": "Automatisch bijwerken is alleen beschikbaar in de gecompileerde versie.",
   "updater_service.download.no_app_in_archive": "Geen .app gevonden in archief",
   "updater_service.download.download_failed": "Downloadfout: {error}",
-
   "github_service.invalid_url": "Ongeldige URL",
-
   "github_use_case.preparing": "GitHub voorbereiden...",
   "github_use_case.pr_detected": "🐙 Pull-request gedetecteerd. Bestandslijst ophalen...",
   "github_use_case.pr_files_count": "{count} bestanden opgehaald van PR.",
@@ -387,7 +354,6 @@
   "github_use_case.cloning_url": "GitHub: {url} klonen",
   "github_use_case.repo_loaded": "✅ Opslagplaats geladen: {path}",
   "github_use_case.github_error": "❌ GitHub-fout: {error}",
-
   "updater_use_case.checking": "🔍 Controleren op updates op GitHub (v{version})...",
   "updater_use_case.connecting": "Verbinden met GitHub-server. Even geduld...",
   "updater_use_case.update_found": "🎉 Nieuwe versie gevonden: {version}",
@@ -401,7 +367,6 @@
   "updater_use_case.restarting": "Opnieuw opstarten...",
   "updater_use_case.install_error": "❌ Installatiefout: {error}",
   "updater_use_case.install_error_notes": "**Downloaden of installeren van update mislukt.**\n\nTerugdraaien succesvol voltooid.\n\n`{error}`",
-
   "settings_use_case.reset": "Instellingen resetten",
   "settings_use_case.local_config_applied": "⚙️ Lokale instellingen toegepast vanuit: {path}",
   "settings_use_case.config_parse_error": "⚠️ Parseerfout in {path}: {error}",
@@ -413,13 +378,11 @@
   "settings_use_case.workspace_save_error": "Fout bij opslaan werkruimte: {error}",
   "settings_use_case.workspace_loaded": "Werkruimte geladen: {path}",
   "settings_use_case.workspace_load_error": "Fout bij laden werkruimte: {error}",
-
   "scan_use_case.scanning": "Scannen...",
   "scan_use_case.scan_started": "Scan gestart...",
   "scan_use_case.no_files": "⚠️ Geen bestanden gevonden",
   "scan_use_case.analyzing": "Tokens en Git analyseren...",
   "scan_use_case.scan_complete": "Scan voltooid",
-
   "tour_service.welcome.title": "👋 Welkom bij CodeContext AI!",
   "tour_service.welcome.text": "CodeContext AI is een hulpmiddel voor het analyseren van uw codebase. Het scant uw project, verzamelt context en stelt u in staat deze naar een LLM te sturen voor analyse, chat of het maken van patches.\n\nKlik op \"Volgende\" om meer te weten te komen over de functies.",
   "tour_service.folders_pr.title": "📂 Mappen en GitHub PR",
@@ -442,7 +405,6 @@
   "tour_service.safety_diff.text": "Elke patch doorloopt een diff-voorbeeld. U kunt wijzigingen via LLM verifiëren.\n\nWijzigingen selectief accepteren of afwijzen.",
   "tour_service.os_integration.title": "🖥 Besturingssysteemintegratie",
   "tour_service.os_integration.text": "Installeer het contextmenu (\"CodeContext AI\" bij rechtsklik op een map) en een globale CLI.\n\nWindows: via register. macOS: via Automator. Linux: via .desktop-bestanden.",
-
   "integration_strategies.windows.elevate_error": "❌ Fout bij aanvragen beheerdersrechten: {exc}",
   "integration_strategies.windows.admin_required_install": "⚠️ Beheerdersrechten zijn vereist om het contextmenu te installeren. Voer de applicatie uit als beheerder.",
   "integration_strategies.windows.menu_open_ui": "CodeContext AI openen",
@@ -472,5 +434,27 @@
   "integration_strategies.linux.cli_remove_success": "✅ CLI verwijderd.",
   "integration_strategies.linux.cli_remove_error": "❌ Fout bij verwijderen CLI: {error}",
   "integration_strategies.macos.install_success": "✅ Contextmenu geïnstalleerd.",
-  "integration_strategies.macos.remove_success": "✅ Contextmenu verwijderd."
+  "integration_strategies.macos.remove_success": "✅ Contextmenu verwijderd.",
+  "formatting.hidden_lines": "... {c_start} identieke regels verborgen ...",
+  "dialogs.preview.generating_diff": "Verschillen genereren...",
+  "action_panel.plugins.button": "🔌 Plugins",
+  "process_use_case.workflow.writing": "✍️ Bestand schrijven...",
+  "plugins.approval.title": "🔌 Plugintoestemming",
+  "plugins.approval.heading": "Nieuwe plugin: {name}",
+  "plugins.approval.info": "Deze plugin vraagt toegang tot uw project:",
+  "plugins.approval.name": "Naam:",
+  "plugins.approval.id": "ID:",
+  "plugins.approval.version": "Versie:",
+  "plugins.approval.description": "Beschrijving:",
+  "plugins.approval.warning": "⚠️ Zorg ervoor dat u de bron van deze plugin vertrouwt. Plugins hebben toegang tot het bestandssysteem en de applicatie-API.",
+  "plugins.approval.deny": "🚫 Weigeren",
+  "plugins.approval.allow": "✅ Toestaan",
+  "plugins.install.success": "✅ Plugin geïnstalleerd.",
+  "plugins.install.error": "❌ Fout bij installeren van plugin: {error}",
+  "plugins.install.title": "📦 Plugin-afhankelijkheden installeren",
+  "plugins.install.close": "Sluiten",
+  "sidebar.tab.plugins": "🔌 Plugins",
+  "sidebar.plugins.open_folder": "📂 Pluginmap openen",
+  "sidebar.plugins.restart_required": "⚠️ Herstart vereist",
+  "sidebar.plugins.restart_msg": "Herstart de applicatie om plugin-wijzigingen toe te passen."
 }
