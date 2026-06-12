@@ -1,0 +1,8 @@
+{
+    "id": "hello_world",
+    "name": "Hello World",
+    "version": "1.0.0",
+    "description": "Пример плагина: добавляет приветствие и кнопку в интерфейс.",
+    "author": "CodeContext AI",
+    "entry_point": "plugin.HelloWorldPlugin"
+}
