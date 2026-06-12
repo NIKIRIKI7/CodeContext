@@ -11,7 +11,7 @@
 **أداة تحليل قاعدة الأكواد وإعداد الاستعلامات المدعومة بالذكاء الاصطناعي**
 
 [![AUR](https://img.shields.io/aur/version/codecontext-ai?style=flat-square&logo=archlinux&label=AUR)](https://aur.archlinux.org/packages/codecontext-ai)
-[![Version](https://img.shields.io/badge/version-1.24.1-blue?style=flat-square)](../VERSION.txt)
+[![Version](https://img.shields.io/badge/version-1.24.2-blue?style=flat-square)](../VERSION.txt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](../LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square&logo=python)](https://www.python.org/downloads/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20|%20Linux%20|%20macOS-lightgrey?style=flat-square)]()
@@ -309,11 +309,14 @@ python main.py --cli --path ./frontend ./backend --format xml --output combined.
 
 <h2>🗺️ خارطة الطريق</h2>
 <ul>
+<li>📚 <b>وضع RAG (التوليد المعزز بالاسترجاع)</b> — فهرسة قواعد الأكواد الضخمة باستخدام قاعدة بيانات متجهة محلية (Chroma/FAISS).</li>
+<li>🚫 <b>تحليل عميق لـ .gitignore</b> — دعم ملفات <code>.gitignore</code> المتداخلة و <code>~/.gitignore</code> العام.</li>
+<li>☁️ <b>مزامنة سحابية</b> — مزامنة الإعدادات الخاصة بك عبر GitHub Gists.</li>
+<li>🌳 <b>مساحات عمل متعددة الجذور</b> — دعم محسن للمستودعات الأحادية (Lerna, NX, Turborepo).</li>
+<li>🚀 <b>خطوط أنابيب CI/CD</b> — إضافات GitHub Actions و GitLab CI لتوليد سياق PR تلقائيًا.</li>
+<li>🤖 <b>تكامل مباشر مع OpenAI/Anthropic API</b> — جسر كامل من توليد المطالبات إلى الإخراج المباشر.</li>
 <li>🍎 قائمة سياقية لنظام macOS Finder</li>
-<li>🤖 تكامل مباشر مع OpenAI/Anthropic API</li>
-<li>🏛️ تحليل الهندسة السداسية</li>
 <li>🔌 نظام إضافات</li>
-<li>🌐 تدويل داخل التطبيق</li>
 </ul>
 
 <hr>

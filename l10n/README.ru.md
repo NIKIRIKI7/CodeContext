@@ -11,7 +11,7 @@
 **AI-powered codebase analysis & prompt preparation tool**
 
 [![AUR](https://img.shields.io/aur/version/codecontext-ai?style=flat-square&logo=archlinux&label=AUR)](https://aur.archlinux.org/packages/codecontext-ai)
-[![Version](https://img.shields.io/badge/version-1.24.1-blue?style=flat-square)](../VERSION.txt)
+[![Version](https://img.shields.io/badge/version-1.24.2-blue?style=flat-square)](../VERSION.txt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](../LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square&logo=python)](https://www.python.org/downloads/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20|%20Linux%20|%20macOS-lightgrey?style=flat-square)]()
@@ -312,11 +312,14 @@ python main.py --cli --path ./frontend ./backend --format xml --output combined.
 
 <h2>🗺️ Roadmap</h2>
 <ul>
+<li>📚 <b>RAG (Retrieval-Augmented Generation) режим</b> — индексация огромных кодовых баз в векторную БД (Chroma/FAISS) для контекстного поиска.</li>
+<li>🚫 <b>Глубокий парсинг .gitignore</b> — поддержка вложенных файлов <code>.gitignore</code> и глобального <code>~/.gitignore</code>.</li>
+<li>☁️ <b>Облачная синхронизация</b> — синхронизация пресетов, настроек и промптов через GitHub Gists.</li>
+<li>🌳 <b>Мульти-root Workspaces</b> — продвинутая поддержка монорепозиториев (Lerna, NX, Turborepo).</li>
+<li>🚀 <b>Интеграция с пайплайнами CI/CD</b> — плагины для GitHub Actions и GitLab CI для генерации контекста в PR.</li>
+<li>🤖 <b>Прямой коннект с OpenAI/Anthropic API</b> — замыкание полного цикла от генерации промпта до сохранения итогового кода.</li>
 <li>🍎 macOS Finder context menu</li>
-<li>🤖 Прямая отправка в OpenAI/Anthropic API</li>
-<li>🏛️ Hexagonal Architecture анализ</li>
 <li>🔌 Плагинная система</li>
-<li>🌐 i18n интерфейса</li>
 </ul>
 
 <hr>

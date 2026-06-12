@@ -11,7 +11,7 @@
 **Herramienta de análisis de código fuente y preparación de prompts impulsada por IA**
 
 [![AUR](https://img.shields.io/aur/version/codecontext-ai?style=flat-square&logo=archlinux&label=AUR)](https://aur.archlinux.org/packages/codecontext-ai)
-[![Version](https://img.shields.io/badge/version-1.24.1-blue?style=flat-square)](../VERSION.txt)
+[![Version](https://img.shields.io/badge/version-1.24.2-blue?style=flat-square)](../VERSION.txt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](../LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square&logo=python)](https://www.python.org/downloads/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20|%20Linux%20|%20macOS-lightgrey?style=flat-square)]()
@@ -309,11 +309,14 @@ python main.py --cli --path ./frontend ./backend --format xml --output combined.
 
 <h2>🗺️ Hoja de ruta</h2>
 <ul>
+<li>📚 <b>RAG (Retrieval-Augmented Generation)</b> — indexación de bases de código masivas con base de datos vectorial local (Chroma/FAISS).</li>
+<li>🚫 <b>Análisis profundo de .gitignore</b> — soporte para archivos <code>.gitignore</code> anidados y <code>~/.gitignore</code> global.</li>
+<li>☁️ <b>Sincronización en la nube</b> — sincronice sus ajustes a través de GitHub Gists.</li>
+<li>🌳 <b>Espacios de trabajo multi-raíz</b> — soporte mejorado para monorepos (Lerna, NX, Turborepo).</li>
+<li>🚀 <b>Tuberías CI/CD</b> — plugins para GitHub Actions y GitLab CI para generación automática de contexto en PRs.</li>
+<li>🤖 <b>Integración directa con OpenAI/Anthropic API</b> — complete el puente desde la generación de prompts hasta la salida directa.</li>
 <li>🍎 Menú contextual de macOS Finder</li>
-<li>🤖 Integración directa con OpenAI/Anthropic API</li>
-<li>🏛️ Análisis de arquitectura hexagonal</li>
 <li>🔌 Sistema de plugins</li>
-<li>🌐 i18n en la aplicación</li>
 </ul>
 
 <hr>

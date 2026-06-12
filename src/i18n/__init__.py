@@ -58,10 +58,10 @@ def load_translations(lang: str | None = None) -> None:
         _translations.update(json.load(f))
     _loaded.add(path)
 
-def tr(key: str, **kwargs) -> str:
+def tr(key: str, default: str = None, **kwargs) -> str:
     if not _translations:
         load_translations()
-    text = _translations.get(key, key)
+    text = _translations.get(key, default if default is not None else key)
     if kwargs:
         try:
             return text.format(**kwargs)

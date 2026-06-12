@@ -11,7 +11,7 @@
 **AI駆動のコードベース分析＆プロンプト準備ツール**
 
 [![AUR](https://img.shields.io/aur/version/codecontext-ai?style=flat-square&logo=archlinux&label=AUR)](https://aur.archlinux.org/packages/codecontext-ai)
-[![Version](https://img.shields.io/badge/version-1.24.1-blue?style=flat-square)](../VERSION.txt)
+[![Version](https://img.shields.io/badge/version-1.24.2-blue?style=flat-square)](../VERSION.txt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](../LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square&logo=python)](https://www.python.org/downloads/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20|%20Linux%20|%20macOS-lightgrey?style=flat-square)]()
@@ -309,11 +309,14 @@ python main.py --cli --path ./frontend ./backend --format xml --output combined.
 
 <h2>🗺️ ロードマップ</h2>
 <ul>
+<li>📚 <b>RAG（検索拡張生成）モード</b> — ローカルベクトルDB（Chroma/FAISS）を使用した大規模コードベースのインデックス化。</li>
+<li>🚫 <b>詳細な.gitignore解析</b> — ネストされた<code>.gitignore</code>ファイルとグローバルな<code>~/.gitignore</code>のサポート。</li>
+<li>☁️ <b>クラウド同期</b> — GitHub Gistsを介したプリセットと設定の同期。</li>
+<li>🌳 <b>マルチルートワークスペース</b> — モノレポ（Lerna、NX、Turborepo）のサポート向上。</li>
+<li>🚀 <b>CI/CDパイプライン</b> — PRコンテキストを自動生成するGitHub ActionsおよびGitLab CIプラグイン。</li>
+<li>🤖 <b>OpenAI/Anthropic API直接統合</b> — プロンプト生成から直接出力への完全なブリッジ。</li>
 <li>🍎 macOS Finderコンテキストメニュー</li>
-<li>🤖 OpenAI/Anthropic APIの直接統合</li>
-<li>🏛️ ヘキサゴナルアーキテクチャ分析</li>
 <li>🔌 プラグインシステム</li>
-<li>🌐 アプリ内i18n</li>
 </ul>
 
 <hr>

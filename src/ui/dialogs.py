@@ -181,7 +181,8 @@ class AdvancedPreviewDialog(QDialog):
 
         self.lbl_savings = QLabel(tr("dialogs.preview.savings_initial"))
         self.lbl_savings.setProperty("cssClass", "heading")
-        self.lbl_savings.setStyleSheet("color: #16a34a;")
+        colors = ThemeManager.get_current_colors()
+        self.lbl_savings.setStyleSheet(f"color: {colors.get('success', '#16a34a')};")
         diff_top_layout.addWidget(self.lbl_savings)
 
         diff_layout.addLayout(diff_top_layout)
@@ -246,7 +247,8 @@ class AdvancedPreviewDialog(QDialog):
 
         colors = ThemeManager.get_current_colors()
         fonts = ThemeManager.get_font_settings()
-        self.diff_browser.setHtml("<div style='padding:20px;'>Generating diff...</div>")
+        msg = tr("dialogs.preview.generating_diff", default="Generating diff...")
+        self.diff_browser.setHtml(f"<div style='padding:20px;'>{msg}</div>")
 
         async def _generate_diff_bg():
             import asyncio

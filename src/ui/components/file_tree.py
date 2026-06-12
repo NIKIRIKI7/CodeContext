@@ -127,8 +127,10 @@ class FileTree(QWidget):
                         meta = metadata.get(full_path, {})
                         tokens = meta.get("tokens", 0)
                         category = meta.get("category", "LIGHT")
+                        git_status = meta.get("git_status", "")
                         item.setData(tokens, Qt.UserRole + 2)
                         item.setData(category, Qt.UserRole + 3)
+                        item.setData(git_status, Qt.UserRole + 4)
                         icon = icon_map.get(category, "🟢")
                         item.setText(f"{icon} {part} ({tokens} tk)")
 
@@ -284,7 +286,16 @@ class FileTree(QWidget):
         self._is_updating = False
 
     def _select_git_modified(self):
-        pass
+        self._is_updating = True
+        for item, full_path in self._all_items:
+            is_file = item.data(Qt.UserRole + 1)
+            if is_file:
+                git_status = item.data(Qt.UserRole + 4)
+                state = Qt.Checked if git_status else Qt.Unchecked
+                if item.checkState() != state:
+                    item.setCheckState(state)
+                    self.on_toggle(full_path, state == Qt.Checked)
+        self._is_updating = False
 
     def retranslate_ui(self):
         self.search.setPlaceholderText(tr("file_tree.search.placeholder"))

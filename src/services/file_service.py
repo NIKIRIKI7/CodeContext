@@ -57,13 +57,14 @@ class FileService:
                     if entry.name in ign or entry.name == '.git':
                         continue
                     rel_path = os.path.relpath(entry.path, root_path)
+                    rel_path_posix = rel_path.replace(os.sep, '/')
                     if entry.is_dir(follow_symlinks=False):
-                        if spec and spec.match_file(rel_path + "/"):
+                        if spec and spec.match_file(rel_path_posix + "/"):
                             continue
                         result.extend(self._fast_scandir(root_path, entry.path, ign, exts, spec))
                     elif entry.is_file(follow_symlinks=False):
                         if any(entry.name.lower().endswith(ext) for ext in exts):
-                            if spec and spec.match_file(rel_path):
+                            if spec and spec.match_file(rel_path_posix):
                                 continue
                             result.append(entry.path)
         except PermissionError:

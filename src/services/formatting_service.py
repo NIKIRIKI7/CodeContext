@@ -1,6 +1,7 @@
 import html
 import json
 import os
+import re
 import difflib
 from pathlib import Path
 from typing import List, Dict, Set, Optional, Any
@@ -13,6 +14,7 @@ except ImportError:
     JINJA_AVAILABLE = False
     Template = Environment = FileSystemLoader = select_autoescape = None
 
+from ..i18n import tr
 from ..store.state import ProcessedFile
 
 
@@ -167,49 +169,29 @@ class FormattingService:
         )
 
         if c_start > 0:
-            html_diff = html_diff.replace('<body>', f'<body><div style="color:gray;padding:5px;">... {c_start} identical lines hidden ...</div>')
+            msg = tr("formatting.hidden_lines", default=f"... {c_start} identical lines hidden ...", count=c_start)
+            html_diff = html_diff.replace('<body>', f'<body><div style="color:gray;padding:5px;">{msg}</div>')
 
-        custom_css = f"""
-        <style>
-        body {{
-            background-color: {colors.get('card', '#fff')};
-            color: {colors.get('text', '#000')};
-            font-family: {font_family};
-            font-size: {font_size};
-        }}
-        table.diff {{
-            font-family: {font_family};
-            font-size: {font_size};
-            width: 100%;
-            border-collapse: collapse;
-            color: {colors.get('text', '#000')};
-        }}
-        .diff_header {{
-            background-color: {colors.get('diff_hdr', '#f0f0f0')};
-            color: {colors.get('text_muted', '#777')};
-        }}
-        .diff_next {{
-            background-color: {colors.get('diff_hdr', '#f0f0f0')};
-        }}
-        .diff_add {{
-            background-color: {colors.get('diff_add', '#e6ffed')};
-            color: {colors.get('text', '#000')};
-        }}
-        .diff_chg {{
-            background-color: {colors.get('diff_chg', '#fff5b1')};
-            color: {colors.get('text', '#000')};
-        }}
-        .diff_sub {{
-            background-color: {colors.get('diff_sub', '#ffeef0')};
-            color: {colors.get('text', '#000')};
-        }}
-        td {{
-            padding: 3px 6px;
-            border: 1px solid {colors.get('border', '#ccc')};
-        }}
+        custom_css = f'''
+        <style type="text/css">
+            body {{
+                font-family: {font_family};
+                font-size: {font_size};
+                background-color: {colors.get('bg', '#ffffff')};
+                color: {colors.get('text', '#000000')};
+            }}
+            table.diff {{ width: 100%; border-collapse: collapse; font-family: {font_family}; }}
+            table.diff tbody {{ font-family: {font_family}; }}
+            table.diff td {{ padding: 2px 4px; border: 1px solid {colors.get('border', '#cccccc')}; }}
+            table.diff th {{ background-color: {colors.get('diff_hdr', '#f0f0f0')}; border: 1px solid {colors.get('border', '#cccccc')}; color: {colors.get('text', '#000000')}; }}
+            table.diff .diff_add {{ background-color: {colors.get('diff_add', '#e6ffed')}; color: {colors.get('text', '#000000')}; }}
+            table.diff .diff_sub {{ background-color: {colors.get('diff_sub', '#ffeef0')}; color: {colors.get('text', '#000000')}; }}
+            table.diff .diff_chg {{ background-color: {colors.get('diff_chg', '#fff5b1')}; color: {colors.get('text', '#000000')}; }}
+            table.diff .diff_header {{ background-color: {colors.get('diff_hdr', '#f0f0f0')}; }}
+            table.diff .diff_next {{ background-color: {colors.get('diff_hdr', '#f0f0f0')}; }}
         </style>
-        """
-        html_diff = html_diff.replace('</head>', custom_css + '</head>')
+        '''
+        html_diff = re.sub(r'<style type="text/css">.*?</style>', custom_css, html_diff, flags=re.DOTALL)
         return html_diff
 
     @staticmethod

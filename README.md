@@ -11,7 +11,7 @@
 **AI-powered codebase analysis & prompt preparation tool**
 
 [![AUR](https://img.shields.io/aur/version/codecontext-ai?style=flat-square&logo=archlinux&label=AUR)](https://aur.archlinux.org/packages/codecontext-ai)
-[![Version](https://img.shields.io/badge/version-1.24.1-blue?style=flat-square)](VERSION.txt)
+[![Version](https://img.shields.io/badge/version-1.24.2-blue?style=flat-square)](VERSION.txt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square&logo=python)](https://www.python.org/downloads/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20|%20Linux%20|%20macOS-lightgrey?style=flat-square)]()
@@ -309,11 +309,14 @@ python main.py --cli --path ./frontend ./backend --format xml --output combined.
 
 <h2>🗺️ Roadmap</h2>
 <ul>
+<li>📚 <b>RAG (Retrieval-Augmented Generation)</b> mode — indexing massive codebases using local vector DB (Chroma/FAISS).</li>
+<li>🚫 <b>Deep .gitignore parsing</b> — support for nested <code>.gitignore</code> files & global <code>~/.gitignore</code>.</li>
+<li>☁️ <b>Cloud Sync</b> — sync presets & configurations via GitHub Gists.</li>
+<li>🌳 <b>Multi-root Workspaces</b> — improved monorepo support (Lerna, NX, Turborepo).</li>
+<li>🚀 <b>CI/CD Pipelines</b> — GitHub Actions & GitLab CI plugins for automated PR context generation.</li>
+<li>🤖 <b>Direct OpenAI/Anthropic API integration</b> — complete the bridge from prompt generation to direct output.</li>
 <li>🍎 macOS Finder context menu</li>
-<li>🤖 Direct OpenAI/Anthropic API integration</li>
-<li>🏛️ Hexagonal Architecture analysis</li>
 <li>🔌 Plugin system</li>
-<li>🌐 In-app i18n</li>
 </ul>
 
 <hr>

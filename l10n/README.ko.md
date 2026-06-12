@@ -11,7 +11,7 @@
 **AI 기반 코드베이스 분석 및 프롬프트 준비 도구**
 
 [![AUR](https://img.shields.io/aur/version/codecontext-ai?style=flat-square&logo=archlinux&label=AUR)](https://aur.archlinux.org/packages/codecontext-ai)
-[![Version](https://img.shields.io/badge/version-1.24.1-blue?style=flat-square)](../VERSION.txt)
+[![Version](https://img.shields.io/badge/version-1.24.2-blue?style=flat-square)](../VERSION.txt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](../LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square&logo=python)](https://www.python.org/downloads/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20|%20Linux%20|%20macOS-lightgrey?style=flat-square)]()
@@ -309,11 +309,14 @@ python main.py --cli --path ./frontend ./backend --format xml --output combined.
 
 <h2>🗺️ 로드맵</h2>
 <ul>
+<li>📚 <b>RAG(검색 증강 생성) 모드</b> — 로컬 벡터 DB(Chroma/FAISS)를 사용한 대규모 코드베이스 인덱싱.</li>
+<li>🚫 <b>심층 .gitignore 파싱</b> — 중첩된 <code>.gitignore</code> 파일 및 전역 <code>~/.gitignore</code> 지원.</li>
+<li>☁️ <b>클라우드 동기화</b> — GitHub Gists를 통한 프리셋 및 설정 동기화.</li>
+<li>🌳 <b>멀티루트 워크스페이스</b> — 모노레포(Lerna, NX, Turborepo) 지원 개선.</li>
+<li>🚀 <b>CI/CD 파이프라인</b> — PR 컨텍스트 자동 생성을 위한 GitHub Actions 및 GitLab CI 플러그인.</li>
+<li>🤖 <b>OpenAI/Anthropic API 직접 통합</b> — 프롬프트 생성에서 직접 출력까지의 완전한 브리지.</li>
 <li>🍎 macOS Finder 컨텍스트 메뉴</li>
-<li>🤖 OpenAI/Anthropic API 직접 통합</li>
-<li>🏛️ 헥사고날 아키텍처 분석</li>
 <li>🔌 플러그인 시스템</li>
-<li>🌐 앱 내 i18n</li>
 </ul>
 
 <hr>

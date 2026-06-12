@@ -11,7 +11,7 @@
 **AI destekli kod tabanı analizi ve prompt hazırlama aracı**
 
 [![AUR](https://img.shields.io/aur/version/codecontext-ai?style=flat-square&logo=archlinux&label=AUR)](https://aur.archlinux.org/packages/codecontext-ai)
-[![Version](https://img.shields.io/badge/version-1.24.1-blue?style=flat-square)](../VERSION.txt)
+[![Version](https://img.shields.io/badge/version-1.24.2-blue?style=flat-square)](../VERSION.txt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](../LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square&logo=python)](https://www.python.org/downloads/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20|%20Linux%20|%20macOS-lightgrey?style=flat-square)]()
@@ -309,11 +309,14 @@ python main.py --cli --path ./frontend ./backend --format xml --output combined.
 
 <h2>🗺️ Yol Haritası</h2>
 <ul>
+<li>📚 <b>RAG (Retrieval-Augmented Generation) modu</b> — yerel vektör DB (Chroma/FAISS) ile büyük kod tabanlarını indeksleme.</li>
+<li>🚫 <b>Derin .gitignore ayrıştırma</b> — iç içe <code>.gitignore</code> dosyaları ve global <code>~/.gitignore</code> desteği.</li>
+<li>☁️ <b>Bulut senkronizasyonu</b> — GitHub Gists üzerinden ön ayarları ve yapılandırmaları senkronize edin.</li>
+<li>🌳 <b>Çoklu kök çalışma alanları</b> — monorepo (Lerna, NX, Turborepo) desteği iyileştirildi.</li>
+<li>🚀 <b>CI/CD boru hatları</b> — otomatik PR bağlamı oluşturma için GitHub Actions ve GitLab CI eklentileri.</li>
+<li>🤖 <b>Doğrudan OpenAI/Anthropic API entegrasyonu</b> — prompt oluşturmadan doğrudan çıktıya tam köprü.</li>
 <li>🍎 macOS Finder bağlam menüsü</li>
-<li>🤖 Doğrudan OpenAI/Anthropic API entegrasyonu</li>
-<li>🏛️ Heksagonal Mimari analizi</li>
 <li>🔌 Eklenti sistemi</li>
-<li>🌐 Uygulama içi i18n</li>
 </ul>
 
 <hr>

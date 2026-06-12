@@ -11,7 +11,7 @@
 **AI-संचालित कोडबेस विश्लेषण और प्रॉम्प्ट तैयारी उपकरण**
 
 [![AUR](https://img.shields.io/aur/version/codecontext-ai?style=flat-square&logo=archlinux&label=AUR)](https://aur.archlinux.org/packages/codecontext-ai)
-[![Version](https://img.shields.io/badge/version-1.24.1-blue?style=flat-square)](../VERSION.txt)
+[![Version](https://img.shields.io/badge/version-1.24.2-blue?style=flat-square)](../VERSION.txt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](../LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square&logo=python)](https://www.python.org/downloads/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20|%20Linux%20|%20macOS-lightgrey?style=flat-square)]()
@@ -309,11 +309,14 @@ python main.py --cli --path ./frontend ./backend --format xml --output combined.
 
 <h2>🗺️ रोडमैप</h2>
 <ul>
+<li>📚 <b>RAG (Retrieval-Augmented Generation) मोड</b> — स्थानीय वेक्टर DB (Chroma/FAISS) का उपयोग करके विशाल कोडबेस की इंडेक्सिंग।</li>
+<li>🚫 <b>गहन .gitignore पार्सिंग</b> — नेस्टेड <code>.gitignore</code> फ़ाइलों और वैश्विक <code>~/.gitignore</code> के लिए समर्थन।</li>
+<li>☁️ <b>क्लाउड सिंक</b> — GitHub Gists के माध्यम से प्रीसेट और कॉन्फ़िगरेशन सिंक करें।</li>
+<li>🌳 <b>मल्टी-रूट वर्कस्पेस</b> — मोनोरेपो (Lerna, NX, Turborepo) के लिए बेहतर समर्थन।</li>
+<li>🚀 <b>CI/CD पाइपलाइन</b> — स्वचालित PR संदर्भ निर्माण के लिए GitHub Actions और GitLab CI प्लगइन।</li>
+<li>🤖 <b>प्रत्यक्ष OpenAI/Anthropic API एकीकरण</b> — प्रॉम्प्ट जनरेशन से सीधे आउटपुट तक पूर्ण ब्रिज।</li>
 <li>🍎 macOS फ़ाइंडर संदर्भ मेनू</li>
-<li>🤖 प्रत्यक्ष OpenAI/Anthropic API एकीकरण</li>
-<li>🏛️ हेक्सागोनल आर्किटेक्चर विश्लेषण</li>
 <li>🔌 प्लगिन सिस्टम</li>
-<li>🌐 ऐप में i18n</li>
 </ul>
 
 <hr>

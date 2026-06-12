@@ -11,7 +11,7 @@
 **AI 驱动的代码库分析与提示词准备工具**
 
 [![AUR](https://img.shields.io/aur/version/codecontext-ai?style=flat-square&logo=archlinux&label=AUR)](https://aur.archlinux.org/packages/codecontext-ai)
-[![Version](https://img.shields.io/badge/version-1.24.1-blue?style=flat-square)](../VERSION.txt)
+[![Version](https://img.shields.io/badge/version-1.24.2-blue?style=flat-square)](../VERSION.txt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](../LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square&logo=python)](https://www.python.org/downloads/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20|%20Linux%20|%20macOS-lightgrey?style=flat-square)]()
@@ -309,11 +309,14 @@ python main.py --cli --path ./frontend ./backend --format xml --output combined.
 
 <h2>🗺️ 路线图</h2>
 <ul>
+<li>📚 <b>RAG（检索增强生成）模式</b> — 使用本地向量数据库（Chroma/FAISS）索引大型代码库。</li>
+<li>🚫 <b>深度 .gitignore 解析</b> — 支持嵌套 <code>.gitignore</code> 文件和全局 <code>~/.gitignore</code>。</li>
+<li>☁️ <b>云同步</b> — 通过 GitHub Gists 同步预设和配置。</li>
+<li>🌳 <b>多根工作区</b> — 改进的单仓库支持（Lerna, NX, Turborepo）。</li>
+<li>🚀 <b>CI/CD 流水线</b> — GitHub Actions 和 GitLab CI 插件，用于自动生成 PR 上下文。</li>
+<li>🤖 <b>直接 OpenAI/Anthropic API 集成</b> — 完成从提示生成到直接输出的完整桥梁。</li>
 <li>🍎 macOS Finder 右键菜单</li>
-<li>🤖 直接 OpenAI/Anthropic API 集成</li>
-<li>🏛️ 六边形架构分析</li>
 <li>🔌 插件系统</li>
-<li>🌐 应用内 i18n</li>
 </ul>
 
 <hr>
