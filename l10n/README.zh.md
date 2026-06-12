@@ -11,7 +11,7 @@
 **AI 驱动的代码库分析与提示词准备工具**
 
 [![AUR](https://img.shields.io/aur/version/codecontext-ai?style=flat-square&logo=archlinux&label=AUR)](https://aur.archlinux.org/packages/codecontext-ai)
-[![Version](https://img.shields.io/badge/version-1.24.2-blue?style=flat-square)](../VERSION.txt)
+[![Version](https://img.shields.io/badge/version-1.25.0-blue?style=flat-square)](../VERSION.txt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](../LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square&logo=python)](https://www.python.org/downloads/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20|%20Linux%20|%20macOS-lightgrey?style=flat-square)]()
@@ -39,11 +39,12 @@
 <tr><td>🖱️ 右键菜单</td><td>Windows / Linux</td><td>无</td></tr>
 <tr><td>🎨 主题</td><td>Apple、Modern、自定义 JSON</td><td>固定 UI</td></tr>
 <tr><td>⚙️ UI 自定义 (v1.14+)</td><td>Premiere Pro 风格</td><td>固定 UI</td></tr>
-<tr><td>🌐 i18n (v1.17+)</td><td>15 languages, system auto-detect</td><td>Single language</td></tr>
-<tr><td>♻️ Dedup (v1.23+)</td><td>Detects & skips files with identical content</td><td>Manual check</td></tr>
-<tr><td>⚡ Aggressive minify (v1.23+)</td><td>Extra compression — eliminates trailing whitespace on every line</td><td>Manual delete</td></tr>
-<tr><td>📌 Checkpoints (v1.23+)</td><td>Save before/after snapshots for debugging</td><td>Not available</td></tr>
-<tr><td>👁️ Auto-Watch (v1.23+)</td><td>Watches files & re-processes on change</td><td>Not available</td></tr>
+<tr><td>🌐 i18n (v1.17+)</td><td>15种语言，系统自动检测</td><td>单一语言</td></tr>
+<tr><td>♻️ 去重 (v1.23+)</td><td>检测并跳过内容相同的文件</td><td>手动检查</td></tr>
+<tr><td>⚡ 强制最小化 (v1.23+)</td><td>额外压缩 — 删除每行末尾空白</td><td>手动删除</td></tr>
+<tr><td>📌 检查点 (v1.23+)</td><td>保存调试前/后快照</td><td>不可用</td></tr>
+<tr><td>👁️ 自动监视 (v1.23+)</td><td>监视文件并在变更时重新处理</td><td>不可用</td></tr>
+<tr><td>🔌 插件系统 (v1.25+)</td><td>通过 Python 插件扩展 — 自定义选项卡、操作和 i18n</td><td>不可用</td></tr>
 </tbody>
 </table>
 
@@ -162,13 +163,13 @@ cd yay && makepkg -si</pre>
 <thead><tr><th>选项</th><th>描述</th></tr></thead>
 <tbody>
 <tr><td>☑ Minify</td><td>去除空白字符和空行</td></tr>
-<tr><td>☑ Aggressive</td><td>Aggressive minification — Extra compression — eliminates trailing whitespace on every line</td></tr>
+<tr><td>☑ Aggressive</td><td>Aggressive minification — 额外压缩 — 删除每行末尾空白</td></tr>
 <tr><td>☑ No Comments</td><td>删除所有注释</td></tr>
 <tr><td>☑ No Secrets</td><td>隐藏 API 密钥、密码、令牌</td></tr>
 <tr><td>☑ Skeleton ☠️</td><td><b>删除函数体</b>——最大化 Token 节省</td></tr>
-<tr><td>☑ Dedup</td><td>Removes duplicate files with identical content</td></tr>
-<tr><td>☑ Checkpoints</td><td>Saves intermediate processing checkpoints</td></tr>
-<tr><td>☑ Auto-Watch</td><td>Watches files & re-processes on change</td></tr>
+<tr><td>☑ Dedup</td><td>检测并排除内容相同的重复文件</td></tr>
+<tr><td>☑ Checkpoints</td><td>保存中间处理检查点</td></tr>
+<tr><td>☑ Auto-Watch</td><td>监视文件并在变更时重新处理</td></tr>
 <tr><td>格式</td><td>Markdown、XML、Plain、JSONL Chunks、Custom（Jinja2）</td></tr>
 <tr><td>📁 模板</td><td>Jinja2 模板选择器</td></tr>
 </tbody>
@@ -177,13 +178,13 @@ cd yay && makepkg -si</pre>
 <p><b>骨架模式：</b>删除函数实现（<code>def func_name(...):  # ... 实现 ...</code>），保留所有类——让 LLM 用最少的 Token 理解大型项目。</p>
 
 
-<p><b>Minify vs Aggressive:</b> <b>Minify</b> strips leading/trailing whitespace and removes blank lines — safe for any codebase, reduces tokens without affecting readability. <b>Aggressive</b> adds an extra pass that eliminates trailing whitespace on every line for maximum compression. Combine both when you need to fit more code into a limited context window.</p>
+<p><b>Minify vs Aggressive（压缩 vs 激进）:</b> <b>Minify（压缩）</b>去除每行首尾空格和空行 — 对任何代码库都安全，减少 Token 的同时不影响可读性。<b>Aggressive（激进）</b>增加额外处理，消除每行末尾空格以最大化压缩。当需要将更多代码放入有限的上下文窗口时，同时启用两者。</p>
 
-<p><b>Dedup:</b> automatically detects files with identical content across your project and excludes duplicates from the output — prevents LLM from seeing the same code twice and wasting tokens.</p>
+<p><b>Dedup（去重）:</b> 自动检测项目中内容完全相同的文件，从输出中排除重复项 — 防止 LLM 重复看到相同代码而浪费 Token。</p>
 
-<p><b>Checkpoints:</b> saves intermediate results at each pipeline stage (before cleanup, after minification, etc.) to <code>checkpoints/</code> folder. Useful for debugging what each processing step does or comparing outputs side by side.</p>
+<p><b>Checkpoints（检查点）:</b> 在每个处理阶段（清理前、压缩后等）将中间结果保存到 <code>checkpoints/</code> 文件夹。用于调试每个处理步骤的效果或并排比较输出结果。</p>
 
-<p><b>Auto-Watch:</b> monitors your project files for changes using the OS file watcher. When a file is saved, the pipeline automatically re-runs — ideal during active development when you need continuous prompt updates.</p>
+<p><b>Auto-Watch（自动监视）:</b> 通过操作系统文件监视器监控项目文件的变更。当文件被保存时，处理流水线自动重新运行 — 在需要持续更新提示词的活跃开发期间非常理想。</p>
 <h3>5. 操作按钮</h3>
 <table>
 <thead><tr><th>按钮</th><th>操作</th></tr></thead>
@@ -234,6 +235,73 @@ cd yay && makepkg -si</pre>
 
 <h3>11. 命令面板</h3>
 <p><code>Ctrl+Shift+P</code>——无需鼠标即可访问所有操作。</p>
+
+<h3>12. 🔌 插件系统 (v1.25+)</h3>
+<p><b>CodeContext AI</b> 支持 <b>Python 插件系统</b>，让您通过自定义功能扩展应用程序。</p>
+
+<h4>📁 插件结构</h4>
+<pre>my_plugin/
+├── manifest.json          # 插件元数据
+├── requirements.txt       # （可选）pip 依赖
+├── locales/
+│   ├── en.json            # 英文翻译
+│   └── ru.json            # 俄文翻译
+└── plugin.py              # 入口点</pre>
+
+<h4>📄 manifest.json</h4>
+<pre>{
+  "id": "my_plugin",
+  "name": "My Plugin",
+  "version": "1.0.0",
+  "description": "做些有用的事情",
+  "entry_point": "plugin"
+}</pre>
+
+<h4>🐍 plugin.py（示例）</h4>
+<pre>from src.api.plugin_api import IPlugin, PluginAPI
+
+class MyPlugin(IPlugin):
+    id = "my_plugin"
+    name = "My Plugin"
+    version = "1.0.0"
+
+    def on_init(self, api: PluginAPI) -> None:
+        api.ui.register_sidebar_tab(
+            "my_tab", "My Tab",
+            lambda: QLabel("来自插件的问候！")
+        )
+        api.ui.register_action_button(
+            "my_action", "My Action",
+            lambda: api.add_log("插件动作已点击")
+        )
+        api.add_log("我的插件已初始化")
+
+    def on_shutdown(self) -> None:
+        pass</pre>
+
+<h4>🔐 安全</h4>
+<ul>
+<li>插件获得 <b>完整的 Python 访问权限</b> — 请仅从可信来源安装</li>
+<li>首次加载时，安全对话框会请求您的批准后才启用插件</li>
+<li>如果存在 <code>requirements.txt</code>，您将在加载前看到实时的 pip 安装日志</li>
+<li>已批准的插件会保存在设置中（<code>approved_plugins</code>）</li>
+</ul>
+
+<h4>🛠 插件 API</h4>
+<table>
+<thead><tr><th>属性 / 方法</th><th>描述</th></tr></thead>
+<tbody>
+<tr><td><code>api.store</code></td><td>只读 Redux 存储（通过 <code>state.settings.xxx</code> 访问状态）</td></tr>
+<tr><td><code>api.dispatcher</code></td><td>派发动作（例如 <code>UI_ADD_LOG</code>）</td></tr>
+<tr><td><code>api.ui.register_sidebar_tab(id, label, factory)</code></td><td>向左侧边栏添加选项卡</td></tr>
+<tr><td><code>api.ui.register_action_button(id, label, callback)</code></td><td>向"插件 🔽"下拉菜单添加按钮</td></tr>
+<tr><td><code>api.add_translations(lang, data)</code></td><td>添加运行时翻译（合并到内置翻译之上）</td></tr>
+<tr><td><code>api.add_log(message)</code></td><td>写入应用程序日志面板</td></tr>
+</tbody>
+</table>
+
+<h4>⚙️ 可见性</h4>
+<p>插件选项卡和操作按钮可以通过 <b>⚙ 界面自定义</b> 来切换 — 它们会与内置选项卡/操作一起出现，并带有各自的复选框。</p>
 
 <hr>
 
@@ -316,7 +384,7 @@ python main.py --cli --path ./frontend ./backend --format xml --output combined.
 <li>🚀 <b>CI/CD 流水线</b> — GitHub Actions 和 GitLab CI 插件，用于自动生成 PR 上下文。</li>
 <li>🤖 <b>直接 OpenAI/Anthropic API 集成</b> — 完成从提示生成到直接输出的完整桥梁。</li>
 <li>🍎 macOS Finder 右键菜单</li>
-<li>🔌 插件系统</li>
+<li>🔌 插件系统 ✅</li>
 </ul>
 
 <hr>

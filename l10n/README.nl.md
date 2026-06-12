@@ -11,7 +11,7 @@
 **AI-gestuurde codebase-analyse & prompt-voorbereidingstool**
 
 [![AUR](https://img.shields.io/aur/version/codecontext-ai?style=flat-square&logo=archlinux&label=AUR)](https://aur.archlinux.org/packages/codecontext-ai)
-[![Version](https://img.shields.io/badge/version-1.24.2-blue?style=flat-square)](../VERSION.txt)
+[![Version](https://img.shields.io/badge/version-1.25.0-blue?style=flat-square)](../VERSION.txt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](../LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square&logo=python)](https://www.python.org/downloads/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20|%20Linux%20|%20macOS-lightgrey?style=flat-square)]()
@@ -39,11 +39,12 @@
 <tr><td>🖱️ Contextmenu</td><td>Windows / Linux</td><td>Geen</td></tr>
 <tr><td>🎨 Thema's</td><td>Apple, Modern, aangepaste JSON</td><td>Vaste UI</td></tr>
 <tr><td>⚙️ UI-aanpassing (v1.14+)</td><td>Premiere Pro-stijl</td><td>Vaste UI</td></tr>
-<tr><td>🌐 i18n (v1.17+)</td><td>15 languages, system auto-detect</td><td>Single language</td></tr>
-<tr><td>♻️ Dedup (v1.23+)</td><td>Detects & skips files with identical content</td><td>Manual check</td></tr>
-<tr><td>⚡ Aggressive minify (v1.23+)</td><td>Extra compression — eliminates trailing whitespace on every line</td><td>Manual delete</td></tr>
-<tr><td>📌 Checkpoints (v1.23+)</td><td>Save before/after snapshots for debugging</td><td>Not available</td></tr>
-<tr><td>👁️ Auto-Watch (v1.23+)</td><td>Watches files & re-processes on change</td><td>Not available</td></tr>
+<tr><td>🌐 i18n (v1.17+)</td><td>15 talen, automatische detectie</td><td>Enkele taal</td></tr>
+<tr><td>♻️ Deduplicatie (v1.23+)</td><td>Detecteert en slaat bestanden met identieke inhoud over</td><td>Handmatige controle</td></tr>
+<tr><td>⚡ Agressieve minificatie (v1.23+)</td><td>Extra compressie — verwijdert volgspaties op elke regel</td><td>Handmatig verwijderen</td></tr>
+<tr><td>📌 Checkpoints (v1.23+)</td><td>Bewaar voor/na-opnamen voor foutopsporing</td><td>Niet beschikbaar</td></tr>
+<tr><td>👁️ Auto-bewaking (v1.23+)</td><td>Bewaakt bestanden en verwerkt opnieuw bij wijziging</td><td>Niet beschikbaar</td></tr>
+<tr><td>🔌 Plugin-systeem (v1.25+)</td><td>Uitbreiden met Python-plugins — aangepaste tabs, acties en i18n</td><td>Niet beschikbaar</td></tr>
 </tbody>
 </table>
 
@@ -162,13 +163,13 @@ cd yay && makepkg -si</pre>
 <thead><tr><th>Optie</th><th>Beschrijving</th></tr></thead>
 <tbody>
 <tr><td>☑ Minificatie</td><td>Verwijdert witruimte en lege regels</td></tr>
-<tr><td>☑ Aggressive</td><td>Aggressive minification — Extra compression — eliminates trailing whitespace on every line</td></tr>
+<tr><td>☑ Aggressive</td><td>Aggressive minification — Extra compressie — verwijdert volgspaties op elke regel</td></tr>
 <tr><td>☑ Geen opmerkingen</td><td>Verwijdert alle opmerkingen</td></tr>
 <tr><td>☑ Geen geheimen</td><td>Maskeert API-sleutels, wachtwoorden, tokens</td></tr>
 <tr><td>☑ Skelet ☠️</td><td><b>Verwijdert functielichamen</b> — maximale tokenbesparing</td></tr>
-<tr><td>☑ Dedup</td><td>Removes duplicate files with identical content</td></tr>
-<tr><td>☑ Checkpoints</td><td>Saves intermediate processing checkpoints</td></tr>
-<tr><td>☑ Auto-Watch</td><td>Watches files & re-processes on change</td></tr>
+<tr><td>☑ Dedup</td><td>Verwijdert dubbele bestanden met identieke inhoud</td></tr>
+<tr><td>☑ Checkpoints</td><td>Slaat tussentijdse verwerkingscheckpoints op</td></tr>
+<tr><td>☑ Auto-Watch</td><td>Bewaakt bestanden en verwerkt opnieuw bij wijziging</td></tr>
 <tr><td>Formaat</td><td>Markdown, XML, Plain, JSONL Chunks, Aangepast (Jinja2)</td></tr>
 <tr><td>📁 sjabloon</td><td>Jinja2-sjabloonkiezer</td></tr>
 </tbody>
@@ -177,11 +178,11 @@ cd yay && makepkg -si</pre>
 <p><b>Skeletmodus:</b> verwijdert functie-implementaties (<code>def func_name(...):  # ... implementation ...</code>), behoudt alle klassen — laat LLM grote projecten begrijpen met minimale tokens.</p>
 
 
-<p><b>Minify vs Aggressive:</b> <b>Minify</b> strips leading/trailing whitespace and removes blank lines — safe for any codebase, reduces tokens without affecting readability. <b>Aggressive</b> adds an extra pass that eliminates trailing whitespace on every line for maximum compression. Combine both when you need to fit more code into a limited context window.</p>
+<p><b>Minify vs Agressief:</b> <b>Minify</b> verwijdert voorloop-/achterloopspaties en lege regels — veilig voor elke codebase, vermindert tokens zonder de leesbaarheid te beïnvloeden. <b>Agressief</b> voegt een extra pas toe die volgspaties op elke regel verwijdert voor maximale compressie. Combineer beide wanneer u meer code in een beperkt contextvenster wilt passen.</p>
 
-<p><b>Dedup:</b> automatically detects files with identical content across your project and excludes duplicates from the output — prevents LLM from seeing the same code twice and wasting tokens.</p>
+<p><b>Dedup:</b> detecteert automatisch bestanden met identieke inhoud in uw project en sluit duplicaten uit van de uitvoer — voorkomt dat de LLM dezelfde code twee keer ziet en tokens verspilt.</p>
 
-<p><b>Checkpoints:</b> saves intermediate results at each pipeline stage (before cleanup, after minification, etc.) to <code>checkpoints/</code> folder. Useful for debugging what each processing step does or comparing outputs side by side.</p>
+<p><b>Checkpoints:</b> slaat tussentijdse resultaten op bij elke pijplijnfase (vóór opschoning, na minificatie, etc.) in de map <code>checkpoints/</code>. Nuttig voor het debuggen van wat elke verwerkingsstap doet of voor het vergelijken van uitvoeren naast elkaar.</p>
 
 <p><b>Auto-Watch:</b> monitors your project files for changes using the OS file watcher. When a file is saved, the pipeline automatically re-runs — ideal during active development when you need continuous prompt updates.</p>
 <h3>5. Actieknoppen</h3>
@@ -234,6 +235,73 @@ cd yay && makepkg -si</pre>
 
 <h3>11. Commandopalet</h3>
 <p><code>Ctrl+Shift+P</code> — muisvrije toegang tot alle acties.</p>
+
+<h3>12. 🔌 Plugin-systeem (v1.25+)</h3>
+<p><b>CodeContext AI</b> ondersteunt een <b>Python-plugin-systeem</b> waarmee u de app kunt uitbreiden met aangepaste functionaliteit.</p>
+
+<h4>📁 Pluginstructuur</h4>
+<pre>my_plugin/
+├── manifest.json          # Plugin-metadata
+├── requirements.txt       # (Optioneel) pip-afhankelijkheden
+├── locales/
+│   ├── en.json            # Engelse vertalingen
+│   └── ru.json            # Russische vertalingen
+└── plugin.py              # Toegangspunt</pre>
+
+<h4>📄 manifest.json</h4>
+<pre>{
+  "id": "my_plugin",
+  "name": "My Plugin",
+  "version": "1.0.0",
+  "description": "Doet iets nuttigs",
+  "entry_point": "plugin"
+}</pre>
+
+<h4>🐍 plugin.py (Voorbeeld)</h4>
+<pre>from src.api.plugin_api import IPlugin, PluginAPI
+
+class MyPlugin(IPlugin):
+    id = "my_plugin"
+    name = "My Plugin"
+    version = "1.0.0"
+
+    def on_init(self, api: PluginAPI) -> None:
+        api.ui.register_sidebar_tab(
+            "my_tab", "My Tab",
+            lambda: QLabel("Hallo van plugin!")
+        )
+        api.ui.register_action_button(
+            "my_action", "My Action",
+            lambda: api.add_log("Plugin-actie geklikt")
+        )
+        api.add_log("Mijn plugin geïnitialiseerd")
+
+    def on_shutdown(self) -> None:
+        pass</pre>
+
+<h4>🔐 Beveiliging</h4>
+<ul>
+<li>Plugins krijgen <b>volledige Python-toegang</b> — installeer alleen uit vertrouwde bronnen</li>
+<li>Bij de eerste keer laden vraagt een beveiligingsdialoog om uw goedkeuring voordat een plugin wordt ingeschakeld</li>
+<li>Als <code>requirements.txt</code> bestaat, ziet u een live pip-installatielog voordat het laden begint</li>
+<li>Goedgekeurde plugins worden onthouden in instellingen (<code>approved_plugins</code>)</li>
+</ul>
+
+<h4>🛠 Plugin-API</h4>
+<table>
+<thead><tr><th>Eigenschap / Methode</th><th>Beschrijving</th></tr></thead>
+<tbody>
+<tr><td><code>api.store</code></td><td>Alleen-lezen Redux-winkel (statustoegang via <code>state.settings.xxx</code>)</td></tr>
+<tr><td><code>api.dispatcher</code></td><td>Acties verzenden (bijv. <code>UI_ADD_LOG</code>)</td></tr>
+<tr><td><code>api.ui.register_sidebar_tab(id, label, factory)</code></td><td>Voeg een tabblad toe aan de linker zijbalk</td></tr>
+<tr><td><code>api.ui.register_action_button(id, label, callback)</code></td><td>Voeg een knop toe aan het "Plugins 🔽"-dropdownmenu</td></tr>
+<tr><td><code>api.add_translations(lang, data)</code></td><td>Voeg runtime-vertalingen toe (samengevoegd bovenop ingebouwde)</td></tr>
+<tr><td><code>api.add_log(message)</code></td><td>Schrijf naar het app-logpaneel</td></tr>
+</tbody>
+</table>
+
+<h4>⚙️ Zichtbaarheid</h4>
+<p>Plugin-tabbladen en actieknoppen kunnen worden in- of uitgeschakeld via <b>⚙ UI-aanpassing</b> — ze verschijnen naast ingebouwde tabbladen/acties met hun eigen selectievakjes.</p>
 
 <hr>
 
@@ -316,7 +384,7 @@ python main.py --cli --path ./frontend ./backend --format xml --output combined.
 <li>🚀 <b>CI/CD-pijplijnen</b> — GitHub Actions- en GitLab CI-plugins voor geautomatiseerde PR-contextgeneratie.</li>
 <li>🤖 <b>Directe OpenAI/Anthropic API-integratie</b> — volledige brug van promptgeneratie naar directe uitvoer.</li>
 <li>🍎 macOS Finder-contextmenu</li>
-<li>🔌 Pluginsysteem</li>
+<li>🔌 Pluginsysteem ✅</li>
 </ul>
 
 <hr>

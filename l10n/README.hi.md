@@ -11,7 +11,7 @@
 **AI-संचालित कोडबेस विश्लेषण और प्रॉम्प्ट तैयारी उपकरण**
 
 [![AUR](https://img.shields.io/aur/version/codecontext-ai?style=flat-square&logo=archlinux&label=AUR)](https://aur.archlinux.org/packages/codecontext-ai)
-[![Version](https://img.shields.io/badge/version-1.24.2-blue?style=flat-square)](../VERSION.txt)
+[![Version](https://img.shields.io/badge/version-1.25.0-blue?style=flat-square)](../VERSION.txt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](../LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square&logo=python)](https://www.python.org/downloads/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20|%20Linux%20|%20macOS-lightgrey?style=flat-square)]()
@@ -39,11 +39,12 @@
 <tr><td>🖱️ संदर्भ मेनू</td><td>Windows / Linux</td><td>कोई नहीं</td></tr>
 <tr><td>🎨 थीम</td><td>Apple, Modern, कस्टम JSON</td><td>निश्चित UI</td></tr>
 <tr><td>⚙️ UI अनुकूलन (v1.14+)</td><td>Premiere Pro-शैली</td><td>निश्चित UI</td></tr>
-<tr><td>🌐 i18n (v1.17+)</td><td>15 languages, system auto-detect</td><td>Single language</td></tr>
-<tr><td>♻️ Dedup (v1.23+)</td><td>Detects & skips files with identical content</td><td>Manual check</td></tr>
-<tr><td>⚡ Aggressive minify (v1.23+)</td><td>Extra compression — eliminates trailing whitespace on every line</td><td>Manual delete</td></tr>
-<tr><td>📌 Checkpoints (v1.23+)</td><td>Save before/after snapshots for debugging</td><td>Not available</td></tr>
-<tr><td>👁️ Auto-Watch (v1.23+)</td><td>Watches files & re-processes on change</td><td>Not available</td></tr>
+<tr><td>🌐 i18n (v1.17+)</td><td>15 भाषाएँ, सिस्टम स्वचालित पतलग</td><td>एकल भाषा</td></tr>
+<tr><td>♻️ डीडप्लिकेशन (v1.23+)</td><td>समान सामग्री वाली फ़ाइलों का पता लगाता और छोड़ता है</td><td>मैनुअल जाँच</td></tr>
+<tr><td>⚡ आक्रमक मिनिफ़ाइ (v1.23+)</td><td>अतिरिक्त संपीड़न — प्रत्येक पंक्ति पर अंतिम रिक्तियों को हटाता है</td><td>मैनुअल हटाना</td></tr>
+<tr><td>📌 चेकपॉइंट्स (v1.23+)</td><td>डिबगिंग के लिए पहले/बाद के स्नैपशॉट सहेजें</td><td>उपलब्ध नहीं</td></tr>
+<tr><td>👁️ ऑटो-वॉच (v1.23+)</td><td>फ़ाइलों को देखता है और बदलाव पर पुनःसंसाधन करता है</td><td>उपलब्ध नहीं</td></tr>
+<tr><td>🔌 प्लगइन सिस्टम (v1.25+)</td><td>Python प्लगइन्स से विस्तार करें — कस्टम टैब्स, कार्रवाइयाँ, और i18n</td><td>उपलब्ध नहीं</td></tr>
 </tbody>
 </table>
 
@@ -162,13 +163,13 @@ cd yay && makepkg -si</pre>
 <thead><tr><th>विकल्प</th><th>विवरण</th></tr></thead>
 <tbody>
 <tr><td>☑ मिनिफाई</td><td>व्हाइटस्पेस और खाली पंक्तियां हटाता है</td></tr>
-<tr><td>☑ Aggressive</td><td>Aggressive minification — Extra compression — eliminates trailing whitespace on every line</td></tr>
+<tr><td>☑ Aggressive</td><td>Aggressive minification — अतिरिक्त संपीड़न — प्रत्येक पंक्ति पर अंतिम रिक्तियों को हटाता है</td></tr>
 <tr><td>☑ कोई टिप्पणी नहीं</td><td>सभी टिप्पणियां हटाता है</td></tr>
 <tr><td>☑ कोई रहस्य नहीं</td><td>API कुंजी, पासवर्ड, टोकन मास्क करता है</td></tr>
 <tr><td>☑ स्केलेटन ☠️</td><td><b>फ़ंक्शन बॉडी हटाता है</b> — अधिकतम टोकन बचत</td></tr>
-<tr><td>☑ Dedup</td><td>Removes duplicate files with identical content</td></tr>
-<tr><td>☑ Checkpoints</td><td>Saves intermediate processing checkpoints</td></tr>
-<tr><td>☑ Auto-Watch</td><td>Watches files & re-processes on change</td></tr>
+<tr><td>☑ Dedup</td><td>समान सामग्री वाली डुप्लिकेट फ़ाइलों को हटाता है</td></tr>
+<tr><td>☑ Checkpoints</td><td>मध्यवर्ती प्रसंस्करण चेकपॉइंट सहेजता है</td></tr>
+<tr><td>☑ Auto-Watch</td><td>फ़ाइलों को देखता है और बदलाव पर पुनःसंसाधन करता है</td></tr>
 <tr><td>प्रारूप</td><td>Markdown, XML, Plain, JSONL Chunks, कस्टम (Jinja2)</td></tr>
 <tr><td>📁 टेम्पलेट</td><td>Jinja2 टेम्पलेट चयनकर्ता</td></tr>
 </tbody>
@@ -177,13 +178,13 @@ cd yay && makepkg -si</pre>
 <p><b>स्केलेटन मोड:</b> फ़ंक्शन कार्यान्वयन हटाता है (<code>def func_name(...):  # ... implementation ...</code>), सभी कक्षाओं को संरक्षित करता है — LLM को न्यूनतम टोकन के साथ बड़े प्रोजेक्ट समझने देता है।</p>
 
 
-<p><b>Minify vs Aggressive:</b> <b>Minify</b> strips leading/trailing whitespace and removes blank lines — safe for any codebase, reduces tokens without affecting readability. <b>Aggressive</b> adds an extra pass that eliminates trailing whitespace on every line for maximum compression. Combine both when you need to fit more code into a limited context window.</p>
+<p><b>Minify बनाम Aggressive:</b> <b>Minify</b> आगे/पीछे की व्हाइटस्पेस हटाता है और खाली पंक्तियाँ हटाता है — किसी भी कोडबेस के लिए सुरक्षित, पठनीयता को प्रभावित किए बिना टोकन कम करता है। <b>Aggressive</b> अधिकतम संपीड़न के लिए प्रत्येक पंक्ति पर अंतिम रिक्तियों को हटाने वाला एक अतिरिक्त पास जोड़ता है। जब आप सीमित संदर्भ विंडो में अधिक कोड फ़िट करना चाहते हैं तो दोनों को मिलाएँ।</p>
 
-<p><b>Dedup:</b> automatically detects files with identical content across your project and excludes duplicates from the output — prevents LLM from seeing the same code twice and wasting tokens.</p>
+<p><b>Dedup:</b> आपके प्रोजेक्ट में समान सामग्री वाली फ़ाइलों का स्वचालित रूप से पता लगाता है और डुप्लिकेट को आउटपुट से बाहर करता है — LLM को एक ही कोड दो बार देखने और टोकन बर्बाद करने से रोकता है।</p>
 
-<p><b>Checkpoints:</b> saves intermediate results at each pipeline stage (before cleanup, after minification, etc.) to <code>checkpoints/</code> folder. Useful for debugging what each processing step does or comparing outputs side by side.</p>
+<p><b>Checkpoints:</b> प्रत्येक पाइपलाइन चरण (सफाई से पहले, मिनिफिकेशन के बाद, आदि) पर मध्यवर्ती परिणामों को <code>checkpoints/</code> फ़ोल्डर में सहेजता है। प्रत्येक प्रसंस्करण चरण के डिबगिंग या साइड बाय साइड आउटपुट की तुलना करने के लिए उपयोगी।</p>
 
-<p><b>Auto-Watch:</b> monitors your project files for changes using the OS file watcher. When a file is saved, the pipeline automatically re-runs — ideal during active development when you need continuous prompt updates.</p>
+<p><b>Auto-Watch:</b> OS फ़ाइल वॉचर का उपयोग करके प्रोजेक्ट फ़ाइलों में बदलाव की निगरानी करता है। जब कोई फ़ाइल सहेजी जाती है, तो पाइपलाइन स्वचालित रूप से पुनः चलती है — सक्रिय विकास के दौरान आदर्श जब आपको निरंतर प्रॉम्प्ट अपडेट की आवश्यकता होती है।</p>
 <h3>5. क्रिया बटन</h3>
 <table>
 <thead><tr><th>बटन</th><th>क्रिया</th></tr></thead>
@@ -234,6 +235,73 @@ cd yay && makepkg -si</pre>
 
 <h3>11. कमांड पैलेट</h3>
 <p><code>Ctrl+Shift+P</code> — माउस-मुक्त सभी क्रियाओं तक पहुंच।</p>
+
+<h3>12. 🔌 प्लगइन सिस्टम (v1.25+)</h3>
+<p><b>CodeContext AI</b> एक <b>Python प्लगइन प्रणाली</b> का समर्थन करता है जो आपको कस्टम कार्यक्षमता के साथ ऐप को विस्तारित करने देता है।</p>
+
+<h4>📁 प्लगइन संरचना</h4>
+<pre>my_plugin/
+├── manifest.json          # प्लगइन मेटाडेटा
+├── requirements.txt       # (वैकल्पिक) pip निर्भरताएँ
+├── locales/
+│   ├── en.json            # अंग्रेज़ी अनुवाद
+│   └── ru.json            # रूसी अनुवाद
+└── plugin.py              # प्रवेश बिंदु</pre>
+
+<h4>📄 manifest.json</h4>
+<pre>{
+  "id": "my_plugin",
+  "name": "My Plugin",
+  "version": "1.0.0",
+  "description": "कुछ उपयोगी करता है",
+  "entry_point": "plugin"
+}</pre>
+
+<h4>🐍 plugin.py (उदाहरण)</h4>
+<pre>from src.api.plugin_api import IPlugin, PluginAPI
+
+class MyPlugin(IPlugin):
+    id = "my_plugin"
+    name = "My Plugin"
+    version = "1.0.0"
+
+    def on_init(self, api: PluginAPI) -> None:
+        api.ui.register_sidebar_tab(
+            "my_tab", "My Tab",
+            lambda: QLabel("प्लगइन से नमस्ते!")
+        )
+        api.ui.register_action_button(
+            "my_action", "My Action",
+            lambda: api.add_log("प्लगइन क्रिया क्लिक की गई")
+        )
+        api.add_log("मेरा प्लगइन आरंभ किया गया")
+
+    def on_shutdown(self) -> None:
+        pass</pre>
+
+<h4>🔐 सुरक्षा</h4>
+<ul>
+<li>प्लगइन्स को <b>पूर्ण Python पहुँच</b> मिलती है — केवल विश्वसनीय स्रोतों से स्थापित करें</li>
+<li>पहली बार लोड करने पर, एक सुरक्षा संवाद प्लगइन सक्षम करने से पहले आपकी अनुमति माँगता है</li>
+<li>यदि <code>requirements.txt</code> मौजूद है, तो आप लोड करने से पहले एक लाइव pip install लॉग देखेंगे</li>
+<li>अनुमोदित प्लगइन्स सेटिंग्स में याद रखे जाते हैं (<code>approved_plugins</code>)</li>
+</ul>
+
+<h4>🛠 Plugin API</h4>
+<table>
+<thead><tr><th>प्रॉपर्टी / मेथड</th><th>विवरण</th></tr></thead>
+<tbody>
+<tr><td><code>api.store</code></td><td>रीड-ओनली Redux स्टोर (<code>state.settings.xxx</code> के माध्यम से स्थिति पहुँच)</td></tr>
+<tr><td><code>api.dispatcher</code></td><td>क्रियाएँ भेजें (जैसे <code>UI_ADD_LOG</code>)</td></tr>
+<tr><td><code>api.ui.register_sidebar_tab(id, label, factory)</code></td><td>बाएँ साइडबार में टैब जोड़ें</td></tr>
+<tr><td><code>api.ui.register_action_button(id, label, callback)</code></td><td>"प्लगइन्स 🔽" ड्रॉपडाउन में बटन जोड़ें</td></tr>
+<tr><td><code>api.add_translations(lang, data)</code></td><td>रनटाइम अनुवाद जोड़ें (अंतर्निहित के ऊपर मर्ज किए जाते हैं)</td></tr>
+<tr><td><code>api.add_log(message)</code></td><td>ऐप लॉग पैनल में लिखें</td></tr>
+</tbody>
+</table>
+
+<h4>⚙️ दृश्यता</h4>
+<p>प्लगइन टैब और क्रिया बटन को <b>⚙ UI अनुकूलन</b> के माध्यम से टॉगल किया जा सकता है — वे अपने स्वयं के चेकबॉक्स के साथ अंतर्निहित टैब/क्रियाओं के साथ दिखाई देते हैं।</p>
 
 <hr>
 
@@ -316,7 +384,7 @@ python main.py --cli --path ./frontend ./backend --format xml --output combined.
 <li>🚀 <b>CI/CD पाइपलाइन</b> — स्वचालित PR संदर्भ निर्माण के लिए GitHub Actions और GitLab CI प्लगइन।</li>
 <li>🤖 <b>प्रत्यक्ष OpenAI/Anthropic API एकीकरण</b> — प्रॉम्प्ट जनरेशन से सीधे आउटपुट तक पूर्ण ब्रिज।</li>
 <li>🍎 macOS फ़ाइंडर संदर्भ मेनू</li>
-<li>🔌 प्लगिन सिस्टम</li>
+<li>🔌 प्लगिन सिस्टम ✅</li>
 </ul>
 
 <hr>

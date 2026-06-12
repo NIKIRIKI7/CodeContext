@@ -11,7 +11,7 @@
 **AI destekli kod tabanı analizi ve prompt hazırlama aracı**
 
 [![AUR](https://img.shields.io/aur/version/codecontext-ai?style=flat-square&logo=archlinux&label=AUR)](https://aur.archlinux.org/packages/codecontext-ai)
-[![Version](https://img.shields.io/badge/version-1.24.2-blue?style=flat-square)](../VERSION.txt)
+[![Version](https://img.shields.io/badge/version-1.25.0-blue?style=flat-square)](../VERSION.txt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](../LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square&logo=python)](https://www.python.org/downloads/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20|%20Linux%20|%20macOS-lightgrey?style=flat-square)]()
@@ -39,11 +39,12 @@
 <tr><td>🖱️ Bağlam menüsü</td><td>Windows / Linux</td><td>Yok</td></tr>
 <tr><td>🎨 Temalar</td><td>Apple, Modern, özel JSON</td><td>Sabit arayüz</td></tr>
 <tr><td>⚙️ Arayüz özelleştirme (v1.14+)</td><td>Premiere Pro tarzı</td><td>Sabit arayüz</td></tr>
-<tr><td>🌐 i18n (v1.17+)</td><td>15 languages, system auto-detect</td><td>Single language</td></tr>
-<tr><td>♻️ Dedup (v1.23+)</td><td>Detects & skips files with identical content</td><td>Manual check</td></tr>
-<tr><td>⚡ Aggressive minify (v1.23+)</td><td>Extra compression — eliminates trailing whitespace on every line</td><td>Manual delete</td></tr>
-<tr><td>📌 Checkpoints (v1.23+)</td><td>Save before/after snapshots for debugging</td><td>Not available</td></tr>
-<tr><td>👁️ Auto-Watch (v1.23+)</td><td>Watches files & re-processes on change</td><td>Not available</td></tr>
+<tr><td>🌐 i18n (v1.17+)</td><td>15 dil, sistem otomatik algılama</td><td>Tek dil</td></tr>
+<tr><td>♻️ Tekilleştirme (v1.23+)</td><td>Aynı içeriğe sahip dosyaları algılar ve atlar</td><td>Manuel kontrol</td></tr>
+<tr><td>⚡ Agresif küçültme (v1.23+)</td><td>Ek sıkıştırma — her satırdaki sondaki boşlukları kaldırır</td><td>Manuel silme</td></tr>
+<tr><td>📌 Kontrol noktaları (v1.23+)</td><td>Hata ayıklama için önce/sonra anlık görüntüleri kaydeder</td><td>Mevcut değil</td></tr>
+<tr><td>👁️ Otomatik izleme (v1.23+)</td><td>Dosyaları izler ve değişiklikte yeniden işler</td><td>Mevcut değil</td></tr>
+<tr><td>🔌 Eklenti sistemi (v1.25+)</td><td>Python eklentileriyle genişletin — özel sekmeler, eylemler ve i18n</td><td>Mevcut değil</td></tr>
 </tbody>
 </table>
 
@@ -162,13 +163,13 @@ cd yay && makepkg -si</pre>
 <thead><tr><th>Seçenek</th><th>Açıklama</th></tr></thead>
 <tbody>
 <tr><td>☑ Küçült</td><td>Boşlukları ve boş satırları kaldırır</td></tr>
-<tr><td>☑ Aggressive</td><td>Aggressive minification — Extra compression — eliminates trailing whitespace on every line</td></tr>
+<tr><td>☑ Aggressive</td><td>Aggressive minification — Ek sıkıştırma — her satırdaki sondaki boşlukları kaldırır</td></tr>
 <tr><td>☑ Yorum Yok</td><td>Tüm yorumları kaldırır</td></tr>
 <tr><td>☑ Sır Yok</td><td>API anahtarlarını, şifreleri, tokenları maskeler</td></tr>
 <tr><td>☑ İskelet ☠️</td><td><b>Fonksiyon gövdelerini kaldırır</b> — maksimum token tasarrufu</td></tr>
-<tr><td>☑ Dedup</td><td>Removes duplicate files with identical content</td></tr>
-<tr><td>☑ Checkpoints</td><td>Saves intermediate processing checkpoints</td></tr>
-<tr><td>☑ Auto-Watch</td><td>Watches files & re-processes on change</td></tr>
+<tr><td>☑ Dedup</td><td>Aynı içeriğe sahip yinelenen dosyaları kaldırır</td></tr>
+<tr><td>☑ Checkpoints</td><td>Ara işleme kontrol noktalarını kaydeder</td></tr>
+<tr><td>☑ Auto-Watch</td><td>Dosyaları izler ve değişiklikte yeniden işler</td></tr>
 <tr><td>Format</td><td>Markdown, XML, Plain, JSONL Chunks, Özel (Jinja2)</td></tr>
 <tr><td>📁 şablon</td><td>Jinja2 şablon seçici</td></tr>
 </tbody>
@@ -177,11 +178,11 @@ cd yay && makepkg -si</pre>
 <p><b>İskelet Modu:</b> fonksiyon uygulamalarını kaldırır (<code>def func_name(...):  # ... implementation ...</code>), tüm sınıfları korur — LLM'nin minimum token ile büyük projeleri anlamasını sağlar.</p>
 
 
-<p><b>Minify vs Aggressive:</b> <b>Minify</b> strips leading/trailing whitespace and removes blank lines — safe for any codebase, reduces tokens without affecting readability. <b>Aggressive</b> adds an extra pass that eliminates trailing whitespace on every line for maximum compression. Combine both when you need to fit more code into a limited context window.</p>
+<p><b>Küçültme vs Agresif:</b> <b>Küçültme</b>, baştaki/sondaki boşlukları ve boş satırları kaldırır — her kod tabanı için güvenlidir, okunabilirliği etkilemeden tokenları azaltır. <b>Agresif</b>, maksimum sıkıştırma için her satırdaki sondaki boşlukları ortadan kaldıran ek bir geçiş ekler. Sınırlı bir bağlam penceresine daha fazla kod sığdırmanız gerektiğinde ikisini birleştirin.</p>
 
-<p><b>Dedup:</b> automatically detects files with identical content across your project and excludes duplicates from the output — prevents LLM from seeing the same code twice and wasting tokens.</p>
+<p><b>Tekilleştirme:</b> projeniz genelinde aynı içeriğe sahip dosyaları otomatik olarak algılar ve yinelenenleri çıktıdan hariç tutar — LLM'nin aynı kodu iki kez görmesini ve token israfını önler.</p>
 
-<p><b>Checkpoints:</b> saves intermediate results at each pipeline stage (before cleanup, after minification, etc.) to <code>checkpoints/</code> folder. Useful for debugging what each processing step does or comparing outputs side by side.</p>
+<p><b>Kontrol Noktaları:</b> her işlem hattı aşamasında (temizlemeden önce, küçültmeden sonra vb.) ara sonuçları <code>checkpoints/</code> klasörüne kaydeder. Her işlem adımının ne yaptığını hata ayıklamak veya çıktıları yan yana karşılaştırmak için kullanışlıdır.</p>
 
 <p><b>Auto-Watch:</b> monitors your project files for changes using the OS file watcher. When a file is saved, the pipeline automatically re-runs — ideal during active development when you need continuous prompt updates.</p>
 <h3>5. Eylem Düğmeleri</h3>
@@ -234,6 +235,76 @@ cd yay && makepkg -si</pre>
 
 <h3>11. Komut Paleti</h3>
 <p><code>Ctrl+Shift+P</code> — fare kullanmadan tüm eylemlere erişim.</p>
+
+<h3>12. 🔌 Eklenti sistemi (v1.25+)</h3>
+<p><b>CodeContext AI</b>, uygulamayı özel işlevlerle genişletmenize olanak tanıyan bir <b>Python eklenti sistemini</b> destekler.</p>
+
+<h4>📁 Eklenti Yapısı</h4>
+<pre>my_plugin/
+├── manifest.json          # Eklenti meta verileri
+├── requirements.txt       # (İsteğe bağlı) pip bağımlılıkları
+├── locales/
+│   ├── en.json            # İngilizce çeviriler
+│   └── ru.json            # Rusça çeviriler
+└── plugin.py              # Giriş noktası</pre>
+
+<h4>📄 manifest.json</h4>
+<pre>{
+  "id": "my_plugin",
+  "name": "My Plugin",
+  "version": "1.0.0",
+  "description": "Yararlı bir şey yapar",
+  "entry_point": "plugin"
+}</pre>
+
+<h4>🐍 plugin.py (Örnek)</h4>
+<pre>from src.api.plugin_api import IPlugin, PluginAPI
+
+class MyPlugin(IPlugin):
+    id = "my_plugin"
+    name = "My Plugin"
+    version = "1.0.0"
+
+    def on_init(self, api: PluginAPI) -> None:
+        # locales/ klasöründeki çeviriler otomatik olarak yüklenir
+        # Kenar çubuğuna sekme ekle
+        api.ui.register_sidebar_tab(
+            "my_tab", "My Tab",
+            lambda: QLabel("Eklentiden merhaba!")
+        )
+        # Eylem düğmesi ekle
+        api.ui.register_action_button(
+            "my_action", "My Action",
+            lambda: api.add_log("Eklenti eylemi tıklandı")
+        )
+        api.add_log("Eklentim başlatıldı")
+
+    def on_shutdown(self) -> None:
+        pass</pre>
+
+<h4>🔐 Güvenlik</h4>
+<ul>
+<li>Eklentiler <b>tam Python erişimine</b> sahiptir — yalnızca güvenilir kaynaklardan yükleyin</li>
+<li>İlk yüklemede, bir güvenlik iletişim kutusu eklentiyi etkinleştirmeden önce onayınızı ister</li>
+<li><code>requirements.txt</code> varsa, yüklemeden önce canlı pip kurulum günlüğünü görürsünüz</li>
+<li>Onaylanan eklentiler ayarlarda saklanır (<code>approved_plugins</code>)</li>
+</ul>
+
+<h4>🛠 Eklenti API'si</h4>
+<table>
+<thead><tr><th>Özellik / Metod</th><th>Açıklama</th></tr></thead>
+<tbody>
+<tr><td><code>api.store</code></td><td>Salt okunur Redux deposu (durum erişimi: <code>state.settings.xxx</code>)</td></tr>
+<tr><td><code>api.dispatcher</code></td><td>Eylem gönderme (ör. <code>UI_ADD_LOG</code>)</td></tr>
+<tr><td><code>api.ui.register_sidebar_tab(id, label, factory)</code></td><td>Sol kenar çubuğuna sekme ekler</td></tr>
+<tr><td><code>api.ui.register_action_button(id, label, callback)</code></td><td>"Eklentiler 🔽" menüsüne düğme ekler</td></tr>
+<tr><td><code>api.add_translations(lang, data)</code></td><td>Çalışma zamanı çevirileri ekler (yerleşiklerin üzerine eklenir)</td></tr>
+<tr><td><code>api.add_log(message)</code></td><td>Uygulama günlük paneline yazar</td></tr>
+</tbody>
+</table>
+
+<h4>⚙️ Görünürlük</h4>
+<p>Eklenti sekmeleri ve eylem düğmeleri <b>⚙ Arayüz Özelleştirme</b> üzerinden açılıp kapatılabilir — yerleşik sekmeler/eylemlerin yanında kendi onay kutularıyla görünürler.</p>
 
 <hr>
 
@@ -316,7 +387,7 @@ python main.py --cli --path ./frontend ./backend --format xml --output combined.
 <li>🚀 <b>CI/CD boru hatları</b> — otomatik PR bağlamı oluşturma için GitHub Actions ve GitLab CI eklentileri.</li>
 <li>🤖 <b>Doğrudan OpenAI/Anthropic API entegrasyonu</b> — prompt oluşturmadan doğrudan çıktıya tam köprü.</li>
 <li>🍎 macOS Finder bağlam menüsü</li>
-<li>🔌 Eklenti sistemi</li>
+<li>🔌 Eklenti sistemi ✅</li>
 </ul>
 
 <hr>

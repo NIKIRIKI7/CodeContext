@@ -11,7 +11,7 @@
 **AI-powered codebase analysis & prompt preparation tool**
 
 [![AUR](https://img.shields.io/aur/version/codecontext-ai?style=flat-square&logo=archlinux&label=AUR)](https://aur.archlinux.org/packages/codecontext-ai)
-[![Version](https://img.shields.io/badge/version-1.24.2-blue?style=flat-square)](../VERSION.txt)
+[![Version](https://img.shields.io/badge/version-1.25.0-blue?style=flat-square)](../VERSION.txt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](../LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square&logo=python)](https://www.python.org/downloads/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20|%20Linux%20|%20macOS-lightgrey?style=flat-square)]()
@@ -44,6 +44,7 @@
 <tr><td>⚡ Агрессивная миниф. (v1.23+)</td><td>Доп. сжатие — удаляет хвостовые пробелы в каждой строке</td><td>Вручную</td></tr>
 <tr><td>📌 Контр. точки (v1.23+)</td><td>Сохранение снимков ДО/ПОСЛЕ для отладки</td><td>Нет</td></tr>
 <tr><td>👁️ Авто-слежка (v1.23+)</td><td>Следит за файлами и перезапускает обработку при изменениях</td><td>Нет</td></tr>
+<tr><td>🔌 Плагины (v1.25+)</td><td>Расширение Python-плагинами — кастомные вкладки, кнопки, i18n</td><td>Нет</td></tr>
 </tbody>
 </table>
 
@@ -238,6 +239,76 @@ cd yay && makepkg -si</pre>
 <h3>11. Командная палитра</h3>
 <p><code>Ctrl+Shift+P</code> — быстрый доступ ко всем действиям без мыши.</p>
 
+<h3>12. 🔌 Система плагинов (v1.25+)</h3>
+<p><b>CodeContext AI</b> поддерживает <b>систему Python-плагинов</b>, позволяющую расширять приложение кастомным функционалом.</p>
+
+<h4>📁 Структура плагина</h4>
+<pre>my_plugin/
+├── manifest.json          # Метаданные плагина
+├── requirements.txt       # (Опционально) pip-зависимости
+├── locales/
+│   ├── en.json            # Английские переводы
+│   └── ru.json            # Русские переводы
+└── plugin.py              # Точка входа</pre>
+
+<h4>📄 manifest.json</h4>
+<pre>{
+  "id": "my_plugin",
+  "name": "My Plugin",
+  "version": "1.0.0",
+  "description": "Делает что-то полезное",
+  "entry_point": "plugin"
+}</pre>
+
+<h4>🐍 plugin.py (Пример)</h4>
+<pre>from src.api.plugin_api import IPlugin, PluginAPI
+
+class MyPlugin(IPlugin):
+    id = "my_plugin"
+    name = "My Plugin"
+    version = "1.0.0"
+
+    def on_init(self, api: PluginAPI) -> None:
+        # Переводы из папки locales/ загружаются автоматически
+        # Регистрируем вкладку в боковой панели
+        api.ui.register_sidebar_tab(
+            "my_tab", "My Tab",
+            lambda: QLabel("Привет от плагина!")
+        )
+        # Регистрируем кнопку действия
+        api.ui.register_action_button(
+            "my_action", "My Action",
+            lambda: api.add_log("Клик по плагину")
+        )
+        api.add_log("Мой плагин инициализирован")
+
+    def on_shutdown(self) -> None:
+        pass</pre>
+
+<h4>🔐 Безопасность</h4>
+<ul>
+<li>Плагины получают <b>полный доступ к Python</b> — устанавливайте только из доверенных источников</li>
+<li>При первой загрузке диалог безопасности запрашивает ваше разрешение</li>
+<li>Если есть <code>requirements.txt</code>, вы увидите лог pip install перед загрузкой</li>
+<li>Одобренные плагины запоминаются в настройках (<code>approved_plugins</code>)</li>
+</ul>
+
+<h4>🛠 Plugin API</h4>
+<table>
+<thead><tr><th>Свойство / Метод</th><th>Описание</th></tr></thead>
+<tbody>
+<tr><td><code>api.store</code></td><td>Redux-стор (только чтение, доступ: <code>state.settings.xxx</code>)</td></tr>
+<tr><td><code>api.dispatcher</code></td><td>Отправка действий (напр. <code>UI_ADD_LOG</code>)</td></tr>
+<tr><td><code>api.ui.register_sidebar_tab(id, label, factory)</code></td><td>Добавить вкладку в боковую панель</td></tr>
+<tr><td><code>api.ui.register_action_button(id, label, callback)</code></td><td>Добавить кнопку в меню «Плагины 🔽»</td></tr>
+<tr><td><code>api.add_translations(lang, data)</code></td><td>Добавить переводы (сливаются поверх встроенных)</td></tr>
+<tr><td><code>api.add_log(message)</code></td><td>Записать в панель логов</td></tr>
+</tbody>
+</table>
+
+<h4>⚙️ Видимость</h4>
+<p>Вкладки и кнопки плагинов можно включать/выключать через <b>⚙ Кастомизацию интерфейса</b> — они появляются рядом со встроенными со своими чекбоксами.</p>
+
 <hr>
 
 <h2>💻 Работа в CLI-режиме</h2>
@@ -310,7 +381,7 @@ python main.py --cli --path ./frontend ./backend --format xml --output combined.
 
 <hr>
 
-<h2>🗺️ Roadmap</h2>
+<h2>🗺️ Дорожная карта</h2>
 <ul>
 <li>📚 <b>RAG (Retrieval-Augmented Generation) режим</b> — индексация огромных кодовых баз в векторную БД (Chroma/FAISS) для контекстного поиска.</li>
 <li>🚫 <b>Глубокий парсинг .gitignore</b> — поддержка вложенных файлов <code>.gitignore</code> и глобального <code>~/.gitignore</code>.</li>
@@ -319,7 +390,7 @@ python main.py --cli --path ./frontend ./backend --format xml --output combined.
 <li>🚀 <b>Интеграция с пайплайнами CI/CD</b> — плагины для GitHub Actions и GitLab CI для генерации контекста в PR.</li>
 <li>🤖 <b>Прямой коннект с OpenAI/Anthropic API</b> — замыкание полного цикла от генерации промпта до сохранения итогового кода.</li>
 <li>🍎 macOS Finder context menu</li>
-<li>🔌 Плагинная система</li>
+<li>🔌 Плагинная система ✅</li>
 </ul>
 
 <hr>

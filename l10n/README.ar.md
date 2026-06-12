@@ -11,7 +11,7 @@
 **أداة تحليل قاعدة الأكواد وإعداد الاستعلامات المدعومة بالذكاء الاصطناعي**
 
 [![AUR](https://img.shields.io/aur/version/codecontext-ai?style=flat-square&logo=archlinux&label=AUR)](https://aur.archlinux.org/packages/codecontext-ai)
-[![Version](https://img.shields.io/badge/version-1.24.2-blue?style=flat-square)](../VERSION.txt)
+[![Version](https://img.shields.io/badge/version-1.25.0-blue?style=flat-square)](../VERSION.txt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](../LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square&logo=python)](https://www.python.org/downloads/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20|%20Linux%20|%20macOS-lightgrey?style=flat-square)]()
@@ -39,11 +39,12 @@
 <tr><td>🖱️ قائمة سياقية</td><td>Windows / Linux</td><td>لا يوجد</td></tr>
 <tr><td>🎨 سمات</td><td>Apple, Modern, JSON مخصص</td><td>واجهة ثابتة</td></tr>
 <tr><td>⚙️ تخصيص الواجهة (v1.14+)</td><td>على نمط Premiere Pro</td><td>واجهة ثابتة</td></tr>
-<tr><td>🌐 i18n (v1.17+)</td><td>15 languages, system auto-detect</td><td>Single language</td></tr>
-<tr><td>♻️ Dedup (v1.23+)</td><td>Detects & skips files with identical content</td><td>Manual check</td></tr>
-<tr><td>⚡ Aggressive minify (v1.23+)</td><td>Extra compression — eliminates trailing whitespace on every line</td><td>Manual delete</td></tr>
-<tr><td>📌 Checkpoints (v1.23+)</td><td>Save before/after snapshots for debugging</td><td>Not available</td></tr>
-<tr><td>👁️ Auto-Watch (v1.23+)</td><td>Watches files & re-processes on change</td><td>Not available</td></tr>
+<tr><td>🌐 i18n (v1.17+)</td><td>15 لغة، اكتشاف تلقائي للنظام</td><td>لغة واحدة</td></tr>
+<tr><td>♻️ إزالة التكرار (v1.23+)</td><td>يكتشف ويتجاوز الملفات ذات المحتوى المطابق</td><td>فحص يدوي</td></tr>
+<tr><td>⚡ تصغير شديد (v1.23+)</td><td>ضغط إضافي — يزيل المسافات التالية في كل سطر</td><td>حذف يدوي</td></tr>
+<tr><td>📌 نقاط التحقق (v1.23+)</td><td>حفظ لقطات قبل/بعد لتصحيح الأخطاء</td><td>غير متاح</td></tr>
+<tr><td>👁️ المراقبة التلقائية (v1.23+)</td><td>يراقب الملفات ويعيد المعالجة عند التغيير</td><td>غير متاح</td></tr>
+<tr><td>🔌 نظام الإضافات (v1.25+)</td><td>التوسع بإضافات Python — علامات تبويب، إجراءات، وتدويل مخصصة</td><td>غير متاح</td></tr>
 </tbody>
 </table>
 
@@ -162,13 +163,13 @@ cd yay && makepkg -si</pre>
 <thead><tr><th>خيار</th><th>وصف</th></tr></thead>
 <tbody>
 <tr><td>☑ Minify</td><td>يزيل المسافات البيضاء والأسطر الفارغة</td></tr>
-<tr><td>☑ Aggressive</td><td>Aggressive minification — Extra compression — eliminates trailing whitespace on every line</td></tr>
+<tr><td>☑ Aggressive</td><td>Aggressive minification — ضغط إضافي — يزيل المسافات التالية في كل سطر</td></tr>
 <tr><td>☑ No Comments</td><td>يزيل جميع التعليقات</td></tr>
 <tr><td>☑ No Secrets</td><td>يخفي مفاتيح API وكلمات المرور والرموز</td></tr>
 <tr><td>☑ Skeleton ☠️</td><td><b>يزيل أجسام الدوال</b> — أقصى توفير للرموز</td></tr>
-<tr><td>☑ Dedup</td><td>Removes duplicate files with identical content</td></tr>
-<tr><td>☑ Checkpoints</td><td>Saves intermediate processing checkpoints</td></tr>
-<tr><td>☑ Auto-Watch</td><td>Watches files & re-processes on change</td></tr>
+<tr><td>☑ Dedup</td><td>يزيل الملفات المكررة ذات المحتوى المطابق</td></tr>
+<tr><td>☑ Checkpoints</td><td>يحفظ نقاط التحقق الوسيطة للمعالجة</td></tr>
+<tr><td>☑ Auto-Watch</td><td>يراقب الملفات ويعيد المعالجة عند التغيير</td></tr>
 <tr><td>التنسيق</td><td>Markdown, XML, Plain, JSONL Chunks, Custom (Jinja2)</td></tr>
 <tr><td>📁 قالب</td><td>محدد قالب Jinja2</td></tr>
 </tbody>
@@ -177,11 +178,11 @@ cd yay && makepkg -si</pre>
 <p><b>وضع الهيكل العظمي:</b> يزيل تطبيقات الدوال (<code>def func_name(...):  # ... تطبيق ...</code>)، مع الحفاظ على جميع الفئات — يسمح لـ LLM بفهم المشاريع الضخمة بأقل عدد من الرموز.</p>
 
 
-<p><b>Minify vs Aggressive:</b> <b>Minify</b> strips leading/trailing whitespace and removes blank lines — safe for any codebase, reduces tokens without affecting readability. <b>Aggressive</b> adds an extra pass that eliminates trailing whitespace on every line for maximum compression. Combine both when you need to fit more code into a limited context window.</p>
+<p><b>التصغير مقابل التصغير الشديد:</b> <b>التصغير (Minify)</b> يزيل المسافات البيضاء في البداية والنهاية والأسطر الفارغة — آمن لأي قاعدة أكواد، يقلل الرموز دون التأثير على قابلية القراءة. <b>التصغير الشديد (Aggressive)</b> يضيف مروراً إضافياً يزيل المسافات التالية في كل سطر لأقصى ضغط. ادمج كليهما عندما تحتاج إلى وضع كود أكثر ضمن نافذة سياق محدودة.</p>
 
-<p><b>Dedup:</b> automatically detects files with identical content across your project and excludes duplicates from the output — prevents LLM from seeing the same code twice and wasting tokens.</p>
+<p><b>إزالة التكرار (Dedup):</b> يكتشف تلقائياً الملفات ذات المحتوى المطابق عبر مشروعك ويستبعد المكررات من المخرجات — يمنع LLM من رؤية نفس الكود مرتين وإهدار الرموز.</p>
 
-<p><b>Checkpoints:</b> saves intermediate results at each pipeline stage (before cleanup, after minification, etc.) to <code>checkpoints/</code> folder. Useful for debugging what each processing step does or comparing outputs side by side.</p>
+<p><b>نقاط التحقق (Checkpoints):</b> يحفظ النتائج الوسيطة في كل مرحلة من مراحل المعالجة (قبل التنظيف، بعد التصغير، إلخ) في مجلد <code>checkpoints/</code>. مفيد لتصحيح الأخطاء ومعرفة ما تفعله كل خطوة معالجة أو مقارنة المخرجات جنباً إلى جنب.</p>
 
 <p><b>Auto-Watch:</b> monitors your project files for changes using the OS file watcher. When a file is saved, the pipeline automatically re-runs — ideal during active development when you need continuous prompt updates.</p>
 <h3>5. أزرار الإجراءات</h3>
@@ -234,6 +235,76 @@ cd yay && makepkg -si</pre>
 
 <h3>11. لوحة الأوامر</h3>
 <p><code>Ctrl+Shift+P</code> — وصول بدون ماوس إلى جميع الإجراءات.</p>
+
+<h3>12. 🔌 نظام الإضافات (v1.25+)</h3>
+<p><b>CodeContext AI</b> يدعم <b>نظام إضافات بايثون</b> الذي يسمح لك بتوسيع التطبيق بوظائف مخصصة.</p>
+
+<h4>📁 هيكل الإضافة</h4>
+<pre>my_plugin/
+├── manifest.json          # بيانات الإضافة الوصفية
+├── requirements.txt       # (اختياري) تبعيات pip
+├── locales/
+│   ├── en.json            # ترجمات إنجليزية
+│   └── ru.json            # ترجمات روسية
+└── plugin.py              # نقطة الدخول</pre>
+
+<h4>📄 manifest.json</h4>
+<pre>{
+  "id": "my_plugin",
+  "name": "My Plugin",
+  "version": "1.0.0",
+  "description": "تقوم بشيء مفيد",
+  "entry_point": "plugin"
+}</pre>
+
+<h4>🐍 plugin.py (مثال)</h4>
+<pre>from src.api.plugin_api import IPlugin, PluginAPI
+
+class MyPlugin(IPlugin):
+    id = "my_plugin"
+    name = "My Plugin"
+    version = "1.0.0"
+
+    def on_init(self, api: PluginAPI) -> None:
+        # الترجمات من مجلد locales/ تُحمّل تلقائياً
+        # نسجّل علامة تبويب في الشريط الجانبي
+        api.ui.register_sidebar_tab(
+            "my_tab", "My Tab",
+            lambda: QLabel("مرحباً من الإضافة!")
+        )
+        # نسجّل زر إجراء
+        api.ui.register_action_button(
+            "my_action", "My Action",
+            lambda: api.add_log("تم النقر على الإجراء")
+        )
+        api.add_log("تم تهيئة الإضافة")
+
+    def on_shutdown(self) -> None:
+        pass</pre>
+
+<h4>🔐 الأمان</h4>
+<ul>
+<li>الإضافات تحصل على <b>وصول كامل إلى بايثون</b> — قم بالتثبيت فقط من مصادر موثوقة</li>
+<li>عند التحميل الأول، يطلب حوار أمان موافقتك قبل تمكين الإضافة</li>
+<li>إذا كان <code>requirements.txt</code> موجوداً، سترى سجل pip install مباشر قبل التحميل</li>
+<li>يتم تذكر الإضافات المعتمدة في الإعدادات (<code>approved_plugins</code>)</li>
+</ul>
+
+<h4>🛠 واجهة برمجة الإضافات (Plugin API)</h4>
+<table>
+<thead><tr><th>الخاصية / الدالة</th><th>الوصف</th></tr></thead>
+<tbody>
+<tr><td><code>api.store</code></td><td>مخزن Redux للقراءة فقط (الوصول إلى الحالة عبر <code>state.settings.xxx</code>)</td></tr>
+<tr><td><code>api.dispatcher</code></td><td>إرسال الإجراءات (مثل <code>UI_ADD_LOG</code>)</td></tr>
+<tr><td><code>api.ui.register_sidebar_tab(id, label, factory)</code></td><td>إضافة علامة تبويب إلى الشريط الجانبي الأيسر</td></tr>
+<tr><td><code>api.ui.register_action_button(id, label, callback)</code></td><td>إضافة زر إلى القائمة المنسدلة "Plugins 🔽"</td></tr>
+<tr><td><code>api.add_translations(lang, data)</code></td><td>إضافة ترجمات وقت التشغيل (تُدمج فوق الترجمات المضمنة)</td></tr>
+<tr><td><code>api.add_log(message)</code></td><td>الكتابة في لوحة سجل التطبيق</td></tr>
+</tbody>
+</table>
+
+<h4>⚙️ الرؤية</h4>
+<p>يمكن تشغيل/إيقاف علامات التبويب وأزرار الإضافات عبر <b>⚙ تخصيص الواجهة</b> — تظهر بجانب علامات التبويب/الأزرار المضمنة مع مربعات اختيار خاصة بها.</p>
 
 <hr>
 
@@ -316,7 +387,7 @@ python main.py --cli --path ./frontend ./backend --format xml --output combined.
 <li>🚀 <b>خطوط أنابيب CI/CD</b> — إضافات GitHub Actions و GitLab CI لتوليد سياق PR تلقائيًا.</li>
 <li>🤖 <b>تكامل مباشر مع OpenAI/Anthropic API</b> — جسر كامل من توليد المطالبات إلى الإخراج المباشر.</li>
 <li>🍎 قائمة سياقية لنظام macOS Finder</li>
-<li>🔌 نظام إضافات</li>
+<li>🔌 نظام إضافات ✅</li>
 </ul>
 
 <hr>

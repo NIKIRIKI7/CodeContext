@@ -11,7 +11,7 @@
 **Narzędzie do analizy kodu źródłowego i przygotowywania promptów z wykorzystaniem AI**
 
 [![AUR](https://img.shields.io/aur/version/codecontext-ai?style=flat-square&logo=archlinux&label=AUR)](https://aur.archlinux.org/packages/codecontext-ai)
-[![Version](https://img.shields.io/badge/version-1.24.2-blue?style=flat-square)](../VERSION.txt)
+[![Version](https://img.shields.io/badge/version-1.25.0-blue?style=flat-square)](../VERSION.txt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](../LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square&logo=python)](https://www.python.org/downloads/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20|%20Linux%20|%20macOS-lightgrey?style=flat-square)]()
@@ -39,11 +39,12 @@
 <tr><td>🖱️ Menu kontekstowe</td><td>Windows / Linux</td><td>Brak</td></tr>
 <tr><td>🎨 Motywy</td><td>Apple, Modern, niestandardowy JSON</td><td>Stały interfejs</td></tr>
 <tr><td>⚙️ Dostosowanie interfejsu (v1.14+)</td><td>Styl Premiere Pro</td><td>Stały interfejs</td></tr>
-<tr><td>🌐 i18n (v1.17+)</td><td>15 languages, system auto-detect</td><td>Single language</td></tr>
-<tr><td>♻️ Dedup (v1.23+)</td><td>Detects & skips files with identical content</td><td>Manual check</td></tr>
-<tr><td>⚡ Aggressive minify (v1.23+)</td><td>Extra compression — eliminates trailing whitespace on every line</td><td>Manual delete</td></tr>
-<tr><td>📌 Checkpoints (v1.23+)</td><td>Save before/after snapshots for debugging</td><td>Not available</td></tr>
-<tr><td>👁️ Auto-Watch (v1.23+)</td><td>Watches files & re-processes on change</td><td>Not available</td></tr>
+<tr><td>🌐 i18n (v1.17+)</td><td>15 języków, automatyczne wykrywanie</td><td>Jeden język</td></tr>
+<tr><td>♻️ Deduplikacja (v1.23+)</td><td>Wykrywa i pomija pliki o identycznej zawartości</td><td>Ręczne sprawdzanie</td></tr>
+<tr><td>⚡ Agresywna minifikacja (v1.23+)</td><td>Dodatkowa kompresja — usuwa końcowe spacje w każdej linii</td><td>Ręczne usuwanie</td></tr>
+<tr><td>📌 Punkty kontrolne (v1.23+)</td><td>Zapisuje migawki przed/po do debugowania</td><td>Niedostępne</td></tr>
+<tr><td>👁️ Auto-nadzór (v1.23+)</td><td>Śledzi pliki i przetwarza ponownie przy zmianie</td><td>Niedostępne</td></tr>
+<tr><td>🔌 System wtyczek (v1.25+)</td><td>Rozszerz przez pluginy Python — niestandardowe zakładki, akcje i i18n</td><td>Niedostępne</td></tr>
 </tbody>
 </table>
 
@@ -162,13 +163,13 @@ cd yay && makepkg -si</pre>
 <thead><tr><th>Opcja</th><th>Opis</th></tr></thead>
 <tbody>
 <tr><td>☑ Minifikuj</td><td>Usuwa białe znaki i puste linie</td></tr>
-<tr><td>☑ Aggressive</td><td>Aggressive minification — Extra compression — eliminates trailing whitespace on every line</td></tr>
+<tr><td>☑ Aggressive</td><td>Aggressive minification — Dodatkowa kompresja — usuwa końcowe spacje w każdej linii</td></tr>
 <tr><td>☑ Bez komentarzy</td><td>Usuwa wszystkie komentarze</td></tr>
 <tr><td>☑ Bez sekretów</td><td>Maskuje klucze API, hasła, tokeny</td></tr>
 <tr><td>☑ Szkielet ☠️</td><td><b>Usuwa ciała funkcji</b> — maksymalne oszczędności tokenów</td></tr>
-<tr><td>☑ Dedup</td><td>Removes duplicate files with identical content</td></tr>
-<tr><td>☑ Checkpoints</td><td>Saves intermediate processing checkpoints</td></tr>
-<tr><td>☑ Auto-Watch</td><td>Watches files & re-processes on change</td></tr>
+<tr><td>☑ Dedup</td><td>Usuwa zduplikowane pliki o identycznej zawartości</td></tr>
+<tr><td>☑ Checkpoints</td><td>Zapisuje pośrednie punkty kontrolne przetwarzania</td></tr>
+<tr><td>☑ Auto-Watch</td><td>Śledzi pliki i przetwarza ponownie przy zmianie</td></tr>
 <tr><td>Format</td><td>Markdown, XML, Plain, JSONL Chunks, Niestandardowy (Jinja2)</td></tr>
 <tr><td>📁 szablon</td><td>Selektor szablonów Jinja2</td></tr>
 </tbody>
@@ -177,13 +178,13 @@ cd yay && makepkg -si</pre>
 <p><b>Tryb szkieletowy:</b> usuwa implementacje funkcji (<code>def func_name(...):  # ... implementation ...</code>), zachowując wszystkie klasy — pozwala LLM zrozumieć duże projekty przy minimalnej liczbie tokenów.</p>
 
 
-<p><b>Minify vs Aggressive:</b> <b>Minify</b> strips leading/trailing whitespace and removes blank lines — safe for any codebase, reduces tokens without affecting readability. <b>Aggressive</b> adds an extra pass that eliminates trailing whitespace on every line for maximum compression. Combine both when you need to fit more code into a limited context window.</p>
+<p><b>Minify vs Aggressive:</b> <b>Minify</b> usuwa początkowe/końcowe białe znaki i puste linie — bezpieczne dla każdego projektu, redukuje tokeny bez wpływu na czytelność. <b>Aggressive</b> dodaje dodatkowy przebieg, który eliminuje końcowe białe znaki w każdej linii dla maksymalnej kompresji. Łącz oba, gdy potrzebujesz zmieścić więcej kodu w ograniczonym oknie kontekstowym.</p>
 
-<p><b>Dedup:</b> automatically detects files with identical content across your project and excludes duplicates from the output — prevents LLM from seeing the same code twice and wasting tokens.</p>
+<p><b>Dedup:</b> automatycznie wykrywa pliki o identycznej zawartości w projekcie i wyklucza duplikaty z wyniku — zapobiega wielokrotnemu wysyłaniu tego samego kodu do LLM i marnowaniu tokenów.</p>
 
-<p><b>Checkpoints:</b> saves intermediate results at each pipeline stage (before cleanup, after minification, etc.) to <code>checkpoints/</code> folder. Useful for debugging what each processing step does or comparing outputs side by side.</p>
+<p><b>Checkpoints:</b> zapisuje pośrednie wyniki na każdym etapie przetwarzania (przed czyszczeniem, po minifikacji itd.) w folderze <code>checkpoints/</code>. Przydatne do debugowania i porównywania wyników poszczególnych etapów.</p>
 
-<p><b>Auto-Watch:</b> monitors your project files for changes using the OS file watcher. When a file is saved, the pipeline automatically re-runs — ideal during active development when you need continuous prompt updates.</p>
+<p><b>Auto-Watch:</b> monitoruje pliki projektu pod kątem zmian za pomocą systemowego obserwatora plików. Gdy plik zostanie zapisany, pipeline automatycznie uruchamia się ponownie — idealne podczas aktywnego rozwoju, gdy potrzebujesz ciągłych aktualizacji promptu.</p>
 <h3>5. Przyciski akcji</h3>
 <table>
 <thead><tr><th>Przycisk</th><th>Akcja</th></tr></thead>
@@ -234,6 +235,76 @@ cd yay && makepkg -si</pre>
 
 <h3>11. Paleta poleceń</h3>
 <p><code>Ctrl+Shift+P</code> — dostęp do wszystkich akcji bez użycia myszy.</p>
+
+<h3>12. 🔌 System wtyczek (v1.25+)</h3>
+<p><b>CodeContext AI</b> obsługuje <b>system wtyczek Python</b>, który pozwala rozszerzyć aplikację o niestandardowe funkcje.</p>
+
+<h4>📁 Struktura wtyczki</h4>
+<pre>my_plugin/
+├── manifest.json          # Metadane wtyczki
+├── requirements.txt       # (Opcjonalnie) zależności pip
+├── locales/
+│   ├── en.json            # Tłumaczenia angielskie
+│   └── ru.json            # Tłumaczenia rosyjskie
+└── plugin.py              # Punkt wejścia</pre>
+
+<h4>📄 manifest.json</h4>
+<pre>{
+  "id": "my_plugin",
+  "name": "My Plugin",
+  "version": "1.0.0",
+  "description": "Robi coś użytecznego",
+  "entry_point": "plugin"
+}</pre>
+
+<h4>🐍 plugin.py (Przykład)</h4>
+<pre>from src.api.plugin_api import IPlugin, PluginAPI
+
+class MyPlugin(IPlugin):
+    id = "my_plugin"
+    name = "My Plugin"
+    version = "1.0.0"
+
+    def on_init(self, api: PluginAPI) -> None:
+        # Tłumaczenia z folderu locales/ są ładowane automatycznie
+        # Rejestrujemy zakładkę w panelu bocznym
+        api.ui.register_sidebar_tab(
+            "my_tab", "My Tab",
+            lambda: QLabel("Witaj z wtyczki!")
+        )
+        # Rejestrujemy przycisk akcji
+        api.ui.register_action_button(
+            "my_action", "My Action",
+            lambda: api.add_log("Kliknięcie wtyczki")
+        )
+        api.add_log("Moja wtyczka zainicjalizowana")
+
+    def on_shutdown(self) -> None:
+        pass</pre>
+
+<h4>🔐 Bezpieczeństwo</h4>
+<ul>
+<li>Wtyczki otrzymują <b>pełny dostęp do Pythona</b> — instaluj tylko z zaufanych źródeł</li>
+<li>Przy pierwszym ładowaniu pojawi się okno dialogowe bezpieczeństwa z prośbą o zatwierdzenie</li>
+<li>Jeśli istnieje <code>requirements.txt</code>, przed załadowaniem zobaczysz log na żywo z pip install</li>
+<li>Zatwierdzone wtyczki są zapamiętywane w ustawieniach (<code>approved_plugins</code>)</li>
+</ul>
+
+<h4>🛠 API wtyczek</h4>
+<table>
+<thead><tr><th>Właściwość / Metoda</th><th>Opis</th></tr></thead>
+<tbody>
+<tr><td><code>api.store</code></td><td>Redux-store (tylko do odczytu, dostęp: <code>state.settings.xxx</code>)</td></tr>
+<tr><td><code>api.dispatcher</code></td><td>Wysyłanie akcji (np. <code>UI_ADD_LOG</code>)</td></tr>
+<tr><td><code>api.ui.register_sidebar_tab(id, label, factory)</code></td><td>Dodaje zakładkę do lewego panelu bocznego</td></tr>
+<tr><td><code>api.ui.register_action_button(id, label, callback)</code></td><td>Dodaje przycisk do menu rozwijanego "Wtyczki 🔽"</td></tr>
+<tr><td><code>api.add_translations(lang, data)</code></td><td>Dodaje tłumaczenia w czasie wykonania (scalane z wbudowanymi)</td></tr>
+<tr><td><code>api.add_log(message)</code></td><td>Zapisuje do panelu logów aplikacji</td></tr>
+</tbody>
+</table>
+
+<h4>⚙️ Widoczność</h4>
+<p>Zakładki i przyciski wtyczek można włączać/wyłączać poprzez <b>⚙ Dostosowanie interfejsu</b> — pojawiają się obok wbudowanych zakładek/przycisków z własnymi polami wyboru.</p>
 
 <hr>
 
@@ -316,7 +387,7 @@ python main.py --cli --path ./frontend ./backend --format xml --output combined.
 <li>🚀 <b>Potoki CI/CD</b> — wtyczki GitHub Actions i GitLab CI do automatycznego generowania kontekstu PR.</li>
 <li>🤖 <b>Bezpośrednia integracja z API OpenAI/Anthropic</b> — pełny most od generowania promptu do bezpośredniego wyniku.</li>
 <li>🍎 Menu kontekstowe macOS Finder</li>
-<li>🔌 System wtyczek</li>
+<li>🔌 System wtyczek ✅</li>
 </ul>
 
 <hr>

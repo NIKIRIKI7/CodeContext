@@ -11,7 +11,7 @@
 **AI駆動のコードベース分析＆プロンプト準備ツール**
 
 [![AUR](https://img.shields.io/aur/version/codecontext-ai?style=flat-square&logo=archlinux&label=AUR)](https://aur.archlinux.org/packages/codecontext-ai)
-[![Version](https://img.shields.io/badge/version-1.24.2-blue?style=flat-square)](../VERSION.txt)
+[![Version](https://img.shields.io/badge/version-1.25.0-blue?style=flat-square)](../VERSION.txt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](../LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square&logo=python)](https://www.python.org/downloads/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20|%20Linux%20|%20macOS-lightgrey?style=flat-square)]()
@@ -39,11 +39,12 @@
 <tr><td>🖱️ コンテキストメニュー</td><td>Windows / Linux</td><td>なし</td></tr>
 <tr><td>🎨 テーマ</td><td>Apple、Modern、カスタムJSON</td><td>固定UI</td></tr>
 <tr><td>⚙️ UIカスタマイズ（v1.14+）</td><td>Premiere Pro風</td><td>固定UI</td></tr>
-<tr><td>🌐 i18n (v1.17+)</td><td>15 languages, system auto-detect</td><td>Single language</td></tr>
-<tr><td>♻️ Dedup (v1.23+)</td><td>Detects & skips files with identical content</td><td>Manual check</td></tr>
-<tr><td>⚡ Aggressive minify (v1.23+)</td><td>Extra compression — eliminates trailing whitespace on every line</td><td>Manual delete</td></tr>
-<tr><td>📌 Checkpoints (v1.23+)</td><td>Save before/after snapshots for debugging</td><td>Not available</td></tr>
-<tr><td>👁️ Auto-Watch (v1.23+)</td><td>Watches files & re-processes on change</td><td>Not available</td></tr>
+<tr><td>🌐 i18n (v1.17+)</td><td>15言語、システム自動検出</td><td>単一言語</td></tr>
+<tr><td>♻️ 重複削除 (v1.23+)</td><td>同じ内容のファイルを検出してスキップ</td><td>手動チェック</td></tr>
+<tr><td>⚡ 強制的最小化 (v1.23+)</td><td>追加圧縮 — 各行の末尾の空白を削除</td><td>手動削除</td></tr>
+<tr><td>📌 チェックポイント (v1.23+)</td><td>デバッグ用のスナップショットを事前/事後保存</td><td>利用不可</td></tr>
+<tr><td>👁️ 自動監視 (v1.23+)</td><td>ファイルを監視し、変更時に再処理</td><td>利用不可</td></tr>
+<tr><td>🔌 プラグインシステム (v1.25+)</td><td>Pythonプラグインで拡張 — カスタムタブ、アクション、i18n</td><td>利用不可</td></tr>
 </tbody>
 </table>
 
@@ -162,13 +163,13 @@ cd yay && makepkg -si</pre>
 <thead><tr><th>オプション</th><th>説明</th></tr></thead>
 <tbody>
 <tr><td>☑ 最小化</td><td>空白と空行を削除</td></tr>
-<tr><td>☑ Aggressive</td><td>Aggressive minification — Extra compression — eliminates trailing whitespace on every line</td></tr>
+<tr><td>☑ Aggressive</td><td>Aggressive minification — 追加圧縮 — 各行の末尾の空白を削除</td></tr>
 <tr><td>☑ コメントなし</td><td>すべてのコメントを削除</td></tr>
 <tr><td>☑ シークレットなし</td><td>APIキー、パスワード、トークンをマスク</td></tr>
 <tr><td>☑ スケルトン ☠️</td><td><b>関数本体を削除</b> — 最大のトークン節約</td></tr>
-<tr><td>☑ Dedup</td><td>Removes duplicate files with identical content</td></tr>
-<tr><td>☑ Checkpoints</td><td>Saves intermediate processing checkpoints</td></tr>
-<tr><td>☑ Auto-Watch</td><td>Watches files & re-processes on change</td></tr>
+<tr><td>☑ Dedup</td><td>同じ内容の重複ファイルを削除します</td></tr>
+<tr><td>☑ Checkpoints</td><td>処理途中のチェックポイントを保存します</td></tr>
+<tr><td>☑ Auto-Watch</td><td>ファイルを監視し、変更時に再処理</td></tr>
 <tr><td>形式</td><td>Markdown、XML、Plain、JSONL Chunks、カスタム（Jinja2）</td></tr>
 <tr><td>📁 テンプレート</td><td>Jinja2テンプレートピッカー</td></tr>
 </tbody>
@@ -177,13 +178,13 @@ cd yay && makepkg -si</pre>
 <p><b>スケルトンモード：</b>関数の実装を削除（<code>def func_name(...):  # ... implementation ...</code>）、すべてのクラスを保持 — LLMが最小トークンで大規模プロジェクトを理解できるようにします。</p>
 
 
-<p><b>Minify vs Aggressive:</b> <b>Minify</b> strips leading/trailing whitespace and removes blank lines — safe for any codebase, reduces tokens without affecting readability. <b>Aggressive</b> adds an extra pass that eliminates trailing whitespace on every line for maximum compression. Combine both when you need to fit more code into a limited context window.</p>
+<p><b>Minify vs Aggressive:</b> <b>Minify</b>は前後の空白を削除し空行を取り除きます — どのコードベースでも安全で、可読性に影響を与えずトークンを削減します。<b>Aggressive</b>はさらに各行の末尾の空白を除去して最大限圧縮します。限られたコンテキストウィンドウにより多くのコードを含める必要がある場合に両方を組み合わせてください。</p>
 
-<p><b>Dedup:</b> automatically detects files with identical content across your project and excludes duplicates from the output — prevents LLM from seeing the same code twice and wasting tokens.</p>
+<p><b>Dedup:</b> プロジェクト内で同じ内容のファイルを自動検出し、出力から重複を除外します — LLMが同じコードを2回見てトークンを無駄にするのを防ぎます。</p>
 
-<p><b>Checkpoints:</b> saves intermediate results at each pipeline stage (before cleanup, after minification, etc.) to <code>checkpoints/</code> folder. Useful for debugging what each processing step does or comparing outputs side by side.</p>
+<p><b>Checkpoints:</b> 各パイプラインステージ（クリーンアップ前、ミニファイ後など）の中間結果を<code>checkpoints/</code>フォルダに保存します。各処理ステップの動作をデバッグしたり、出力を並べて比較するのに便利です。</p>
 
-<p><b>Auto-Watch:</b> monitors your project files for changes using the OS file watcher. When a file is saved, the pipeline automatically re-runs — ideal during active development when you need continuous prompt updates.</p>
+<p><b>Auto-Watch:</b> OSファイルウォッチャーを使用してプロジェクトファイルの変更を監視します。ファイルが保存されるとパイプラインが自動的に再実行され、継続的なプロンプト更新が必要なアクティブ開発中に最適です。</p>
 <h3>5. アクションボタン</h3>
 <table>
 <thead><tr><th>ボタン</th><th>アクション</th></tr></thead>
@@ -234,6 +235,76 @@ cd yay && makepkg -si</pre>
 
 <h3>11. コマンドパレット</h3>
 <p><code>Ctrl+Shift+P</code> — マウスを使わずにすべてのアクションにアクセス。</p>
+
+<h3>12. 🔌 プラグインシステム (v1.25+)</h3>
+<p><b>CodeContext AI</b>は<b>Pythonプラグインシステム</b>をサポートしており、カスタム機能でアプリを拡張できます。</p>
+
+<h4>📁 プラグイン構造</h4>
+<pre>my_plugin/
+├── manifest.json          # プラグインメタデータ
+├── requirements.txt       # （オプション）pip依存関係
+├── locales/
+│   ├── en.json            # 英語翻訳
+│   └── ru.json            # ロシア語翻訳
+└── plugin.py              # エントリポイント</pre>
+
+<h4>📄 manifest.json</h4>
+<pre>{
+  "id": "my_plugin",
+  "name": "My Plugin",
+  "version": "1.0.0",
+  "description": "何か便利なことをします",
+  "entry_point": "plugin"
+}</pre>
+
+<h4>🐍 plugin.py（例）</h4>
+<pre>from src.api.plugin_api import IPlugin, PluginAPI
+
+class MyPlugin(IPlugin):
+    id = "my_plugin"
+    name = "My Plugin"
+    version = "1.0.0"
+
+    def on_init(self, api: PluginAPI) -> None:
+        # locales/フォルダの翻訳は自動的に読み込まれます
+        # サイドバーにタブを登録
+        api.ui.register_sidebar_tab(
+            "my_tab", "My Tab",
+            lambda: QLabel("プラグインからのこんにちは！")
+        )
+        # アクションボタンを登録
+        api.ui.register_action_button(
+            "my_action", "My Action",
+            lambda: api.add_log("プラグインアクションがクリックされました")
+        )
+        api.add_log("マイプラグインが初期化されました")
+
+    def on_shutdown(self) -> None:
+        pass</pre>
+
+<h4>🔐 セキュリティ</h4>
+<ul>
+<li>プラグインは<b>Pythonへの完全アクセス</b>を持ちます — 信頼できるソースからのみインストールしてください</li>
+<li>初回ロード時、セキュリティダイアログでプラグインを有効にする前に承認を求めます</li>
+<li><code>requirements.txt</code>が存在する場合、ロード前にpipインストールログが表示されます</li>
+<li>承認済みプラグインは設定に記憶されます（<code>approved_plugins</code>）</li>
+</ul>
+
+<h4>🛠 Plugin API</h4>
+<table>
+<thead><tr><th>プロパティ / メソッド</th><th>説明</th></tr></thead>
+<tbody>
+<tr><td><code>api.store</code></td><td>読み取り専用のReduxストア（<code>state.settings.xxx</code>で状態にアクセス）</td></tr>
+<tr><td><code>api.dispatcher</code></td><td>アクションをディスパッチ（例：<code>UI_ADD_LOG</code>）</td></tr>
+<tr><td><code>api.ui.register_sidebar_tab(id, label, factory)</code></td><td>左サイドバーにタブを追加</td></tr>
+<tr><td><code>api.ui.register_action_button(id, label, callback)</code></td><td>「プラグイン 🔽」ドロップダウンにボタンを追加</td></tr>
+<tr><td><code>api.add_translations(lang, data)</code></td><td>ランタイム翻訳を追加（組み込みの上にマージ）</td></tr>
+<tr><td><code>api.add_log(message)</code></td><td>アプリログパネルに書き込み</td></tr>
+</tbody>
+</table>
+
+<h4>⚙️ 表示設定</h4>
+<p>プラグインタブとアクションボタンは<b>⚙ UIカスタマイズ</b>からオン/オフを切り替えられます — 組み込みのタブ/アクションと一緒に独自のチェックボックスが表示されます。</p>
 
 <hr>
 
@@ -316,7 +387,7 @@ python main.py --cli --path ./frontend ./backend --format xml --output combined.
 <li>🚀 <b>CI/CDパイプライン</b> — PRコンテキストを自動生成するGitHub ActionsおよびGitLab CIプラグイン。</li>
 <li>🤖 <b>OpenAI/Anthropic API直接統合</b> — プロンプト生成から直接出力への完全なブリッジ。</li>
 <li>🍎 macOS Finderコンテキストメニュー</li>
-<li>🔌 プラグインシステム</li>
+<li>🔌 プラグインシステム ✅</li>
 </ul>
 
 <hr>
