@@ -11,7 +11,7 @@
 **AI-powered codebase analysis & prompt preparation tool**
 
 [![AUR](https://img.shields.io/aur/version/codecontext-ai?style=flat-square&logo=archlinux&label=AUR)](https://aur.archlinux.org/packages/codecontext-ai)
-[![Version](https://img.shields.io/badge/version-1.24.2-blue?style=flat-square)](VERSION.txt)
+[![Version](https://img.shields.io/badge/version-1.25.0-blue?style=flat-square)](VERSION.txt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square&logo=python)](https://www.python.org/downloads/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20|%20Linux%20|%20macOS-lightgrey?style=flat-square)]()
@@ -44,6 +44,7 @@
 <tr><td>⚡ Aggressive minify (v1.23+)</td><td>Extra compression — eliminates trailing whitespace on every line</td><td>Manual delete</td></tr>
 <tr><td>📌 Checkpoints (v1.23+)</td><td>Save before/after snapshots for debugging</td><td>Not available</td></tr>
 <tr><td>👁️ Auto-Watch (v1.23+)</td><td>Watches files & re-processes on change</td><td>Not available</td></tr>
+<tr><td>🔌 Plugin System (v1.25+)</td><td>Extend with Python plugins — custom tabs, actions, and i18n</td><td>Not available</td></tr>
 </tbody>
 </table>
 
@@ -235,6 +236,76 @@ cd yay && makepkg -si</pre>
 <h3>11. Command Palette</h3>
 <p><code>Ctrl+Shift+P</code> — mouse-free access to all actions.</p>
 
+<h3>12. 🔌 Plugin System (v1.25+)</h3>
+<p><b>CodeContext AI</b> supports a <b>Python plugin system</b> that lets you extend the app with custom functionality.</p>
+
+<h4>📁 Plugin Structure</h4>
+<pre>my_plugin/
+├── manifest.json          # Plugin metadata
+├── requirements.txt       # (Optional) pip dependencies
+├── locales/
+│   ├── en.json            # English translations
+│   └── ru.json            # Russian translations
+└── plugin.py              # Entry point</pre>
+
+<h4>📄 manifest.json</h4>
+<pre>{
+  "id": "my_plugin",
+  "name": "My Plugin",
+  "version": "1.0.0",
+  "description": "Does something useful",
+  "entry_point": "plugin"
+}</pre>
+
+<h4>🐍 plugin.py (Example)</h4>
+<pre>from src.api.plugin_api import IPlugin, PluginAPI
+
+class MyPlugin(IPlugin):
+    id = "my_plugin"
+    name = "My Plugin"
+    version = "1.0.0"
+
+    def on_init(self, api: PluginAPI) -> None:
+        # Add translations from locales/ folder (auto-loaded)
+        # Register a sidebar tab
+        api.ui.register_sidebar_tab(
+            "my_tab", "My Tab",
+            lambda: QLabel("Hello from plugin!")
+        )
+        # Register an action button
+        api.ui.register_action_button(
+            "my_action", "My Action",
+            lambda: api.add_log("Plugin action clicked")
+        )
+        api.add_log("My Plugin initialized")
+
+    def on_shutdown(self) -> None:
+        pass</pre>
+
+<h4>🔐 Security</h4>
+<ul>
+<li>Plugins get <b>full Python access</b> — only install from trusted sources</li>
+<li>On first load, a security dialog asks your approval before enabling a plugin</li>
+<li>If <code>requirements.txt</code> exists, you'll see a live pip install log before loading</li>
+<li>Approved plugins are remembered in settings (<code>approved_plugins</code>)</li>
+</ul>
+
+<h4>🛠 Plugin API</h4>
+<table>
+<thead><tr><th>Property / Method</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>api.store</code></td><td>Read-only Redux store (state access via <code>state.settings.xxx</code>)</td></tr>
+<tr><td><code>api.dispatcher</code></td><td>Dispatch actions (e.g. <code>UI_ADD_LOG</code>)</td></tr>
+<tr><td><code>api.ui.register_sidebar_tab(id, label, factory)</code></td><td>Add a tab to the left sidebar</td></tr>
+<tr><td><code>api.ui.register_action_button(id, label, callback)</code></td><td>Add a button to the "Plugins 🔽" dropdown</td></tr>
+<tr><td><code>api.add_translations(lang, data)</code></td><td>Add runtime translations (merged on top of built-in)</td></tr>
+<tr><td><code>api.add_log(message)</code></td><td>Write to the app log panel</td></tr>
+</tbody>
+</table>
+
+<h4>⚙️ Visibility</h4>
+<p>Plugin tabs and action buttons can be toggled via <b>⚙ UI Customization</b> — they appear alongside built-in tabs/actions with their own checkboxes.</p>
+
 <hr>
 
 <h2>💻 CLI Mode</h2>
@@ -316,7 +387,7 @@ python main.py --cli --path ./frontend ./backend --format xml --output combined.
 <li>🚀 <b>CI/CD Pipelines</b> — GitHub Actions & GitLab CI plugins for automated PR context generation.</li>
 <li>🤖 <b>Direct OpenAI/Anthropic API integration</b> — complete the bridge from prompt generation to direct output.</li>
 <li>🍎 macOS Finder context menu</li>
-<li>🔌 Plugin system</li>
+<li>🔌 Plugin system ✅</li>
 </ul>
 
 <hr>
