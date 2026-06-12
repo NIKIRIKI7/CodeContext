@@ -6,7 +6,7 @@
 
 # CodeContext AI
 
-<img src="../assets/images/logo.png" alt="CodeContext AI Logo" width="120"/>
+<img src="https://raw.githubusercontent.com/NIKIRIKI7/CodeContext/main/assets/images/logo.png" alt="CodeContext AI Logo" width="120"/>
 
 **AI-संचालित कोडबेस विश्लेषण और प्रॉम्प्ट तैयारी उपकरण**
 
@@ -62,6 +62,12 @@ venv\Scripts\activate
 # Linux/macOS:
 source venv/bin/activate
 pip install -r requirements.txt</pre>
+
+<h3>PyPI (pip)</h3>
+<pre>pip install codecontext-ai</pre>
+
+<pre># फिर चलाएँ:
+codecontext</pre>
 
 <h3>Windows .exe</h3>
 <pre>pip install pyinstaller

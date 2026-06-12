@@ -6,7 +6,7 @@
 
 # CodeContext AI
 
-<img src="../assets/images/logo.png" alt="CodeContext AI Logo" width="120"/>
+<img src="https://raw.githubusercontent.com/NIKIRIKI7/CodeContext/main/assets/images/logo.png" alt="CodeContext AI Logo" width="120"/>
 
 **AI 驱动的代码库分析与提示词准备工具**
 
@@ -62,6 +62,12 @@ venv\Scripts\activate
 # Linux/macOS：
 source venv/bin/activate
 pip install -r requirements.txt</pre>
+
+<h3>PyPI (pip)</h3>
+<pre>pip install codecontext-ai</pre>
+
+<pre># 然后运行：
+codecontext</pre>
 
 <h3>Windows .exe</h3>
 <pre>pip install pyinstaller
