@@ -45,7 +45,8 @@ jobs:
           AUR_SSH_KEY: ${{ secrets.AUR_SSH_KEY }}
         run: |
           mkdir -p ~/.ssh
-          echo "$AUR_SSH_KEY" > ~/.ssh/aur_key
+          echo "$AUR_SSH_KEY" | tr -d '\r' > ~/.ssh/aur_key
+          echo "" >> ~/.ssh/aur_key
           chmod 600 ~/.ssh/aur_key
           cat >> ~/.ssh/config << 'EOF'
           Host aur.archlinux.org
