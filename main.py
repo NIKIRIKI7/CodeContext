@@ -100,6 +100,8 @@ def main():
     parser.add_argument("--silent", action="store_true", help=tr("main.silent"))
     parser.add_argument("--stdout", action="store_true", help=tr("main.stdout"))
     parser.add_argument("--fail-if-exceeds", type=int, help=tr("main.fail_if_exceeds"))
+    parser.add_argument("--git", action="store_true", help="Scan only git modified files")
+    parser.add_argument("--git-base", type=str, default="", help="Base branch for git diff in CI/CD (e.g., origin/main)")
 
     args, _ = parser.parse_known_args()
     container = DIContainer()
@@ -123,7 +125,9 @@ def main():
             'dry_run': args.dry_run,
             'silent': args.silent or args.stdout,
             'stdout': args.stdout,
-            'fail_if_exceeds': args.fail_if_exceeds
+            'fail_if_exceeds': args.fail_if_exceeds,
+            'git': args.git,
+            'git_base': args.git_base,
         }
         if args.patch:
             container.cli_controller.run_patch(args.path, args.patch)

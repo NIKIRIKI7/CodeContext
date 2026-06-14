@@ -80,13 +80,14 @@ class FileSystemRepository:
         return result
 
     @staticmethod
-    async def get_git_changed_files_async(repo_path: str, extensions: List[str], ignored_substrings: Set[str]) -> List[str]:
+    async def get_git_changed_files_async(repo_path: str, extensions: List[str], ignored_substrings: Set[str], git_base: str = "") -> List[str]:
         repo = Path(repo_path)
         if not (repo / ".git").exists():
             return []
         try:
+            compare_ref = git_base if git_base else "HEAD"
             proc_diff = await asyncio.create_subprocess_exec(
-                "git", "-c", "core.quotepath=false", "diff", "HEAD", "--name-only",
+                "git", "-c", "core.quotepath=false", "diff", compare_ref, "--name-only",
                 cwd=repo_path, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
             )
             out_diff, _ = await proc_diff.communicate()

@@ -45,6 +45,7 @@
 <tr><td>📌 Контр. точки (v1.23+)</td><td>Сохранение снимков ДО/ПОСЛЕ для отладки</td><td>Нет</td></tr>
 <tr><td>👁️ Авто-слежка (v1.23+)</td><td>Следит за файлами и перезапускает обработку при изменениях</td><td>Нет</td></tr>
 <tr><td>🔌 Плагины (v1.25+)</td><td>Расширение Python-плагинами — кастомные вкладки, кнопки, i18n</td><td>Нет</td></tr>
+<tr><td>🚦 CI/CD Интеграция</td><td>GitHub Actions и GitLab CI — автогенерация контекста PR через <code>--git-base</code></td><td>Not available</td></tr>
 </tbody>
 </table>
 
@@ -337,6 +338,7 @@ class MyPlugin(IPlugin):
 <tr><td><code>--output</code></td><td>стр.</td><td>Файл результата</td><td><code>--output out.txt</code></td></tr>
 <tr><td><code>--stdout</code></td><td>флаг</td><td>Вывод в консоль</td><td><code>--stdout</code></td></tr>
 <tr><td><code>--git</code></td><td>флаг</td><td>Только Git-изменения</td><td><code>--git</code></td></tr>
+<tr><td><code>--git-base</code></td><td>str</td><td>Базовая ветка для git diff в CI/CD</td><td><code>--git-base origin/main</code></td></tr>
 <tr><td><code>--gitignore</code></td><td>флаг</td><td>Учитывать .gitignore</td><td><code>--gitignore</code></td></tr>
 <tr><td><code>--tree</code></td><td>флаг</td><td>Дерево файлов</td><td><code>--tree</code></td></tr>
 <tr><td><code>--mermaid</code></td><td>флаг</td><td>Mermaid-граф</td><td><code>--mermaid</code></td></tr>
@@ -367,7 +369,10 @@ python main.py --cli --path ./myapp --template my.j2 --stdout
 python main.py --cli --path ./myapp --mode deep --mermaid --output with_mermaid.md
 
 # Несколько путей
-python main.py --cli --path ./frontend ./backend --format xml --output combined.xml</pre>
+python main.py --cli --path ./frontend ./backend --format xml --output combined.xml
+
+# CI/CD — diff относительно базовой ветки
+python main.py --cli --path . --git --git-base origin/main --minify true --stdout</pre>
 
 <hr>
 

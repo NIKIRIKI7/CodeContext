@@ -45,6 +45,7 @@
 <tr><td>📌 نقاط التحقق (v1.23+)</td><td>حفظ لقطات قبل/بعد لتصحيح الأخطاء</td><td>غير متاح</td></tr>
 <tr><td>👁️ المراقبة التلقائية (v1.23+)</td><td>يراقب الملفات ويعيد المعالجة عند التغيير</td><td>غير متاح</td></tr>
 <tr><td>🔌 نظام الإضافات (v1.25+)</td><td>التوسع بإضافات Python — علامات تبويب، إجراءات، وتدويل مخصصة</td><td>غير متاح</td></tr>
+<tr><td>🚦 تكامل CI/CD</td><td>GitHub Actions و GitLab CI — إنشاء سياق PR تلقائياً عبر <code>--git-base</code></td><td>Not available</td></tr>
 </tbody>
 </table>
 
@@ -334,6 +335,7 @@ class MyPlugin(IPlugin):
 <tr><td><code>--output</code></td><td>نص</td><td>ملف الإخراج</td><td><code>--output out.txt</code></td></tr>
 <tr><td><code>--stdout</code></td><td>علامة</td><td>طباعة إلى stdout</td><td><code>--stdout</code></td></tr>
 <tr><td><code>--git</code></td><td>علامة</td><td>تغييرات Git فقط</td><td><code>--git</code></td></tr>
+<tr><td><code>--git-base</code></td><td>str</td><td>الفرع الأساسي لـ git diff في CI/CD</td><td><code>--git-base origin/main</code></td></tr>
 <tr><td><code>--gitignore</code></td><td>علامة</td><td>احترام .gitignore</td><td><code>--gitignore</code></td></tr>
 <tr><td><code>--tree</code></td><td>علامة</td><td>شجرة الملفات</td><td><code>--tree</code></td></tr>
 <tr><td><code>--mermaid</code></td><td>علامة</td><td>رسم Mermaid البياني</td><td><code>--mermaid</code></td></tr>
@@ -364,7 +366,10 @@ python main.py --cli --path ./myapp --template my.j2 --stdout
 python main.py --cli --path ./myapp --mode deep --mermaid --output with_mermaid.md
 
 # مسارات متعددة
-python main.py --cli --path ./frontend ./backend --format xml --output combined.xml</pre>
+python main.py --cli --path ./frontend ./backend --format xml --output combined.xml
+
+# CI/CD — الفرق مقابل الفرع الأساسي
+python main.py --cli --path . --git --git-base origin/main --minify true --stdout</pre>
 
 <hr>
 

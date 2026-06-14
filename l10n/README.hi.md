@@ -45,6 +45,7 @@
 <tr><td>📌 चेकपॉइंट्स (v1.23+)</td><td>डिबगिंग के लिए पहले/बाद के स्नैपशॉट सहेजें</td><td>उपलब्ध नहीं</td></tr>
 <tr><td>👁️ ऑटो-वॉच (v1.23+)</td><td>फ़ाइलों को देखता है और बदलाव पर पुनःसंसाधन करता है</td><td>उपलब्ध नहीं</td></tr>
 <tr><td>🔌 प्लगइन सिस्टम (v1.25+)</td><td>Python प्लगइन्स से विस्तार करें — कस्टम टैब्स, कार्रवाइयाँ, और i18n</td><td>उपलब्ध नहीं</td></tr>
+<tr><td>🚦 CI/CD एकीकरण</td><td>GitHub Actions और GitLab CI — <code>--git-base</code> के माध्यम से स्वचालित PR संदर्भ निर्माण</td><td>Not available</td></tr>
 </tbody>
 </table>
 
@@ -331,6 +332,7 @@ class MyPlugin(IPlugin):
 <tr><td><code>--output</code></td><td>str</td><td>आउटपुट फ़ाइल</td><td><code>--output out.txt</code></td></tr>
 <tr><td><code>--stdout</code></td><td>flag</td><td>stdout पर प्रिंट करें</td><td><code>--stdout</code></td></tr>
 <tr><td><code>--git</code></td><td>flag</td><td>केवल Git परिवर्तन</td><td><code>--git</code></td></tr>
+<tr><td><code>--git-base</code></td><td>str</td><td>CI/CD में git diff के लिए आधार शाखा</td><td><code>--git-base origin/main</code></td></tr>
 <tr><td><code>--gitignore</code></td><td>flag</td><td>.gitignore का सम्मान करें</td><td><code>--gitignore</code></td></tr>
 <tr><td><code>--tree</code></td><td>flag</td><td>फ़ाइल ट्री</td><td><code>--tree</code></td></tr>
 <tr><td><code>--mermaid</code></td><td>flag</td><td>Mermaid ग्राफ़</td><td><code>--mermaid</code></td></tr>
@@ -361,7 +363,10 @@ python main.py --cli --path ./myapp --template my.j2 --stdout
 python main.py --cli --path ./myapp --mode deep --mermaid --output with_mermaid.md
 
 # एकाधिक पथ
-python main.py --cli --path ./frontend ./backend --format xml --output combined.xml</pre>
+python main.py --cli --path ./frontend ./backend --format xml --output combined.xml
+
+# CI/CD — आधार शाखा के साथ अंतर
+python main.py --cli --path . --git --git-base origin/main --minify true --stdout</pre>
 
 <hr>
 

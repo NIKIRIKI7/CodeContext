@@ -16,6 +16,7 @@ class AppSettings:
     include_mermaid: bool = False
     skeleton_mode: bool = False
     use_git: bool = False
+    git_base: str = ""
     use_gitignore: bool = True
     system_prompt: str = "You are an expert software engineer. Analyze the following codebase structure and file contents."
     output_format: str = "markdown"

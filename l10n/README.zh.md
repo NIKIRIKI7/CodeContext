@@ -45,6 +45,7 @@
 <tr><td>📌 检查点 (v1.23+)</td><td>保存调试前/后快照</td><td>不可用</td></tr>
 <tr><td>👁️ 自动监视 (v1.23+)</td><td>监视文件并在变更时重新处理</td><td>不可用</td></tr>
 <tr><td>🔌 插件系统 (v1.25+)</td><td>通过 Python 插件扩展 — 自定义选项卡、操作和 i18n</td><td>不可用</td></tr>
+<tr><td>🚦 CI/CD 集成</td><td>GitHub Actions 和 GitLab CI — 通过 <code>--git-base</code> 自动生成 PR 上下文</td><td>Not available</td></tr>
 </tbody>
 </table>
 
@@ -331,6 +332,7 @@ class MyPlugin(IPlugin):
 <tr><td><code>--output</code></td><td>字符串</td><td>输出文件</td><td><code>--output out.txt</code></td></tr>
 <tr><td><code>--stdout</code></td><td>标志</td><td>输出到控制台</td><td><code>--stdout</code></td></tr>
 <tr><td><code>--git</code></td><td>标志</td><td>仅 Git 更改</td><td><code>--git</code></td></tr>
+<tr><td><code>--git-base</code></td><td>str</td><td>用于 CI/CD 中 git diff 的基础分支</td><td><code>--git-base origin/main</code></td></tr>
 <tr><td><code>--gitignore</code></td><td>标志</td><td>遵守 .gitignore</td><td><code>--gitignore</code></td></tr>
 <tr><td><code>--tree</code></td><td>标志</td><td>文件树</td><td><code>--tree</code></td></tr>
 <tr><td><code>--mermaid</code></td><td>标志</td><td>Mermaid 图</td><td><code>--mermaid</code></td></tr>
@@ -361,7 +363,10 @@ python main.py --cli --path ./myapp --template my.j2 --stdout
 python main.py --cli --path ./myapp --mode deep --mermaid --output with_mermaid.md
 
 # 多个路径
-python main.py --cli --path ./frontend ./backend --format xml --output combined.xml</pre>
+python main.py --cli --path ./frontend ./backend --format xml --output combined.xml
+
+# CI/CD — 与基础分支进行差异比较
+python main.py --cli --path . --git --git-base origin/main --minify true --stdout</pre>
 
 <hr>
 

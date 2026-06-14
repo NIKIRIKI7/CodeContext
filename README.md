@@ -45,6 +45,7 @@
 <tr><td>📌 Checkpoints (v1.23+)</td><td>Save before/after snapshots for debugging</td><td>Not available</td></tr>
 <tr><td>👁️ Auto-Watch (v1.23+)</td><td>Watches files & re-processes on change</td><td>Not available</td></tr>
 <tr><td>🔌 Plugin System (v1.25+)</td><td>Extend with Python plugins — custom tabs, actions, and i18n</td><td>Not available</td></tr>
+<tr><td>🚦 CI/CD Integration</td><td>GitHub Actions & GitLab CI — auto-generate PR context via <code>--git-base</code></td><td>Not available</td></tr>
 </tbody>
 </table>
 
@@ -334,6 +335,7 @@ class MyPlugin(IPlugin):
 <tr><td><code>--output</code></td><td>str</td><td>Output file</td><td><code>--output out.txt</code></td></tr>
 <tr><td><code>--stdout</code></td><td>flag</td><td>Print to stdout</td><td><code>--stdout</code></td></tr>
 <tr><td><code>--git</code></td><td>flag</td><td>Git changes only</td><td><code>--git</code></td></tr>
+<tr><td><code>--git-base</code></td><td>str</td><td>Base branch for git diff in CI/CD</td><td><code>--git-base origin/main</code></td></tr>
 <tr><td><code>--gitignore</code></td><td>flag</td><td>Respect .gitignore</td><td><code>--gitignore</code></td></tr>
 <tr><td><code>--tree</code></td><td>flag</td><td>File tree</td><td><code>--tree</code></td></tr>
 <tr><td><code>--mermaid</code></td><td>flag</td><td>Mermaid graph</td><td><code>--mermaid</code></td></tr>
@@ -364,7 +366,91 @@ python main.py --cli --path ./myapp --template my.j2 --stdout
 python main.py --cli --path ./myapp --mode deep --mermaid --output with_mermaid.md
 
 # Multiple paths
-python main.py --cli --path ./frontend ./backend --format xml --output combined.xml</pre>
+python main.py --cli --path ./frontend ./backend --format xml --output combined.xml
+
+# CI/CD — diff against base branch
+python main.py --cli --path . --git --git-base origin/main --minify true --stdout</pre>
+
+<hr>
+
+<h2>🚦 CI/CD Integration</h2>
+
+<p><b>CodeContext AI</b> can be integrated into your CI/CD pipelines to automatically generate a lean context of the files changed in a Pull/Merge Request and post it as a PR comment — no more manual copy-pasting for code review.</p>
+
+<h3>How it works</h3>
+<p>Normally <code>--git</code> runs <code>git diff HEAD</code>, which is useless in CI (HEAD is a merge commit).<br>
+The <code>--git-base</code> flag tells CodeContext to diff against a real branch instead:</p>
+<pre>git diff origin/main --name-only</pre>
+<p>Only the files modified in the PR are scanned, minified, and assembled into a prompt.</p>
+
+<h3>GitHub Actions</h3>
+<p>Create <code>.github/workflows/codecontext-pr.yml</code>:</p>
+<pre>name: 🧠 Generate PR Context
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  codecontext-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install CodeContext AI
+        run: pip install codecontext-ai
+      - name: Generate PR Context
+        run: |
+          codecontext --cli --path . --git \
+            --git-base "origin/${{ github.base_ref }}" \
+            --format markdown --minify true \
+            --no-comments true --stdout > pr_context.md
+      - name: Comment on PR
+        if: hashFiles('pr_context.md') != ''
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            let ctx = fs.readFileSync('pr_context.md', 'utf8').slice(0, 60000);
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `&lt;details&gt;\n&lt;summary&gt;&lt;b&gt;CodeContext AI: PR Context&lt;/b&gt;&lt;/summary&gt;\n\n\`\`\`markdown\n${ctx}\n\`\`\`\n&lt;/details&gt;`
+            });</pre>
+
+<h3>GitLab CI</h3>
+<p>Add to <code>.gitlab-ci.yml</code>. Requires a <code>GITLAB_API_TOKEN</code> variable with <code>api</code> scope.</p>
+<pre>codecontext_pr_analysis:
+  stage: test
+  image: python:3.11-slim
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  before_script:
+    - apt-get update && apt-get install -y git curl jq
+    - pip install codecontext-ai
+    - git fetch origin $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+  script:
+    - codecontext --cli --path . --git
+        --git-base "origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+        --format markdown --minify true --no-comments true --stdout > mr_context.md
+    - |
+      CONTENT=$(cat mr_context.md | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | awk '{printf "%s\\n", $0}')
+      JSON=$(jq -n --arg body "&lt;details&gt;&lt;summary&gt;&lt;b&gt;CodeContext AI: PR Context&lt;/b&gt;&lt;/summary&gt;\n\n\`\`\`markdown\n${CONTENT}\n\`\`\`\n&lt;/details&gt;" '{body: $body}')
+      curl --request POST --header "PRIVATE-TOKEN: $GITLAB_API_TOKEN" \
+           --header "Content-Type: application/json" --data "$JSON" \
+           "$CI_API_V4_URL/projects/$CI_PROJECT_ID/merge_requests/$CI_MERGE_REQUEST_IID/notes"</pre>
+
+<p>See <a href="docs/CI_CD.md"><code>docs/CI_CD.md</code></a> for detailed setup instructions.</p>
 
 <hr>
 

@@ -15,7 +15,7 @@ class FileService:
         self._on_change_callback: Optional[Callable] = None
 
     async def scan_folders_async(self, paths: List[str], extensions_str: str, ignored_str: str, use_git: bool,
-                                 use_gitignore: bool) -> List[str]:
+                                 use_gitignore: bool, git_base: str = "") -> List[str]:
         if not extensions_str.strip():
             from ..utils.config import PRESETS
             extensions_str = PRESETS['Default']['ext']
@@ -34,7 +34,7 @@ class FileService:
 
             if os.path.isdir(path):
                 if use_git:
-                    files = await self.repo.get_git_changed_files_async(path, exts, ign)
+                    files = await self.repo.get_git_changed_files_async(path, exts, ign, git_base)
                     all_files.extend(files)
                     continue
 

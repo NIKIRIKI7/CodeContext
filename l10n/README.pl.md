@@ -45,6 +45,7 @@
 <tr><td>📌 Punkty kontrolne (v1.23+)</td><td>Zapisuje migawki przed/po do debugowania</td><td>Niedostępne</td></tr>
 <tr><td>👁️ Auto-nadzór (v1.23+)</td><td>Śledzi pliki i przetwarza ponownie przy zmianie</td><td>Niedostępne</td></tr>
 <tr><td>🔌 System wtyczek (v1.25+)</td><td>Rozszerz przez pluginy Python — niestandardowe zakładki, akcje i i18n</td><td>Niedostępne</td></tr>
+<tr><td>🚦 Integracja CI/CD</td><td>GitHub Actions i GitLab CI — automatyczne generowanie kontekstu PR przez <code>--git-base</code></td><td>Not available</td></tr>
 </tbody>
 </table>
 
@@ -334,6 +335,7 @@ class MyPlugin(IPlugin):
 <tr><td><code>--output</code></td><td>str</td><td>Plik wyjściowy</td><td><code>--output out.txt</code></td></tr>
 <tr><td><code>--stdout</code></td><td>flag</td><td>Wypisz na stdout</td><td><code>--stdout</code></td></tr>
 <tr><td><code>--git</code></td><td>flag</td><td>Tylko zmiany Git</td><td><code>--git</code></td></tr>
+<tr><td><code>--git-base</code></td><td>str</td><td>Gałąź bazowa dla git diff w CI/CD</td><td><code>--git-base origin/main</code></td></tr>
 <tr><td><code>--gitignore</code></td><td>flag</td><td>Szanuj .gitignore</td><td><code>--gitignore</code></td></tr>
 <tr><td><code>--tree</code></td><td>flag</td><td>Drzewo plików</td><td><code>--tree</code></td></tr>
 <tr><td><code>--mermaid</code></td><td>flag</td><td>Graf Mermaid</td><td><code>--mermaid</code></td></tr>
@@ -364,7 +366,10 @@ python main.py --cli --path ./myapp --template my.j2 --stdout
 python main.py --cli --path ./myapp --mode deep --mermaid --output with_mermaid.md
 
 # Wiele ścieżek
-python main.py --cli --path ./frontend ./backend --format xml --output combined.xml</pre>
+python main.py --cli --path ./frontend ./backend --format xml --output combined.xml
+
+# CI/CD — diff względem gałęzi bazowej
+python main.py --cli --path . --git --git-base origin/main --minify true --stdout</pre>
 
 <hr>
 

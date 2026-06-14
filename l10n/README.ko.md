@@ -45,6 +45,7 @@
 <tr><td>📌 체크포인트 (v1.23+)</td><td>디버깅용 스냅샷 저장 (이전/이후)</td><td>사용 불가</td></tr>
 <tr><td>👁️ 자동 감시 (v1.23+)</td><td>파일을 감시하고 변경 시 재처리</td><td>사용 불가</td></tr>
 <tr><td>🔌 플러그인 시스템 (v1.25+)</td><td>Python 플러그인으로 확장 — 커스텀 탭, 작업, i18n</td><td>사용 불가</td></tr>
+<tr><td>🚦 CI/CD 통합</td><td>GitHub Actions 및 GitLab CI — <code>--git-base</code>로 PR 컨텍스트 자동 생성</td><td>Not available</td></tr>
 </tbody>
 </table>
 
@@ -331,6 +332,7 @@ class MyPlugin(IPlugin):
 <tr><td><code>--output</code></td><td>str</td><td>출력 파일</td><td><code>--output out.txt</code></td></tr>
 <tr><td><code>--stdout</code></td><td>flag</td><td>stdout으로 출력</td><td><code>--stdout</code></td></tr>
 <tr><td><code>--git</code></td><td>flag</td><td>Git 변경 사항만</td><td><code>--git</code></td></tr>
+<tr><td><code>--git-base</code></td><td>str</td><td>CI/CD에서 git diff의 기준 브랜치</td><td><code>--git-base origin/main</code></td></tr>
 <tr><td><code>--gitignore</code></td><td>flag</td><td>.gitignore 준수</td><td><code>--gitignore</code></td></tr>
 <tr><td><code>--tree</code></td><td>flag</td><td>파일 트리</td><td><code>--tree</code></td></tr>
 <tr><td><code>--mermaid</code></td><td>flag</td><td>Mermaid 그래프</td><td><code>--mermaid</code></td></tr>
@@ -361,7 +363,10 @@ python main.py --cli --path ./myapp --template my.j2 --stdout
 python main.py --cli --path ./myapp --mode deep --mermaid --output with_mermaid.md
 
 # 여러 경로
-python main.py --cli --path ./frontend ./backend --format xml --output combined.xml</pre>
+python main.py --cli --path ./frontend ./backend --format xml --output combined.xml
+
+# CI/CD — 기준 브랜치와 비교
+python main.py --cli --path . --git --git-base origin/main --minify true --stdout</pre>
 
 <hr>
 

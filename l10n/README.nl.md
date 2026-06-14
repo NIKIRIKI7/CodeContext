@@ -45,6 +45,7 @@
 <tr><td>📌 Checkpoints (v1.23+)</td><td>Bewaar voor/na-opnamen voor foutopsporing</td><td>Niet beschikbaar</td></tr>
 <tr><td>👁️ Auto-bewaking (v1.23+)</td><td>Bewaakt bestanden en verwerkt opnieuw bij wijziging</td><td>Niet beschikbaar</td></tr>
 <tr><td>🔌 Plugin-systeem (v1.25+)</td><td>Uitbreiden met Python-plugins — aangepaste tabs, acties en i18n</td><td>Niet beschikbaar</td></tr>
+<tr><td>🚦 CI/CD-integratie</td><td>GitHub Actions & GitLab CI — automatische PR-contextgeneratie via <code>--git-base</code></td><td>Not available</td></tr>
 </tbody>
 </table>
 
@@ -331,6 +332,7 @@ class MyPlugin(IPlugin):
 <tr><td><code>--output</code></td><td>str</td><td>Uitvoerbestand</td><td><code>--output out.txt</code></td></tr>
 <tr><td><code>--stdout</code></td><td>flag</td><td>Afdrukken naar stdout</td><td><code>--stdout</code></td></tr>
 <tr><td><code>--git</code></td><td>flag</td><td>Alleen Git-wijzigingen</td><td><code>--git</code></td></tr>
+<tr><td><code>--git-base</code></td><td>str</td><td>Basisbranch voor git diff in CI/CD</td><td><code>--git-base origin/main</code></td></tr>
 <tr><td><code>--gitignore</code></td><td>flag</td><td>.gitignore respecteren</td><td><code>--gitignore</code></td></tr>
 <tr><td><code>--tree</code></td><td>flag</td><td>Bestandsboom</td><td><code>--tree</code></td></tr>
 <tr><td><code>--mermaid</code></td><td>flag</td><td>Mermaid-graaf</td><td><code>--mermaid</code></td></tr>
@@ -361,7 +363,10 @@ python main.py --cli --path ./myapp --template my.j2 --stdout
 python main.py --cli --path ./myapp --mode deep --mermaid --output with_mermaid.md
 
 # Meerdere paden
-python main.py --cli --path ./frontend ./backend --format xml --output combined.xml</pre>
+python main.py --cli --path ./frontend ./backend --format xml --output combined.xml
+
+# CI/CD — diff tegen basisbranch
+python main.py --cli --path . --git --git-base origin/main --minify true --stdout</pre>
 
 <hr>
 

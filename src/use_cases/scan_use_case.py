@@ -52,6 +52,7 @@ class ScanWorkspaceUseCase:
                 ignored_str=state.settings.ignored_paths,
                 use_git=state.settings.use_git,
                 use_gitignore=state.settings.use_gitignore,
+                git_base=state.settings.git_base,
             )
 
             if not file_paths:

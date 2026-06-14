@@ -45,6 +45,7 @@
 <tr><td>📌 Kontrol noktaları (v1.23+)</td><td>Hata ayıklama için önce/sonra anlık görüntüleri kaydeder</td><td>Mevcut değil</td></tr>
 <tr><td>👁️ Otomatik izleme (v1.23+)</td><td>Dosyaları izler ve değişiklikte yeniden işler</td><td>Mevcut değil</td></tr>
 <tr><td>🔌 Eklenti sistemi (v1.25+)</td><td>Python eklentileriyle genişletin — özel sekmeler, eylemler ve i18n</td><td>Mevcut değil</td></tr>
+<tr><td>🚦 CI/CD Entegrasyonu</td><td>GitHub Actions ve GitLab CI — <code>--git-base</code> ile otomatik PR bağlamı oluşturma</td><td>Not available</td></tr>
 </tbody>
 </table>
 
@@ -334,6 +335,7 @@ class MyPlugin(IPlugin):
 <tr><td><code>--output</code></td><td>str</td><td>Çıktı dosyası</td><td><code>--output out.txt</code></td></tr>
 <tr><td><code>--stdout</code></td><td>flag</td><td>stdout'a yazdır</td><td><code>--stdout</code></td></tr>
 <tr><td><code>--git</code></td><td>flag</td><td>Yalnızca Git değişiklikleri</td><td><code>--git</code></td></tr>
+<tr><td><code>--git-base</code></td><td>str</td><td>CI/CD'de git diff için temel dal</td><td><code>--git-base origin/main</code></td></tr>
 <tr><td><code>--gitignore</code></td><td>flag</td><td>.gitignore'a saygı göster</td><td><code>--gitignore</code></td></tr>
 <tr><td><code>--tree</code></td><td>flag</td><td>Dosya ağacı</td><td><code>--tree</code></td></tr>
 <tr><td><code>--mermaid</code></td><td>flag</td><td>Mermaid grafiği</td><td><code>--mermaid</code></td></tr>
@@ -364,7 +366,10 @@ python main.py --cli --path ./myapp --template my.j2 --stdout
 python main.py --cli --path ./myapp --mode deep --mermaid --output with_mermaid.md
 
 # Birden çok yol
-python main.py --cli --path ./frontend ./backend --format xml --output combined.xml</pre>
+python main.py --cli --path ./frontend ./backend --format xml --output combined.xml
+
+# CI/CD — temel dala göre diff
+python main.py --cli --path . --git --git-base origin/main --minify true --stdout</pre>
 
 <hr>
 

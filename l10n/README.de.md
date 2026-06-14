@@ -45,6 +45,7 @@
 <tr><td>📌 Checkpoints (v1.23+)</td><td>Speichert Vorher/Nachher-Schnappschüsse zum Debuggen</td><td>Nicht verfügbar</td></tr>
 <tr><td>👁️ Auto-Überwachung (v1.23+)</td><td>Überwacht Dateien und verarbeitet bei Änderungen neu</td><td>Nicht verfügbar</td></tr>
 <tr><td>🔌 Plugin-System (v1.25+)</td><td>Erweiterung durch Python-Plugins — benutzerdefinierte Tabs, Aktionen und i18n</td><td>Nicht verfügbar</td></tr>
+<tr><td>🚦 CI/CD-Integration</td><td>GitHub Actions & GitLab CI — automatische PR-Kontextgenerierung via <code>--git-base</code></td><td>Not available</td></tr>
 </tbody>
 </table>
 
@@ -334,6 +335,7 @@ class MyPlugin(IPlugin):
 <tr><td><code>--output</code></td><td>str</td><td>Ausgabedatei</td><td><code>--output out.txt</code></td></tr>
 <tr><td><code>--stdout</code></td><td>flag</td><td>Auf stdout ausgeben</td><td><code>--stdout</code></td></tr>
 <tr><td><code>--git</code></td><td>flag</td><td>Nur Git-Änderungen</td><td><code>--git</code></td></tr>
+<tr><td><code>--git-base</code></td><td>str</td><td>Basis-Branch für git diff in CI/CD</td><td><code>--git-base origin/main</code></td></tr>
 <tr><td><code>--gitignore</code></td><td>flag</td><td>.gitignore beachten</td><td><code>--gitignore</code></td></tr>
 <tr><td><code>--tree</code></td><td>flag</td><td>Dateibaum</td><td><code>--tree</code></td></tr>
 <tr><td><code>--mermaid</code></td><td>flag</td><td>Mermaid-Graph</td><td><code>--mermaid</code></td></tr>
@@ -364,7 +366,10 @@ python main.py --cli --path ./myapp --template my.j2 --stdout
 python main.py --cli --path ./myapp --mode deep --mermaid --output with_mermaid.md
 
 # Mehrere Pfade
-python main.py --cli --path ./frontend ./backend --format xml --output combined.xml</pre>
+python main.py --cli --path ./frontend ./backend --format xml --output combined.xml
+
+# CI/CD — Diff gegen Basis-Branch
+python main.py --cli --path . --git --git-base origin/main --minify true --stdout</pre>
 
 <hr>
 

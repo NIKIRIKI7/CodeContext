@@ -179,7 +179,8 @@ class CliController:
             'system_prompt': config.get('system_prompt', DEFAULT_SYSTEM_PROMPT),
             'template_path': config.get('template_path', ''),
             'enable_logging': config.get('enable_logging', True) and not kwargs.get('silent', False),
-            'use_git': config.get('use_git', False),
+            'use_git': kwargs.get('git') if kwargs.get('git') else config.get('use_git', False),
+            'git_base': kwargs.get('git_base', ''),
             'llm_model': config.get('llm_model', 'gpt-4o-mini')
         }
 

@@ -45,6 +45,7 @@
 <tr><td>📌 チェックポイント (v1.23+)</td><td>デバッグ用のスナップショットを事前/事後保存</td><td>利用不可</td></tr>
 <tr><td>👁️ 自動監視 (v1.23+)</td><td>ファイルを監視し、変更時に再処理</td><td>利用不可</td></tr>
 <tr><td>🔌 プラグインシステム (v1.25+)</td><td>Pythonプラグインで拡張 — カスタムタブ、アクション、i18n</td><td>利用不可</td></tr>
+<tr><td>🚦 CI/CD 統合</td><td>GitHub Actions と GitLab CI — <code>--git-base</code> による PR コンテキストの自動生成</td><td>Not available</td></tr>
 </tbody>
 </table>
 
@@ -334,6 +335,7 @@ class MyPlugin(IPlugin):
 <tr><td><code>--output</code></td><td>str</td><td>出力ファイル</td><td><code>--output out.txt</code></td></tr>
 <tr><td><code>--stdout</code></td><td>flag</td><td>stdoutに出力</td><td><code>--stdout</code></td></tr>
 <tr><td><code>--git</code></td><td>flag</td><td>Git変更のみ</td><td><code>--git</code></td></tr>
+<tr><td><code>--git-base</code></td><td>str</td><td>CI/CD で git diff のベースブランチ</td><td><code>--git-base origin/main</code></td></tr>
 <tr><td><code>--gitignore</code></td><td>flag</td><td>.gitignoreを尊重</td><td><code>--gitignore</code></td></tr>
 <tr><td><code>--tree</code></td><td>flag</td><td>ファイルツリー</td><td><code>--tree</code></td></tr>
 <tr><td><code>--mermaid</code></td><td>flag</td><td>Mermaidグラフ</td><td><code>--mermaid</code></td></tr>
@@ -364,7 +366,10 @@ python main.py --cli --path ./myapp --template my.j2 --stdout
 python main.py --cli --path ./myapp --mode deep --mermaid --output with_mermaid.md
 
 # 複数パス
-python main.py --cli --path ./frontend ./backend --format xml --output combined.xml</pre>
+python main.py --cli --path ./frontend ./backend --format xml --output combined.xml
+
+# CI/CD — ベースブランチとの差分
+python main.py --cli --path . --git --git-base origin/main --minify true --stdout</pre>
 
 <hr>
 
