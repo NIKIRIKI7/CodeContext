@@ -1,0 +1,80 @@
+name: Publish to PyPI and AUR
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  publish-pypi:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build tools
+        run: pip install build twine
+
+      - name: Build package
+        run: python -m build
+
+      - name Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
+
+  publish-aur:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up SSH for AUR
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.AUR_SSH_KEY }}" > ~/.ssh/aur_key
+          chmod 600 ~/.ssh/aur_key
+          cat >> ~/.ssh/config << 'EOF'
+          Host aur.archlinux.org
+            IdentityFile ~/.ssh/aur_key
+            StrictHostKeyChecking no
+          EOF
+
+      - name: Clone AUR repo
+        run: git clone ssh://aur@aur.archlinux.org/codecontext-ai.git aur_repo
+
+      - name: Read version
+        id: version
+        shell: bash
+        run: |
+          VER=$(cat VERSION.txt | tr -d '[:space:]')
+          echo "version=$VER" >> $GITHUB_OUTPUT
+
+      - name: Update PKGBUILD and .SRCINFO
+        shell: bash
+        working-directory: ./aur_repo
+        run: |
+          sed -i "s/^pkgver=.*/pkgver=${{ steps.version.outputs.version }}/" PKGBUILD
+          sed -i "s/^pkgrel=.*/pkgrel=1/" PKGBUILD
+          sed -i "s/^	pkgver = .*/	pkgver = ${{ steps.version.outputs.version }}/" .SRCINFO
+          sed -i "s|/archive/refs/tags/v.*\.tar\.gz|/archive/refs/tags/v${{ steps.version.outputs.version }}.tar.gz|" .SRCINFO
+
+      - name: Commit and push to AUR
+        shell: bash
+        working-directory: ./aur_repo
+        run: |
+          git config user.name "mcniki"
+          git config user.email "sawwa.cwer13@gmail.com"
+          git add -A
+          git commit -m "bump to v${{ steps.version.outputs.version }}"
+          git push origin master

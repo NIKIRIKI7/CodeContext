@@ -74,13 +74,16 @@ class FileService:
     def find_project_root(self, file_path: str) -> str:
         """
         Находит корень проекта, поднимаясь вверх по директориям.
-        Ищет индикаторы проектов (Git, Node.js, Python).
+        Ищет индикаторы проектов (Git, Node.js, Python, монорепозитории).
         """
+        markers = [
+            '.git', 'package.json', 'pyproject.toml', 'requirements.txt',
+            'lerna.json', 'nx.json', 'turbo.json', 'pnpm-workspace.yaml',
+        ]
         current_dir = os.path.dirname(os.path.abspath(file_path))
         check_dir = current_dir
         for _ in range(7):
-            if any(os.path.exists(os.path.join(check_dir, indicator))
-                   for indicator in ['.git', 'package.json', 'pyproject.toml', 'requirements.txt']):
+            if any(os.path.exists(os.path.join(check_dir, m)) for m in markers):
                 return check_dir
             parent = os.path.dirname(check_dir)
             if parent == check_dir:

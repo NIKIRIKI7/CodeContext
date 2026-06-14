@@ -46,6 +46,7 @@
 <tr><td>👁️ 自動監視 (v1.23+)</td><td>ファイルを監視し、変更時に再処理</td><td>利用不可</td></tr>
 <tr><td>🔌 プラグインシステム (v1.25+)</td><td>Pythonプラグインで拡張 — カスタムタブ、アクション、i18n</td><td>利用不可</td></tr>
 <tr><td>🚦 CI/CD 統合</td><td>GitHub Actions と GitLab CI — <code>--git-base</code> による PR コンテキストの自動生成</td><td>Not available</td></tr>
+<tr><td>🌳 Monorepo Support (v1.25+)</td><td>Lerna, NX, Turborepo, pnpm workspaces — cross-package imports, root config discovery</td><td>Not available</td></tr>
 </tbody>
 </table>
 

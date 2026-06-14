@@ -46,6 +46,7 @@
 <tr><td>👁️ المراقبة التلقائية (v1.23+)</td><td>يراقب الملفات ويعيد المعالجة عند التغيير</td><td>غير متاح</td></tr>
 <tr><td>🔌 نظام الإضافات (v1.25+)</td><td>التوسع بإضافات Python — علامات تبويب، إجراءات، وتدويل مخصصة</td><td>غير متاح</td></tr>
 <tr><td>🚦 تكامل CI/CD</td><td>GitHub Actions و GitLab CI — إنشاء سياق PR تلقائياً عبر <code>--git-base</code></td><td>Not available</td></tr>
+<tr><td>🌳 Monorepo Support (v1.25+)</td><td>Lerna, NX, Turborepo, pnpm workspaces — cross-package imports, root config discovery</td><td>Not available</td></tr>
 </tbody>
 </table>
 

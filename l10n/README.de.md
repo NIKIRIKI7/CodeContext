@@ -46,6 +46,7 @@
 <tr><td>👁️ Auto-Überwachung (v1.23+)</td><td>Überwacht Dateien und verarbeitet bei Änderungen neu</td><td>Nicht verfügbar</td></tr>
 <tr><td>🔌 Plugin-System (v1.25+)</td><td>Erweiterung durch Python-Plugins — benutzerdefinierte Tabs, Aktionen und i18n</td><td>Nicht verfügbar</td></tr>
 <tr><td>🚦 CI/CD-Integration</td><td>GitHub Actions & GitLab CI — automatische PR-Kontextgenerierung via <code>--git-base</code></td><td>Not available</td></tr>
+<tr><td>🌳 Monorepo Support (v1.25+)</td><td>Lerna, NX, Turborepo, pnpm workspaces — cross-package imports, root config discovery</td><td>Not available</td></tr>
 </tbody>
 </table>
 
@@ -394,7 +395,7 @@ python main.py --cli --path . --git --git-base origin/main --minify true --stdou
 <li>📚 <b>RAG (Retrieval-Augmented Generation)</b> — Indexierung großer Codebasen mit lokaler Vektor-DB (Chroma/FAISS).</li>
 <li>🚫 <b>Tiefgehendes .gitignore-Parsing</b> — Unterstützung für verschachtelte <code>.gitignore</code>-Dateien und globales <code>~/.gitignore</code>.</li>
 <li>☁️ <b>Cloud-Synchronisation</b> — synchronisieren Sie Ihre Voreinstellungen über GitHub Gists.</li>
-<li>🌳 <b>Multi-Root-Workspaces</b> — verbesserte Monorepo-Unterstützung (Lerna, NX, Turborepo).</li>
+<li>🌳 <b>Multi-Root-Workspaces</b> — verbesserte Monorepo-Unterstützung (Lerna, NX, Turborepo).</li> ✅
 <li>🚀 <b>CI/CD-Pipelines</b> — GitHub Actions und GitLab CI Plugins für automatisierte PR-Kontexterstellung.</li>
 <li>🤖 <b>Direkte OpenAI/Anthropic API-Integration</b> — vollständige Brücke von der Promptgenerierung zur direkten Ausgabe.</li>
 <li>🔌 Plugin-System ✅</li>

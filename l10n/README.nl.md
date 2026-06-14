@@ -46,6 +46,7 @@
 <tr><td>👁️ Auto-bewaking (v1.23+)</td><td>Bewaakt bestanden en verwerkt opnieuw bij wijziging</td><td>Niet beschikbaar</td></tr>
 <tr><td>🔌 Plugin-systeem (v1.25+)</td><td>Uitbreiden met Python-plugins — aangepaste tabs, acties en i18n</td><td>Niet beschikbaar</td></tr>
 <tr><td>🚦 CI/CD-integratie</td><td>GitHub Actions & GitLab CI — automatische PR-contextgeneratie via <code>--git-base</code></td><td>Not available</td></tr>
+<tr><td>🌳 Monorepo Support (v1.25+)</td><td>Lerna, NX, Turborepo, pnpm workspaces — cross-package imports, root config discovery</td><td>Not available</td></tr>
 </tbody>
 </table>
 

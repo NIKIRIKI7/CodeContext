@@ -83,14 +83,34 @@ class SettingsUseCase:
         self._dispatcher.dispatch(UI_ADD_LOG, tr("settings_use_case.reset"))
 
     def load_local_config(self, folder_path: str) -> None:
-        """Ищет .codecontextrc.json в папке и применяет локальные настройки."""
+        """
+        Ищет .codecontextrc.json / .codecontextrc, поднимаясь вверх по дереву.
+
+        Сначала проверяет переданную папку, затем до 5 уровней вверх.
+        Это позволяет находить конфиг в корне монорепозитория, даже если
+        пользователь открыл глубоко вложенный пакет (packages/frontend/src).
+        """
         if not self._fs_repo:
             return
 
-        config_path = os.path.join(folder_path, ".codecontextrc.json")
-        fallback_path = os.path.join(folder_path, ".codecontextrc")
+        target_path = None
+        current_dir = folder_path
 
-        target_path = config_path if os.path.exists(config_path) else (fallback_path if os.path.exists(fallback_path) else None)
+        for _ in range(5):
+            config_path = os.path.join(current_dir, ".codecontextrc.json")
+            fallback_path = os.path.join(current_dir, ".codecontextrc")
+
+            if os.path.exists(config_path):
+                target_path = config_path
+                break
+            if os.path.exists(fallback_path):
+                target_path = fallback_path
+                break
+
+            parent = os.path.dirname(current_dir)
+            if parent == current_dir:
+                break
+            current_dir = parent
 
         if not target_path:
             return

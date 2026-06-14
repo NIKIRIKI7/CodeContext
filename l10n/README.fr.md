@@ -46,6 +46,7 @@
 <tr><td>👁️ Surveillance auto (v1.23+)</td><td>Surveille les fichiers et retraite en cas de modification</td><td>Indisponible</td></tr>
 <tr><td>🔌 Système de plugins (v1.25+)</td><td>Extension avec des plugins Python — onglets, actions et i18n personnalisés</td><td>Indisponible</td></tr>
 <tr><td>🚦 Intégration CI/CD</td><td>GitHub Actions & GitLab CI — génération automatique du contexte PR via <code>--git-base</code></td><td>Not available</td></tr>
+<tr><td>🌳 Monorepo Support (v1.25+)</td><td>Lerna, NX, Turborepo, pnpm workspaces — cross-package imports, root config discovery</td><td>Not available</td></tr>
 </tbody>
 </table>
 

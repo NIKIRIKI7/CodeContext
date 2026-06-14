@@ -46,6 +46,7 @@
 <tr><td>👁️ Otomatik izleme (v1.23+)</td><td>Dosyaları izler ve değişiklikte yeniden işler</td><td>Mevcut değil</td></tr>
 <tr><td>🔌 Eklenti sistemi (v1.25+)</td><td>Python eklentileriyle genişletin — özel sekmeler, eylemler ve i18n</td><td>Mevcut değil</td></tr>
 <tr><td>🚦 CI/CD Entegrasyonu</td><td>GitHub Actions ve GitLab CI — <code>--git-base</code> ile otomatik PR bağlamı oluşturma</td><td>Not available</td></tr>
+<tr><td>🌳 Monorepo Support (v1.25+)</td><td>Lerna, NX, Turborepo, pnpm workspaces — cross-package imports, root config discovery</td><td>Not available</td></tr>
 </tbody>
 </table>
 

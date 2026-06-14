@@ -46,6 +46,7 @@
 <tr><td>👁️ Auto-nadzór (v1.23+)</td><td>Śledzi pliki i przetwarza ponownie przy zmianie</td><td>Niedostępne</td></tr>
 <tr><td>🔌 System wtyczek (v1.25+)</td><td>Rozszerz przez pluginy Python — niestandardowe zakładki, akcje i i18n</td><td>Niedostępne</td></tr>
 <tr><td>🚦 Integracja CI/CD</td><td>GitHub Actions i GitLab CI — automatyczne generowanie kontekstu PR przez <code>--git-base</code></td><td>Not available</td></tr>
+<tr><td>🌳 Monorepo Support (v1.25+)</td><td>Lerna, NX, Turborepo, pnpm workspaces — cross-package imports, root config discovery</td><td>Not available</td></tr>
 </tbody>
 </table>
 

@@ -46,6 +46,7 @@
 <tr><td>👁️ ऑटो-वॉच (v1.23+)</td><td>फ़ाइलों को देखता है और बदलाव पर पुनःसंसाधन करता है</td><td>उपलब्ध नहीं</td></tr>
 <tr><td>🔌 प्लगइन सिस्टम (v1.25+)</td><td>Python प्लगइन्स से विस्तार करें — कस्टम टैब्स, कार्रवाइयाँ, और i18n</td><td>उपलब्ध नहीं</td></tr>
 <tr><td>🚦 CI/CD एकीकरण</td><td>GitHub Actions और GitLab CI — <code>--git-base</code> के माध्यम से स्वचालित PR संदर्भ निर्माण</td><td>Not available</td></tr>
+<tr><td>🌳 Monorepo Support (v1.25+)</td><td>Lerna, NX, Turborepo, pnpm workspaces — cross-package imports, root config discovery</td><td>Not available</td></tr>
 </tbody>
 </table>
 

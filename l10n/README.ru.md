@@ -46,6 +46,7 @@
 <tr><td>👁️ Авто-слежка (v1.23+)</td><td>Следит за файлами и перезапускает обработку при изменениях</td><td>Нет</td></tr>
 <tr><td>🔌 Плагины (v1.25+)</td><td>Расширение Python-плагинами — кастомные вкладки, кнопки, i18n</td><td>Нет</td></tr>
 <tr><td>🚦 CI/CD Интеграция</td><td>GitHub Actions и GitLab CI — автогенерация контекста PR через <code>--git-base</code></td><td>Not available</td></tr>
+<tr><td>🌳 Monorepo Support (v1.25+)</td><td>Lerna, NX, Turborepo, pnpm workspaces — cross-package imports, root config discovery</td><td>Not available</td></tr>
 </tbody>
 </table>
 
@@ -397,7 +398,7 @@ python main.py --cli --path . --git --git-base origin/main --minify true --stdou
 <li>📚 <b>RAG (Retrieval-Augmented Generation) режим</b> — индексация огромных кодовых баз в векторную БД (Chroma/FAISS) для контекстного поиска.</li>
 <li>🚫 <b>Глубокий парсинг .gitignore</b> — поддержка вложенных файлов <code>.gitignore</code> и глобального <code>~/.gitignore</code>.</li>
 <li>☁️ <b>Облачная синхронизация</b> — синхронизация пресетов, настроек и промптов через GitHub Gists.</li>
-<li>🌳 <b>Мульти-root Workspaces</b> — продвинутая поддержка монорепозиториев (Lerna, NX, Turborepo).</li>
+<li>🌳 <b>Мульти-root Workspaces</b> — продвинутая поддержка монорепозиториев (Lerna, NX, Turborepo).</li> ✅
 <li>🚀 <b>Интеграция с пайплайнами CI/CD</b> — плагины для GitHub Actions и GitLab CI для генерации контекста в PR.</li>
 <li>🤖 <b>Прямой коннект с OpenAI/Anthropic API</b> — замыкание полного цикла от генерации промпта до сохранения итогового кода.</li>
 <li>🔌 Плагинная система ✅</li>

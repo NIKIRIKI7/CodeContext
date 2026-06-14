@@ -5,7 +5,8 @@ from .strategies.import_strategies import (
     StandardImportStrategy,
     FSDImportStrategy,
     AtomicDesignImportStrategy,
-    DDDImportStrategy
+    DDDImportStrategy,
+    MonorepoImportStrategy
 )
 
 
@@ -25,6 +26,7 @@ class ImportResolutionService:
         self.register_strategy(FSDImportStrategy())
         self.register_strategy(AtomicDesignImportStrategy())
         self.register_strategy(DDDImportStrategy())
+        self.register_strategy(MonorepoImportStrategy())
 
     def register_strategy(self, strategy: ImportResolutionStrategy):
         """Метод для динамического добавления новых пользовательских стратегий"""
