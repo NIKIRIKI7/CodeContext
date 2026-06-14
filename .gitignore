@@ -42,6 +42,10 @@ htmlcov/
 # Visual Studio
 .vs/
 
+# Environment files
+.env
+.env.local
+
 # Logs
 *.log
 

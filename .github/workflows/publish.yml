@@ -28,6 +28,7 @@ jobs:
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
+          user: __token__
           password: ${{ secrets.PYPI_API_TOKEN }}
 
   publish-aur:
@@ -40,9 +41,11 @@ jobs:
           fetch-depth: 0
 
       - name: Set up SSH for AUR
+        env:
+          AUR_SSH_KEY: ${{ secrets.AUR_SSH_KEY }}
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.AUR_SSH_KEY }}" > ~/.ssh/aur_key
+          echo "$AUR_SSH_KEY" > ~/.ssh/aur_key
           chmod 600 ~/.ssh/aur_key
           cat >> ~/.ssh/config << 'EOF'
           Host aur.archlinux.org
