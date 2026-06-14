@@ -36,7 +36,7 @@
 <tr><td>🧩 LLM Patcher</td><td>JSON yamalarını önizle ve uygula</td><td>Mevcut değil</td></tr>
 <tr><td>✅ LLM Checker</td><td>Kaydetmeden önce kodu otomatik doğrula</td><td>Mevcut değil</td></tr>
 <tr><td>🔗 AST bağımlılık grafiği</td><td>Python, JS/TS, Vue</td><td>Yalnızca dosya listeleme</td></tr>
-<tr><td>🖱️ Bağlam menüsü</td><td>Windows / Linux</td><td>Yok</td></tr>
+<tr><td>🖱️ Bağlam menüsü</td><td>Windows / Linux / macOS</td><td>Yok</td></tr>
 <tr><td>🎨 Temalar</td><td>Apple, Modern, özel JSON</td><td>Sabit arayüz</td></tr>
 <tr><td>⚙️ Arayüz özelleştirme (v1.14+)</td><td>Premiere Pro tarzı</td><td>Sabit arayüz</td></tr>
 <tr><td>🌐 i18n (v1.17+)</td><td>15 dil, sistem otomatik algılama</td><td>Tek dil</td></tr>
@@ -392,7 +392,6 @@ python main.py --cli --path ./frontend ./backend --format xml --output combined.
 <li>🌳 <b>Çoklu kök çalışma alanları</b> — monorepo (Lerna, NX, Turborepo) desteği iyileştirildi.</li>
 <li>🚀 <b>CI/CD boru hatları</b> — otomatik PR bağlamı oluşturma için GitHub Actions ve GitLab CI eklentileri.</li>
 <li>🤖 <b>Doğrudan OpenAI/Anthropic API entegrasyonu</b> — prompt oluşturmadan doğrudan çıktıya tam köprü.</li>
-<li>🍎 macOS Finder bağlam menüsü</li>
 <li>🔌 Eklenti sistemi ✅</li>
 </ul>
 

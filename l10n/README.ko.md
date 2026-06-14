@@ -36,7 +36,7 @@
 <tr><td>🧩 LLM Patcher</td><td>JSON 패치 미리보기 및 적용</td><td>사용 불가</td></tr>
 <tr><td>✅ LLM Checker</td><td>저장 전 코드 자동 검증</td><td>사용 불가</td></tr>
 <tr><td>🔗 AST 종속성 그래프</td><td>Python, JS/TS, Vue</td><td>파일 목록만</td></tr>
-<tr><td>🖱️ 컨텍스트 메뉴</td><td>Windows / Linux</td><td>없음</td></tr>
+<tr><td>🖱️ 컨텍스트 메뉴</td><td>Windows / Linux / macOS</td><td>없음</td></tr>
 <tr><td>🎨 테마</td><td>Apple, Modern, 사용자 지정 JSON</td><td>고정 UI</td></tr>
 <tr><td>⚙️ UI 사용자 지정 (v1.14+)</td><td>Premiere Pro 스타일</td><td>고정 UI</td></tr>
 <tr><td>🌐 i18n (v1.17+)</td><td>15개 언어, 시스템 자동 감지</td><td>단일 언어</td></tr>
@@ -389,7 +389,6 @@ python main.py --cli --path ./frontend ./backend --format xml --output combined.
 <li>🌳 <b>멀티루트 워크스페이스</b> — 모노레포(Lerna, NX, Turborepo) 지원 개선.</li>
 <li>🚀 <b>CI/CD 파이프라인</b> — PR 컨텍스트 자동 생성을 위한 GitHub Actions 및 GitLab CI 플러그인.</li>
 <li>🤖 <b>OpenAI/Anthropic API 직접 통합</b> — 프롬프트 생성에서 직접 출력까지의 완전한 브리지.</li>
-<li>🍎 macOS Finder 컨텍스트 메뉴</li>
 <li>🔌 플러그인 시스템 ✅</li>
 </ul>
 

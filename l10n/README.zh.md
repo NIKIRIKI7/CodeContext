@@ -36,7 +36,7 @@
 <tr><td>🧩 LLM 补丁器</td><td>预览和应用 JSON 补丁</td><td>不可用</td></tr>
 <tr><td>✅ LLM 检查器</td><td>保存前自动验证代码</td><td>不可用</td></tr>
 <tr><td>🔗 AST 依赖图</td><td>Python、JS/TS、Vue</td><td>仅文件列表</td></tr>
-<tr><td>🖱️ 右键菜单</td><td>Windows / Linux</td><td>无</td></tr>
+<tr><td>🖱️ 右键菜单</td><td>Windows / Linux / macOS</td><td>无</td></tr>
 <tr><td>🎨 主题</td><td>Apple、Modern、自定义 JSON</td><td>固定 UI</td></tr>
 <tr><td>⚙️ UI 自定义 (v1.14+)</td><td>Premiere Pro 风格</td><td>固定 UI</td></tr>
 <tr><td>🌐 i18n (v1.17+)</td><td>15种语言，系统自动检测</td><td>单一语言</td></tr>
@@ -389,7 +389,6 @@ python main.py --cli --path ./frontend ./backend --format xml --output combined.
 <li>🌳 <b>多根工作区</b> — 改进的单仓库支持（Lerna, NX, Turborepo）。</li>
 <li>🚀 <b>CI/CD 流水线</b> — GitHub Actions 和 GitLab CI 插件，用于自动生成 PR 上下文。</li>
 <li>🤖 <b>直接 OpenAI/Anthropic API 集成</b> — 完成从提示生成到直接输出的完整桥梁。</li>
-<li>🍎 macOS Finder 右键菜单</li>
 <li>🔌 插件系统 ✅</li>
 </ul>
 

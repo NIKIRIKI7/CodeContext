@@ -6,9 +6,12 @@ winreg/ctypes импортируются ТОЛЬКО внутри Windows-кл�
 """
 
 import os
+import shutil
 import sys
+import uuid
 from abc import ABC, abstractmethod
 from typing import Tuple, Optional, Any
+
 from src.i18n import tr
 
 
@@ -358,7 +361,11 @@ class LinuxContextMenuStrategy(ContextMenuStrategy):
 # ===========================================================================
 
 class MacOSContextMenuStrategy(ContextMenuStrategy):
-    """Стратегия для macOS (Automator/Quick Actions)."""
+    """Стратегия для macOS: Automator Quick Actions в ~/Library/Services/."""
+
+    # ------------------------------------------------------------------
+    # CLI (shell-скрипт в ~/.local/bin) — та же логика, что у Linux
+    # ------------------------------------------------------------------
 
     def install_cli(self, custom_python_path: Optional[str] = None) -> Tuple[bool, str]:
         return LinuxContextMenuStrategy().install_cli(custom_python_path)
@@ -366,8 +373,369 @@ class MacOSContextMenuStrategy(ContextMenuStrategy):
     def remove_cli(self) -> Tuple[bool, str]:
         return LinuxContextMenuStrategy().remove_cli()
 
+    # ------------------------------------------------------------------
+    # Помощники
+    # ------------------------------------------------------------------
+
+    def _get_commands(self, custom_python_path: Optional[str] = None) -> dict[str, str]:
+        """
+        Возвращает словарь {имя пункта меню → shell-команда}.
+        Команда получает путь через $1 и запускается в фоне.
+        """
+        if getattr(sys, 'frozen', False):
+            exe = sys.executable
+            return {
+                "CodeContext AI":
+                    f'"{exe}" --path "$1" > /dev/null 2>&1 &',
+                "CodeContext AI (XML)":
+                    f'"{exe}" --cli --path "$1" --format xml --silent > /dev/null 2>&1 &',
+                "CodeContext AI (Skeleton)":
+                    f'"{exe}" --cli --path "$1" --skeleton true --silent > /dev/null 2>&1 &',
+            }
+
+        python = custom_python_path or sys.executable
+        script = os.path.abspath(sys.argv[0])
+        if not script.endswith("main.py"):
+            candidate = os.path.join(os.getcwd(), "main.py")
+            if os.path.exists(candidate):
+                script = candidate
+
+        return {
+            "CodeContext AI":
+                f'"{python}" "{script}" --path "$1" > /dev/null 2>&1 &',
+            "CodeContext AI (XML)":
+                f'"{python}" "{script}" --cli --path "$1" --format xml --silent > /dev/null 2>&1 &',
+            "CodeContext AI (Skeleton)":
+                f'"{python}" "{script}" --cli --path "$1" --skeleton true --silent > /dev/null 2>&1 &',
+        }
+
+    def _create_workflow(self, name: str, command: str) -> None:
+        """
+        Создаёт полноценный .workflow-бандл в ~/Library/Services/.
+        """
+        services_dir = os.path.expanduser("~/Library/Services")
+        os.makedirs(services_dir, exist_ok=True)
+        workflow_path = os.path.join(services_dir, f"{name}.workflow")
+
+        if os.path.exists(workflow_path):
+            shutil.rmtree(workflow_path)
+
+        contents_dir = os.path.join(workflow_path, "Contents")
+        os.makedirs(contents_dir, exist_ok=True)
+
+        bundle_id = f"com.codecontext.ai.{uuid.uuid4().hex}"
+
+        # --- Info.plist ---------------------------------------------------
+        info_plist = f'''<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>{bundle_id}</string>
+    <key>CFBundleName</key>
+    <string>{name}</string>
+    <key>CFBundlePackageType</key>
+    <string>BNDL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundleSignature</key>
+    <string>????</string>
+    <key>CFBundleVersion</key>
+    <string>1.0</string>
+    <key>NSServices</key>
+    <array>
+        <dict>
+            <key>NSMenuItem</key>
+            <dict>
+                <key>default</key>
+                <string>{name}</string>
+            </dict>
+            <key>NSMessage</key>
+            <string>runWorkflowAsService</string>
+            <key>NSSendFileTypes</key>
+            <array>
+                <string>public.folder</string>
+                <string>public.directory</string>
+            </array>
+        </dict>
+    </array>
+</dict>
+</plist>'''
+
+        with open(os.path.join(contents_dir, "Info.plist"), "w", encoding="utf-8") as f:
+            f.write(info_plist)
+
+        # --- document.wflow ------------------------------------------------
+        # Экранируем спецсимволы XML
+        escaped = command.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+        wflow_xml = f'''<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>AMApplicationBuild</key>
+    <string>523</string>
+    <key>AMApplicationVersion</key>
+    <string>2.10</string>
+    <key>AMDocumentVersion</key>
+    <string>2</string>
+    <key>actions</key>
+    <array>
+        <dict>
+            <key>action</key>
+            <dict>
+                <key>AMAccepts</key>
+                <dict>
+                    <key>Container</key>
+                    <string>List</string>
+                    <key>Optional</key>
+                    <true/>
+                    <key>Types</key>
+                    <array>
+                        <string>com.apple.cocoa.string</string>
+                    </array>
+                </dict>
+                <key>AMActionVersion</key>
+                <string>2.0.3</string>
+                <key>AMApplication</key>
+                <array>
+                    <string>Automator</string>
+                </array>
+                <key>AMParameterProperties</key>
+                <dict>
+                    <key>COMMANDString</key>
+                    <dict/>
+                    <key>CheckedForUserDefaultShell</key>
+                    <dict/>
+                    <key>inputMethod</key>
+                    <dict/>
+                    <key>shell</key>
+                    <dict/>
+                    <key>source</key>
+                    <dict/>
+                </dict>
+                <key>AMProvides</key>
+                <dict>
+                    <key>Container</key>
+                    <string>List</string>
+                    <key>Types</key>
+                    <array>
+                        <string>com.apple.cocoa.string</string>
+                    </array>
+                </dict>
+                <key>ActionBundlePath</key>
+                <string>/System/Library/Automator/Run Shell Script.action</string>
+                <key>ActionName</key>
+                <string>Run Shell Script</string>
+                <key>ActionParameters</key>
+                <dict>
+                    <key>COMMANDString</key>
+                    <string>{escaped}</string>
+                    <key>CheckedForUserDefaultShell</key>
+                    <true/>
+                    <key>inputMethod</key>
+                    <integer>1</integer>
+                    <key>shell</key>
+                    <string>/bin/bash</string>
+                    <key>source</key>
+                    <string></string>
+                </dict>
+                <key>BundleIdentifier</key>
+                <string>com.apple.RunShellScript</string>
+                <key>CFBundleVersion</key>
+                <string>2.0.3</string>
+                <key>CanShowSelectedItemsWhenRun</key>
+                <false/>
+                <key>CanShowWhenRun</key>
+                <true/>
+                <key>Category</key>
+                <array>
+                    <string>AMCategoryUtilities</string>
+                </array>
+                <key>Class Name</key>
+                <string>RunShellScriptAction</string>
+                <key>InputUUID</key>
+                <string>{str(uuid.uuid4()).upper()}</string>
+                <key>Keywords</key>
+                <array>
+                    <string>Shell</string>
+                    <string>Script</string>
+                    <string>Command</string>
+                    <string>Run</string>
+                    <string>Unix</string>
+                </array>
+                <key>OutputUUID</key>
+                <string>{str(uuid.uuid4()).upper()}</string>
+                <key>UUID</key>
+                <string>{str(uuid.uuid4()).upper()}</string>
+                <key>UnlocalizedApplications</key>
+                <array>
+                    <string>Automator</string>
+                </array>
+                <key>arguments</key>
+                <dict>
+                    <key>0</key>
+                    <dict>
+                        <key>default value</key>
+                        <integer>0</integer>
+                        <key>name</key>
+                        <string>inputMethod</string>
+                        <key>required</key>
+                        <string>0</string>
+                        <key>type</key>
+                        <string>0</string>
+                        <key>uuid</key>
+                        <string>0</string>
+                    </dict>
+                    <key>1</key>
+                    <dict>
+                        <key>default value</key>
+                        <false/>
+                        <key>name</key>
+                        <string>CheckedForUserDefaultShell</string>
+                        <key>required</key>
+                        <string>0</string>
+                        <key>type</key>
+                        <string>0</string>
+                        <key>uuid</key>
+                        <string>1</string>
+                    </dict>
+                    <key>2</key>
+                    <dict>
+                        <key>default value</key>
+                        <string></string>
+                        <key>name</key>
+                        <string>source</string>
+                        <key>required</key>
+                        <string>0</string>
+                        <key>type</key>
+                        <string>0</string>
+                        <key>uuid</key>
+                        <string>2</string>
+                    </dict>
+                    <key>3</key>
+                    <dict>
+                        <key>default value</key>
+                        <string></string>
+                        <key>name</key>
+                        <string>COMMANDString</string>
+                        <key>required</key>
+                        <string>0</string>
+                        <key>type</key>
+                        <string>0</string>
+                        <key>uuid</key>
+                        <string>3</string>
+                    </dict>
+                    <key>4</key>
+                    <dict>
+                        <key>default value</key>
+                        <string>/bin/sh</string>
+                        <key>name</key>
+                        <string>shell</string>
+                        <key>required</key>
+                        <string>0</string>
+                        <key>type</key>
+                        <string>0</string>
+                        <key>uuid</key>
+                        <string>4</string>
+                    </dict>
+                </dict>
+                <key>isViewVisible</key>
+                <integer>1</integer>
+                <key>location</key>
+                <string>309.000000:305.000000</string>
+            </dict>
+            <key>isViewVisible</key>
+            <integer>1</integer>
+        </dict>
+    </array>
+    <key>connectors</key>
+    <dict/>
+    <key>workflowMetaData</key>
+    <dict>
+        <key>applicationBundleIDsByPath</key>
+        <dict/>
+        <key>applicationPaths</key>
+        <array/>
+        <key>inputTypeIdentifier</key>
+        <string>com.apple.Automator.fileSystemObject.folder</string>
+        <key>outputTypeIdentifier</key>
+        <string>com.apple.Automator.nothing</string>
+        <key>presentationMode</key>
+        <integer>15</integer>
+        <key>processesInput</key>
+        <integer>0</integer>
+        <key>systemImageName</key>
+        <string>NSActionTemplate</string>
+        <key>useAutomaticInputType</key>
+        <integer>0</integer>
+        <key>workflowTypeIdentifier</key>
+        <string>com.apple.Automator.servicesMenu</string>
+    </dict>
+</dict>
+</plist>'''
+
+        with open(os.path.join(contents_dir, "document.wflow"), "w", encoding="utf-8") as f:
+            f.write(wflow_xml)
+
+    # ------------------------------------------------------------------
+    # install / remove
+    # ------------------------------------------------------------------
+
     def install(self, custom_python_path: Optional[str] = None) -> Tuple[bool, str]:
-        return True, tr("integration_strategies.macos.install_success")
+        try:
+            import subprocess
+
+            commands = self._get_commands(custom_python_path)
+            for name, cmd in commands.items():
+                self._create_workflow(name, cmd)
+
+            # Сброс кеша Service-ов, чтобы Finder увидел новый пункт сразу
+            try:
+                subprocess.run(
+                    ["/System/Library/CoreServices/pbs", "-flush"],
+                    check=False,
+                )
+            except Exception:
+                pass
+
+            return True, tr(
+                "integration_strategies.macos.install_success",
+                default="Context menu installed successfully.",
+            )
+        except Exception as exc:
+            return False, tr(
+                "integration_strategies.macos.install_error",
+                default=f"Error installing context menu: {exc}",
+                error=exc,
+            )
 
     def remove(self) -> Tuple[bool, str]:
-        return True, tr("integration_strategies.macos.remove_success")
+        try:
+            import subprocess
+
+            services_dir = os.path.expanduser("~/Library/Services")
+            commands = self._get_commands()
+            for name in commands.keys():
+                workflow_path = os.path.join(services_dir, f"{name}.workflow")
+                if os.path.exists(workflow_path):
+                    shutil.rmtree(workflow_path)
+
+            try:
+                subprocess.run(
+                    ["/System/Library/CoreServices/pbs", "-flush"],
+                    check=False,
+                )
+            except Exception:
+                pass
+
+            return True, tr(
+                "integration_strategies.macos.remove_success",
+                default="Context menu removed successfully.",
+            )
+        except Exception as exc:
+            return False, tr(
+                "integration_strategies.macos.remove_error",
+                default=f"Error removing context menu: {exc}",
+                error=exc,
+            )

@@ -36,7 +36,7 @@
 <tr><td>🧩 LLM Patcher</td><td>Preview & apply JSON patches</td><td>Not available</td></tr>
 <tr><td>✅ LLM Checker</td><td>Auto-verify code before saving</td><td>Not available</td></tr>
 <tr><td>🔗 AST dependency graph</td><td>Python, JS/TS, Vue</td><td>File listing only</td></tr>
-<tr><td>🖱️ Context menu</td><td>Windows / Linux</td><td>None</td></tr>
+<tr><td>🖱️ Context menu</td><td>Windows / Linux / macOS</td><td>None</td></tr>
 <tr><td>🎨 Themes</td><td>Apple, Modern, custom JSON</td><td>Fixed UI</td></tr>
 <tr><td>⚙️ UI customization (v1.14+)</td><td>Premiere Pro-style</td><td>Fixed UI</td></tr>
 <tr><td>🌐 i18n (v1.17+)</td><td>15 languages, system auto-detect</td><td>Single language</td></tr>
@@ -221,7 +221,7 @@ cd yay && makepkg -si</pre>
 <table>
 <thead><tr><th colspan="2">OS Integration</th></tr></thead>
 <tbody>
-<tr><td>Install context menu</td><td>"Open with CodeContext AI" in right-click menu</td></tr>
+<tr><td>Install context menu</td><td>"Open with CodeContext AI" in right-click menu (Windows / Linux / macOS)</td></tr>
 <tr><td>Add to PATH</td><td>Global <code>codecontext</code> CLI command</td></tr>
 <tr><td>Editor</td><td><code>code</code>, <code>cursor</code>, <code>idea</code>, <code>vim</code></td></tr>
 </tbody>
@@ -392,7 +392,6 @@ python main.py --cli --path ./frontend ./backend --format xml --output combined.
 <li>🌳 <b>Multi-root Workspaces</b> — improved monorepo support (Lerna, NX, Turborepo).</li>
 <li>🚀 <b>CI/CD Pipelines</b> — GitHub Actions & GitLab CI plugins for automated PR context generation.</li>
 <li>🤖 <b>Direct OpenAI/Anthropic API integration</b> — complete the bridge from prompt generation to direct output.</li>
-<li>🍎 macOS Finder context menu</li>
 <li>🔌 Plugin system ✅</li>
 </ul>
 

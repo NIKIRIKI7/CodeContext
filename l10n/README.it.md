@@ -36,7 +36,7 @@
 <tr><td>🧩 LLM Patcher</td><td>Anteprima e applicazione di patch JSON</td><td>Non disponibile</td></tr>
 <tr><td>✅ LLM Checker</td><td>Verifica automatica del codice prima del salvataggio</td><td>Non disponibile</td></tr>
 <tr><td>🔗 Grafo delle dipendenze AST</td><td>Python, JS/TS, Vue</td><td>Solo elenco file</td></tr>
-<tr><td>🖱️ Menu contestuale</td><td>Windows / Linux</td><td>Nessuno</td></tr>
+<tr><td>🖱️ Menu contestuale</td><td>Windows / Linux / macOS</td><td>Nessuno</td></tr>
 <tr><td>🎨 Temi</td><td>Apple, Modern, JSON personalizzato</td><td>Interfaccia fissa</td></tr>
 <tr><td>⚙️ Personalizzazione interfaccia (v1.14+)</td><td>Stile Premiere Pro</td><td>Interfaccia fissa</td></tr>
 <tr><td>🌐 i18n (v1.17+)</td><td>15 lingue, rilevamento automatico</td><td>Lingua singola</td></tr>
@@ -389,7 +389,6 @@ python main.py --cli --path ./frontend ./backend --format xml --output combined.
 <li>🌳 <b>Workspace multi-radice</b> — supporto migliorato per monorepo (Lerna, NX, Turborepo).</li>
 <li>🚀 <b>Pipeline CI/CD</b> — plugin GitHub Actions e GitLab CI per la generazione automatica del contesto PR.</li>
 <li>🤖 <b>Integrazione diretta OpenAI/Anthropic API</b> — ponte completo dalla generazione del prompt all'output diretto.</li>
-<li>🍎 Menu contestuale macOS Finder</li>
 <li>🔌 Sistema di plugin ✅</li>
 </ul>
 

@@ -36,7 +36,7 @@
 <tr><td>🧩 مصحح LLM</td><td>معاينة وتطبيق تصحيحات JSON</td><td>غير متاح</td></tr>
 <tr><td>✅ مدقق LLM</td><td>تحقق تلقائي من الكود قبل الحفظ</td><td>غير متاح</td></tr>
 <tr><td>🔗 رسم بياني للتبعيات AST</td><td>Python, JS/TS, Vue</td><td>قائمة ملفات فقط</td></tr>
-<tr><td>🖱️ قائمة سياقية</td><td>Windows / Linux</td><td>لا يوجد</td></tr>
+<tr><td>🖱️ قائمة سياقية</td><td>Windows / Linux / macOS</td><td>لا يوجد</td></tr>
 <tr><td>🎨 سمات</td><td>Apple, Modern, JSON مخصص</td><td>واجهة ثابتة</td></tr>
 <tr><td>⚙️ تخصيص الواجهة (v1.14+)</td><td>على نمط Premiere Pro</td><td>واجهة ثابتة</td></tr>
 <tr><td>🌐 i18n (v1.17+)</td><td>15 لغة، اكتشاف تلقائي للنظام</td><td>لغة واحدة</td></tr>
@@ -392,7 +392,6 @@ python main.py --cli --path ./frontend ./backend --format xml --output combined.
 <li>🌳 <b>مساحات عمل متعددة الجذور</b> — دعم محسن للمستودعات الأحادية (Lerna, NX, Turborepo).</li>
 <li>🚀 <b>خطوط أنابيب CI/CD</b> — إضافات GitHub Actions و GitLab CI لتوليد سياق PR تلقائيًا.</li>
 <li>🤖 <b>تكامل مباشر مع OpenAI/Anthropic API</b> — جسر كامل من توليد المطالبات إلى الإخراج المباشر.</li>
-<li>🍎 قائمة سياقية لنظام macOS Finder</li>
 <li>🔌 نظام إضافات ✅</li>
 </ul>
 

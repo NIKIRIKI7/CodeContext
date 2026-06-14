@@ -36,7 +36,7 @@
 <tr><td>🧩 LLM Patcher</td><td>Предпросмотр и JSON-патчи</td><td>Нет</td></tr>
 <tr><td>✅ LLM Checker</td><td>Авто-проверка кода перед записью</td><td>Нет</td></tr>
 <tr><td>🔗 AST-граф</td><td>Python, JS/TS, Vue</td><td>Только файлы</td></tr>
-<tr><td>🖱️ Контекстное меню</td><td>Windows / Linux</td><td>Нет</td></tr>
+<tr><td>🖱️ Контекстное меню</td><td>Windows / Linux / macOS</td><td>Нет</td></tr>
 <tr><td>🎨 Темы</td><td>Apple, Modern, кастомные</td><td>Фиксированный UI</td></tr>
 <tr><td>⚙️ Кастомизация (v1.14+)</td><td>Premiere Pro-style</td><td>Фиксированный UI</td></tr>
 <tr><td>🌐 i18n (v1.17+)</td><td>15 языков, автоопределение системы</td><td>Один язык</td></tr>
@@ -395,7 +395,6 @@ python main.py --cli --path ./frontend ./backend --format xml --output combined.
 <li>🌳 <b>Мульти-root Workspaces</b> — продвинутая поддержка монорепозиториев (Lerna, NX, Turborepo).</li>
 <li>🚀 <b>Интеграция с пайплайнами CI/CD</b> — плагины для GitHub Actions и GitLab CI для генерации контекста в PR.</li>
 <li>🤖 <b>Прямой коннект с OpenAI/Anthropic API</b> — замыкание полного цикла от генерации промпта до сохранения итогового кода.</li>
-<li>🍎 macOS Finder context menu</li>
 <li>🔌 Плагинная система ✅</li>
 </ul>
 

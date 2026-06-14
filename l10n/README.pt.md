@@ -36,7 +36,7 @@
 <tr><td>🧩 LLM Patcher</td><td>Visualizar & aplicar patches JSON</td><td>Não disponível</td></tr>
 <tr><td>✅ LLM Checker</td><td>Verificar código automaticamente antes de salvar</td><td>Não disponível</td></tr>
 <tr><td>🔗 Grafo de dependência AST</td><td>Python, JS/TS, Vue</td><td>Listagem de arquivos apenas</td></tr>
-<tr><td>🖱️ Menu de contexto</td><td>Windows / Linux</td><td>Nenhum</td></tr>
+<tr><td>🖱️ Menu de contexto</td><td>Windows / Linux / macOS</td><td>Nenhum</td></tr>
 <tr><td>🎨 Temas</td><td>Apple, Modern, JSON personalizado</td><td>Interface fixa</td></tr>
 <tr><td>⚙️ Personalização de UI (v1.14+)</td><td>Estilo Premiere Pro</td><td>Interface fixa</td></tr>
 <tr><td>🌐 i18n (v1.17+)</td><td>15 idiomas, detecção automática</td><td>Idioma único</td></tr>
@@ -389,7 +389,6 @@ python main.py --cli --path ./frontend ./backend --format xml --output combined.
 <li>🌳 <b>Espaços de trabalho multi-raiz</b> — suporte aprimorado para monorepos (Lerna, NX, Turborepo).</li>
 <li>🚀 <b>Pipelines CI/CD</b> — plugins GitHub Actions e GitLab CI para geração automática de contexto em PRs.</li>
 <li>🤖 <b>Integração direta com API OpenAI/Anthropic</b> — ponte completa da geração de prompt à saída direta.</li>
-<li>🍎 Menu de contexto do macOS Finder</li>
 <li>🔌 Sistema de plugins ✅</li>
 </ul>
 

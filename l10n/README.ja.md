@@ -36,7 +36,7 @@
 <tr><td>🧩 LLM Patcher</td><td>JSONパッチのプレビュー＆適用</td><td>利用不可</td></tr>
 <tr><td>✅ LLM Checker</td><td>保存前にコードを自動検証</td><td>利用不可</td></tr>
 <tr><td>🔗 AST依存関係グラフ</td><td>Python、JS/TS、Vue</td><td>ファイル一覧のみ</td></tr>
-<tr><td>🖱️ コンテキストメニュー</td><td>Windows / Linux</td><td>なし</td></tr>
+<tr><td>🖱️ コンテキストメニュー</td><td>Windows / Linux / macOS</td><td>なし</td></tr>
 <tr><td>🎨 テーマ</td><td>Apple、Modern、カスタムJSON</td><td>固定UI</td></tr>
 <tr><td>⚙️ UIカスタマイズ（v1.14+）</td><td>Premiere Pro風</td><td>固定UI</td></tr>
 <tr><td>🌐 i18n (v1.17+)</td><td>15言語、システム自動検出</td><td>単一言語</td></tr>
@@ -392,7 +392,6 @@ python main.py --cli --path ./frontend ./backend --format xml --output combined.
 <li>🌳 <b>マルチルートワークスペース</b> — モノレポ（Lerna、NX、Turborepo）のサポート向上。</li>
 <li>🚀 <b>CI/CDパイプライン</b> — PRコンテキストを自動生成するGitHub ActionsおよびGitLab CIプラグイン。</li>
 <li>🤖 <b>OpenAI/Anthropic API直接統合</b> — プロンプト生成から直接出力への完全なブリッジ。</li>
-<li>🍎 macOS Finderコンテキストメニュー</li>
 <li>🔌 プラグインシステム ✅</li>
 </ul>
 

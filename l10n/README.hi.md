@@ -36,7 +36,7 @@
 <tr><td>🧩 LLM पैचर</td><td>JSON पैच का पूर्वावलोकन और आवेदन</td><td>उपलब्ध नहीं</td></tr>
 <tr><td>✅ LLM चेकर</td><td>सहेजने से पहले कोड की स्वचालित जांच</td><td>उपलब्ध नहीं</td></tr>
 <tr><td>🔗 AST निर्भरता ग्राफ</td><td>Python, JS/TS, Vue</td><td>केवल फ़ाइल सूचीकरण</td></tr>
-<tr><td>🖱️ संदर्भ मेनू</td><td>Windows / Linux</td><td>कोई नहीं</td></tr>
+<tr><td>🖱️ संदर्भ मेनू</td><td>Windows / Linux / macOS</td><td>कोई नहीं</td></tr>
 <tr><td>🎨 थीम</td><td>Apple, Modern, कस्टम JSON</td><td>निश्चित UI</td></tr>
 <tr><td>⚙️ UI अनुकूलन (v1.14+)</td><td>Premiere Pro-शैली</td><td>निश्चित UI</td></tr>
 <tr><td>🌐 i18n (v1.17+)</td><td>15 भाषाएँ, सिस्टम स्वचालित पतलग</td><td>एकल भाषा</td></tr>

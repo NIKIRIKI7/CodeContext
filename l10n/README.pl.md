@@ -36,7 +36,7 @@
 <tr><td>🧩 LLM Patcher</td><td>Podgląd i stosowanie łat JSON</td><td>Niedostępne</td></tr>
 <tr><td>✅ LLM Checker</td><td>Automatyczna weryfikacja kodu przed zapisaniem</td><td>Niedostępne</td></tr>
 <tr><td>🔗 Graf zależności AST</td><td>Python, JS/TS, Vue</td><td>Tylko lista plików</td></tr>
-<tr><td>🖱️ Menu kontekstowe</td><td>Windows / Linux</td><td>Brak</td></tr>
+<tr><td>🖱️ Menu kontekstowe</td><td>Windows / Linux / macOS</td><td>Brak</td></tr>
 <tr><td>🎨 Motywy</td><td>Apple, Modern, niestandardowy JSON</td><td>Stały interfejs</td></tr>
 <tr><td>⚙️ Dostosowanie interfejsu (v1.14+)</td><td>Styl Premiere Pro</td><td>Stały interfejs</td></tr>
 <tr><td>🌐 i18n (v1.17+)</td><td>15 języków, automatyczne wykrywanie</td><td>Jeden język</td></tr>
@@ -392,7 +392,6 @@ python main.py --cli --path ./frontend ./backend --format xml --output combined.
 <li>🌳 <b>Obszary robocze z wieloma korzeniami</b> — ulepszona obsługa monorepozytoriów (Lerna, NX, Turborepo).</li>
 <li>🚀 <b>Potoki CI/CD</b> — wtyczki GitHub Actions i GitLab CI do automatycznego generowania kontekstu PR.</li>
 <li>🤖 <b>Bezpośrednia integracja z API OpenAI/Anthropic</b> — pełny most od generowania promptu do bezpośredniego wyniku.</li>
-<li>🍎 Menu kontekstowe macOS Finder</li>
 <li>🔌 System wtyczek ✅</li>
 </ul>
 

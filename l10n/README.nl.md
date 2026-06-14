@@ -36,7 +36,7 @@
 <tr><td>🧩 LLM Patcher</td><td>Bekijk & pas JSON-patches toe</td><td>Niet beschikbaar</td></tr>
 <tr><td>✅ LLM Checker</td><td>Code automatisch verifiëren voor opslaan</td><td>Niet beschikbaar</td></tr>
 <tr><td>🔗 AST-afhankelijkheidsgraaf</td><td>Python, JS/TS, Vue</td><td>Alleen bestandslijst</td></tr>
-<tr><td>🖱️ Contextmenu</td><td>Windows / Linux</td><td>Geen</td></tr>
+<tr><td>🖱️ Contextmenu</td><td>Windows / Linux / macOS</td><td>Geen</td></tr>
 <tr><td>🎨 Thema's</td><td>Apple, Modern, aangepaste JSON</td><td>Vaste UI</td></tr>
 <tr><td>⚙️ UI-aanpassing (v1.14+)</td><td>Premiere Pro-stijl</td><td>Vaste UI</td></tr>
 <tr><td>🌐 i18n (v1.17+)</td><td>15 talen, automatische detectie</td><td>Enkele taal</td></tr>
@@ -389,7 +389,6 @@ python main.py --cli --path ./frontend ./backend --format xml --output combined.
 <li>🌳 <b>Multi-root-werkruimten</b> — verbeterde ondersteuning voor monorepo's (Lerna, NX, Turborepo).</li>
 <li>🚀 <b>CI/CD-pijplijnen</b> — GitHub Actions- en GitLab CI-plugins voor geautomatiseerde PR-contextgeneratie.</li>
 <li>🤖 <b>Directe OpenAI/Anthropic API-integratie</b> — volledige brug van promptgeneratie naar directe uitvoer.</li>
-<li>🍎 macOS Finder-contextmenu</li>
 <li>🔌 Pluginsysteem ✅</li>
 </ul>
 

@@ -36,7 +36,7 @@
 <tr><td>🧩 LLM Patcher</td><td>Vorschau & Anwendung von JSON-Patches</td><td>Nicht verfügbar</td></tr>
 <tr><td>✅ LLM Checker</td><td>Automatische Code-Überprüfung vor dem Speichern</td><td>Nicht verfügbar</td></tr>
 <tr><td>🔗 AST-Abhängigkeitsgraph</td><td>Python, JS/TS, Vue</td><td>Nur Dateiliste</td></tr>
-<tr><td>🖱️ Kontextmenü</td><td>Windows / Linux</td><td>Keine</td></tr>
+<tr><td>🖱️ Kontextmenü</td><td>Windows / Linux / macOS</td><td>Keine</td></tr>
 <tr><td>🎨 Themes</td><td>Apple, Modern, benutzerdefiniertes JSON</td><td>Feste UI</td></tr>
 <tr><td>⚙️ UI-Anpassung (v1.14+)</td><td>Premiere-Pro-Stil</td><td>Feste UI</td></tr>
 <tr><td>🌐 i18n (v1.17+)</td><td>15 Sprachen, automatische Systemerkennung</td><td>Einzelne Sprache</td></tr>
@@ -392,7 +392,6 @@ python main.py --cli --path ./frontend ./backend --format xml --output combined.
 <li>🌳 <b>Multi-Root-Workspaces</b> — verbesserte Monorepo-Unterstützung (Lerna, NX, Turborepo).</li>
 <li>🚀 <b>CI/CD-Pipelines</b> — GitHub Actions und GitLab CI Plugins für automatisierte PR-Kontexterstellung.</li>
 <li>🤖 <b>Direkte OpenAI/Anthropic API-Integration</b> — vollständige Brücke von der Promptgenerierung zur direkten Ausgabe.</li>
-<li>🍎 macOS Finder-Kontextmenü</li>
 <li>🔌 Plugin-System ✅</li>
 </ul>
 
