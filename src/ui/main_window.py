@@ -307,8 +307,14 @@ class MainWindow(QMainWindow):
 
     def _on_run(self, target):
         self._on_ui_settings_change()
-        if target in ('file', 'pdf'):
-            path, _ = QFileDialog.getSaveFileName(self, tr("main_window.save_file.title", default="Save File"), "", "All Files (*.*)")
+        if target == 'file':
+            # ponytail: fpdf was dropped. explicitly filtering md/txt so users don't save unopenable .pdf files.
+            path, _ = QFileDialog.getSaveFileName(
+                self, 
+                tr("main_window.save_file.title", default="Save File"), 
+                "", 
+                "Markdown (*.md);;Text (*.txt);;All Files (*.*)"
+            )
             if path:
                 self.controller.start_processing(target, path)
         else:

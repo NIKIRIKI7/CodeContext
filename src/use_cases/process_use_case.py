@@ -85,8 +85,13 @@ class ProcessWorkspaceUseCase:
 
             final_tokens = await asyncio.to_thread(token_service.count_tokens, text_result)
 
-            before_after = [{"path": p.path, "original": r['content'], "processed": p.content} for r, p in zip(raw_files, processed)]
-            state.before_after_data = before_after
+            # ponytail: fix O(N^2) diff hang. PipelineUtils sorts processed files by priority,
+            # so zip(raw_files, processed) pairs wrong files. We match them strictly by path.
+            raw_map = {r['path']: r['content'] for r in raw_files}
+            state.before_after_data = [
+                {"path": p.path, "original": raw_map[p.path], "processed": p.content}
+                for p in processed
+            ]
 
             timestamp = datetime.datetime.now().strftime("%H:%M:%S")
             state.preview_history.insert(0, {"time": timestamp, "text": text_result, "tokens": final_tokens})
