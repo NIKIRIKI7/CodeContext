@@ -661,24 +661,62 @@ class PluginInstallDialog(QDialog):
 
 
 class UpdateDialog(QDialog):
-    """Диалог обновления с полной поддержкой ThemeManager и Redux State."""
-
     def __init__(self, parent, update_info, on_close, controller):
         super().__init__(parent)
         self.on_close = on_close
         self.controller = controller
 
         self.setWindowTitle(tr("dialogs.update.title"))
-        self.resize(550, 450)
+        self.resize(550, 350)
+
         self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(20, 20, 20, 20)
+        self.layout.setSpacing(15)
+
+        self.header_layout = QHBoxLayout()
+        self.lbl_icon = QLabel()
+        self.lbl_icon.setFont(QFont("Segoe UI Emoji", 24))
+        self.lbl_icon.setAlignment(Qt.AlignCenter)
 
         self.lbl_title = QLabel()
         self.lbl_title.setProperty("cssClass", "heading")
-        self.layout.addWidget(self.lbl_title)
+        self.lbl_title.setStyleSheet("font-size: 18px; font-weight: bold;")
+
+        self.header_layout.addWidget(self.lbl_icon)
+        self.header_layout.addWidget(self.lbl_title)
+        self.header_layout.addStretch()
+        self.layout.addLayout(self.header_layout)
+
+        self.content_container = QWidget()
+        self.content_container.setProperty("cssClass", "card")
+        self.content_layout = QVBoxLayout(self.content_container)
+        self.content_layout.setContentsMargins(20, 20, 20, 20)
 
         self.notes = QTextBrowser()
         self.notes.setOpenExternalLinks(True)
-        self.layout.addWidget(self.notes)
+        self.notes.setStyleSheet("border: none; background: transparent;")
+        self.content_layout.addWidget(self.notes)
+
+        self.progress_container = QWidget()
+        self.progress_layout = QVBoxLayout(self.progress_container)
+        self.progress_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setRange(0, 100)
+        self.progress_bar.setFixedHeight(12)
+        self.progress_bar.setTextVisible(False)
+
+        self.lbl_progress_text = QLabel("0%")
+        self.lbl_progress_text.setAlignment(Qt.AlignCenter)
+        self.lbl_progress_text.setProperty("cssClass", "muted")
+
+        self.progress_layout.addWidget(self.progress_bar)
+        self.progress_layout.addWidget(self.lbl_progress_text)
+
+        self.content_layout.addWidget(self.progress_container)
+        self.progress_container.hide()
+
+        self.layout.addWidget(self.content_container)
 
         self.btn_layout = QHBoxLayout()
         self.btn_cancel = QPushButton()
@@ -694,7 +732,18 @@ class UpdateDialog(QDialog):
         self.btn_layout.addWidget(self.btn_update)
         self.layout.addLayout(self.btn_layout)
 
+        from PySide6.QtCore import QTimer
+        self._spinner_timer = QTimer(self)
+        self._spinner_timer.timeout.connect(self._rotate_spinner)
+        self._spinner_angle = 0
+
         self.update_data(update_info)
+
+    def _rotate_spinner(self):
+        self._spinner_angle = (self._spinner_angle + 30) % 360
+        if self._spinner_angle % 60 == 0:
+            current = self.lbl_icon.text()
+            self.lbl_icon.setText("⌛" if current == "⏳" else "⏳")
 
     def update_data(self, update_info):
         self.update_info = update_info
@@ -702,14 +751,25 @@ class UpdateDialog(QDialog):
         version = update_info.get('version', '')
         notes_text = update_info.get('notes', '')
 
+        if status != 'checking':
+            self._spinner_timer.stop()
+
         if status == 'checking':
+            self.progress_container.hide()
+            self.notes.show()
+            self.lbl_icon.setText("⏳")
+            self._spinner_timer.start(500)
             self.lbl_title.setText(tr("dialogs.update.checking", version=version))
             self.notes.setMarkdown(notes_text)
             self.btn_update.hide()
             self.btn_cancel.setEnabled(True)
             self.btn_cancel.setText(tr("dialogs.update.cancel"))
+            self.lbl_title.setStyleSheet("font-size: 18px; font-weight: bold;")
 
         elif status == 'available':
+            self.progress_container.hide()
+            self.notes.show()
+            self.lbl_icon.setText("🎉")
             self.lbl_title.setText(tr("dialogs.update.available", version=version))
             self.notes.setMarkdown(notes_text)
             self.btn_update.show()
@@ -717,33 +777,58 @@ class UpdateDialog(QDialog):
             self.btn_update.setEnabled(True)
             self.btn_cancel.setEnabled(True)
             self.btn_cancel.setText(tr("dialogs.update.later"))
+            self.lbl_title.setStyleSheet("font-size: 18px; font-weight: bold;")
+
+        elif status == 'downloading':
+            self.notes.show()
+            self.progress_container.show()
+            self.lbl_icon.setText("⬇️")
+            self.lbl_title.setText(tr("dialogs.update.installing"))
+            self.notes.setMarkdown(notes_text if notes_text else tr("dialogs.update.install_notes"))
+            self.btn_update.hide()
+            self.btn_cancel.setEnabled(False)
+
+            prog = update_info.get('progress', 0.0)
+            percent = int(prog * 100)
+            self.progress_bar.setValue(percent)
+            self.lbl_progress_text.setText(f"{percent}%")
+            self.lbl_title.setStyleSheet("font-size: 18px; font-weight: bold;")
 
         elif status == 'latest':
+            self.progress_container.hide()
+            self.notes.show()
+            self.lbl_icon.setText("✅")
+
+            colors = ThemeManager.get_current_colors()
+            c_success = colors.get('success', '#28a745')
+
+            self.lbl_title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {c_success};")
             self.lbl_title.setText(tr("dialogs.update.latest"))
             self.notes.setMarkdown(notes_text)
             self.btn_update.hide()
             self.btn_cancel.setEnabled(True)
             self.btn_cancel.setText(tr("dialogs.update.close"))
 
-        else:
+        else: # error
+            self.progress_container.hide()
+            self.notes.show()
+            self.lbl_icon.setText("❌")
+
+            colors = ThemeManager.get_current_colors()
+            c_danger = colors.get('danger', '#dc3545')
+
+            self.lbl_title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {c_danger};")
             self.lbl_title.setText(tr("dialogs.update.error"))
             self.notes.setMarkdown(notes_text)
             self.btn_update.hide()
             self.btn_cancel.setEnabled(True)
             self.btn_cancel.setText(tr("dialogs.update.close"))
 
-        self.lbl_title.style().unpolish(self.lbl_title)
-        self.lbl_title.style().polish(self.lbl_title)
-
     def _do_update(self):
-        self.btn_update.setEnabled(False)
-        self.btn_update.setText(tr("dialogs.update.downloading"))
-        self.btn_cancel.setEnabled(False)
-        self.lbl_title.setText(tr("dialogs.update.installing"))
-        self.notes.setMarkdown(tr("dialogs.update.install_notes"))
         self.controller.apply_update(self.update_info['download_url'])
 
     def closeEvent(self, event):
+        self._spinner_timer.stop()
         self.on_close()
         super().closeEvent(event)
 

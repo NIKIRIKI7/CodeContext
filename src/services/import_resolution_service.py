@@ -1,76 +1,50 @@
 import os
 from typing import List
-from .strategies.import_strategies import (
-    ImportResolutionStrategy,
-    StandardImportStrategy,
-    FSDImportStrategy,
-    AtomicDesignImportStrategy,
-    DDDImportStrategy,
-    MonorepoImportStrategy
-)
 
+def _is_match(p_no_ext: str, core_imp: str, suffix: str, parts: List[str]) -> bool:
+    if p_no_ext.endswith(suffix) or p_no_ext == core_imp: return True
+    if p_no_ext.endswith(f"{suffix}/index") or p_no_ext.endswith(f"{suffix}/ui/index"): return True
+    if parts and p_no_ext.endswith(f"{suffix}/{parts[-1]}"): return True
+    if p_no_ext.endswith(f"{suffix}/__init__") or p_no_ext.endswith(f"{suffix}/main"): return True
 
-class ImportResolutionService:
-    """
-    Сервис для разрешения путей импортов.
-    Использует паттерн Стратегия для поддержки разных архитектур (FSD, DDD, Atomic).
-    """
+    if parts:
+        p_norm = p_no_ext.replace("\\", "/")
+        for mono_dir in ("/packages/", "/libs/", "/apps/", "/modules/"):
+            idx = p_norm.find(mono_dir)
+            if idx != -1:
+                after_dir = p_norm[idx + len(mono_dir):]
+                path_segments = after_dir.split("/")
+                if path_segments and path_segments[0] in parts:
+                    pkg_idx = parts.index(path_segments[0])
+                    path_after_pkg = "/".join(path_segments[1:])
+                    parts_after_pkg = parts[pkg_idx + 1:]
+                    if not parts_after_pkg:
+                        if path_after_pkg in ("src/index", "lib/index", "index"): return True
+                    else:
+                        suffix_from_parts = "/".join(parts_after_pkg)
+                        if path_after_pkg in (suffix_from_parts, f"src/{suffix_from_parts}", f"lib/{suffix_from_parts}"):
+                            return True
+    return False
 
-    def __init__(self):
-        self._strategies: List[ImportResolutionStrategy] = []
-        self._register_defaults()
+def resolve(import_str: str, available_paths: List[str]) -> List[str]:
+    clean_imp = import_str
+    if '.' in import_str and '/' not in import_str and not import_str.startswith('.'):
+        clean_imp = import_str.replace('.', '/')
+    for prefix in ('@/', '~/', '@', '#'):
+        if clean_imp.startswith(prefix):
+            clean_imp = clean_imp[len(prefix):]
+            break
 
-    def _register_defaults(self):
-        """Регистрация стратегий по умолчанию"""
-        self.register_strategy(StandardImportStrategy())
-        self.register_strategy(FSDImportStrategy())
-        self.register_strategy(AtomicDesignImportStrategy())
-        self.register_strategy(DDDImportStrategy())
-        self.register_strategy(MonorepoImportStrategy())
+    parts = [p for p in clean_imp.replace('\\', '/').split('/') if p not in ('.', '..', '')]
+    if not parts: return []
 
-    def register_strategy(self, strategy: ImportResolutionStrategy):
-        """Метод для динамического добавления новых пользовательских стратегий"""
-        self._strategies.append(strategy)
+    core_imp = "/".join(parts)
+    suffix = "/" + core_imp
 
-    def resolve(self, import_str: str, available_paths: List[str]) -> List[str]:
-        """
-        Основной метод разрешения путей.
-        Находит все файлы в проекте, которые соответствуют строке импорта.
-        """
-        clean_imp = self._clean_aliases(import_str)
+    matched = []
+    for p in available_paths:
+        p_no_ext, _ = os.path.splitext(p.replace('\\', '/'))
+        if _is_match(p_no_ext, core_imp, suffix, parts):
+            matched.append(p)
 
-        parts = [p for p in clean_imp.replace('\\', '/').split('/') if p not in ('.', '..', '')]
-        if not parts:
-            return []
-
-        core_imp = "/".join(parts)
-        suffix = "/" + core_imp
-        matched = []
-
-        for p in available_paths:
-            p_norm = p.replace('\\', '/')
-            p_no_ext, _ = os.path.splitext(p_norm)
-
-            # Проверяем путь через все зарегистрированные стратегии
-            for strategy in self._strategies:
-                if strategy.is_match(p_no_ext, core_imp, suffix, parts):
-                    matched.append(p)
-                    break  # Если стратегия нашла совпадение, дальше проверять этот файл нет смысла
-
-        return list(set(matched))
-
-    @staticmethod
-    def _clean_aliases(import_str: str) -> str:
-        """Очистка строки от алиасов и преобразование Python импортов в пути."""
-        # Обработка python импортов вида app.domain.models -> app/domain/models
-        if '.' in import_str and '/' not in import_str and not import_str.startswith('.'):
-            clean_imp = import_str.replace('.', '/')
-        else:
-            clean_imp = import_str
-
-        # Популярные алиасы frontend-фреймворков
-        for prefix in ('@/', '~/', '@', '#'):
-            if clean_imp.startswith(prefix):
-                return clean_imp[len(prefix):]
-
-        return clean_imp
+    return list(set(matched))

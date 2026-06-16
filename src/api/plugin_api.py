@@ -1,65 +1,44 @@
-import abc
-from typing import Any, Callable, Dict
-
-
-class UIRegistry:
-    def __init__(self):
-        self.sidebar_tabs: Dict[str, dict] = {}
-        self.action_buttons: Dict[str, dict] = {}
-
-    def register_sidebar_tab(self, tab_id: str, label: str, widget_factory: Callable[[], Any]) -> None:
-        self.sidebar_tabs[tab_id] = {
-            "id": tab_id,
-            "title": label,
-            "label": label,
-            "factory": widget_factory,
-        }
-
-    def register_action_button(self, action_id: str, label: str, callback: Callable) -> None:
-        self.action_buttons[action_id] = {
-            "id": action_id,
-            "label": label,
-            "callback": callback,
-        }
+from types import SimpleNamespace
+from typing import Any, Callable
+from src.i18n import add_plugin_translations
 
 
 class PluginAPI:
-    def __init__(self, plugin_id: str, store, dispatcher, container, ui_registry: UIRegistry):
+    def __init__(self, plugin_id: str, state, container, ui_registry=None):
         self._plugin_id = plugin_id
-        self._store = store
-        self._dispatcher = dispatcher
-        self._container = container
+        self.state = state
+        self.container = container
+
+        if ui_registry is None:
+            ui_registry = SimpleNamespace(sidebar_tabs={}, action_buttons={})
         self.ui = ui_registry
 
-    @property
-    def store(self):
-        return self._store
+        if not hasattr(self.ui, 'sidebar_tabs'):
+            self.ui.sidebar_tabs = {}
+        if not hasattr(self.ui, 'action_buttons'):
+            self.ui.action_buttons = {}
 
-    @property
-    def dispatcher(self):
-        return self._dispatcher
+        self.ui.register_sidebar_tab = self._register_sidebar_tab
+        self.ui.register_action_button = self._register_action_button
 
-    @property
-    def container(self):
-        return self._container
+    # ponytail: fixed argument name to 'widget_factory' to match the actual plugin implementation
+    def _register_sidebar_tab(self, tab_id: str, label: str, widget_factory: Callable[[], Any]) -> None:
+        self.ui.sidebar_tabs[tab_id] = {"id": tab_id, "title": label, "label": label, "factory": widget_factory}
+
+    def _register_action_button(self, action_id: str, label: str, callback: Callable) -> None:
+        self.ui.action_buttons[action_id] = {"id": action_id, "label": label, "callback": callback}
 
     def add_translations(self, lang: str, data: dict) -> None:
-        from src.i18n import add_plugin_translations
         add_plugin_translations(lang, data)
 
     def add_log(self, message: str) -> None:
-        from src.actions.action_types import UI_ADD_LOG
-        self._dispatcher.dispatch(UI_ADD_LOG, f"[Plugin:{self._plugin_id}] {message}")
+        self.state.add_log(f"[Plugin:{self._plugin_id}] {message}")
 
 
-class IPlugin(abc.ABC):
+class IPlugin:
     id: str = ""
     name: str = ""
     version: str = ""
 
-    @abc.abstractmethod
-    def on_init(self, api: PluginAPI) -> None:
-        pass
-
-    def on_shutdown(self) -> None:
-        pass
+    def on_init(self, api: PluginAPI) -> None: pass
+    def on_shutdown(self) -> None: pass

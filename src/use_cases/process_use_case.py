@@ -1,162 +1,123 @@
+import os
 import asyncio
 import datetime
 import gc
 import json
-import os
-from typing import Optional, List, Dict, Set
-from ..actions.action_types import (
-    UI_SET_LOADING, UI_ADD_LOG, UI_SHOW_PREVIEW, UI_SHOW_CHAT,
-    PROCESSING_SUCCESS, FORMATTING_SUCCESS,
-    WORKFLOW_STARTED, WORKFLOW_PROGRESS, WORKFLOW_FINISHED, WORKFLOW_ERROR,
-    HISTORY_ADD, SET_BEFORE_AFTER
-)
-from ..actions.dispatcher import Dispatcher
-from ..services.cleaner_service import CleanerService
-from ..services.dependency_service import DependencyService
-from ..services.formatting_service import FormattingService
-from ..services.output_service import OutputService
-from ..services.processing_service import ProcessingService
-from ..services.skeleton_service import SkeletonService
-from ..services.token_service import TokenService
+from typing import Optional, List
 from ..store.state import AppState, ProcessedFile
+from ..utils.config import get_app_data_dir, MAX_FILE_SIZE_MB
 from ..utils.pipeline_utils import PipelineUtils
-from ..utils.config import get_app_data_dir
 from src.i18n import tr
 
+from ..services import dependency_service, formatting_service, output_service, token_service, cleaner_service, skeleton_service
 
 _CHECKPOINT_FILE = os.path.join(get_app_data_dir(), "processing_checkpoint.json")
 
-
 class ProcessWorkspaceUseCase:
-    """Оркестрирует чтение — очистку — форматирование — экспорт."""
+    def __init__(self, fs_repo):
+        self.fs_repo = fs_repo
 
-    def __init__(
-        self,
-        dispatcher: Dispatcher,
-        process_service: ProcessingService,
-        dependency_service: DependencyService,
-        cleaner_service: CleanerService,
-        skeleton_service: SkeletonService,
-        token_service: TokenService,
-        format_service: FormattingService,
-        output_service: OutputService,
-    ):
-        self._dispatcher = dispatcher
-        self._process_service = process_service
-        self._dependency_service = dependency_service
-        self._cleaner_service = cleaner_service
-        self._skeleton_service = skeleton_service
-        self._token_service = token_service
-        self._format_service = format_service
-        self._output_service = output_service
-
-    async def execute(
-        self,
-        state: AppState,
-        target: str,
-        save_path: Optional[str] = None,
-    ) -> None:
-        self._dispatcher.dispatch(UI_SET_LOADING, True)
-        self._dispatcher.dispatch(WORKFLOW_STARTED, {
-            'message': tr("process_use_case.workflow.preparing"), 'progress': 0.1
-        })
+    async def execute(self, state: AppState, target: str, save_path: Optional[str] = None) -> None:
+        state.is_loading = True
+        state.status_message = tr("process_use_case.workflow.preparing")
+        state.progress = 0.1
+        state.notify()
 
         gc.disable()
-
         try:
-            files_to_process = [
-                p for p in state.scanned_files_paths
-                if p not in state.manual_exclusions
-            ]
-
+            files_to_process = [p for p in state.scanned_files_paths if p not in state.manual_exclusions]
             if not files_to_process:
-                self._dispatcher.dispatch(UI_ADD_LOG, tr("process_use_case.workflow.no_files"))
+                state.add_log(tr("process_use_case.workflow.no_files"))
                 return
 
-            self._dispatcher.dispatch(WORKFLOW_PROGRESS, {
-                'message': tr("process_use_case.workflow.reading", count=len(files_to_process)), 'progress': 0.3
-            })
+            state.status_message = tr("process_use_case.workflow.reading", count=len(files_to_process))
+            state.progress = 0.3
+            state.notify()
 
-            raw_files = await self._process_service.read_files_async(files_to_process)
+            raw_files = []
+            for path in files_to_process:
+                if not os.path.exists(path): continue
+                if os.path.getsize(path) > MAX_FILE_SIZE_MB * 1024 * 1024:
+                    state.add_log(f"Skipping {path}: File too large")
+                    continue
+                content = await self.fs_repo.read_file_async(path)
+                if content is not None:
+                    raw_files.append({"path": path, "content": content, "ext": os.path.splitext(path)[1].lower()})
 
-            dependency_map: Optional[Dict[str, Set[str]]] = None
-            if state.settings.include_dependencies or state.settings.include_mermaid:
-                self._dispatcher.dispatch(WORKFLOW_PROGRESS, {
-                    'message': tr("process_use_case.workflow.analyzing"), 'progress': 0.5
-                })
-                dependency_map = await self._dependency_service.resolve_dependencies(raw_files)
+            dependency_map = None
+            if state.settings.include_dependencies or getattr(state.settings, 'include_mermaid', False):
+                state.status_message = tr("process_use_case.workflow.analyzing")
+                state.progress = 0.5
+                state.notify()
+                dependency_map = await dependency_service.resolve_dependencies(raw_files)
 
-            self._dispatcher.dispatch(WORKFLOW_PROGRESS, {
-                'message': tr("process_use_case.workflow.processing_minifying"), 'progress': 0.6
-            })
+            state.status_message = tr("process_use_case.workflow.processing_minifying")
+            state.progress = 0.6
+            state.notify()
 
             if target == 'file' and save_path:
-                await self._stream_to_file(files_to_process, state.settings, save_path)
-                self._dispatcher.dispatch(WORKFLOW_FINISHED, None)
+                await self._stream_to_file(files_to_process, state, save_path)
+                state.status_message = tr("store.status.done")
+                state.progress = 1.0
+                state.notify()
                 return
 
-            processed: List[ProcessedFile] = await asyncio.to_thread(
-                self._run_processing, raw_files, state.settings
-            )
+            processed = await asyncio.to_thread(PipelineUtils.process_files_batch_parallel, raw_files, state.settings)
 
-            if state.settings.save_checkpoints:
+            if getattr(state.settings, 'save_checkpoints', False):
                 self._save_checkpoint(processed)
 
-            self._dispatcher.dispatch(PROCESSING_SUCCESS, processed)
+            state.processed_files = processed
 
-            self._dispatcher.dispatch(WORKFLOW_PROGRESS, {
-                'message': tr("process_use_case.workflow.formatting"), 'progress': 0.85
-            })
+            state.status_message = tr("process_use_case.workflow.formatting")
+            state.progress = 0.85
+            state.notify()
 
-            text_result: str = await asyncio.to_thread(
-                self._run_formatting, processed, state.settings, dependency_map
+            text_result = await asyncio.to_thread(
+                formatting_service.format_output,
+                processed, state.settings.output_format, state.settings.include_tree,
+                state.settings.system_prompt, dependency_map, state.settings.template_path,
+                getattr(state.settings, 'include_mermaid', False), getattr(state.settings, 'deduplicate', False)
             )
 
-            if state.settings.save_checkpoints:
+            if getattr(state.settings, 'save_checkpoints', False):
                 self._clear_checkpoint()
 
-            final_tokens = await asyncio.to_thread(self._token_service.count_tokens, text_result)
+            final_tokens = await asyncio.to_thread(token_service.count_tokens, text_result)
 
-            before_after = []
-            for r, p in zip(raw_files, processed):
-                before_after.append({"path": p.path, "original": r['content'], "processed": p.content})
-
-            self._dispatcher.dispatch(SET_BEFORE_AFTER, before_after)
+            before_after = [{"path": p.path, "original": r['content'], "processed": p.content} for r, p in zip(raw_files, processed)]
+            state.before_after_data = before_after
 
             timestamp = datetime.datetime.now().strftime("%H:%M:%S")
-            self._dispatcher.dispatch(HISTORY_ADD, {
-                "time": timestamp, "text": text_result, "tokens": final_tokens
-            })
+            state.preview_history.insert(0, {"time": timestamp, "text": text_result, "tokens": final_tokens})
+            if len(state.preview_history) > 20: state.preview_history.pop()
 
-            self._dispatcher.dispatch(FORMATTING_SUCCESS, {
-                'text': text_result, 'tokens': final_tokens
-            })
+            state.final_output_text = text_result
+            state.total_tokens = final_tokens
 
-            self._dispatcher.dispatch(WORKFLOW_PROGRESS, {
-                'message': tr("process_use_case.workflow.saving"), 'progress': 0.95
-            })
+            state.status_message = tr("process_use_case.workflow.saving")
+            state.progress = 0.95
+            state.notify()
 
-            await self._export(target, text_result, save_path)
+            await self._export(target, text_result, save_path, state)
 
-            self._dispatcher.dispatch(WORKFLOW_FINISHED, None)
-            self._dispatcher.dispatch(UI_ADD_LOG, tr("process_use_case.workflow.done", count=final_tokens))
+            state.status_message = tr("store.status.done")
+            state.progress = 1.0
+            state.add_log(tr("process_use_case.workflow.done", count=final_tokens))
 
         except Exception as exc:
-            self._dispatcher.dispatch(WORKFLOW_ERROR, str(exc))
-            self._dispatcher.dispatch(UI_ADD_LOG, tr("process_use_case.workflow.error", error=exc))
+            state.status_message = tr("store.status.error_with_msg", error_msg=str(exc))
+            state.add_log(f"CRITICAL ERROR: {exc}")
+            state.add_log(tr("process_use_case.workflow.error", error=exc))
         finally:
             gc.enable()
             gc.collect()
-            self._dispatcher.dispatch(UI_SET_LOADING, False)
+            state.is_loading = False
+            state.notify()
 
     def _save_checkpoint(self, processed: List[ProcessedFile]) -> None:
-        """Сохраняет чекпоинт обработанных файлов для возобновления при сбое"""
         try:
-            data = [{
-                "path": p.path,
-                "content": p.content,
-                "tokens": p.tokens
-            } for p in processed]
+            data = [{"path": p.path, "content": p.content, "tokens": p.tokens} for p in processed]
             with open(_CHECKPOINT_FILE, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False)
         except Exception:
@@ -169,72 +130,46 @@ class ProcessWorkspaceUseCase:
         except Exception:
             pass
 
-    def load_checkpoint(self) -> Optional[List[ProcessedFile]]:
-        """Загружает чекпоинт, если есть"""
-        try:
-            if not os.path.exists(_CHECKPOINT_FILE):
-                return None
-            with open(_CHECKPOINT_FILE, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-            return [ProcessedFile(**d) for d in data]
-        except Exception:
-            return None
-
-    def _run_processing(self, raw_files, settings) -> List[ProcessedFile]:
-        return PipelineUtils.process_files_batch_parallel(
-            raw_files=raw_files,
-            options=settings,
-        )
-
-    async def _stream_to_file(self, file_paths: list, settings, save_path: str) -> int:
+    async def _stream_to_file(self, file_paths: list, state: AppState, save_path: str) -> int:
+        settings = state.settings
         header_text = await asyncio.to_thread(
-            self._format_service.format_output,
+            formatting_service.format_output,
             [], settings.output_format,
             settings.include_tree, settings.system_prompt, None,
-            settings.template_path, settings.include_mermaid
+            settings.template_path, getattr(settings, 'include_mermaid', False), False
         )
-        total_tokens = self._token_service.count_tokens(header_text)
+        total_tokens = token_service.count_tokens(header_text)
+
         with open(save_path, 'w', encoding='utf-8') as f:
             f.write(header_text + "\n")
-            for path in file_paths:
-                content = self._process_service.repo._read_file_sync(path)
-                if not content:
-                    continue
+
+            for idx, path in enumerate(file_paths):
+                content = self.fs_repo._read_file_sync(path)
+                if not content: continue
                 ext = os.path.splitext(path)[1].lower()
-                cleaned = self._cleaner_service.clean(content, ext, settings)
-                if settings.skeleton_mode:
-                    cleaned = self._skeleton_service.make_skeleton(cleaned, ext)
-                import datetime
-                timestamp = datetime.datetime.now().strftime("%H:%M:%S")
-                self._dispatcher.dispatch(WORKFLOW_PROGRESS, {
-                    'message': tr("process_use_case.workflow.writing", path=os.path.basename(path)),
-                    'progress': 0.6 + (0.3 * (file_paths.index(path) + 1) / len(file_paths))
-                })
+
+                cleaned = cleaner_service.clean(content, ext, settings)
+                if getattr(settings, 'skeleton_mode', False):
+                    cleaned = skeleton_service.make_skeleton(cleaned, ext)
+
+                state.status_message = tr("process_use_case.workflow.writing", path=os.path.basename(path))
+                state.progress = 0.6 + (0.3 * (idx + 1) / len(file_paths))
+                state.notify()
+
                 file_chunk = f"{'='*50}\nFILE: {path}\n{'='*50}\n{cleaned}\n"
-                total_tokens += self._token_service.count_tokens(file_chunk)
+                total_tokens += token_service.count_tokens(file_chunk)
                 f.write(file_chunk + "\n")
-        self._dispatcher.dispatch(UI_ADD_LOG, tr("process_use_case.export.saved", path=save_path))
+
+        state.add_log(tr("process_use_case.export.saved", path=save_path))
         return total_tokens
 
-    def _run_formatting(self, processed, settings, dep_map) -> str:
-        return self._format_service.format_output(
-            files=processed,
-            fmt=settings.output_format,
-            include_tree=settings.include_tree,
-            system_prompt=settings.system_prompt,
-            dependency_map=dep_map,
-            template_path=settings.template_path,
-            include_mermaid=settings.include_mermaid,
-            deduplicate=getattr(settings, 'deduplicate', False),
-        )
-
-    async def _export(self, target: str, text: str, save_path: Optional[str]):
+    async def _export(self, target: str, text: str, save_path: Optional[str], state: AppState):
         if target == 'editor':
-            external_cmd = self._dispatcher._store.state.settings.external_editor
-            await asyncio.to_thread(self._output_service.open_in_editor, text, external_cmd)
-            self._dispatcher.dispatch(UI_ADD_LOG, tr("process_use_case.export.editor"))
+            external_cmd = getattr(state.settings, 'external_editor', '')
+            await asyncio.to_thread(output_service.open_in_editor, text, external_cmd)
+            state.add_log(tr("process_use_case.export.editor"))
         elif target == 'clipboard':
-            self._output_service.copy_to_clipboard(text)
+            output_service.copy_to_clipboard(text)
         elif target == 'stdout':
             import sys
             out = sys.__stdout__
@@ -243,13 +178,12 @@ class ProcessWorkspaceUseCase:
             out.write("\n")
             out.flush()
         elif target == 'preview':
-            self._dispatcher.dispatch(UI_SHOW_PREVIEW, text)
+            state.preview_text = text
+            state.show_preview = True
         elif target == 'chat':
-            self._dispatcher.dispatch(UI_SHOW_CHAT, text)
-            self._dispatcher.dispatch(UI_ADD_LOG, tr("process_use_case.export.chat_loaded"))
+            state.chat_context = text
+            state.show_chat = True
+            state.add_log(tr("process_use_case.export.chat_loaded"))
         elif target == 'file' and save_path:
-            self._output_service.save_to_file(text, save_path)
-            self._dispatcher.dispatch(UI_ADD_LOG, tr("process_use_case.export.saved", path=save_path))
-        elif target == 'pdf' and save_path:
-            await asyncio.to_thread(self._output_service.save_to_pdf, text, save_path)
-            self._dispatcher.dispatch(UI_ADD_LOG, tr("process_use_case.export.pdf_created", path=save_path))
+            output_service.save_to_file(text, save_path)
+            state.add_log(tr("process_use_case.export.saved", path=save_path))

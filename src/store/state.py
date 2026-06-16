@@ -1,11 +1,11 @@
-from dataclasses import dataclass, field
-from typing import List, Set, Dict
+import dataclasses
+from typing import List, Set, Dict, Optional
+from PySide6.QtCore import QObject, Signal
 from src.i18n import tr
 
 
-@dataclass
+@dataclasses.dataclass
 class AppSettings:
-    """Модель настроек приложения"""
     extensions: str = ".py .js .ts .vue .jsx .tsx .html .css .json .md .sql .xml .yaml .yml .sh .bat .go .java .cpp"
     ignored_paths: str = ".git, node_modules, .nuxt, __pycache__, dist, build, .idea, .vscode, venv, .venv, coverage, .next, target, bin, obj"
     minify: bool = True
@@ -22,33 +22,20 @@ class AppSettings:
     output_format: str = "markdown"
     template_path: str = ""
     enable_logging: bool = True
-    cli_minify: bool = True
-    cli_remove_comments: bool = True
-    cli_remove_secrets: bool = True
-    cli_include_tree: bool = True
-    cli_skeleton_mode: bool = False
-    cli_use_gitignore: bool = True
-
-    cli_format: str = "plain"
     python_interpreter: str = ""
     external_editor: str = ""
-
     receive_prereleases: bool = False
-
-    # Новые поля для проверки патчей через LLM
     llm_check_enabled: bool = False
     llm_api_key: str = ""
     llm_base_url: str = "https://api.openai.com/v1"
     llm_model: str = "gpt-4o-mini"
-    recent_workspaces: List[str] = field(default_factory=list)
-    visible_tabs: List[str] = field(default_factory=lambda: ["sources", "filters", "prompts", "llm_os", "appearance", "plugins"])
-    visible_actions: List[str] = field(default_factory=lambda: ["preview", "clipboard", "chat", "editor", "file"])
-    visible_checkboxes: List[str] = field(default_factory=lambda: ["dedup", "aggressive", "checkpoints", "watch"])
-    custom_presets: Dict[str, dict] = field(default_factory=dict)
-    custom_prompt_presets: Dict[str, str] = field(default_factory=dict)
+    recent_workspaces: List[str] = dataclasses.field(default_factory=list)
+    visible_tabs: List[str] = dataclasses.field(default_factory=lambda: ["sources", "filters", "prompts", "llm_os", "appearance", "plugins"])
+    visible_actions: List[str] = dataclasses.field(default_factory=lambda: ["preview", "clipboard", "chat", "editor", "file"])
+    visible_checkboxes: List[str] = dataclasses.field(default_factory=lambda: ["dedup", "aggressive", "checkpoints", "watch"])
+    custom_presets: Dict[str, dict] = dataclasses.field(default_factory=dict)
+    custom_prompt_presets: Dict[str, str] = dataclasses.field(default_factory=dict)
     language: str = ""
-
-    # === Optimization features (v2.5+) ===
     deduplicate: bool = False
     save_checkpoints: bool = False
     auto_watch: bool = False
@@ -56,49 +43,52 @@ class AppSettings:
     preserve_docstrings: bool = False
     preserve_imports: bool = False
     aggressive_minify: bool = False
-
-    # === Plugin system (v1.25+) ===
-    approved_plugins: List[str] = field(default_factory=list)
+    approved_plugins: List[str] = dataclasses.field(default_factory=list)
 
 
-@dataclass
+@dataclasses.dataclass
 class ProcessedFile:
-    """Модель обработанного файла"""
     path: str
     content: str
     tokens: int
 
 
-@dataclass
-class AppState:
-    """Глобальное состояние приложения"""
-    settings: AppSettings = field(default_factory=AppSettings)
-    selected_folders: List[str] = field(default_factory=list)
-    temp_folders: List[str] = field(default_factory=list)
-    scanned_files_paths: List[str] = field(default_factory=list)
-    scanned_file_metadata: Dict[str, dict] = field(default_factory=dict)
-    manual_exclusions: Set[str] = field(default_factory=set)
-    processed_files: List[ProcessedFile] = field(default_factory=list)
-    pr_target_files: List[str] = field(default_factory=list)
-    final_output_text: str = ""
-    total_tokens: int = 0
-    selected_tokens: int = 0
-    status_message: str = tr("state.status.ready")
-    progress: float = 0.0
-    is_loading: bool = False
-    logs: List[str] = field(default_factory=list)
-    toast_message: str = ""
-    preview_text: str = ""
-    show_preview: bool = False
-    preview_history: List[dict] = field(default_factory=list)
-    before_after_data: List[dict] = field(default_factory=list)
-    show_chat: bool = False
-    chat_context: str = ""
+class AppState(QObject):
+    changed = Signal(object)
 
-    show_tour: bool = False
-    tour_steps: List[dict] = field(default_factory=list)
+    def __init__(self):
+        super().__init__()
+        self.settings = AppSettings()
+        self.selected_folders: List[str] = []
+        self.temp_folders: List[str] = []
+        self.scanned_files_paths: List[str] = []
+        self.scanned_file_metadata: Dict[str, dict] = {}
+        self.manual_exclusions: Set[str] = set()
+        self.processed_files: List[ProcessedFile] = []
+        self.pr_target_files: List[str] = []
+        self.final_output_text: str = ""
+        self.total_tokens: int = 0
+        self.selected_tokens: int = 0
+        self.status_message: str = tr("state.status.ready")
+        self.progress: float = 0.0
+        self.is_loading: bool = False
+        self.logs: List[str] = []
+        self.toast_message: str = ""
+        self.preview_text: str = ""
+        self.show_preview: bool = False
+        self.preview_history: List[dict] = []
+        self.before_after_data: List[dict] = []
+        self.show_chat: bool = False
+        self.chat_context: str = ""
+        self.show_tour: bool = False
+        self.tour_steps: List[dict] = []
+        self.show_update: bool = False
+        self.update_info: dict = {}
+        self.show_command_palette: bool = False
 
-    show_update: bool = False
-    update_info: dict = field(default_factory=dict)
+    def notify(self):
+        self.changed.emit(self)
 
-    show_command_palette: bool = False
+    def add_log(self, msg: str):
+        self.logs.append(str(msg))
+        self.notify()

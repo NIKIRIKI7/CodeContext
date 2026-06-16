@@ -5,15 +5,13 @@ import platform
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QTabWidget, QFormLayout,
                                QCheckBox, QComboBox, QLineEdit, QTextEdit,
                                QPushButton, QHBoxLayout, QLabel, QFileDialog,
-                               QInputDialog, QMessageBox, QPlainTextEdit, QScrollArea,
-                               QListWidget, QListWidgetItem)
+                               QInputDialog, QMessageBox, QPlainTextEdit, QListWidget, QListWidgetItem)
 from PySide6.QtCore import Qt
 
 from ...utils.config import PRESETS, PROMPT_PRESETS, get_app_version
 from ..theme_manager import ThemeManager, theme_bus
 from ..dialogs import UICustomizationDialog
 from src.i18n import tr, set_language, current_lang, available_languages
-
 
 class Sidebar(QWidget):
     TAB_DEFS = [
@@ -28,15 +26,13 @@ class Sidebar(QWidget):
     @property
     def _plugin_tabs(self):
         api = self._plugin_api or getattr(self.controller, '_plugin_api', None)
-        if api is None:
-            return []
+        if api is None: return []
         return list(api.ui.sidebar_tabs.values())
 
     @property
     def _plugin_actions(self):
         api = self._plugin_api or getattr(self.controller, '_plugin_api', None)
-        if api is None:
-            return []
+        if api is None: return []
         return list(api.ui.action_buttons.values())
 
     def __init__(self, controller, on_settings_change, plugin_api=None):
@@ -47,7 +43,6 @@ class Sidebar(QWidget):
 
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.setProperty("cssClass", "card")
-
         self.layout = QVBoxLayout(self)
 
         title = QLabel(tr("sidebar.title"))
@@ -56,8 +51,8 @@ class Sidebar(QWidget):
 
         self.tabs = QTabWidget()
         self.layout.addWidget(self.tabs)
-
         self.tab_widgets = {}
+
         for tab_id, label, method_name in self.TAB_DEFS:
             tab = QWidget()
             getattr(self, method_name)(tab)
@@ -65,6 +60,7 @@ class Sidebar(QWidget):
 
         api = self._plugin_api or getattr(self.controller, '_plugin_api', None)
         plugin_tabs_dict = getattr(api.ui, 'sidebar_tabs', {}) if api else {}
+
         for tab_id, pt in plugin_tabs_dict.items():
             tab = QWidget()
             layout = QVBoxLayout(tab)
@@ -76,14 +72,12 @@ class Sidebar(QWidget):
             if factory:
                 try:
                     widget = factory()
-                    if widget:
-                        layout.addWidget(widget)
-                except Exception:
-                    pass
+                    if widget: layout.addWidget(widget)
+                except Exception: pass
             layout.addStretch()
             self.tab_widgets[pt["id"]] = tab
 
-        visible_tabs = getattr(self.controller._store.state.settings, 'visible_tabs',
+        visible_tabs = getattr(self.controller.state.settings, 'visible_tabs',
                                ["sources", "filters", "prompts", "llm_os", "appearance"])
         self._rebuild_tabs(visible_tabs)
 
@@ -92,24 +86,24 @@ class Sidebar(QWidget):
         self.btn_ui_settings.setProperty("cssClass", "icon")
         self.btn_ui_settings.setToolTip(tr("sidebar.ui_settings.tooltip"))
         self.btn_ui_settings.clicked.connect(self._open_ui_settings)
-        
+
         self.btn_tour = QPushButton(tr("sidebar.tour.button"))
         self.btn_tour.setProperty("cssClass", "ghost")
         self.btn_tour.clicked.connect(self.controller.show_tour)
-        
+
         version_str = get_app_version()
         self.lbl_version = QLabel(tr("sidebar.version.label", version=version_str))
         self.lbl_version.setProperty("cssClass", "muted")
-        
+
         self.btn_update = QPushButton(tr("sidebar.update.button"))
         self.btn_update.setProperty("cssClass", "ghost")
         self.btn_update.clicked.connect(self._check_updates)
-        
+
         self.btn_bug = QPushButton("\U0001F41E")
         self.btn_bug.setProperty("cssClass", "icon")
         self.btn_bug.setToolTip(tr("sidebar.bug_report.tooltip"))
         self.btn_bug.clicked.connect(self._open_bug_report)
-        
+
         bottom_layout.addWidget(self.btn_ui_settings)
         bottom_layout.addWidget(self.lbl_version)
         bottom_layout.addStretch()
@@ -124,7 +118,6 @@ class Sidebar(QWidget):
     def retranslate_ui(self):
         if hasattr(self, 'btn_plugins_folder'):
             self.btn_plugins_folder.setText(tr("sidebar.plugins.open_folder", default="📂 Open plugins folder"))
-
         for tab_id, label, _ in self.TAB_DEFS:
             idx = self.tabs.indexOf(self.tab_widgets[tab_id])
             if idx >= 0:
@@ -133,13 +126,12 @@ class Sidebar(QWidget):
             idx = self.tabs.indexOf(self.tab_widgets[pt["id"]])
             if idx >= 0:
                 self.tabs.setTabText(idx, pt.get("label", pt["id"]))
-                
+
         self.btn_ui_settings.setToolTip(tr("sidebar.ui_settings.tooltip"))
         self.btn_tour.setText(tr("sidebar.tour.button"))
         self.lbl_version.setText(tr("sidebar.version.label", version=get_app_version()))
         self.btn_update.setText(tr("sidebar.update.button"))
         self.btn_bug.setToolTip(tr("sidebar.bug_report.tooltip"))
-        
         self.btn_add.setText(tr("sidebar.sources.add_folder"))
         self.btn_gh.setText(tr("sidebar.sources.add_github"))
         self.btn_gh.setToolTip(tr("sidebar.sources.github_tooltip"))
@@ -148,7 +140,6 @@ class Sidebar(QWidget):
         self.btn_scan.setText(tr("sidebar.sources.scan_files"))
         self.btn_save_local.setText(tr("sidebar.sources.save_config"))
         self.btn_clear.setText(tr("sidebar.sources.clear_project"))
-        
         self.btn_save_preset.setToolTip(tr("sidebar.filters.save_preset_tooltip"))
         self.btn_del_preset.setToolTip(tr("sidebar.filters.delete_preset_tooltip"))
         self.lbl_ext_preset.setText(tr("sidebar.filters.preset_label"))
@@ -159,13 +150,11 @@ class Sidebar(QWidget):
         self.chk_tree.setText(tr("sidebar.filters.include_tree"))
         self.chk_dependencies.setText(tr("sidebar.filters.include_deps"))
         self.chk_mermaid.setText(tr("sidebar.filters.include_mermaid"))
-        
         self.btn_save_prompt.setToolTip(tr("sidebar.prompts.save_preset_tooltip"))
         self.btn_del_prompt.setToolTip(tr("sidebar.prompts.delete_preset_tooltip"))
         self.lbl_prompt_preset.setText(tr("sidebar.prompts.preset_label"))
         self.lbl_sys_prompt.setText(tr("sidebar.prompts.system_prompt_label"))
         self.btn_patch.setText(tr("sidebar.prompts.apply_patch"))
-        
         self.lbl_llm.setText(tr("sidebar.llm_os.llm_validator"))
         self.chk_llm_check.setText(tr("sidebar.llm_os.enable_llm_check"))
         self.lbl_llm_url.setText(tr("sidebar.llm_os.url_label"))
@@ -183,7 +172,6 @@ class Sidebar(QWidget):
         self.entry_editor.setPlaceholderText(tr("sidebar.llm_os.editor_placeholder"))
         self.lbl_upd.setText(tr("sidebar.llm_os.update_settings"))
         self.chk_prerelease.setText(tr("sidebar.llm_os.prerelease"))
-        
         self.lbl_theme.setText(tr("sidebar.appearance.theme_label"))
         self.lbl_mode.setText(tr("sidebar.appearance.mode_label"))
         self.lbl_lang.setText(tr("sidebar.appearance.language_label"))
@@ -191,7 +179,7 @@ class Sidebar(QWidget):
         self.btn_import_theme.setText(tr("sidebar.appearance.import_theme"))
 
     def _open_ui_settings(self):
-        settings = self.controller._store.state.settings
+        settings = self.controller.state.settings
         plugin_tabs_meta = [(pt["id"], pt["label"]) for pt in self._plugin_tabs]
         plugin_actions_meta = [(pa["id"], pa["label"]) for pa in getattr(self, '_plugin_actions', [])]
         dialog = UICustomizationDialog(self, settings, self._on_ui_settings_saved,
@@ -232,49 +220,41 @@ class Sidebar(QWidget):
     def _build_sources_tab(self, tab):
         layout = QVBoxLayout(tab)
         layout.setContentsMargins(0, 10, 0, 0)
-
         btn_layout = QHBoxLayout()
         btn_layout.setContentsMargins(0, 0, 0, 10)
-
         self.btn_add = QPushButton(tr("sidebar.sources.add_folder"))
         self.btn_add.setProperty("cssClass", "ghost")
         self.btn_add.clicked.connect(self._add_folder)
-        
         self.btn_gh = QPushButton(tr("sidebar.sources.add_github"))
         self.btn_gh.setProperty("cssClass", "success")
         self.btn_gh.setToolTip(tr("sidebar.sources.github_tooltip"))
         self.btn_gh.clicked.connect(self._add_github)
-        
         btn_layout.addWidget(self.btn_add)
         btn_layout.addWidget(self.btn_gh)
         layout.addLayout(btn_layout)
-        
+
         self.chk_git = QCheckBox(tr("sidebar.sources.git_only"))
         self.chk_gitignore = QCheckBox(tr("sidebar.sources.respect_gitignore"))
         layout.addWidget(self.chk_git)
         layout.addWidget(self.chk_gitignore)
-        
         layout.addSpacing(10)
+
         self.btn_scan = QPushButton(tr("sidebar.sources.scan_files"))
         self.btn_scan.clicked.connect(self._trigger_scan)
         layout.addWidget(self.btn_scan)
-        
         self.btn_save_local = QPushButton(tr("sidebar.sources.save_config"))
         self.btn_save_local.setProperty("cssClass", "ghost")
         self.btn_save_local.clicked.connect(self.controller.save_local_config)
         layout.addWidget(self.btn_save_local)
-        
         self.btn_clear = QPushButton(tr("sidebar.sources.clear_project"))
         self.btn_clear.setProperty("cssClass", "ghost")
         self.btn_clear.clicked.connect(self.controller.clear_folders)
         layout.addWidget(self.btn_clear)
-
         layout.addStretch()
 
     def _build_filters_tab(self, tab):
         layout = QVBoxLayout(tab)
         layout.setContentsMargins(0, 10, 0, 0)
-
         preset_layout = QHBoxLayout()
         self.cmb_preset = QComboBox()
         self.cmb_preset.setSizeAdjustPolicy(QComboBox.AdjustToContents)
@@ -317,39 +297,34 @@ class Sidebar(QWidget):
         layout.addWidget(self.chk_tree)
         layout.addWidget(self.chk_dependencies)
         layout.addWidget(self.chk_mermaid)
-
         layout.addStretch()
 
     def _build_prompts_tab(self, tab):
         layout = QVBoxLayout(tab)
         layout.setContentsMargins(0, 10, 0, 0)
-
         preset_layout = QHBoxLayout()
         self.cmb_prompt = QComboBox()
         self.cmb_prompt.currentTextChanged.connect(self._on_prompt_preset_change)
-
         self.btn_save_prompt = QPushButton("\U0001F4BE")
         self.btn_save_prompt.setProperty("cssClass", "icon")
         self.btn_save_prompt.setToolTip(tr("sidebar.prompts.save_preset_tooltip"))
         self.btn_save_prompt.clicked.connect(self._save_prompt_preset)
-        
         self.btn_del_prompt = QPushButton("\U0001F5D1")
         self.btn_del_prompt.setProperty("cssClass", "icon")
         self.btn_del_prompt.setToolTip(tr("sidebar.prompts.delete_preset_tooltip"))
         self.btn_del_prompt.clicked.connect(self._del_prompt_preset)
-        
         self.lbl_prompt_preset = QLabel(tr("sidebar.prompts.preset_label"))
         preset_layout.addWidget(self.lbl_prompt_preset)
         preset_layout.addWidget(self.cmb_prompt, 1)
         preset_layout.addWidget(self.btn_save_prompt)
         preset_layout.addWidget(self.btn_del_prompt)
         layout.addLayout(preset_layout)
-        
+
         self.lbl_sys_prompt = QLabel(tr("sidebar.prompts.system_prompt_label"))
         layout.addWidget(self.lbl_sys_prompt)
         self.txt_system_prompt = QTextEdit()
         layout.addWidget(self.txt_system_prompt)
-        
+
         self.btn_patch = QPushButton(tr("sidebar.prompts.apply_patch"))
         self.btn_patch.setProperty("cssClass", "success")
         self.btn_patch.clicked.connect(self._open_patch_dialog)
@@ -362,7 +337,6 @@ class Sidebar(QWidget):
         self.lbl_llm = QLabel(tr("sidebar.llm_os.llm_validator"))
         self.lbl_llm.setProperty("cssClass", "heading")
         layout.addWidget(self.lbl_llm)
-
         self.chk_llm_check = QCheckBox(tr("sidebar.llm_os.enable_llm_check"))
         layout.addWidget(self.chk_llm_check)
 
@@ -375,6 +349,7 @@ class Sidebar(QWidget):
         self.entry_llm_key.setPlaceholderText("sk-...")
         self.entry_llm_model = QLineEdit()
         self.entry_llm_model.setPlaceholderText("gpt-4o-mini / local-model")
+
         self.lbl_llm_url = QLabel(tr("sidebar.llm_os.url_label"))
         self.lbl_llm_key = QLabel(tr("sidebar.llm_os.key_label"))
         self.lbl_llm_model = QLabel(tr("sidebar.llm_os.model_label"))
@@ -387,11 +362,9 @@ class Sidebar(QWidget):
         self.btn_ollama = QPushButton(tr("sidebar.llm_os.ollama_preset"))
         self.btn_ollama.setProperty("cssClass", "ghost")
         self.btn_ollama.clicked.connect(lambda: self._apply_llm_preset("http://localhost:11434/v1", "llama3"))
-
         self.btn_lmstudio = QPushButton(tr("sidebar.llm_os.lmstudio_preset"))
         self.btn_lmstudio.setProperty("cssClass", "ghost")
         self.btn_lmstudio.clicked.connect(lambda: self._apply_llm_preset("http://localhost:1234/v1", "local-model"))
-
         llm_presets_layout.addWidget(self.btn_ollama)
         llm_presets_layout.addWidget(self.btn_lmstudio)
         llm_presets_layout.addStretch()
@@ -441,16 +414,13 @@ class Sidebar(QWidget):
         self.lbl_upd = QLabel(tr("sidebar.llm_os.update_settings"))
         self.lbl_upd.setProperty("cssClass", "heading")
         layout.addWidget(self.lbl_upd)
-
         self.chk_prerelease = QCheckBox(tr("sidebar.llm_os.prerelease"))
         layout.addWidget(self.chk_prerelease)
-
         layout.addStretch()
 
     def _build_plugins_tab(self, tab):
         layout = QVBoxLayout(tab)
         layout.setContentsMargins(0, 10, 0, 0)
-
         lbl = QLabel(tr("sidebar.tab.plugins", default="🔌 Plugins"))
         lbl.setProperty("cssClass", "heading")
         layout.addWidget(lbl)
@@ -470,9 +440,7 @@ class Sidebar(QWidget):
 
     def _refresh_plugins_list(self, approved_plugins):
         api = self._plugin_api or getattr(self.controller, '_plugin_api', None)
-        if not api or not hasattr(api.container, 'plugin_manager'):
-            return
-
+        if not api or not hasattr(api.container, 'plugin_manager'): return
         pm = api.container.plugin_manager
         manifests = pm.discover_plugins()
 
@@ -501,22 +469,35 @@ class Sidebar(QWidget):
 
     def _on_plugin_item_changed(self, item):
         p_id = item.data(Qt.UserRole)
-        approved = list(self.controller._store.state.settings.approved_plugins)
+        approved = list(self.controller.state.settings.approved_plugins)
         changed = False
+
         if item.checkState() == Qt.Checked:
             if p_id not in approved:
+                # Install reqs NOW
+                pm = getattr(self.controller._plugin_api.container, 'plugin_manager', None)
+                if pm:
+                    manifest = next((m for m in pm.discover_plugins() if m.get('id') == p_id), None)
+                    if manifest:
+                        req_path = os.path.join(manifest['_dir'], "requirements.txt")
+                        if os.path.exists(req_path):
+                            from ..dialogs import PluginInstallDialog
+                            dlg = PluginInstallDialog(self, manifest, req_path)
+                            dlg.exec()
                 approved.append(p_id)
                 changed = True
         else:
             if p_id in approved:
                 approved.remove(p_id)
                 changed = True
+
         if changed:
             self.controller.update_settings({"approved_plugins": approved})
             self.controller.save_settings()
+            from PySide6.QtWidgets import QMessageBox
+            from src.i18n import tr
             QMessageBox.information(
-                self,
-                tr("sidebar.plugins.restart_required", default="⚠️ Restart Required"),
+                self, tr("sidebar.plugins.restart_required", default="⚠️ Restart Required"),
                 tr("sidebar.plugins.restart_msg", default="Please restart the application to apply plugin changes.")
             )
 
@@ -527,12 +508,9 @@ class Sidebar(QWidget):
         os.makedirs(plugins_dir, exist_ok=True)
         system = platform.system()
         try:
-            if system == "Windows":
-                os.startfile(plugins_dir)
-            elif system == "Darwin":
-                subprocess.call(["open", plugins_dir])
-            else:
-                subprocess.call(["xdg-open", plugins_dir])
+            if system == "Windows": os.startfile(plugins_dir)
+            elif system == "Darwin": subprocess.call(["open", plugins_dir])
+            else: subprocess.call(["xdg-open", plugins_dir])
         except Exception as e:
             QMessageBox.warning(self, tr("sidebar.error.title"), tr("sidebar.open_folder.error", error=str(e)))
 
@@ -542,7 +520,6 @@ class Sidebar(QWidget):
 
         form = QFormLayout()
         form.setContentsMargins(0, 0, 0, 0)
-
         self.cmb_theme = QComboBox()
         self.cmb_theme.currentTextChanged.connect(lambda t: ThemeManager.apply_theme(theme_id=t))
 
@@ -554,7 +531,6 @@ class Sidebar(QWidget):
         self.cmb_lang = QComboBox()
         self._lang_codes = list(available_languages().keys())
         self.cmb_lang.addItems([f"{code} - {available_languages()[code]}" for code in self._lang_codes])
-
         current_code = current_lang()
         idx = next((i for i, c in enumerate(self._lang_codes) if c == current_code), 0)
         self.cmb_lang.setCurrentIndex(idx)
@@ -567,26 +543,23 @@ class Sidebar(QWidget):
         form.addRow(self.lbl_mode, self.cmb_mode)
         form.addRow(self.lbl_lang, self.cmb_lang)
         layout.addLayout(form)
-        
+
         layout.addSpacing(20)
         self.btn_themes_folder = QPushButton(tr("sidebar.appearance.open_themes_folder"))
         self.btn_themes_folder.setProperty("cssClass", "ghost")
         self.btn_themes_folder.clicked.connect(self._open_themes_folder)
-        
         self.btn_import_theme = QPushButton(tr("sidebar.appearance.import_theme"))
         self.btn_import_theme.setProperty("cssClass", "success")
         self.btn_import_theme.clicked.connect(self._import_theme)
-        
+
         layout.addWidget(self.btn_themes_folder)
         layout.addWidget(self.btn_import_theme)
         layout.addStretch()
 
     def _on_language_change(self, idx):
-        if idx < 0 or idx >= len(self._lang_codes):
-            return
+        if idx < 0 or idx >= len(self._lang_codes): return
         new_lang = self._lang_codes[idx]
-        if new_lang == current_lang():
-            return
+        if new_lang == current_lang(): return
 
         set_language(new_lang)
         self._current_visible_tabs = None
@@ -596,9 +569,8 @@ class Sidebar(QWidget):
         mw = self.window()
         if hasattr(mw, 'retranslate_ui'):
             mw.retranslate_ui()
-            
-        if self.controller and self.controller._store:
-            self.controller._store._notify()
+        if self.controller and self.controller.state:
+            self.controller.state.notify()
 
     def _add_folder(self):
         path = QFileDialog.getExistingDirectory(self, tr("sidebar.add_folder.title"))
@@ -634,32 +606,24 @@ class Sidebar(QWidget):
     def _install_context_menu(self):
         self.on_settings_change()
         success, msg = self.controller.install_context_menu()
-        if success:
-            QMessageBox.information(self, tr("sidebar.integration.title"), msg)
-        else:
-            QMessageBox.warning(self, tr("sidebar.error.title"), msg)
+        if success: QMessageBox.information(self, tr("sidebar.integration.title"), msg)
+        else: QMessageBox.warning(self, tr("sidebar.error.title"), msg)
 
     def _remove_context_menu(self):
         success, msg = self.controller.remove_context_menu()
-        if success:
-            QMessageBox.information(self, tr("sidebar.integration.title"), msg)
-        else:
-            QMessageBox.warning(self, tr("sidebar.error.title"), msg)
+        if success: QMessageBox.information(self, tr("sidebar.integration.title"), msg)
+        else: QMessageBox.warning(self, tr("sidebar.error.title"), msg)
 
     def _install_cli(self):
         self.on_settings_change()
         success, msg = self.controller.install_cli()
-        if success:
-            QMessageBox.information(self, tr("sidebar.cli_integration.title"), msg)
-        else:
-            QMessageBox.warning(self, tr("sidebar.error.title"), msg)
+        if success: QMessageBox.information(self, tr("sidebar.cli_integration.title"), msg)
+        else: QMessageBox.warning(self, tr("sidebar.error.title"), msg)
 
     def _remove_cli(self):
         success, msg = self.controller.remove_cli()
-        if success:
-            QMessageBox.information(self, tr("sidebar.cli_integration.title"), msg)
-        else:
-            QMessageBox.warning(self, tr("sidebar.error.title"), msg)
+        if success: QMessageBox.information(self, tr("sidebar.cli_integration.title"), msg)
+        else: QMessageBox.warning(self, tr("sidebar.error.title"), msg)
 
     def _open_patch_dialog(self):
         from ..dialogs import JsonPatchDialog, InteractiveDiffDialog
@@ -683,9 +647,8 @@ class Sidebar(QWidget):
         self.controller.check_for_updates(version)
 
     def _on_ext_preset_change(self, text):
-        if not text:
-            return
-        custom = self.controller._store.state.settings.custom_presets
+        if not text: return
+        custom = self.controller.state.settings.custom_presets
         if text in PRESETS:
             self.entry_ext.setPlainText(PRESETS[text]['ext'].replace(' ', '\n'))
             self.entry_ign.setPlainText(PRESETS[text]['ign'].replace(', ', '\n').replace(',', '\n'))
@@ -693,8 +656,7 @@ class Sidebar(QWidget):
             self.entry_ext.setPlainText(custom[text]['ext'].replace(' ', '\n'))
             self.entry_ign.setPlainText(custom[text]['ign'].replace(', ', '\n').replace(',', '\n'))
         self.on_settings_change()
-
-        if self.controller._store.state.selected_folders:
+        if self.controller.state.selected_folders:
             self.controller.scan_only()
 
     def _save_ext_preset(self):
@@ -705,12 +667,10 @@ class Sidebar(QWidget):
                 return
             ext = self.entry_ext.toPlainText().replace('\n', ' ').strip()
             ign = self.entry_ign.toPlainText().replace('\n', ', ').strip()
-
-            custom = self.controller._store.state.settings.custom_presets.copy()
+            custom = self.controller.state.settings.custom_presets.copy()
             custom[name] = {"ext": ext, "ign": ign}
             self.controller.update_settings({'custom_presets': custom})
             self.controller.save_settings()
-
             self._refresh_ext_presets()
             self.cmb_preset.setCurrentText(name)
 
@@ -719,7 +679,7 @@ class Sidebar(QWidget):
         if name in PRESETS:
             QMessageBox.warning(self, tr("sidebar.error.title"), tr("sidebar.delete_preset.system_preset"))
             return
-        custom = self.controller._store.state.settings.custom_presets.copy()
+        custom = self.controller.state.settings.custom_presets.copy()
         if name in custom:
             del custom[name]
             self.controller.update_settings({'custom_presets': custom})
@@ -727,15 +687,11 @@ class Sidebar(QWidget):
             self._refresh_ext_presets()
 
     def _on_prompt_preset_change(self, text):
-        if not text:
-            return
-        custom = self.controller._store.state.settings.custom_prompt_presets
-        if text == "Custom":
-            pass
-        elif text in PROMPT_PRESETS:
-            self.txt_system_prompt.setText(PROMPT_PRESETS[text])
-        elif text in custom:
-            self.txt_system_prompt.setText(custom[text])
+        if not text: return
+        custom = self.controller.state.settings.custom_prompt_presets
+        if text == "Custom": pass
+        elif text in PROMPT_PRESETS: self.txt_system_prompt.setText(PROMPT_PRESETS[text])
+        elif text in custom: self.txt_system_prompt.setText(custom[text])
         self.on_settings_change()
 
     def _save_prompt_preset(self):
@@ -745,7 +701,7 @@ class Sidebar(QWidget):
                 QMessageBox.warning(self, tr("sidebar.error.title"), tr("sidebar.new_prompt.name_taken"))
                 return
             txt = self.txt_system_prompt.toPlainText().strip()
-            custom = self.controller._store.state.settings.custom_prompt_presets.copy()
+            custom = self.controller.state.settings.custom_prompt_presets.copy()
             custom[name] = txt
             self.controller.update_settings({'custom_prompt_presets': custom})
             self.controller.save_settings()
@@ -757,7 +713,7 @@ class Sidebar(QWidget):
         if name in PROMPT_PRESETS or name == "Custom":
             QMessageBox.warning(self, tr("sidebar.error.title"), tr("sidebar.delete_prompt.system_preset"))
             return
-        custom = self.controller._store.state.settings.custom_prompt_presets.copy()
+        custom = self.controller.state.settings.custom_prompt_presets.copy()
         if name in custom:
             del custom[name]
             self.controller.update_settings({'custom_prompt_presets': custom})
@@ -774,8 +730,7 @@ class Sidebar(QWidget):
         themes_dir = self._get_user_themes_dir()
         system = platform.system()
         try:
-            if system == "Windows":
-                os.startfile(themes_dir)
+            if system == "Windows": os.startfile(themes_dir)
             elif system == "Darwin":
                 import subprocess
                 subprocess.call(["open", themes_dir])
@@ -807,29 +762,25 @@ class Sidebar(QWidget):
         self.cmb_preset.blockSignals(True)
         self.cmb_preset.clear()
         self.cmb_preset.addItems(list(PRESETS.keys()))
-        custom = self.controller._store.state.settings.custom_presets
+        custom = self.controller.state.settings.custom_presets
         if custom:
             self.cmb_preset.insertSeparator(self.cmb_preset.count())
             self.cmb_preset.addItems(list(custom.keys()))
-
         if current and self.cmb_preset.findText(current) >= 0:
             self.cmb_preset.setCurrentText(current)
         else:
-            settings_ext = self.controller._store.state.settings.extensions
-            settings_ign = self.controller._store.state.settings.ignored_paths
+            settings_ext = self.controller.state.settings.extensions
+            settings_ign = self.controller.state.settings.ignored_paths
             matched = False
             for pool in [PRESETS, custom or {}]:
                 for k, v in pool.items():
                     if v['ext'] == settings_ext and v['ign'] == settings_ign:
                         idx = self.cmb_preset.findText(k)
-                        if idx >= 0:
-                            self.cmb_preset.setCurrentIndex(idx)
-                            matched = True
-                            break
-                if matched:
-                    break
-            if not matched:
-                self.cmb_preset.setCurrentIndex(0)
+                        if idx >= 0: self.cmb_preset.setCurrentIndex(idx)
+                        matched = True
+                        break
+                if matched: break
+            if not matched: self.cmb_preset.setCurrentIndex(0)
         self.cmb_preset.blockSignals(False)
 
     def _refresh_prompt_presets(self):
@@ -837,11 +788,10 @@ class Sidebar(QWidget):
         self.cmb_prompt.blockSignals(True)
         self.cmb_prompt.clear()
         self.cmb_prompt.addItems(list(PROMPT_PRESETS.keys()))
-        custom = self.controller._store.state.settings.custom_prompt_presets
+        custom = self.controller.state.settings.custom_prompt_presets
         if custom:
             self.cmb_prompt.insertSeparator(self.cmb_prompt.count())
             self.cmb_prompt.addItems(list(custom.keys()))
-
         if current and self.cmb_prompt.findText(current) >= 0:
             self.cmb_prompt.setCurrentText(current)
         else:
@@ -854,7 +804,6 @@ class Sidebar(QWidget):
         self.cmb_theme.clear()
         themes = ThemeManager.get_available_themes()
         self.cmb_theme.addItems(themes)
-
         if current and self.cmb_theme.findText(current) >= 0:
             self.cmb_theme.setCurrentText(current)
         elif themes:
@@ -890,11 +839,14 @@ class Sidebar(QWidget):
         self.chk_mermaid.setChecked(getattr(settings, 'include_mermaid', False))
         self.chk_git.setChecked(settings.use_git)
         self.chk_gitignore.setChecked(settings.use_gitignore)
+
         self.txt_system_prompt.setText(settings.system_prompt)
+
         self.chk_llm_check.setChecked(settings.llm_check_enabled)
         self.entry_llm_url.setText(settings.llm_base_url)
         self.entry_llm_key.setText(settings.llm_api_key)
         self.entry_llm_model.setText(settings.llm_model)
+
         self.entry_editor.setText(getattr(settings, 'external_editor', ''))
         self.chk_prerelease.setChecked(settings.receive_prereleases)
 
@@ -916,17 +868,13 @@ class Sidebar(QWidget):
             'receive_prereleases': self.chk_prerelease.isChecked()
         }
 
-
 def get_resource_path_fn(relative_path: str) -> str:
-    """Поиск ресурса с подъёмом вверх от этого файла (Themes)"""
     start = os.path.dirname(os.path.abspath(__file__))
     d = start
     while True:
         candidate = os.path.join(d, relative_path)
-        if os.path.exists(candidate):
-            return candidate
+        if os.path.exists(candidate): return candidate
         parent = os.path.dirname(d)
-        if parent == d:
-            break
+        if parent == d: break
         d = parent
     return os.path.join(start, relative_path)

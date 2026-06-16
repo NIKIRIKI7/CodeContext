@@ -49,27 +49,6 @@ class WindowsContextMenuStrategy(ContextMenuStrategy):
         import ctypes
         return winreg, ctypes
 
-    def _is_admin(self) -> bool:
-        try:
-            _, ctypes = self._imports()
-            return bool(ctypes.windll.shell32.IsUserAnAdmin())
-        except Exception:
-            return False
-
-    def _restart_as_admin(self, extra_arg: str):
-        _, ctypes = self._imports()
-        if getattr(sys, 'frozen', False):
-            executable = sys.executable
-            params = extra_arg
-        else:
-            executable = sys.executable
-            script_path = os.path.abspath(sys.argv[0])
-            params = f'"{script_path}" {extra_arg}'
-        try:
-            ctypes.windll.shell32.ShellExecuteW(None, "runas", executable, params, None, 0)
-        except Exception as exc:
-            print(tr("integration_strategies.windows.elevate_error", exc=exc))
-
     def _delete_registry_tree(self, root_key: Any, key_path: str) -> bool:
         winreg, _ = self._imports()
         try:
@@ -86,12 +65,7 @@ class WindowsContextMenuStrategy(ContextMenuStrategy):
             raise exc
 
     def install(self, custom_python_path: Optional[str] = None) -> Tuple[bool, str]:
-        if not self._is_admin():
-            self._restart_as_admin("--install-context")
-            return False, tr("integration_strategies.windows.admin_required_install")
-
         winreg, _ = self._imports()
-
         try:
             if getattr(sys, 'frozen', False):
                 exe_path = sys.executable
@@ -155,43 +129,37 @@ class WindowsContextMenuStrategy(ContextMenuStrategy):
                 winreg.CloseKey(sub_shell)
                 winreg.CloseKey(key)
 
-            # 1. Применяем для папок (клик ПКМ по самой папке)
-            _add_menu(winreg.HKEY_CLASSES_ROOT, r"Directory\shell\CodeContextAI", "%1")
-
-            # 2. Применяем для фона папки (клик ПКМ по пустому месту внутри папки)
-            # В Windows для передачи пути фона используется аргумент "%V"
-            _add_menu(winreg.HKEY_CLASSES_ROOT, r"Directory\Background\shell\CodeContextAI", "%V")
-
-            # 3. Применяем для файлов (клик ПКМ по файлу)
-            _add_menu(winreg.HKEY_CLASSES_ROOT, r"*\shell\CodeContextAI", "%1")
+            # ponytail: Use HKCU to install without admin privileges
+            _add_menu(winreg.HKEY_CURRENT_USER, r"Software\Classes\Directory\shell\CodeContextAI", "%1")
+            _add_menu(winreg.HKEY_CURRENT_USER, r"Software\Classes\Directory\Background\shell\CodeContextAI", "%V")
+            _add_menu(winreg.HKEY_CURRENT_USER, r"Software\Classes\*\shell\CodeContextAI", "%1")
 
             return True, tr("integration_strategies.windows.install_success")
         except Exception as exc:
             return False, tr("integration_strategies.windows.install_error", error=exc)
 
     def remove(self) -> Tuple[bool, str]:
-        if not self._is_admin():
-            self._restart_as_admin("--remove-context")
-            return False, tr("integration_strategies.windows.admin_required_remove")
-
         winreg, _ = self._imports()
         err_msg = ""
 
-        # Очищаем все три ветки
+        # ponytail: Delete from HKCU (no admin required)
         for path in (
-            r"Directory\shell\CodeContextAI",
-            r"Directory\Background\shell\CodeContextAI",
-            r"*\shell\CodeContextAI"
+            r"Software\Classes\Directory\shell\CodeContextAI",
+            r"Software\Classes\Directory\Background\shell\CodeContextAI",
+            r"Software\Classes\*\shell\CodeContextAI"
         ):
             try:
-                self._delete_registry_tree(winreg.HKEY_CLASSES_ROOT, path)
+                self._delete_registry_tree(winreg.HKEY_CURRENT_USER, path)
             except Exception as exc:
                 if not isinstance(exc, FileNotFoundError):
                     err_msg += str(exc)
 
+        # Legacy cleanup for old HKCR installs. Ignores access denied errors silently.
+        for path in (r"Directory\shell\CodeContextAI", r"Directory\Background\shell\CodeContextAI", r"*\shell\CodeContextAI"):
+            try: self._delete_registry_tree(winreg.HKEY_CLASSES_ROOT, path)
+            except Exception: pass
+
         if err_msg:
-            if "[WinError 5]" in err_msg:
-                return False, tr("integration_strategies.windows.remove_access_error", error=err_msg)
             return False, tr("integration_strategies.windows.remove_registry_error", error=err_msg)
 
         return True, tr("integration_strategies.windows.remove_success")

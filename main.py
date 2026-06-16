@@ -9,19 +9,17 @@ from src.di_container import DIContainer
 from src.utils.async_runtime import AsyncRuntime
 from src.utils.logger import app_logger
 from src.i18n import tr
+
 from PySide6.QtWidgets import QApplication
-from PySide6.QtGui import QIcon, QImage, QPainter, QColor, QFont, QPen
-from PySide6.QtCore import Qt
+from PySide6.QtGui import QIcon
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
+
 from src.ui.theme_manager import ThemeManager
 from src.ui.main_window import MainWindow
 
-
 def get_resource_path(relative_path: str) -> str:
-    """Поиск ресурса с подъёмом вверх от main.py (Themes, Assets, VERSION.txt)"""
     if getattr(sys, 'frozen', False):
         return os.path.join(sys._MEIPASS, relative_path)
-
     start = os.path.dirname(os.path.abspath(__file__))
     d = start
     while True:
@@ -34,25 +32,6 @@ def get_resource_path(relative_path: str) -> str:
         d = parent
     return os.path.join(start, relative_path)
 
-
-def create_default_logo(path: str):
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    img = QImage(256, 256, QImage.Format_ARGB32)
-    img.fill(Qt.transparent)
-    painter = QPainter(img)
-    painter.setRenderHint(QPainter.Antialiasing)
-    painter.setBrush(QColor("#0071e3"))
-    painter.setPen(Qt.NoPen)
-    painter.drawRoundedRect(12, 12, 232, 232, 48, 48)
-    painter.setBrush(QColor("#0a84ff"))
-    painter.drawRoundedRect(24, 24, 208, 208, 36, 36)
-    painter.setPen(QPen(Qt.white, 16))
-    font = QFont("Consolas", 64, QFont.Bold)
-    painter.setFont(font)
-    painter.drawText(img.rect(), Qt.AlignCenter, "{ C }")
-    painter.end()
-    img.save(path, "PNG")
-
 def send_to_existing_instance(path: str) -> bool:
     socket = QLocalSocket()
     socket.connectToServer("CodeContextAI_IPC")
@@ -62,7 +41,6 @@ def send_to_existing_instance(path: str) -> bool:
         socket.disconnectFromServer()
         return True
     return False
-
 
 def main():
     app_logger.info("=" * 50)
@@ -101,33 +79,26 @@ def main():
     parser.add_argument("--stdout", action="store_true", help=tr("main.stdout"))
     parser.add_argument("--fail-if-exceeds", type=int, help=tr("main.fail_if_exceeds"))
     parser.add_argument("--git", action="store_true", help="Scan only git modified files")
-    parser.add_argument("--git-base", type=str, default="", help="Base branch for git diff in CI/CD (e.g., origin/main)")
-
+    parser.add_argument("--git-base", type=str, default="", help="Base branch for git diff in CI/CD")
     args, _ = parser.parse_known_args()
+
     container = DIContainer()
 
     if args.install_context:
-        container.integration_service.install_context_menu()
+        container.integration_strategy.install()
         sys.exit(0)
-
     if args.remove_context:
-        container.integration_service.remove_context_menu()
+        container.integration_strategy.remove()
         sys.exit(0)
 
     if args.cli or args.silent or args.dry_run or args.stdout:
         if not args.path:
             args.path = os.getcwd()
         kwargs = {
-            'mode': args.mode,
-            'minify': args.minify,
-            'skeleton': args.skeleton,
-            'format': args.format,
-            'dry_run': args.dry_run,
-            'silent': args.silent or args.stdout,
-            'stdout': args.stdout,
-            'fail_if_exceeds': args.fail_if_exceeds,
-            'git': args.git,
-            'git_base': args.git_base,
+            'mode': args.mode, 'minify': args.minify, 'skeleton': args.skeleton,
+            'format': args.format, 'dry_run': args.dry_run, 'silent': args.silent or args.stdout,
+            'stdout': args.stdout, 'fail_if_exceeds': args.fail_if_exceeds,
+            'git': args.git, 'git_base': args.git_base,
         }
         if args.patch:
             container.cli_controller.run_patch(args.path, args.patch)
@@ -142,20 +113,13 @@ def main():
             sys.exit(0)
 
     app_logger.info("Starting GUI Mode (PySide6)...")
-
     os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
     os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "1"
-
     AsyncRuntime.start()
+
     app = QApplication(sys.argv)
 
     logo_path = get_resource_path(os.path.join("assets", "images", "logo.png"))
-    if not os.path.exists(logo_path):
-        try:
-            create_default_logo(logo_path)
-        except Exception as e:
-            app_logger.error(f"Failed to generate logo: {e}")
-
     if os.path.exists(logo_path):
         app.setWindowIcon(QIcon(logo_path))
 
@@ -163,7 +127,6 @@ def main():
     from src.utils.config import get_app_data_dir
     user_themes_dir = os.path.join(get_app_data_dir(), "themes")
     os.makedirs(user_themes_dir, exist_ok=True)
-
     ThemeManager.load_themes(built_in_themes, user_themes_dir)
 
     if "apple" in ThemeManager.get_available_themes():
@@ -171,7 +134,7 @@ def main():
     elif ThemeManager.get_available_themes():
         ThemeManager.apply_theme(ThemeManager.get_available_themes()[0], "light")
 
-    window = MainWindow(container.store, container.main_controller)
+    window = MainWindow(container.state, container.main_controller)
     if os.path.exists(logo_path):
         window.setWindowIcon(QIcon(logo_path))
 
@@ -196,11 +159,9 @@ def main():
 
     window.show()
     exit_code = app.exec()
-
     ipc_server.close()
     AsyncRuntime.stop()
     sys.exit(exit_code)
-
 
 if __name__ == "__main__":
     main()

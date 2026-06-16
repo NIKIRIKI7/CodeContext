@@ -1,11 +1,11 @@
 import os
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
-                               QSplitter, QFileDialog, QStackedWidget, QMessageBox,
+                               QSplitter, QFileDialog, QStackedWidget,
                                QLabel, QGraphicsOpacityEffect, QTabWidget)
 from PySide6.QtCore import Signal, QObject, Qt, QPropertyAnimation, QTimer
 from PySide6.QtGui import QKeySequence, QShortcut
 
-from ..store.store import Store
+from ..store.state import AppState
 from ..controllers.main_controller import MainController
 from .components.sidebar import Sidebar
 from .components.folder_list import FolderList
@@ -20,14 +20,12 @@ from .theme_manager import ThemeManager, theme_bus
 from ..utils.config import PricingManager, get_app_version
 from src.i18n import tr
 
-
 class ToastNotification(QLabel):
     def __init__(self, parent):
         super().__init__(parent)
         self.setProperty("cssClass", "toast")
         self.setAlignment(Qt.AlignCenter)
         self.hide()
-
         self.opacity_effect = QGraphicsOpacityEffect(self)
         self.setGraphicsEffect(self.opacity_effect)
         self.animation = QPropertyAnimation(self.opacity_effect, b"opacity")
@@ -55,34 +53,25 @@ class ToastNotification(QLabel):
         self.animation.finished.connect(self.hide)
         self.animation.start()
 
-
-class UIBridge(QObject):
-    state_changed = Signal(object)
-
-
 class MainWindow(QMainWindow):
-    def __init__(self, store: Store, controller: MainController):
+    def __init__(self, state: AppState, controller: MainController):
         super().__init__()
-        self.store = store
+        self.state = state
         self.controller = controller
 
         self.setWindowTitle(tr("main_window.title", default="CodeContext AI"))
         self.setAcceptDrops(True)
         self._apply_adaptive_size()
 
-        self.bridge = UIBridge()
-        self.bridge.state_changed.connect(self._on_store_changed)
-        self.unsubscribe = self.store.subscribe(self.bridge.state_changed.emit)
+        self.state.changed.connect(self._on_state_changed)
 
         self._last_scanned_paths = []
         self._last_manual_exclusions = set()
-
         self._preview_dialog = None
         self._tour_dialog = None
         self._update_dialog = None
         self._chat_dialog = None
         self._command_palette = None
-
         self._ui_ready = False
 
         PricingManager.fetch_prices_background()
@@ -90,7 +79,6 @@ class MainWindow(QMainWindow):
 
         self._init_ui()
         self._ui_ready = True
-
         self.controller.load_initial_settings()
 
         self._update_theme_metrics()
@@ -103,11 +91,9 @@ class MainWindow(QMainWindow):
             rect = screen.availableGeometry()
             w = min(int(rect.width() * 0.8), rect.width())
             h = min(int(rect.height() * 0.8), rect.height())
-            w = max(w, 1024)
-            h = max(h, 700)
+            self.resize(max(w, 1024), max(h, 700))
         else:
-            w, h = 1200, 850
-        self.resize(w, h)
+            self.resize(1200, 850)
 
     def _init_ui(self):
         self.central_widget = QWidget()
@@ -122,7 +108,6 @@ class MainWindow(QMainWindow):
         self.splitter.addWidget(self.sidebar)
 
         self.right_stack = QStackedWidget()
-
         self.empty_state = EmptyState(self.controller.add_folder)
         self.right_stack.addWidget(self.empty_state)
 
@@ -131,14 +116,12 @@ class MainWindow(QMainWindow):
 
         self.folder_list = FolderList(self._on_edit_folder, self.controller.remove_folder)
         self.file_tree = FileTree(self.controller.toggle_file_exclusion, self.controller.copy_file_with_dependencies)
-
         self.action_panel = ActionPanel(self._on_run, self.controller._plugin_api)
         self.log_panel = LogPanel()
         self.status_bar = StatusBar()
 
         self.tree_tabs = QTabWidget()
         self.tree_tabs.addTab(self.file_tree, tr("main_window.tab.file_tree", default="Files"))
-
         self.analytics_panel = AnalyticsPanel()
         self.tree_tabs.addTab(self.analytics_panel, tr("main_window.tab.analytics", default="Analytics"))
 
@@ -156,7 +139,7 @@ class MainWindow(QMainWindow):
         QShortcut(QKeySequence("Ctrl+C"), self, activated=lambda: self._on_run('clipboard'))
         QShortcut(QKeySequence("Ctrl+Return"), self, activated=lambda: self._on_run('preview'))
         QShortcut(QKeySequence("Ctrl+F"), self, activated=self.file_tree.search.setFocus)
-        QShortcut(QKeySequence("Ctrl+Shift+P"), self, activated=lambda: self.store.dispatch('UI_SHOW_COMMAND_PALETTE'))
+        QShortcut(QKeySequence("Ctrl+Shift+P"), self, activated=self._show_command_palette)
 
     def retranslate_ui(self):
         self.tree_tabs.setTabText(0, tr("main_window.tab.file_tree", default="Files"))
@@ -192,9 +175,17 @@ class MainWindow(QMainWindow):
                 self.controller.add_folder(os.path.dirname(path))
         event.acceptProposedAction()
 
-    def _on_store_changed(self, state):
-        if not self._ui_ready:
-            return
+    def _show_command_palette(self):
+        self.state.show_command_palette = True
+        self.state.notify()
+
+    def _close_command_palette(self):
+        self.state.show_command_palette = False
+        self.state.notify()
+
+    def _on_state_changed(self, state):
+        if not self._ui_ready: return
+
         if state.selected_folders:
             self.right_stack.setCurrentIndex(1)
         else:
@@ -230,6 +221,7 @@ class MainWindow(QMainWindow):
         tokens_display = state.total_tokens if state.final_output_text else state.selected_tokens
         model = state.settings.llm_model
         estimated_cost = tokens_display * PricingManager.get_price(model)
+
         self.status_bar.update_ui(state.status_message, state.progress, tokens_display, estimated_cost)
 
         if state.toast_message:
@@ -252,15 +244,10 @@ class MainWindow(QMainWindow):
                     tr("main_window.command.toggle_theme", default="Theme"): lambda: ThemeManager.apply_theme(mode="dark" if ThemeManager._current_mode == "light" else "light"),
                     tr("main_window.command.check_updates", default="Update"): lambda: self.controller.check_for_updates(get_app_version()),
                 }
-
                 for a_id, a_data in self.controller._plugin_api.ui.action_buttons.items():
                     commands[a_data["label"]] = a_data["callback"]
 
-                self._command_palette = CommandPaletteDialog(
-                    self,
-                    commands,
-                    lambda: self.store.dispatch('UI_CLOSE_COMMAND_PALETTE'),
-                )
+                self._command_palette = CommandPaletteDialog(self, commands, self._close_command_palette)
                 parent_geo = self.geometry()
                 x = parent_geo.x() + (parent_geo.width() - self._command_palette.width()) // 2
                 y = parent_geo.y() + (parent_geo.height() - self._command_palette.height()) // 2 - 50
@@ -337,6 +324,4 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):
         self.controller.shutdown()
         self.controller.clear_folders()
-        if self.unsubscribe:
-            self.unsubscribe()
         super().closeEvent(event)

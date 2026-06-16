@@ -21,7 +21,7 @@ python -m pip install build twine
 python -m build
 ```
 
-Создадутся `dist/codecontext_ai-1.14.0-py3-none-any.whl` и `dist/codecontext-ai-1.14.0.tar.gz`.
+Создадутся `dist/codecontext_ai-1.26.0-py3-none-any.whl` и `dist/codecontext-ai-1.26.0.tar.gz`.
 
 ### Публикация
 

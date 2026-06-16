@@ -1,24 +1,17 @@
 import os
 import json
 
-from ..actions.action_types import (
-    UI_SET_LOADING, UI_UPDATE_STATUS, UI_ADD_LOG,
-    SCAN_SUCCESS, SCAN_FAILURE,
-)
-from ..actions.dispatcher import Dispatcher
 from ..data.file_system_repository import FileSystemRepository
 from ..services.file_service import FileService
-from ..store.state import AppState
+from ..store.state import AppState, AppSettings
 from src.i18n import tr
 from ..utils.logger import app_logger
 from ..utils.config import get_app_data_dir
 
 
 class ScanWorkspaceUseCase:
-    """Сканирует выбранные папки и публикует результат в Store."""
-
-    def __init__(self, dispatcher: Dispatcher, file_service: FileService, fs_repo: FileSystemRepository):
-        self._dispatcher = dispatcher
+    def __init__(self, state: AppState, file_service: FileService, fs_repo: FileSystemRepository):
+        self.state = state
         self._file_service = file_service
         self._fs_repo = fs_repo
 
@@ -41,9 +34,11 @@ class ScanWorkspaceUseCase:
             pass
 
     async def execute(self, state: AppState) -> None:
-        self._dispatcher.dispatch(UI_SET_LOADING, True)
-        self._dispatcher.dispatch(UI_UPDATE_STATUS, {'message': tr("scan_use_case.scanning"), 'progress': 0.0})
-        self._dispatcher.dispatch(UI_ADD_LOG, tr("scan_use_case.scan_started"))
+        self.state.is_loading = True
+        self.state.status_message = tr("scan_use_case.scanning")
+        self.state.progress = 0.0
+        self.state.notify()
+        self.state.add_log(tr("scan_use_case.scan_started"))
 
         try:
             file_paths = await self._file_service.scan_folders_async(
@@ -56,10 +51,13 @@ class ScanWorkspaceUseCase:
             )
 
             if not file_paths:
-                self._dispatcher.dispatch(SCAN_FAILURE, tr("scan_use_case.no_files"))
-                self._dispatcher.dispatch(UI_ADD_LOG, tr("scan_use_case.no_files"))
+                self.state.scanned_files_paths = []
+                self.state.status_message = tr("scan_use_case.no_files")
+                self.state.add_log(tr("scan_use_case.no_files"))
             else:
-                self._dispatcher.dispatch(UI_UPDATE_STATUS, {'message': tr("scan_use_case.analyzing"), 'progress': 0.5})
+                self.state.status_message = tr("scan_use_case.analyzing")
+                self.state.progress = 0.5
+                self.state.notify()
 
                 git_statuses = {}
                 for folder in state.selected_folders:
@@ -94,36 +92,46 @@ class ScanWorkspaceUseCase:
 
                 self._save_cache(new_cache)
 
-                self._dispatcher.dispatch(SCAN_SUCCESS, {'paths': file_paths, 'metadata': metadata})
-                self._dispatcher.dispatch(UI_ADD_LOG, tr("store.status.files_found", count=len(file_paths)))
+                self.state.scanned_files_paths = file_paths
+                self.state.scanned_file_metadata = metadata
+                self.state.manual_exclusions = set()
+                self._recalculate_tokens()
+                self.state.status_message = tr("store.status.files_found", count=len(file_paths))
+                self.state.notify()
+                self.state.add_log(tr("store.status.files_found", count=len(file_paths)))
 
         except Exception as exc:
-            self._dispatcher.dispatch(SCAN_FAILURE, str(exc))
-            self._dispatcher.dispatch(UI_ADD_LOG, tr("store.status.scan_error", error=exc))
+            self.state.scanned_files_paths = []
+            self.state.status_message = tr("store.status.scan_error")
+            self.state.add_log(tr("store.status.scan_error_log", error=str(exc)))
+            self.state.notify()
         finally:
-            self._dispatcher.dispatch(UI_SET_LOADING, False)
-            self._dispatcher.dispatch(UI_UPDATE_STATUS, {'message': tr("scan_use_case.scan_complete"), 'progress': 0.0})
+            self.state.is_loading = False
+            self.state.status_message = tr("scan_use_case.scan_complete")
+            self.state.progress = 0.0
+            self.state.notify()
+
+    def _recalculate_tokens(self):
+        total = 0
+        for path, meta in self.state.scanned_file_metadata.items():
+            if path not in self.state.manual_exclusions:
+                total += meta.get("tokens", 0)
+        self.state.selected_tokens = total
 
     @staticmethod
     def _determine_file_category(path: str, tokens: int) -> str:
-        """Определяет категорию файла на основе пути (зависимости) и размера."""
         normalized_path = path.replace('\\', '/')
         path_parts = normalized_path.split('/')
-
-        # Список директорий, которые считаются внешними зависимостями или билдами
         dependency_dirs = {
             'node_modules', 'venv', '.venv', 'env', '.env',
             'dist', 'build', '__pycache__', 'target', 'out', 'vendor'
         }
-
         if any(part in dependency_dirs for part in path_parts):
             return "DEPENDENCY"
-
         if tokens > 50000:
             return "HUGE"
         elif tokens > 25000:
             return "HEAVY"
         elif tokens > 5000:
             return "MEDIUM"
-
         return "LIGHT"

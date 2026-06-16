@@ -1,34 +1,23 @@
 import os
 import re
-from ..actions.action_types import (
-    UI_SET_LOADING, UI_UPDATE_STATUS, UI_ADD_LOG,
-    GITHUB_CLONE_SUCCESS, GITHUB_CLONE_FAILURE, SET_PR_TARGET_FILES,
-)
-from ..actions.dispatcher import Dispatcher
 from ..services.github_service import GitHubService
+from ..store.state import AppState
 from src.i18n import tr
 
 
 class GitHubUseCase:
-    """Клонирует репозиторий и публикует результат в Store."""
-
-    def __init__(self, dispatcher: Dispatcher, github_service: GitHubService):
-        self._dispatcher = dispatcher
+    def __init__(self, state: AppState, github_service: GitHubService):
+        self.state = state
         self._github_service = github_service
 
     async def execute(self, url: str, base_dest_path: str = "") -> None:
-        """
-        Клонирует репозиторий по URL.
-        Если URL содержит /pull/N — получает список файлов из PR.
-        Если base_dest_path пустой - использует временную папку.
-        """
         if not url:
             return
 
-        self._dispatcher.dispatch(UI_SET_LOADING, True)
-        self._dispatcher.dispatch(UI_UPDATE_STATUS, {
-            'message': tr("github_use_case.preparing"), 'progress': 0.0
-        })
+        self.state.is_loading = True
+        self.state.status_message = tr("github_use_case.preparing")
+        self.state.progress = 0.0
+        self.state.notify()
 
         pr_files = []
         is_pr = "/pull/" in url
@@ -36,15 +25,15 @@ class GitHubUseCase:
 
         try:
             if is_pr:
-                self._dispatcher.dispatch(UI_ADD_LOG, tr("github_use_case.pr_detected"))
+                self.state.add_log(tr("github_use_case.pr_detected"))
                 pr_files = await self._github_service.fetch_pr_files_async(url)
-                self._dispatcher.dispatch(UI_ADD_LOG, tr("github_use_case.pr_files_count", count=len(pr_files)))
+                self.state.add_log(tr("github_use_case.pr_files_count", count=len(pr_files)))
                 clone_url = re.sub(r'/pull/\d+.*$', '', url)
 
-            self._dispatcher.dispatch(UI_UPDATE_STATUS, {
-                'message': tr("github_use_case.cloning"), 'progress': 0.3
-            })
-            self._dispatcher.dispatch(UI_ADD_LOG, tr("github_use_case.cloning_url", url=clone_url))
+            self.state.status_message = tr("github_use_case.cloning")
+            self.state.progress = 0.3
+            self.state.notify()
+            self.state.add_log(tr("github_use_case.cloning_url", url=clone_url))
 
             target_path = None
             is_temp = True
@@ -60,19 +49,17 @@ class GitHubUseCase:
             final_path = await self._github_service.clone_repo_async(clone_url, target_path)
 
             if pr_files:
-                self._dispatcher.dispatch(SET_PR_TARGET_FILES, pr_files)
+                self.state.pr_target_files = pr_files
 
-            self._dispatcher.dispatch(GITHUB_CLONE_SUCCESS, {
-                "path": final_path,
-                "is_temp": is_temp
-            })
-            self._dispatcher.dispatch(UI_ADD_LOG, tr("github_use_case.repo_loaded", path=final_path))
+            self.state.status_message = tr("store.status.repo_loaded")
+            self.state.add_log(f"GitHub Repo Cloned: {final_path}")
+            self.state.is_loading = False
+            self.state.progress = 0.0
+            self.state.notify()
 
         except Exception as exc:
-            self._dispatcher.dispatch(GITHUB_CLONE_FAILURE, str(exc))
-            self._dispatcher.dispatch(UI_ADD_LOG, tr("github_use_case.github_error", error=exc))
-        finally:
-            self._dispatcher.dispatch(UI_SET_LOADING, False)
-            self._dispatcher.dispatch(UI_UPDATE_STATUS, {
-                'message': tr("store.status.done"), 'progress': 0.0
-            })
+            self.state.status_message = tr("store.status.clone_error")
+            self.state.add_log(f"GitHub Error: {exc}")
+            self.state.is_loading = False
+            self.state.progress = 0.0
+            self.state.notify()

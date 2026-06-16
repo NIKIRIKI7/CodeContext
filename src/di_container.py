@@ -1,32 +1,17 @@
 import platform
-from .store.store import Store
-from .actions.dispatcher import Dispatcher
+from types import SimpleNamespace
+from .store.state import AppState
 from .data.file_system_repository import FileSystemRepository
 from .data.settings_repository import SettingsRepository
-
-from .api.plugin_api import PluginAPI, UIRegistry
+from .api.plugin_api import PluginAPI
 from .services.plugin_manager import PluginManager
-
-from .services.cleaner_service import CleanerService
-from .services.dependency_service import DependencyService
 from .services.file_service import FileService
-from .services.formatting_service import FormattingService
 from .services.github_service import GitHubService
-from .services.import_resolution_service import ImportResolutionService
-from .services.integration_service import IntegrationService
-from .services.output_service import OutputService
-from .services.processing_service import ProcessingService
-from .services.skeleton_service import SkeletonService
-from .services.token_service import TokenService
 from .services.patch_service import PatchService
 from .services.tour_service import TourService
 from .services.llm_checker_service import LlmCheckerService
 from .services.updater_service import UpdaterService
-from .services.strategies.integration_strategies import (
-    WindowsContextMenuStrategy,
-    LinuxContextMenuStrategy,
-    MacOSContextMenuStrategy,
-)
+from .services.strategies.integration_strategies import WindowsContextMenuStrategy, LinuxContextMenuStrategy, MacOSContextMenuStrategy
 from .use_cases.scan_use_case import ScanWorkspaceUseCase
 from .use_cases.process_use_case import ProcessWorkspaceUseCase
 from .use_cases.github_use_case import GitHubUseCase
@@ -39,98 +24,97 @@ from .controllers.cli_controller import CliController
 
 def _make_integration_strategy():
     system = platform.system()
-    if system == "Windows":
-        return WindowsContextMenuStrategy()
-    if system == "Linux":
-        return LinuxContextMenuStrategy()
+    if system == "Windows": return WindowsContextMenuStrategy()
+    if system == "Linux": return LinuxContextMenuStrategy()
     return MacOSContextMenuStrategy()
 
 
 class DIContainer:
     def __init__(self):
-        self.store = Store()
-        self.dispatcher = Dispatcher(self.store)
+        self.state = AppState()
         self.fs_repo = FileSystemRepository()
         self.settings_repo = SettingsRepository()
+        self.ui_registry = SimpleNamespace(sidebar_tabs={}, action_buttons={})
 
-        self.ui_registry = UIRegistry()
-        self.plugin_api = PluginAPI("core", self.store, self.dispatcher, self, self.ui_registry)
-        self.plugin_manager = PluginManager(self.store, self.dispatcher, self, self.ui_registry)
+        self.plugin_api = PluginAPI("core", self.state, self, self.ui_registry)
+        self.plugin_manager = PluginManager(self.state, self, self.ui_registry)
 
-        self.file_service = FileService(self.fs_repo)
-        self.process_service = ProcessingService(self.fs_repo)
-        self.cleaner_service = CleanerService()
-        self.skeleton_service = SkeletonService()
-        self.token_service = TokenService()
-        self.format_service = FormattingService()
-        self.output_service = OutputService()
-        self.dependency_service = DependencyService()
-        self.import_resolution_service = ImportResolutionService()
-        self.github_service = GitHubService()
-        self.patch_service = PatchService()
-        self.tour_service = TourService()
-        self.llm_checker = LlmCheckerService()
-        self.updater_service = UpdaterService()
-        self.integration_service = IntegrationService(
-            strategy=_make_integration_strategy()
-        )
+    @property
+    def file_service(self):
+        return FileService(self.fs_repo)
 
-        self.scan_use_case = ScanWorkspaceUseCase(
-            dispatcher=self.dispatcher,
-            file_service=self.file_service,
-            fs_repo=self.fs_repo
-        )
-        self.process_use_case = ProcessWorkspaceUseCase(
-            dispatcher=self.dispatcher,
-            process_service=self.process_service,
-            dependency_service=self.dependency_service,
-            cleaner_service=self.cleaner_service,
-            skeleton_service=self.skeleton_service,
-            token_service=self.token_service,
-            format_service=self.format_service,
-            output_service=self.output_service,
-        )
-        self.github_use_case = GitHubUseCase(
-            dispatcher=self.dispatcher,
-            github_service=self.github_service,
-        )
-        self.settings_use_case = SettingsUseCase(
-            dispatcher=self.dispatcher,
-            store=self.store,
-            settings_repo=self.settings_repo,
-            fs_repo=self.fs_repo,
-        )
-        self.patch_use_case = PatchUseCase(
-            dispatcher=self.dispatcher,
-            patch_service=self.patch_service
-        )
-        self.updater_use_case = UpdaterUseCase(
-            dispatcher=self.dispatcher,
-            updater_service=self.updater_service
-        )
+    @property
+    def github_service(self):
+        return GitHubService()
 
-        self.main_controller = MainController(
-            store=self.store,
-            dispatcher=self.dispatcher,
-            scan_use_case=self.scan_use_case,
-            process_use_case=self.process_use_case,
-            github_use_case=self.github_use_case,
-            settings_use_case=self.settings_use_case,
-            patch_use_case=self.patch_use_case,
-            updater_use_case=self.updater_use_case,
-            integration_service=self.integration_service,
-            fs_repo=self.fs_repo,
-            tour_service=self.tour_service,
-            llm_checker=self.llm_checker,
-            format_service=self.format_service,
-            output_service=self.output_service,
-            plugin_api=self.plugin_api,
-            plugin_manager=self.plugin_manager
-        )
+    @property
+    def patch_service(self):
+        return PatchService()
 
-        self.cli_controller = CliController(
-            store=self.store,
-            dispatcher=self.dispatcher,
+    @property
+    def tour_service(self):
+        return TourService()
+
+    @property
+    def llm_checker(self):
+        return LlmCheckerService()
+
+    @property
+    def updater_service(self):
+        return UpdaterService()
+
+    @property
+    def integration_strategy(self):
+        return _make_integration_strategy()
+
+    @property
+    def scan_use_case(self):
+        return ScanWorkspaceUseCase(self.state, self.file_service, self.fs_repo)
+
+    @property
+    def process_use_case(self):
+        return ProcessWorkspaceUseCase(self.fs_repo)
+
+    @property
+    def github_use_case(self):
+        return GitHubUseCase(self.state, self.github_service)
+
+    @property
+    def settings_use_case(self):
+        return SettingsUseCase(self.state, self.settings_repo, self.fs_repo)
+
+    @property
+    def patch_use_case(self):
+        return PatchUseCase(self.state, self.patch_service)
+
+    @property
+    def updater_use_case(self):
+        return UpdaterUseCase(self.state, self.updater_service)
+
+    @property
+    def main_controller(self):
+        if not hasattr(self, '_main_controller'):
+            self._main_controller = MainController(
+                state=self.state,
+                scan_use_case=self.scan_use_case,
+                process_use_case=self.process_use_case,
+                github_use_case=self.github_use_case,
+                settings_use_case=self.settings_use_case,
+                patch_use_case=self.patch_use_case,
+                updater_use_case=self.updater_use_case,
+                integration_strategy=self.integration_strategy,
+                fs_repo=self.fs_repo,
+                tour_service=self.tour_service,
+                llm_checker=self.llm_checker,
+                plugin_api=self.plugin_api,
+                plugin_manager=self.plugin_manager
+            )
+        return self._main_controller
+
+    @property
+    def cli_controller(self):
+        return CliController(
+            state=self.state,
             settings_repo=self.settings_repo,
             scan_use_case=self.scan_use_case,
             process_use_case=self.process_use_case,

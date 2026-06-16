@@ -1,17 +1,10 @@
-"""
-SettingsUseCase — сценарии работы с настройками.
-"""
 import json
 import os
 from typing import Optional
-from ..actions.action_types import (
-    SETTINGS_LOADED, SETTINGS_UPDATE, WORKSPACE_LOADED, UI_ADD_LOG,
-)
-from ..actions.dispatcher import Dispatcher
 from src.i18n import tr
 from ..data.settings_repository import SettingsRepository
 from ..data.file_system_repository import FileSystemRepository
-from ..store.store import Store
+from ..store.state import AppState, AppSettings
 from ..utils.config import PRESETS, DEFAULT_SYSTEM_PROMPT
 
 _DEFAULT_SETTINGS = {
@@ -27,13 +20,6 @@ _DEFAULT_SETTINGS = {
     'use_git': False,
     'use_gitignore': True,
     'enable_logging': True,
-    'cli_minify': True,
-    'cli_remove_comments': True,
-    'cli_remove_secrets': True,
-    'cli_include_tree': True,
-    'cli_skeleton_mode': False,
-    'cli_use_gitignore': True,
-    'cli_format': "plain",
     'output_format': 'markdown',
     'template_path': '',
     'python_interpreter': '',
@@ -48,48 +34,51 @@ _DEFAULT_SETTINGS = {
 
 
 class SettingsUseCase:
-    """Управляет жизненным циклом настроек приложения."""
     def __init__(
         self,
-        dispatcher: Dispatcher,
-        store: Store,
+        state: AppState,
         settings_repo: SettingsRepository,
         fs_repo: FileSystemRepository = None,
     ):
-        self._dispatcher = dispatcher
-        self._store = store
+        self.state = state
         self._settings_repo = settings_repo
         self._fs_repo = fs_repo
 
     def load_initial(self) -> None:
-        """Загружает настройки из файла или применяет дефолтные."""
         data = self._settings_repo.load()
         if not data:
             data = _DEFAULT_SETTINGS.copy()
-        self._dispatcher.dispatch(SETTINGS_LOADED, data)
+        self._merge_settings(data)
+        self._apply_language(data.get('language', ''))
 
     def update(self, settings_data: dict) -> None:
-        """Обновляет часть настроек без сохранения на диск."""
-        self._dispatcher.dispatch(SETTINGS_UPDATE, settings_data)
+        self._merge_settings(settings_data)
 
     def save(self) -> None:
-        """Сохраняет текущие настройки на диск."""
-        self._settings_repo.save(self._store.state.settings.__dict__)
+        self._settings_repo.save(self.state.settings.__dict__)
 
     def reset(self) -> None:
-        """Сбрасывает настройки на дефолтные и сохраняет."""
-        self._dispatcher.dispatch(SETTINGS_UPDATE, _DEFAULT_SETTINGS.copy())
+        self._merge_settings(_DEFAULT_SETTINGS.copy())
         self._settings_repo.save(_DEFAULT_SETTINGS)
-        self._dispatcher.dispatch(UI_ADD_LOG, tr("settings_use_case.reset"))
+        self.state.add_log(tr("settings_use_case.reset"))
+
+    def _merge_settings(self, data: dict):
+        current = self.state.settings.__dict__.copy()
+        valid_keys = set(AppSettings.__dataclass_fields__.keys())
+        filtered = {k: v for k, v in data.items() if k in valid_keys}
+        current.update(filtered)
+        self.state.settings = AppSettings(**current)
+        self.state.notify()
+
+    def _apply_language(self, lang: str):
+        if not lang:
+            from src.i18n import load_translations
+            load_translations()
+        else:
+            from src.i18n import set_language
+            set_language(lang)
 
     def load_local_config(self, folder_path: str) -> None:
-        """
-        Ищет .codecontextrc.json / .codecontextrc, поднимаясь вверх по дереву.
-
-        Сначала проверяет переданную папку, затем до 5 уровней вверх.
-        Это позволяет находить конфиг в корне монорепозитория, даже если
-        пользователь открыл глубоко вложенный пакет (packages/frontend/src).
-        """
         if not self._fs_repo:
             return
 
@@ -123,60 +112,59 @@ class SettingsUseCase:
                     local_settings.pop('extensions', None)
                 if not local_settings.get('ignored_paths', "").strip():
                     local_settings.pop('ignored_paths', None)
-                self._dispatcher.dispatch(SETTINGS_UPDATE, local_settings)
-                self._dispatcher.dispatch(UI_ADD_LOG, tr("settings_use_case.local_config_applied", path=os.path.basename(target_path)))
+                self._merge_settings(local_settings)
+                self.state.add_log(tr("settings_use_case.local_config_applied", path=os.path.basename(target_path)))
         except json.JSONDecodeError as exc:
-            self._dispatcher.dispatch(UI_ADD_LOG, tr("settings_use_case.config_parse_error", path=os.path.basename(target_path), error=exc))
+            self.state.add_log(tr("settings_use_case.config_parse_error", path=os.path.basename(target_path), error=exc))
         except Exception as exc:
-            self._dispatcher.dispatch(UI_ADD_LOG, tr("settings_use_case.config_read_error", error=exc))
+            self.state.add_log(tr("settings_use_case.config_read_error", error=exc))
 
     def save_local_config(self, folder_path: str) -> None:
         if not folder_path or not os.path.exists(folder_path):
-            self._dispatcher.dispatch(UI_ADD_LOG, tr("settings_use_case.no_folder_selected"))
+            self.state.add_log(tr("settings_use_case.no_folder_selected"))
             return
 
         config_path = os.path.join(folder_path, ".codecontextrc.json")
         try:
-            data = self._store.state.settings.__dict__.copy()
+            data = self.state.settings.__dict__.copy()
             for key in ['recent_workspaces', 'python_interpreter', 'custom_presets', 'custom_prompt_presets', 'llm_api_key']:
                 data.pop(key, None)
             with open(config_path, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=4)
-            self._dispatcher.dispatch(UI_ADD_LOG, tr("settings_use_case.config_saved", path=config_path))
+            self.state.add_log(tr("settings_use_case.config_saved", path=config_path))
         except Exception as exc:
-            self._dispatcher.dispatch(UI_ADD_LOG, tr("settings_use_case.config_save_error", error=exc))
+            self.state.add_log(tr("settings_use_case.config_save_error", error=exc))
 
     def apply_preset(self, preset_name: str) -> None:
-        """Применяет пресет расширений/игнора."""
         preset = PRESETS.get(preset_name)
         if preset:
-            self._dispatcher.dispatch(SETTINGS_UPDATE, {
+            self._merge_settings({
                 'extensions': preset['ext'],
                 'ignored_paths': preset['ign'],
             })
 
     def save_workspace(self, path: str) -> None:
-        """Сохраняет workspace (папки + настройки) в JSON-файл."""
-        state = self._store.state
         data = {
-            'folders': state.selected_folders,
-            'settings': state.settings.__dict__,
+            'folders': self.state.selected_folders,
+            'settings': self.state.settings.__dict__,
         }
         try:
             with open(path, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=4)
-            self._dispatcher.dispatch(UI_ADD_LOG, tr("settings_use_case.workspace_saved", path=path))
+            self.state.add_log(tr("settings_use_case.workspace_saved", path=path))
         except OSError as exc:
-            self._dispatcher.dispatch(UI_ADD_LOG, tr("settings_use_case.workspace_save_error", error=exc))
+            self.state.add_log(tr("settings_use_case.workspace_save_error", error=exc))
 
     def load_workspace(self, path: str) -> Optional[dict]:
-        """Загружает workspace из JSON-файла и публикует в Store."""
         try:
             with open(path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-            self._dispatcher.dispatch(WORKSPACE_LOADED, data)
-            self._dispatcher.dispatch(UI_ADD_LOG, tr("settings_use_case.workspace_loaded", path=path))
+            self.state.selected_folders = data.get('folders', [])
+            settings_payload = data.get('settings', {})
+            self._merge_settings(settings_payload)
+            self.state.temp_folders = []
+            self.state.add_log(tr("settings_use_case.workspace_loaded", path=path))
             return data
         except (OSError, json.JSONDecodeError) as exc:
-            self._dispatcher.dispatch(UI_ADD_LOG, tr("settings_use_case.workspace_load_error", error=exc))
+            self.state.add_log(tr("settings_use_case.workspace_load_error", error=exc))
             return None

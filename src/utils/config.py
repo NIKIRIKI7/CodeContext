@@ -1,7 +1,6 @@
 import os
 import platform
 import re
-import sys
 import json
 import urllib.request
 import threading
@@ -18,10 +17,6 @@ PRESETS = {
     "Web Frontend": {
         "ext": ".js .ts .jsx .tsx .vue .html .css .scss .json",
         "ign": "node_modules, dist, .next, .nuxt, .git, coverage"
-    },
-    "C++ / Embedded": {
-        "ext": ".cpp .c .h .hpp .ino .cmake .txt .xml",
-        "ign": "build, bin, obj, .git, .vscode"
     }
 }
 
@@ -47,12 +42,10 @@ def get_font_path():
     system = platform.system()
     if system == "Windows":
         path = os.path.join(os.environ.get("WINDIR", "C:\\Windows"), "Fonts", "arial.ttf")
-        if os.path.exists(path):
-            return path
+        if os.path.exists(path): return path
     elif system == "Darwin":
         path = "/Library/Fonts/Arial.ttf"
-        if os.path.exists(path):
-            return path
+        if os.path.exists(path): return path
     else:
         paths = [
             "/usr/share/fonts/truetype/msttcorefonts/Arial.ttf",
@@ -61,14 +54,12 @@ def get_font_path():
             "/usr/share/fonts/gnu-free/FreeSans.ttf"
         ]
         for p in paths:
-            if os.path.exists(p):
-                return p
+            if os.path.exists(p): return p
     return None
 
 FONT_PATH = get_font_path()
 
 def get_app_data_dir() -> str:
-    """Возвращает безопасную системную директорию для хранения данных (Настройки, Логи, Темы)"""
     system = platform.system()
     if system == "Windows":
         base = os.environ.get("LOCALAPPDATA", os.path.expanduser("~\\AppData\\Local"))
@@ -76,41 +67,31 @@ def get_app_data_dir() -> str:
         base = os.path.expanduser("~/Library/Application Support")
     else:
         base = os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config"))
-
     app_dir = os.path.join(base, "CodeContextAI")
     os.makedirs(app_dir, exist_ok=True)
     return app_dir
 
 def get_app_version() -> str:
-    """Поиск VERSION.txt с подъёмом вверх от текущего файла"""
     try:
         start = os.path.dirname(os.path.abspath(__file__))
         d = start
-        for enc in ("utf-8-sig", "utf-16", "utf-8", "cp1252"):
-            try:
-                while True:
-                    candidate = os.path.join(d, "VERSION.txt")
-                    if os.path.exists(candidate):
-                        with open(candidate, "r", encoding=enc) as f:
-                            ver = f.read().strip()
-                            if ver:
-                                return ver
-                    parent = os.path.dirname(d)
-                    if parent == d:
-                        break
-                    d = parent
-            except (UnicodeDecodeError, UnicodeError):
-                d = start
-                continue
+        while True:
+            candidate = os.path.join(d, "VERSION.txt")
+            if os.path.exists(candidate):
+                with open(candidate, "r", encoding="utf-8") as f:
+                    ver = f.read().strip()
+                    if ver: return ver
+            parent = os.path.dirname(d)
+            if parent == d:
+                break
+            d = parent
     except Exception:
         pass
     return "1.0.0"
 
 class PricingManager:
-    """Менеджер для загрузки и кэширования актуальных цен на LLM из онлайн API"""
     _prices_cache: dict[str, float] = {}
     _is_fetched: bool = False
-
     _fallback_prices = {
         "gpt-4o-mini": 0.00000015,
         "gpt-4o": 0.0000025,
@@ -121,9 +102,7 @@ class PricingManager:
 
     @classmethod
     def fetch_prices_sync(cls):
-        """Синхронная загрузка (для CLI)"""
-        if cls._is_fetched:
-            return
+        if cls._is_fetched: return
         try:
             url = "https://openrouter.ai/api/v1/models"
             req = urllib.request.Request(url, headers={"User-Agent": "CodeContextAI-App"})
@@ -145,27 +124,17 @@ class PricingManager:
 
     @classmethod
     def fetch_prices_background(cls):
-        """Асинхронная загрузка в фоне (для GUI)"""
-        if cls._is_fetched:
-            return
+        if cls._is_fetched: return
         thread = threading.Thread(target=cls.fetch_prices_sync, daemon=True)
         thread.start()
 
     @classmethod
     def get_price(cls, model_name: str) -> float:
-        """Возвращает цену за 1 токен для модели (поиск по подстроке)"""
         model_lower = model_name.lower()
-
-        if model_lower in cls._prices_cache:
-            return cls._prices_cache[model_lower]
+        if model_lower in cls._prices_cache: return cls._prices_cache[model_lower]
         for k, v in cls._prices_cache.items():
-            if k in model_lower or model_lower in k:
-                return v
-
-        if model_lower in cls._fallback_prices:
-            return cls._fallback_prices[model_lower]
+            if k in model_lower or model_lower in k: return v
+        if model_lower in cls._fallback_prices: return cls._fallback_prices[model_lower]
         for k, v in cls._fallback_prices.items():
-            if k in model_lower or model_lower in k:
-                return v
-
+            if k in model_lower or model_lower in k: return v
         return 0.0

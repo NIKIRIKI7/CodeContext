@@ -4,15 +4,14 @@ import sys
 import importlib.util
 from typing import List, Dict
 
-from ..api.plugin_api import PluginAPI, IPlugin, UIRegistry
+from ..api.plugin_api import PluginAPI, IPlugin
 from ..utils.logger import app_logger
 from src.i18n import add_plugin_translations
 
 
 class PluginManager:
-    def __init__(self, store, dispatcher, container, ui_registry: UIRegistry):
-        self.store = store
-        self.dispatcher = dispatcher
+    def __init__(self, state, container, ui_registry):
+        self.state = state
         self.container = container
         self.ui_registry = ui_registry
 
@@ -84,7 +83,7 @@ class PluginManager:
             plugin_instance.name = manifest.get("name", p_id)
             plugin_instance.version = manifest.get("version", "1.0.0")
 
-            plugin_api = PluginAPI(p_id, self.store, self.dispatcher, self.container, self.ui_registry)
+            plugin_api = PluginAPI(p_id, self.state, self.container, self.ui_registry)
             plugin_instance.on_init(plugin_api)
 
             self.loaded_plugins[p_id] = plugin_instance
