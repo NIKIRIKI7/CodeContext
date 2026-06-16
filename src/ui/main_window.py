@@ -2,7 +2,7 @@ import os
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
                                QSplitter, QFileDialog, QStackedWidget,
                                QLabel, QGraphicsOpacityEffect, QTabWidget)
-from PySide6.QtCore import Signal, QObject, Qt, QPropertyAnimation, QTimer
+from PySide6.QtCore import Qt, QPropertyAnimation, QTimer
 from PySide6.QtGui import QKeySequence, QShortcut
 
 from ..store.state import AppState
@@ -52,6 +52,12 @@ class ToastNotification(QLabel):
         self.animation.setEndValue(0.0)
         self.animation.finished.connect(self.hide)
         self.animation.start()
+
+
+def dragEnterEvent(event):
+    if event.mimeData().hasUrls():
+        event.acceptProposedAction()
+
 
 class MainWindow(QMainWindow):
     def __init__(self, state: AppState, controller: MainController):
@@ -116,7 +122,7 @@ class MainWindow(QMainWindow):
 
         self.folder_list = FolderList(self._on_edit_folder, self.controller.remove_folder)
         self.file_tree = FileTree(self.controller.toggle_file_exclusion, self.controller.copy_file_with_dependencies)
-        self.action_panel = ActionPanel(self._on_run, self.controller._plugin_api)
+        self.action_panel = ActionPanel(self._on_run, self.controller.plugin_api)
         self.log_panel = LogPanel()
         self.status_bar = StatusBar()
 
@@ -161,10 +167,6 @@ class MainWindow(QMainWindow):
         self.right_layout.setContentsMargins(0, 0, 0, 0)
         self.right_layout.setSpacing(s)
         self.splitter.setSizes([w, self.width() - w])
-
-    def dragEnterEvent(self, event):
-        if event.mimeData().hasUrls():
-            event.acceptProposedAction()
 
     def dropEvent(self, event):
         for url in event.mimeData().urls():
@@ -240,11 +242,11 @@ class MainWindow(QMainWindow):
                     tr("main_window.command.toggle_skeleton", default="Skeleton"): lambda: self.action_panel.chk_skeleton.setChecked(not self.action_panel.chk_skeleton.isChecked()),
                     tr("main_window.command.toggle_mermaid", default="Mermaid"): lambda: self.sidebar.chk_mermaid.setChecked(not self.sidebar.chk_mermaid.isChecked()),
                     tr("main_window.command.clear_workspace", default="Clear"): self.controller.clear_folders,
-                    tr("main_window.command.apply_json_patch", default="JSON Patch"): self.sidebar._open_patch_dialog,
+                    tr("main_window.command.apply_json_patch", default="JSON Patch"): self.sidebar.open_patch_dialog,
                     tr("main_window.command.toggle_theme", default="Theme"): lambda: ThemeManager.apply_theme(mode="dark" if ThemeManager._current_mode == "light" else "light"),
                     tr("main_window.command.check_updates", default="Update"): lambda: self.controller.check_for_updates(get_app_version()),
                 }
-                for a_id, a_data in self.controller._plugin_api.ui.action_buttons.items():
+                for a_id, a_data in self.controller.plugin_api.ui.action_buttons.items():
                     commands[a_data["label"]] = a_data["callback"]
 
                 self._command_palette = CommandPaletteDialog(self, commands, self._close_command_palette)
@@ -255,9 +257,6 @@ class MainWindow(QMainWindow):
                 self._command_palette.show()
                 self._command_palette.raise_()
                 self._command_palette.search_input.setFocus()
-        elif self._command_palette:
-            self._command_palette.close()
-            self._command_palette = None
 
         if state.show_chat:
             if not self._chat_dialog:
@@ -266,9 +265,6 @@ class MainWindow(QMainWindow):
                 self._chat_dialog.update_data(state)
                 self._chat_dialog.show()
                 self._chat_dialog.raise_()
-        elif self._chat_dialog:
-            self._chat_dialog.close()
-            self._chat_dialog = None
 
         if state.show_preview:
             if not self._preview_dialog:
@@ -276,18 +272,12 @@ class MainWindow(QMainWindow):
                 self._preview_dialog.update_data(state)
                 self._preview_dialog.show()
                 self._preview_dialog.raise_()
-        elif self._preview_dialog:
-            self._preview_dialog.close()
-            self._preview_dialog = None
 
         if state.show_tour:
             if not self._tour_dialog:
                 self._tour_dialog = InteractiveTourDialog(self, state.tour_steps, self.controller.close_tour)
                 self._tour_dialog.show()
                 self._tour_dialog.raise_()
-        elif self._tour_dialog:
-            self._tour_dialog.close()
-            self._tour_dialog = None
 
         if state.show_update:
             if not self._update_dialog:
@@ -296,9 +286,6 @@ class MainWindow(QMainWindow):
                 self._update_dialog.raise_()
             else:
                 self._update_dialog.update_data(state.update_info)
-        elif self._update_dialog:
-            self._update_dialog.close()
-            self._update_dialog = None
 
     def _on_ui_settings_change(self):
         s_data = self.sidebar.get_settings()

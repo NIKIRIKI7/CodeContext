@@ -1,349 +1,643 @@
-# Ponytail Audit
+# Ponytail Audit — подробно
 
-> Repo-wide scan for over-engineering. Ranked biggest savings first.
-> Generated: 2026-06-16
-> Metric: `net: -1450 lines, -2 deps possible.`
-
----
-
-## 1. Redux store/dispatcher/actions/state — ~500 lines of event plumbing
-
-**Files:** `src/store/store.py` (263), `src/store/state.py` (104), `src/actions/action_types.py` (58), `src/actions/dispatcher.py` (41)
-
-**Problem:** The app implements a hand-rolled Redux pattern in Python: action type constants, a `Store` with registered handlers, a `Dispatcher` wrapper with throttling, a `State` dataclass, and a deep-copy snapshot mechanism. The single consumer is the PySide6 UI.
-
-**Replacement:** Qt signals/slots or direct method calls on the controller. PySide6 already provides `QObject` signals for decoupled communication — no store, no dispatcher, no action constants, no snapshot copies needed.
-
-```
-# Current: 500+ lines, 4 files
-dispatcher.dispatch(FOLDER_ADD, path)
-# → store._handlers['FOLDER_ADD'](path)
-# → store._state.selected_folders.append(path)
-# → deepcopy → notify listeners
-
-# Replacement: direct signal or call
-controller.add_folder(path)
-# → selected_folders.append(path)
-# → emit signal if needed
-```
-
-**Savings:** ~420 lines net (some state models remain for persistence).
+**Дата:** 2026-06-16
+**Правило:** Остановись на первой ступеньке лестницы, которая держит. Удаление перед добавлением. Stdlib раньше кода. Никаких спекулятивных абстракций.
 
 ---
 
-## 2. PipelineUtils ProcessPoolExecutor + temp file IPC — 156 lines
-
-**File:** `src/utils/pipeline_utils.py`
-
-**Problem:** `process_files_batch_parallel` spawns a `ProcessPoolExecutor`, chunks files, writes each processed file to a temp file on disk (`tempfile.mkstemp`), then the parent reads them all back and deletes them. The worker re-imports `CleanerService`, `SkeletonService`, `TokenService` from scratch per-chunk.
-
-```
-# Temp file dance:
-fd, temp_path = tempfile.mkstemp(prefix="cc_ipc_", suffix=".txt")
-with os.fdopen(fd, 'w') as f:
-    f.write(cleaned)
-# ... later:
-with open(d["temp_file"], 'r') as f:
-    content = f.read()
-os.remove(d["temp_file"])
-```
-
-**Replacement:** `ThreadPoolExecutor` with shared memory — the services are CPU-light (regex, string ops), GIL-safe, and there is zero reason to serialize through disk.
-
-**Savings:** ~60 lines, no temp file I/O, no worker re-imports.
+## Ранжирование (самые жирные cuts первые)
 
 ---
 
-## 3. IntegrationService — 52-line pure delegate facade
+### 1. `delete` `tests/test_monorepo_support.py` — 211 строк мёртвых тестов
 
-**File:** `src/services/integration_service.py`
+**Файл:** `tests/test_monorepo_support.py`
 
-**Problem:** Every method is a one-line delegation:
+**Проблема:** Файл импортирует `MonorepoImportStrategy` из несуществующего модуля:
 
 ```python
-def install_context_menu(self, ...): return self._strategy.install(...)
-def remove_context_menu(self, ...): return self._strategy.remove(...)
-def install_cli(self, ...): return self._strategy.install_cli(...)
-def remove_cli(self, ...): return self._strategy.remove_cli(...)
+from src.services.strategies.import_strategies import MonorepoImportStrategy
+from src.services.import_resolution_service import ImportResolutionService
 ```
 
-**Replacement:** Call `_make_integration_strategy()` at the call site and use the result directly. The facade adds nothing.
+Модуль `src/services/strategies/import_strategies.py` удалён/переименован. Все 26 тестов (26 `assert`) падают с `ModuleNotFoundError`. `ImportResolutionService` существует, но без стратегии бесполезен.
 
-**Savings:** ~50 lines.
-
----
-
-## 4. DIContainer eagerly instantiates all 30+ objects — 138 lines
-
-**File:** `src/di_container.py`
-
-**Problem:** `DIContainer.__init__` creates every service, use case, controller, repository, and plugin API upfront — regardless of CLI vs GUI mode. Many objects take 5-12 constructor args, all wired by hand. Changes require editing the container.
-
-**Replacement:** `@property`-based lazy init or module-level factory functions. Most services are stateless and can be created on demand.
-
-**Savings:** ~80 lines.
+**Решение:** Удалить весь файл. Если монорепо-поддержка понадобится — тесты писать заново с актуальным API.
 
 ---
 
-## 5. FileSystemRepository dual sync/async methods — 141 lines
+### 2. `delete` `tests/test_ci_cd_integration.py` — 115 строк битых тестов
 
-**File:** `src/data/file_system_repository.py`
+**Файл:** `tests/test_ci_cd_integration.py`
 
-**Problem:** Every I/O method has both a sync and async variant:
-
-- `_read_file_sync` + `read_file_async`
-- `_delete_directory_sync` + `delete_directory_async`
-- `_walk_directory_sync` + `walk_directory_async`
-- `get_git_status_async` (async-only, sync never needed)
-
-The async variants all do `await asyncio.to_thread(self._sync_method, ...)`.
-
-**Replacement:** Keep only sync methods, call `asyncio.to_thread` at the single call site in the use case. Reduces method count by half.
-
-**Savings:** ~50 lines.
-
----
-
-## 6. IPlugin ABC with one implementation — 12 lines
-
-**File:** `src/api/plugin_api.py:55-65`
-
-**Problem:** Abstract base class with one abstract method (`on_init`) and one default-noop (`on_shutdown`). One implementation exists (`hello_world` plugin) — it's the example.
-
-**Replacement:** Document the protocol. No ABC needed until a second plugin exists. `on_shutdown` with empty default is already not abstract.
-
-**Savings:** ~12 lines.
-
----
-
-## 7. UIRegistry class — 24-line dict wrapper
-
-**File:** `src/api/plugin_api.py:5-23`
-
-**Problem:** `UIRegistry` holds two dicts and has two two-line methods (`register_sidebar_tab`, `register_action_button`). No behavior beyond `dict[key] = value`.
-
-**Replacement:** `SimpleNamespace(sidebar_tabs={}, action_buttons={})`.
-
-**Savings:** ~22 lines.
-
----
-
-## 8. FormattingService — all static methods, no state
-
-**File:** `src/services/formatting_service.py` (363 lines)
-
-**Problem:** Every method is `@staticmethod` — `_to_markdown`, `_to_plain`, `_to_xml`, `_to_jsonl_mini`, `_to_jsonl_chunks`, `_generate_tree`, `generate_html_diff`, etc. The class is a namespace, not a class. `_env_cache` is the only class-level state, and it's a cache for `_render_custom_template`.
-
-**Replacement:** Module-level functions. If `_env_cache` matters, keep it as `functools.lru_cache` on the template function.
-
-**Savings:** ~5 lines (class keyword + docstring).
-
----
-
-## 9. CleanerService, SkeletonService, TokenService, OutputService — stateless one-use classes
-
-**Files:** `src/services/cleaner_service.py` (79), `src/services/skeleton_service.py` (105), `src/services/token_service.py` (30), `src/services/output_service.py` (70)
-
-**Problem:** Each is a class with one public method (or a few), no instance state, called from a single use case. `CleanerService.clean()`, `SkeletonService.make_skeleton()`, `TokenService.count_tokens()`, `OutputService.copy_to_clipboard()` etc.
-
-**Replacement:** Module-level functions. `TokenService.__init__` tries 3 fallbacks and caches an encoding — extract to `@functools.cache` at module level.
-
-**Savings:** ~20 lines, 4 class keywords.
-
----
-
-## 10. ProcessingService — 45-line wrapper
-
-**File:** `src/services/processing_service.py`
-
-**Problem:** Wraps `FileSystemRepository.read_file_async` with a size check and extension extraction. Called from exactly one use case.
-
-**Replacement:** Inline the 20-line loop into `ProcessWorkspaceUseCase`. The check `os.path.getsize(path) > MAX_FILE_SIZE_MB` and `splitext` are stdlib calls, not service-worthy.
-
-**Savings:** ~45 lines, 1 file.
-
----
-
-## 11. DependencyService strategy-registry pattern — 142 lines across 2 files
-
-**Files:** `src/services/dependency_service.py` (79), `src/services/strategies/dependency_strategies.py` (63)
-
-**Problem:** Full Strategy pattern: ABC (`DependencyParserStrategy`), two implementations (`PythonDependencyParser`, `WebDependencyParser`), a registry (`self._parsers: Dict`), and a registration method (`register_strategy`). The actual logic is: if `.py` → `ast.parse`, if `.js/.ts/...` → regex.
-
-**Replacement:** One function, one `dict[ext → callable]`:
+**Проблема:** Импортирует `Store` из несуществующего `src.store.store`:
 
 ```python
-_PARSERS = {
-    '.py': _parse_python,
-    '.js': _parse_web, '.ts': _parse_web, ...
-}
+from src.store.store import Store       # ← ModuleNotFoundError
 ```
 
-**Savings:** ~100 lines, 1 file.
+Использует устаревший конструктор `ScanWorkspaceUseCase`:
+
+```python
+uc = ScanWorkspaceUseCase(mock_dispatcher, mock_file_service, mock_fs_repo)
+# Реальный конструктор: ScanWorkspaceUseCase(state, file_service, fs_repo)
+```
+
+Все 4 теста (`@pytest.mark.asyncio`) не выполняются.
+
+**Решение:** Удалить весь файл.
 
 ---
 
-## 12. ImportResolutionStrategy ABC + 5 subclasses — 111 lines
+### 3. `stdlib` `integration_strategies.py:_create_workflow` — 250+ строк hand-rolled XML
 
-**File:** `src/services/strategies/import_strategies.py`
+**Файл:** `src/services/strategies/integration_strategies.py:380-647`
 
-**Problem:** ABC, `StandardImportStrategy`, `FSDImportStrategy`, `AtomicDesignImportStrategy`, `DDDImportStrategy`, `MonorepoImportStrategy` — all with the same signature, used from a single `ImportResolutionService`. Each `is_match` is 1-5 lines.
+**Проблема:** Ручная генерация двух XML-файлов (`Info.plist` и `document.wflow`) через f-строки с ручным XML-escaping:
 
-**Replacement:** Single function with pattern matching or dict of lambdas. The monorepo strategy adds real complexity (30 lines), but even that doesn't warrant an ABC.
+```python
+info_plist = f'''<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>{bundle_id}</string>
+    ...'''
+```
 
-**Savings:** ~80 lines, 1 file.
+И ещё 200 строк для `document.wflow`. Вручную экранирует `&`, `<`, `>`:
 
----
+```python
+escaped = command.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+```
 
-## 13. `_THROTTLED_ACTIONS` in Dispatcher — speculative optimization
+**Решение:** Использовать `plistlib` (stdlib, всегда в Python):
 
-**File:** `src/actions/dispatcher.py:7-12`
+```python
+import plistlib
 
-**Problem:** Throttling for UI events implemented before profiling shows it's needed. 5 hardcoded action types, 33ms threshold. In a Qt app, widget updates are already coalesced by the event loop.
+def _create_workflow(self, name: str, command: str) -> None:
+    services_dir = os.path.expanduser("~/Library/Services")
+    os.makedirs(services_dir, exist_ok=True)
+    workflow_path = os.path.join(services_dir, f"{name}.workflow")
+    if os.path.exists(workflow_path):
+        shutil.rmtree(workflow_path)
 
-**Replacement:** Remove. Add when a profiler says "too many dispatches per frame."
+    contents_dir = os.path.join(workflow_path, "Contents")
+    os.makedirs(contents_dir, exist_ok=True)
 
-**Savings:** ~8 lines.
+    # Info.plist
+    info = {
+        "CFBundleIdentifier": f"com.codecontext.ai.{uuid.uuid4().hex}",
+        "CFBundleName": name,
+        "CFBundlePackageType": "BNDL",
+        "CFBundleShortVersionString": "1.0",
+        "CFBundleSignature": "????",
+        "CFBundleVersion": "1.0",
+        "NSServices": [{
+            "NSMenuItem": {"default": name},
+            "NSMessage": "runWorkflowAsService",
+            "NSSendFileTypes": ["public.folder", "public.directory"],
+        }],
+    }
+    with open(os.path.join(contents_dir, "Info.plist"), "wb") as f:
+        plistlib.dump(info, f)
 
----
+    # document.wflow — та же схема с plistlib.dump()
+```
 
-## 14. Duplicate integration strategy factories
-
-**Files:** `src/di_container.py:40-46`, `src/services/integration_service.py:22-29`
-
-**Problem:** `_make_integration_strategy()` in DIContainer and `_create_default_strategy()` in IntegrationService do the exact same thing: detect OS and return the right strategy class.
-
-**Replacement:** One factory. DIContainer's version is the one used; IntegrationService's version is only a fallback that never fires because DI always provides a strategy.
-
-**Savings:** ~8 lines.
-
----
-
-## 15. Duplicate CLI/GUI settings in AppSettings — 12 extra fields
-
-**File:** `src/store/state.py`
-
-**Problem:** Six pairs of settings where the CLI version shadows the GUI version:
-
-- `minify` + `cli_minify`
-- `remove_comments` + `cli_remove_comments`
-- `remove_secrets` + `cli_remove_secrets`
-- `include_tree` + `cli_include_tree`
-- `skeleton_mode` + `cli_skeleton_mode`
-- `use_gitignore` + `cli_use_gitignore`
-
-CLI mode overrides are handled at the entry point (`cli_controller.py:164-166`). The dual fields add complexity to validation, persistence, and the state model.
-
-**Replacement:** One setting per concept. CLI passes overrides as kwargs, not as separate settings fields.
-
-**Savings:** ~12 lines, 6 fields removed from 2 dataclasses.
-
----
-
-## 16. `pyperclip` dependency — already have PySide6
-
-**File:** `src/services/output_service.py:17`, `requirements.txt`
-
-**Problem:** `pyperclip` is installed for clipboard access. The app already depends on PySide6, which has `QApplication.clipboard().setText()` and `QApplication.clipboard().text()`.
-
-**Replacement:** Use `QApplication.clipboard()` — 0 new deps, working in the GUI path already. For CLI mode, `pyperclip` is the correct fallback (no Qt event loop).
-
-**Savings:** -1 dep (optional: import inside CLI path only).
+Сокращение: с ~270 строк до ~20-30.
 
 ---
 
-## 17. `fpdf` dependency — PDF export is niche
+### 4. `shrink` `pyproject.toml` — дублирующийся entry point
 
-**File:** `src/services/output_service.py:48`, `requirements.txt`
+**Файл:** `pyproject.toml:45-46,62-63`
 
-**Problem:** `fpdf` is a dependency for one feature (PDF export). The conversion is lossy (encodes to `latin-1` with replacement).
+```toml
+[project.scripts]
+codecontext = "codecontext:main"        # строка 46
 
-**Replacement:** Save as `.md` — text output is the same content. If PDF is genuinely needed, it can be an optional pip install with a `try/except ImportError`.
+[project.entry-points.gui_scripts]
+codecontext = "codecontext:main"        # строка 63 — идентично!
+```
 
-**Savings:** -1 dep.
+`gui_scripts` на Windows создаёт `.exe`-обёртку без консоли. Если это различие не нужно — лишняя секция. Если нужно — оставить только `gui_scripts`, убрать `scripts`.
 
----
-
-## 18. `get_app_version` loops over 4 encodings — YAGNI
-
-**File:** `src/utils/config.py:86-104`
-
-**Problem:** The function iterates `("utf-8-sig", "utf-16", "utf-8", "cp1252")` looking for the right encoding for a file the project controls (`VERSION.txt`).
-
-**Replacement:** `open(candidate, encoding='utf-8')`. The file is written by `bumpversion` — it's always UTF-8.
-
-**Savings:** ~15 lines.
+**Решение:** Удалить `[project.entry-points.gui_scripts]` (или `[project.scripts]`, если консоль не нужна).
 
 ---
 
-## 19. `create_default_logo` draws a logo dynamically — 15 lines
+### 5. `yagni` `scan_use_case.py` — кэш токенов, который никогда не попадает
 
-**File:** `main.py:38-54`
+**Файл:** `src/use_cases/scan_use_case.py:18-34`
 
-**Problem:** If `logo.png` doesn't exist, the app paints a "fake" QImage logo and saves it. This is a fallback for a bundle artifact that the installer/packager should ship.
+```python
+token_cache = self._load_cache()
+new_cache = {}
+for path in file_paths:
+    stat = os.stat(path)
+    cache_key = f"{path}_{stat.st_size}_{stat.st_mtime}"
+    if cache_key in token_cache:          # ← никогда не совпадёт
+        tokens = token_cache[cache_key]
+    else:
+        tokens = stat.st_size // 4
+    new_cache[cache_key] = tokens
 
-**Replacement:** `assets/images/logo.png` exists in the repo. If frozen build doesn't include it, that's a packaging bug, not a runtime concern. Remove fallback, let it crash-loud if missing.
+self._save_cache(new_cache)
+```
 
-**Savings:** ~15 lines.
+Ключ кэша включает `st_mtime` (наносекунды). Файл перечитывается сразу после сканирования — `st_mtime` гарантированно изменится. Кэш всегда промахивается. Пишет JSON-файл на диск каждый раз.
 
----
-
-## 20. `AsyncRuntime` — 46 lines of boilerplate
-
-**File:** `src/utils/async_runtime.py`
-
-**Problem:** Custom thread + event loop management class. The app needs to run coroutines from Qt's synchronous event loop.
-
-**Replacement:** Use `qasync` if already available (not currently a dep). Or, more practically, the class is fine — just note it could be replaced with `asyncio.run()` for CLI-only calls and `qasync` for GUI mode. Flagged for awareness, not deletion — the need is real.
-
-**Savings:** 0 now, -46 if `qasync` is adopted.
-
----
-
-## 21. Empty `__init__.py` files — 10 clutter files
-
-**Locations:** `src/store/__init__.py`, `src/actions/__init__.py`, `src/use_cases/__init__.py`, `src/controllers/__init__.py`, `src/services/__init__.py`, `src/services/strategies/__init__.py`, `src/ui/__init__.py`, `src/ui/components/__init__.py`, `src/utils/__init__.py`, `tests/__init__.py`, `src/data/__init__.py`
-
-**Problem:** 11 empty `__init__.py` files. Python 3.3+ supports namespace packages without `__init__.py`. The files serve no purpose.
-
-**Replacement:** Delete them all. They're resolved as namespace packages implicitly.
-
-**Savings:** 0 lines of logic, 11 files removed.
+**Решение:** Удалить `_load_cache`, `_save_cache` и всю кэш-логику (строки 18-34, 67, 93). `tokens = stat.st_size // 4` вычисляется мгновенно, IO здесь не узкое место.
 
 ---
 
-## 22. `PRESETS` with "C++ / Embedded" — unused
+### 6. `delete` `pipeline_utils.py` — мёртвый последовательный метод
 
-**File:** `src/utils/config.py:21-25`
+**Файл:** `src/utils/pipeline_utils.py:60-70`
 
-**Problem:** A preset for C++ / Embedded that no UI element references and no CLI code selects. The app has no C++ detection.
+```python
+@staticmethod
+def process_files_batch(raw_files, options):
+    # serial version — никем не вызывается
+    ...
 
-**Replacement:** Delete. Add when a C++ dev profile is actually needed.
+@staticmethod
+def process_files_batch_parallel(raw_files, options):
+    # единственный используемый
+    ...
+```
 
-**Savings:** ~5 lines.
+Метод `process_files_batch` — полный дубликат логики `process_files_batch_parallel`, только без `ThreadPoolExecutor`. Ни одного вызова во всей кодовой базе.
+
+**Решение:** Удалить метод `process_files_batch` (строки 60-70).
 
 ---
 
-## 23. `_watcher_loop` polling thread — manual `os.walk`-based file watcher
+### 7. `shrink` `patch_use_case.py` — 3 запасных regex, из которых нужен только первый
 
-**File:** `src/services/file_service.py:113-140`
+**Файл:** `src/use_cases/patch_use_case.py:13-33`
 
-**Problem:** A polling file watcher that does `os.walk` every `interval` seconds and compares `mtime`. This is what `watchdog` or inotify/kqueue do natively. But since adding `watchdog` would be a new dep, this is borderline.
+```python
+# Fallback 1 — покрывает >99% случаев
+blocks = re.findall(r'```(?:json)?\s*(.*?)\s*```', patch_str, re.DOTALL)
 
-**Flag:** Consider `watchdog` if the watcher becomes a bottleneck. For now, it's functional and zero-dep. Not flagged as delete.
+if not blocks:                          # Fallback 2 — ловит голый JSON-массив
+    match = re.search(r'\[\s*\{.*?\}\s*\]', patch_str, re.DOTALL)
+    ...
+
+if not blocks:                          # Fallback 3 — ловит голый JSON-объект
+    match = re.search(r'\{\s*"action".*?\}', patch_str, re.DOTALL)
+    ...
+```
+
+Fallback 2 и 3 никогда не срабатывают: LLM (все известные) всегда оборачивают JSON в ```json ... ```. Если понадобится — добавить в момент, когда тест покажет обратное.
+
+**Решение:** Удалить fallback 2 и 3 (строки 22-31).
 
 ---
 
-## Summary
+### 8. `yagni` `di_container.py:37` — избыточный SimpleNamespace
 
-| Category | Count | Lines affected |
-|----------|-------|---------------|
-| Delete (YAGNI / dead) | 10 | ~720 |
-| Shrink (simplify) | 5 | ~250 |
-| Stdlib (use platform) | 2 | ~10 |
-| Native (use Qt) | 1 | ~5 |
-| Dep removal | 2 | -2 deps |
+**Файл:** `src/di_container.py:37`
 
-**net: -1450 lines, -2 deps possible.**
+```python
+self.ui_registry = SimpleNamespace(sidebar_tabs={}, action_buttons={})
+```
 
-*Leanest wins: drop pyperclip + fpdf, flatten strategies, delete the redundant service wrappers, and replace Redux with Qt signals.*
+Строкой ниже:
+
+```python
+self.plugin_api = PluginAPI("core", self.state, self, self.ui_registry)
+```
+
+А `PluginAPI.__init__` уже имеет:
+
+```python
+if ui_registry is None:
+    ui_registry = SimpleNamespace(sidebar_tabs={}, action_buttons={})
+self.ui = ui_registry
+```
+
+То есть дефолт есть в обоих местах. Повтор.
+
+**Решение:** Убрать `self.ui_registry` из DIContainer, передавать `None` в PluginAPI и PluginManager, или завести один раз.
+
+---
+
+### 9. `yagni` `plugin_api.py:16-19` — hasattr-защита при гарантированном наличии
+
+**Файл:** `src/api/plugin_api.py:16-19`
+
+```python
+if not hasattr(self.ui, 'sidebar_tabs'):
+    self.ui.sidebar_tabs = {}
+if not hasattr(self.ui, 'action_buttons'):
+    self.ui.action_buttons = {}
+```
+
+`self.ui` это либо `SimpleNamespace(sidebar_tabs={}, action_buttons={})` (дефолт), либо объект от `DIContainer`, у которого эти атрибуты тоже есть. `hasattr` никогда не вернёт `False`.
+
+**Решение:** Удалить guard-блок (строки 16-19).
+
+---
+
+### 10. `yagni` `tour_service.py` — класс с одним методом
+
+**Файл:** `src/services/tour_service.py:5-57`
+
+```python
+class TourService:
+    """Доменный сервис интерактивного тура."""
+
+    def get_tour_steps(self) -> List[Dict[str, str]]:
+        return [
+            {"title": tr("tour_service.welcome.title"), "text": tr("tour_service.welcome.text")},
+            ...
+        ]
+```
+
+Ни состояния, ни инъекции, ни наследования. Просто список диктов.
+
+**Решение:** Заменить на константу:
+
+```python
+TOUR_STEPS: List[Dict[str, str]] = [
+    {"title": tr("tour_service.welcome.title"), "text": tr("tour_service.welcome.text")},
+    ...
+]
+```
+
+Убрать класс. `main_controller.py` будет импортировать `TOUR_STEPS` напрямую.
+
+---
+
+### 11. `yagni` `settings_repository.py` — класс-обёртка для `json.load`/`json.dump`
+
+**Файл:** `src/data/settings_repository.py:1-29`
+
+```python
+class SettingsRepository:
+    def __init__(self, filename: str = "user_settings.json"):
+        self.filepath = os.path.join(get_app_data_dir(), filename)
+
+    def load(self) -> Dict[str, Any]:
+        if not os.path.exists(self.filepath):
+            return {}
+        with open(self.filepath, 'r') as f:
+            return json.load(f)
+
+    def save(self, settings_dict):
+        with open(self.filepath, 'w') as f:
+            json.dump(settings_dict, f, ensure_ascii=False, indent=2)
+```
+
+7 строк логики, обёрнутых в класс с конструктором.
+
+**Решение:** Две свободные функции:
+
+```python
+def load_settings(path=None):
+    path = path or os.path.join(get_app_data_dir(), "user_settings.json")
+    if not os.path.exists(path):
+        return {}
+    with open(path, 'r') as f:
+        return json.load(f)
+
+def save_settings(settings_dict, path=None):
+    path = path or os.path.join(get_app_data_dir(), "user_settings.json")
+    with open(path, 'w') as f:
+        json.dump(settings_dict, f, ensure_ascii=False, indent=2)
+```
+
+---
+
+### 12. `shrink` `formatting_service.py` — `maxsize=5` для одного шаблона
+
+**Файл:** `src/services/formatting_service.py:106-108`
+
+```python
+@lru_cache(maxsize=5)
+def _get_jinja_env(template_dir: str):
+    return Environment(loader=FileSystemLoader(template_dir), ...)
+```
+
+Пул на 5 окружений Jinja, хотя в рантайме загружается ровно один шаблон (кастомный). Разные `template_dir` не используются.
+
+**Решение:** `@lru_cache(maxsize=1)` или `@lru_cache` без аргумента (дефолт 128 — всё ещё перебор, но не принципиально).
+
+---
+
+### 13. `shrink` `github_service.py` — `functools.partial` для одного вызова
+
+**Файл:** `src/services/github_service.py:7,55`
+
+```python
+import functools
+
+# ...
+await asyncio.to_thread(functools.partial(shutil.rmtree, dest_path, ignore_errors=True))
+```
+
+`functools.partial` вызван ровно один раз, для оборачивания `shutil.rmtree` с одним предзаполненным аргументом.
+
+**Решение:** `lambda` или прямой вызов:
+
+```python
+await asyncio.to_thread(lambda: shutil.rmtree(dest_path, ignore_errors=True))
+```
+
+И удалить `import functools`.
+
+---
+
+### 14. `delete` `.gitignore:54-57` — избыточные пути
+
+```
+__pycache__/              # ← строка 2, уже покрывает всё
+...
+src/__pycache__/          # строка 54 — дубль
+src/logic/__pycache__/    # строка 55 — дубль
+src/services/__pycache__/ # строка 56 — дубль
+src/ui/__pycache__/       # строка 57 — дубль
+```
+
+Правило `__pycache__/` на строке 2 уже игнорирует все `__pycache__` на любом уровне вложенности.
+
+**Решение:** Удалить строки 54-57.
+
+---
+
+### 15. `delete` `pipeline_utils.py:2` — `import math` не используется
+
+```python
+import math      # ← never referenced in file
+```
+
+**Решение:** Удалить строку.
+
+---
+
+### 16. `delete` `file_service.py:4` — `import time` не используется
+
+```python
+import time      # ← never referenced in file
+```
+
+Ни одного `time.sleep()` или `time.time()` в файле.
+
+**Решение:** Удалить строку.
+
+---
+
+### 17. `delete` `theme_manager.py:485` — мёртвый аргумент format()
+
+```python
+qss = QSS_TEMPLATE.format(
+    ...
+    c_secondary_fg=selected_mode_colors.get("secondary_fg", "#000000"),  # строка 485
+    ...
+)
+```
+
+`{c_secondary_fg}` ни разу не встречается в `QSS_TEMPLATE`. Параметр передаётся в `format()` но никуда не подставляется.
+
+**Решение:** Удалить строку 485.
+
+---
+
+### 18. `delete` `analytics_panel.py:3` — `QHBoxLayout` не используется
+
+```python
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem, \
+    QHeaderView, QProgressBar, QHBoxLayout
+```
+
+`QHBoxLayout` нигде не вызывается в файле. Панель использует только `QVBoxLayout`.
+
+**Решение:** Удалить `QHBoxLayout` из импорта.
+
+---
+
+### 19. `delete` `sidebar.py:2` — `import sys` не используется
+
+```python
+import sys        # ← never referenced in file
+```
+
+**Решение:** Удалить строку.
+
+---
+
+### 20. `delete` `main_window.py:5` — `Signal`, `QObject` не используются
+
+```python
+from PySide6.QtCore import Signal, QObject, Qt, QPropertyAnimation, QTimer
+```
+
+`Signal` и `QObject` импортированы, но в файле `main_window.py` ни разу не упоминаются (только `Qt`, `QPropertyAnimation`, `QTimer` используются). `Signal` и `QObject` остались от рефакторинга.
+
+**Решение:** Удалить `Signal, QObject` из импорта.
+
+---
+
+### 21. `shrink` `cli_controller.py` — `time.sleep(3)` вместо `input()`
+
+**Файл:** `src/controllers/cli_controller.py:208-211`
+
+```python
+@staticmethod
+def _keep_window_open():
+    print(tr("cli_controller.window_closing"))
+    time.sleep(3)
+```
+
+Ждёт 3 секунды вслепую. Пользователь всё равно не может прочитать сообщение, если закрывается.
+
+**Решение:** Заблокировать до Enter:
+
+```python
+@staticmethod
+def _keep_window_open():
+    input(tr("cli_controller.window_closing") + " ")
+```
+
+Ponytail: если stdin не TTY — пропустить. Можно добавить `sys.stdin.isatty()` guard.
+
+---
+
+### 22. `shrink` `output_service.py` — Qt-запасной путь, который никогда не используется
+
+**Файл:** `src/services/output_service.py:5,8-18`
+
+```python
+from PySide6.QtGui import QGuiApplication
+
+def copy_to_clipboard(text: str):
+    # ponytail: Qt-буфер теряет данные при мгновенном выходе из CLI.
+    # Возвращаем надежный pyperclip для работы без event loop.
+    try:
+        import pyperclip
+        pyperclip.copy(text)
+        return
+    except ImportError:
+        app = QGuiApplication.instance() or QGuiApplication(sys.argv)
+        app.clipboard().setText(text)
+        app.processEvents()
+```
+
+В комментарии `ponytail:` сказано, что Qt-путь ненадёжен. `pyperclip` есть в зависимостях `pyproject.toml`. Если нет — либо установить, либо упасть с понятной ошибкой.
+
+**Решение:** Убрать Qt fallback:
+
+```python
+def copy_to_clipboard(text: str):
+    import pyperclip
+    pyperclip.copy(text)
+```
+
+И удалить `from PySide6.QtGui import QGuiApplication`.
+
+---
+
+### 23. `shrink` `file_tree.py` — два идентичных рекурсивных метода
+
+**Файл:** `src/ui/components/file_tree.py:163-185`
+
+```python
+def _propagate_check(self, parent_item, state):         # строка 163
+    self._is_updating = True
+    for row in range(parent_item.rowCount()):
+        child = parent_item.child(row)
+        child.setCheckState(Qt.Checked if state else Qt.Unchecked)
+        path = child.data(Qt.UserRole)
+        is_file = child.data(Qt.UserRole + 1)
+        if path and is_file:
+            self.on_toggle(path, state)
+        if child.hasChildren():
+            self._propagate_check_recursive(child, state)
+    self._is_updating = False
+
+def _propagate_check_recursive(self, parent_item, state):  # строка 176
+    for row in range(parent_item.rowCount()):
+        child = parent_item.child(row)
+        child.setCheckState(Qt.Checked if state else Qt.Unchecked)
+        path = child.data(Qt.UserRole)
+        is_file = child.data(Qt.UserRole + 1)
+        if path and is_file:
+            self.on_toggle(path, state)
+        if child.hasChildren():
+            self._propagate_check_recursive(child, state)
+```
+
+Разница: в первом есть `_is_updating` guard, во втором — нет. Тело цикла идентично.
+
+**Решение:** Объединить: `_propagate_check` принимает необязательный флаг `set_updating=True`, вызывает себя рекурсивно. Убрать `_propagate_check_recursive`.
+
+---
+
+### 24. `yagni` `main_controller.py` — `tour_service` мог бы быть функцией
+
+**Файл:** `src/controllers/main_controller.py:33,47,300`
+
+```python
+self._tour_service = tour_service
+
+# Единственное использование:
+self.state.tour_steps = self._tour_service.get_tour_steps()
+```
+
+`TourService` — класс с одним методом без состояния (см. finding #10). Впрыскивается через конструктор, но мог бы быть импортирован как константа.
+
+**Решение:** Импортировать `TOUR_STEPS` напрямую, удалить `tour_service` из конструктора `MainController`.
+
+---
+
+### 25. `shrink` `di_container.py` — `@property` создаёт новые инстансы при каждом доступе
+
+**Файл:** `src/di_container.py:42-92`
+
+```python
+@property
+def file_service(self):
+    return FileService(self.fs_repo)          # новый объект каждый раз
+
+@property
+def github_service(self):
+    return GitHubService()                    # новый объект каждый раз
+# и так 8 раз
+```
+
+Каждый доступ через `container.file_service` создаёт новый экземпляр. Без сайд-эффектов (нет состояния), но лишняя аллокация.
+
+**Решение:** `@functools.cached_property` для stateless сервисов (все, кроме `main_controller` и `cli_controller`, которые уже кэшируются через `hasattr`).
+
+```python
+@functools.cached_property
+def file_service(self):
+    return FileService(self.fs_repo)
+```
+
+---
+
+### 26. `stdlib` `pipeline_utils.py` — hand-rolled BFS вместо asyncio.TaskGroup
+
+**Файл:** `src/utils/pipeline_utils.py:73-91`
+
+```python
+@staticmethod
+async def resolve_and_collect_dependencies_async(initial_queue, visited_paths, all_paths, is_deep, fs_repo):
+    queue = initial_queue
+    while queue:
+        curr_path, depth = queue.pop(0)   # O(n) pop
+        if curr_path in visited_paths:
+            continue
+        ...
+        for imp in imports:
+            for p in import_resolution_service.resolve(imp, all_paths):
+                if p not in visited_paths:
+                    queue.append((p, depth + 1))
+```
+
+Hand-rolled BFS с `list.pop(0)` — O(n²). Python 3.11+ имеет `asyncio.TaskGroup`.
+
+**Решение:** Использовать `asyncio.Queue` + `TaskGroup` для конкурентного разрешения зависимостей. Но это не срочно — метод вызывается редко. Ponytail: оставить как есть, пометить `# ponytail: list.pop(0), заменить на collections.deque если очередь станет >1000`.
+
+---
+
+### 27. `delete` `src/services/` — отсутствует `__init__.py`
+
+`src/api/__init__.py` — есть
+`src/data/__init__.py` — есть
+`src/i18n/__init__.py` — есть
+`src/store/__init__.py` — есть
+`src/ui/__init__.py` — есть
+`src/utils/__init__.py` — есть
+**`src/services/__init__.py` — нет**
+
+Python 3.3+ работает с implicit namespace packages, поэтому код не падает. Но неконсистентно с остальными пакетами, и некоторые тулы (mypy, coverage) могут сбиваться.
+
+**Решение:** Добавить пустой `src/services/__init__.py`.
+
+---
+
+## Итог
+
+```
+net: -623 lines, 0 deps possible.
+```
+
+| Категория | Строк | Штук |
+|-----------|-------|------|
+| Удаление битых тестов | -326 | 2 |
+| plistlib вместо hand-rolled XML | -250 | 1 |
+| Мёртвые импорты и аргументы | -27 | 6 |
+| YAGNI-классы/защиты | -20 | 5 |
+| Дублирующийся entry point | -3 | 1 |
+| Избыточный .gitignore | -4 | 1 |
+| Отсутствующий __init__.py | 0 | 1 |
+
+0 новых зависимостей — всё решается stdlib (`plistlib`) или удалением.
+
+`Lean already. Ship.` когда эти 27 finding'ов адресованы.

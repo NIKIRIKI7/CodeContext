@@ -51,22 +51,11 @@ def _web_skeleton(code: str) -> str:
     return "\n".join(skeleton_lines)
 
 class PythonSkeletonTransformer(ast.NodeTransformer):
-    def visit_FunctionDef(self, node: ast.FunctionDef) -> ast.FunctionDef:
-        docstring = ast.get_docstring(node)
-        new_body = []
-        if docstring: new_body.append(ast.Expr(value=ast.Constant(value=docstring)))
-        new_body.append(ast.Expr(value=ast.Constant(value=Ellipsis)))
-        node.body = new_body
+    # ponytail: merged identical visit_FunctionDef and visit_AsyncFunctionDef logic, deleted redundant visit_ClassDef
+    def visit_FunctionDef(self, node: ast.FunctionDef | ast.AsyncFunctionDef):
+        d = ast.get_docstring(node)
+        node.body = [ast.Expr(value=ast.Constant(value=d))] if d else []
+        node.body.append(ast.Expr(value=ast.Constant(value=Ellipsis)))
         return node
 
-    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> ast.AsyncFunctionDef:
-        docstring = ast.get_docstring(node)
-        new_body = []
-        if docstring: new_body.append(ast.Expr(value=ast.Constant(value=docstring)))
-        new_body.append(ast.Expr(value=ast.Constant(value=Ellipsis)))
-        node.body = new_body
-        return node
-
-    def visit_ClassDef(self, node: ast.ClassDef) -> ast.ClassDef:
-        self.generic_visit(node)
-        return node
+    visit_AsyncFunctionDef = visit_FunctionDef

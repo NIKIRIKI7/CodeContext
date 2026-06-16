@@ -59,5 +59,3 @@ src = ["**/*"]
 "share/codecontext-ai/templates" = ["templates/*.jinja2"]
 "share/codecontext-ai/themes" = ["themes/*.json"]
 
-[project.entry-points.gui_scripts]
-codecontext = "codecontext:main"

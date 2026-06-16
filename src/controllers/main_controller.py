@@ -17,6 +17,7 @@ from ..services.plugin_manager import PluginManager
 
 from ..services import formatting_service
 from ..services import output_service
+from ..services.tour_service import TOUR_STEPS
 
 class MainController:
     def __init__(
@@ -30,7 +31,6 @@ class MainController:
         updater_use_case: UpdaterUseCase,
         integration_strategy,
         fs_repo: FileSystemRepository,
-        tour_service,
         llm_checker,
         plugin_api: PluginAPI,
         plugin_manager: PluginManager
@@ -44,7 +44,6 @@ class MainController:
         self._updater_uc = updater_use_case
         self._integration_strategy = integration_strategy
         self._fs_repo = fs_repo
-        self._tour_service = tour_service
         self._llm_checker = llm_checker
         self._plugin_api = plugin_api
         self._plugin_manager = plugin_manager
@@ -297,7 +296,7 @@ class MainController:
         self.state.notify()
 
     def show_tour(self):
-        self.state.tour_steps = self._tour_service.get_tour_steps()
+        self.state.tour_steps = TOUR_STEPS
         self.state.show_tour = True
         self.state.notify()
 
@@ -363,3 +362,7 @@ class MainController:
             return os.path.normpath(clean)
         except (TypeError, ValueError, OSError):
             return clean
+
+    @property
+    def plugin_api(self):
+        return self._plugin_api

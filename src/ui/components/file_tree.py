@@ -170,19 +170,8 @@ class FileTree(QWidget):
             if path and is_file:
                 self.on_toggle(path, state)
             if child.hasChildren():
-                self._propagate_check_recursive(child, state)
+                self._propagate_check(child, state)
         self._is_updating = False
-
-    def _propagate_check_recursive(self, parent_item, state):
-        for row in range(parent_item.rowCount()):
-            child = parent_item.child(row)
-            child.setCheckState(Qt.Checked if state else Qt.Unchecked)
-            path = child.data(Qt.UserRole)
-            is_file = child.data(Qt.UserRole + 1)
-            if path and is_file:
-                self.on_toggle(path, state)
-            if child.hasChildren():
-                self._propagate_check_recursive(child, state)
 
     def _apply_filter(self):
         text = self.search.text()
@@ -270,7 +259,7 @@ class FileTree(QWidget):
 
     def _exclude_all_children(self, parent_item):
         self._is_updating = True
-        self._propagate_check_recursive(parent_item, False)
+        self._propagate_check(parent_item, False)
         parent_item.setCheckState(Qt.Unchecked)
         self._is_updating = False
 

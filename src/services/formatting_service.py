@@ -103,7 +103,7 @@ def generate_html_diff(source_text: str, target_text: str, colors: dict, fonts: 
     custom_css = f'<style type="text/css">\ntable.diff {{font-family:{font_family}; font-size:12px; border:none; width:100%;}}\n.diff_add {{background-color:{colors.get("diff_add","#e6ffed")};}}\n.diff_sub {{background-color:{colors.get("diff_sub","#ffeef0")};}}\n.diff_chg {{background-color:{colors.get("diff_chg","#fff5b1")};}}\n.diff_header {{background-color:{colors.get("diff_hdr","#f0f0f0")}; color:#999;}}\ntd {{padding:2px 4px;}}\n</style>'
     return re.sub(r'<style type="text/css">.*?</style>', custom_css, html_diff, flags=re.DOTALL)
 
-@lru_cache(maxsize=5)
+@lru_cache(maxsize=1)
 def _get_jinja_env(template_dir: str):
     return Environment(loader=FileSystemLoader(template_dir), autoescape=select_autoescape(['html', 'xml']))
 

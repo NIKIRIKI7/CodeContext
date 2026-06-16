@@ -4,7 +4,6 @@ import asyncio
 import tempfile
 import subprocess
 import shutil
-import functools
 import urllib.request
 
 from src.i18n import tr
@@ -52,7 +51,7 @@ class GitHubService:
             app_logger.error(f"[GitHubService] Clone failed: {e}")
             if is_temp:
                 try:
-                    await asyncio.to_thread(functools.partial(shutil.rmtree, dest_path, ignore_errors=True))
+                    await asyncio.to_thread(lambda: shutil.rmtree(dest_path, ignore_errors=True))
                 except OSError:
                     pass
             raise e

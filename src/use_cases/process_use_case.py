@@ -13,6 +13,50 @@ from ..services import dependency_service, formatting_service, output_service, t
 
 _CHECKPOINT_FILE = os.path.join(get_app_data_dir(), "processing_checkpoint.json")
 
+
+def _save_checkpoint(processed: List[ProcessedFile]) -> None:
+    try:
+        data = [{"path": p.path, "content": p.content, "tokens": p.tokens} for p in processed]
+        with open(_CHECKPOINT_FILE, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False)
+    except Exception:
+        pass
+
+
+def _clear_checkpoint() -> None:
+    try:
+        if os.path.exists(_CHECKPOINT_FILE):
+            os.remove(_CHECKPOINT_FILE)
+    except Exception:
+        pass
+
+
+async def _export(target: str, text: str, save_path: Optional[str], state: AppState):
+    if target == 'editor':
+        external_cmd = getattr(state.settings, 'external_editor', '')
+        await asyncio.to_thread(output_service.open_in_editor, text, external_cmd)
+        state.add_log(tr("process_use_case.export.editor"))
+    elif target == 'clipboard':
+        output_service.copy_to_clipboard(text)
+    elif target == 'stdout':
+        import sys
+        out = sys.__stdout__
+        out.reconfigure(encoding='utf-8')
+        out.write(text)
+        out.write("\n")
+        out.flush()
+    elif target == 'preview':
+        state.preview_text = text
+        state.show_preview = True
+    elif target == 'chat':
+        state.chat_context = text
+        state.show_chat = True
+        state.add_log(tr("process_use_case.export.chat_loaded"))
+    elif target == 'file' and save_path:
+        output_service.save_to_file(text, save_path)
+        state.add_log(tr("process_use_case.export.saved", path=save_path))
+
+
 class ProcessWorkspaceUseCase:
     def __init__(self, fs_repo):
         self.fs_repo = fs_repo
@@ -65,7 +109,7 @@ class ProcessWorkspaceUseCase:
             processed = await asyncio.to_thread(PipelineUtils.process_files_batch_parallel, raw_files, state.settings)
 
             if getattr(state.settings, 'save_checkpoints', False):
-                self._save_checkpoint(processed)
+                _save_checkpoint(processed)
 
             state.processed_files = processed
 
@@ -81,7 +125,7 @@ class ProcessWorkspaceUseCase:
             )
 
             if getattr(state.settings, 'save_checkpoints', False):
-                self._clear_checkpoint()
+                _clear_checkpoint()
 
             final_tokens = await asyncio.to_thread(token_service.count_tokens, text_result)
 
@@ -104,7 +148,7 @@ class ProcessWorkspaceUseCase:
             state.progress = 0.95
             state.notify()
 
-            await self._export(target, text_result, save_path, state)
+            await _export(target, text_result, save_path, state)
 
             state.status_message = tr("store.status.done")
             state.progress = 1.0
@@ -119,21 +163,6 @@ class ProcessWorkspaceUseCase:
             gc.collect()
             state.is_loading = False
             state.notify()
-
-    def _save_checkpoint(self, processed: List[ProcessedFile]) -> None:
-        try:
-            data = [{"path": p.path, "content": p.content, "tokens": p.tokens} for p in processed]
-            with open(_CHECKPOINT_FILE, 'w', encoding='utf-8') as f:
-                json.dump(data, f, ensure_ascii=False)
-        except Exception:
-            pass
-
-    def _clear_checkpoint(self) -> None:
-        try:
-            if os.path.exists(_CHECKPOINT_FILE):
-                os.remove(_CHECKPOINT_FILE)
-        except Exception:
-            pass
 
     async def _stream_to_file(self, file_paths: list, state: AppState, save_path: str) -> int:
         settings = state.settings
@@ -167,28 +196,3 @@ class ProcessWorkspaceUseCase:
 
         state.add_log(tr("process_use_case.export.saved", path=save_path))
         return total_tokens
-
-    async def _export(self, target: str, text: str, save_path: Optional[str], state: AppState):
-        if target == 'editor':
-            external_cmd = getattr(state.settings, 'external_editor', '')
-            await asyncio.to_thread(output_service.open_in_editor, text, external_cmd)
-            state.add_log(tr("process_use_case.export.editor"))
-        elif target == 'clipboard':
-            output_service.copy_to_clipboard(text)
-        elif target == 'stdout':
-            import sys
-            out = sys.__stdout__
-            out.reconfigure(encoding='utf-8')
-            out.write(text)
-            out.write("\n")
-            out.flush()
-        elif target == 'preview':
-            state.preview_text = text
-            state.show_preview = True
-        elif target == 'chat':
-            state.chat_context = text
-            state.show_chat = True
-            state.add_log(tr("process_use_case.export.chat_loaded"))
-        elif target == 'file' and save_path:
-            output_service.save_to_file(text, save_path)
-            state.add_log(tr("process_use_case.export.saved", path=save_path))

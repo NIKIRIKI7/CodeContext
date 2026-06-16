@@ -2,7 +2,7 @@ import json
 import os
 from typing import Optional
 from src.i18n import tr
-from ..data.settings_repository import SettingsRepository
+from ..data.settings_repository import load as load_settings, save as save_settings
 from ..data.file_system_repository import FileSystemRepository
 from ..store.state import AppState, AppSettings
 from ..utils.config import PRESETS, DEFAULT_SYSTEM_PROMPT
@@ -33,33 +33,40 @@ _DEFAULT_SETTINGS = {
 }
 
 
+def _apply_language(lang: str):
+    if not lang:
+        from src.i18n import load_translations
+        load_translations()
+    else:
+        from src.i18n import set_language
+        set_language(lang)
+
+
 class SettingsUseCase:
     def __init__(
         self,
         state: AppState,
-        settings_repo: SettingsRepository,
         fs_repo: FileSystemRepository = None,
     ):
         self.state = state
-        self._settings_repo = settings_repo
         self._fs_repo = fs_repo
 
     def load_initial(self) -> None:
-        data = self._settings_repo.load()
+        data = load_settings()
         if not data:
             data = _DEFAULT_SETTINGS.copy()
         self._merge_settings(data)
-        self._apply_language(data.get('language', ''))
+        _apply_language(data.get('language', ''))
 
     def update(self, settings_data: dict) -> None:
         self._merge_settings(settings_data)
 
     def save(self) -> None:
-        self._settings_repo.save(self.state.settings.__dict__)
+        save_settings(self.state.settings.__dict__)
 
     def reset(self) -> None:
         self._merge_settings(_DEFAULT_SETTINGS.copy())
-        self._settings_repo.save(_DEFAULT_SETTINGS)
+        save_settings(_DEFAULT_SETTINGS)
         self.state.add_log(tr("settings_use_case.reset"))
 
     def _merge_settings(self, data: dict):
@@ -69,14 +76,6 @@ class SettingsUseCase:
         current.update(filtered)
         self.state.settings = AppSettings(**current)
         self.state.notify()
-
-    def _apply_language(self, lang: str):
-        if not lang:
-            from src.i18n import load_translations
-            load_translations()
-        else:
-            from src.i18n import set_language
-            set_language(lang)
 
     def load_local_config(self, folder_path: str) -> None:
         if not self._fs_repo:

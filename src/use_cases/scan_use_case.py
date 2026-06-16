@@ -1,12 +1,10 @@
 import os
-import json
 
 from ..data.file_system_repository import FileSystemRepository
 from ..services.file_service import FileService
-from ..store.state import AppState, AppSettings
+from ..store.state import AppState
 from src.i18n import tr
 from ..utils.logger import app_logger
-from ..utils.config import get_app_data_dir
 
 
 class ScanWorkspaceUseCase:
@@ -14,24 +12,6 @@ class ScanWorkspaceUseCase:
         self.state = state
         self._file_service = file_service
         self._fs_repo = fs_repo
-
-    def _load_cache(self) -> dict:
-        cache_path = os.path.join(get_app_data_dir(), "scan_cache.json")
-        try:
-            if os.path.exists(cache_path):
-                with open(cache_path, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-        except Exception:
-            pass
-        return {}
-
-    def _save_cache(self, cache: dict):
-        cache_path = os.path.join(get_app_data_dir(), "scan_cache.json")
-        try:
-            with open(cache_path, 'w', encoding='utf-8') as f:
-                json.dump(cache, f)
-        except Exception:
-            pass
 
     async def execute(self, state: AppState) -> None:
         self.state.is_loading = True
@@ -64,19 +44,12 @@ class ScanWorkspaceUseCase:
                     folder_status = await self._fs_repo.get_git_status_async(folder)
                     git_statuses.update(folder_status)
 
-                token_cache = self._load_cache()
-                new_cache = {}
                 metadata = {}
 
                 for path in file_paths:
                     try:
                         stat = os.stat(path)
-                        cache_key = f"{path}_{stat.st_size}_{stat.st_mtime}"
-                        if cache_key in token_cache:
-                            tokens = token_cache[cache_key]
-                        else:
-                            tokens = stat.st_size // 4
-                        new_cache[cache_key] = tokens
+                        tokens = stat.st_size // 4
                     except OSError:
                         app_logger.warning(f"[Scan] Cannot get file size: {path}")
                         tokens = 0
@@ -89,8 +62,6 @@ class ScanWorkspaceUseCase:
                         "git_status": status,
                         "category": category
                     }
-
-                self._save_cache(new_cache)
 
                 self.state.scanned_files_paths = file_paths
                 self.state.scanned_file_metadata = metadata

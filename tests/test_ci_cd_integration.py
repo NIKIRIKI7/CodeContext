@@ -5,8 +5,7 @@ from unittest.mock import patch, AsyncMock, MagicMock, PropertyMock
 from src.data.file_system_repository import FileSystemRepository
 from src.services.file_service import FileService
 from src.use_cases.scan_use_case import ScanWorkspaceUseCase
-from src.store.state import AppState, AppSettings
-from src.store.store import Store
+from src.store.state import AppState
 
 
 @pytest.mark.asyncio
@@ -61,28 +60,24 @@ async def test_repository_falls_back_to_head():
 @pytest.mark.asyncio
 async def test_use_case_passes_git_base_to_service():
     """Use Case достаёт git_base из state и передаёт в FileService."""
-    store = Store()
-    store._state.settings = AppSettings(
-        use_git=True,
-        git_base="origin/develop",
-    )
-    store._state.selected_folders = ["/fake/repo"]
+    state = AppState()
+    state.settings.use_git = True
+    state.settings.git_base = "origin/develop"
+    state.selected_folders = ["/fake/repo"]
 
     mock_file_service = AsyncMock(spec=FileService)
-    mock_fs_repo = MagicMock(spec=FileSystemRepository)
-    mock_dispatcher = MagicMock()
+    mock_fs_repo = AsyncMock(spec=FileSystemRepository)
+    mock_fs_repo.get_git_status_async.return_value = {}
+    mock_fs_repo.get_git_changed_files_async.return_value = []
 
-    uc = ScanWorkspaceUseCase(mock_dispatcher, mock_file_service, mock_fs_repo)
+    uc = ScanWorkspaceUseCase(state, mock_file_service, mock_fs_repo)
 
-    # Мокаем _load_cache/_save_cache чтобы не трогать дисковые файлы
-    with patch.object(uc, "_load_cache", return_value={}), \
-         patch.object(uc, "_save_cache"):
-        await uc.execute(store.state)
+    await uc.execute(state)
 
     mock_file_service.scan_folders_async.assert_called_once_with(
         paths=["/fake/repo"],
-        extensions_str=store.state.settings.extensions,
-        ignored_str=store.state.settings.ignored_paths,
+        extensions_str=state.settings.extensions,
+        ignored_str=state.settings.ignored_paths,
         use_git=True,
         use_gitignore=True,
         git_base="origin/develop",

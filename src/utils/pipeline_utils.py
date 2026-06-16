@@ -1,5 +1,4 @@
 import concurrent.futures
-import math
 import os
 from types import SimpleNamespace
 from typing import List, Dict, Any, Tuple, Set
@@ -20,9 +19,9 @@ def _priority_sort_key(item: Dict[str, str]) -> tuple:
     is_entry = basename in _ENTRY_PRIORITY_NAMES
     is_config = ext in ('.json', '.yaml', '.yml', '.toml', '.ini', '.env', '.cfg', '.conf', '.xml')
 
-    if is_entry: return (0, path.lower())
-    elif is_config: return (1, path.lower())
-    return (2, path.lower())
+    if is_entry: return 0, path.lower()
+    elif is_config: return 1, path.lower()
+    return 2, path.lower()
 
 def _process_single_worker(raw: Dict[str, str], opts_dict: dict) -> ProcessedFile:
     from ..services import cleaner_service, skeleton_service, token_service
@@ -57,18 +56,7 @@ class PipelineUtils:
 
         return result
 
-    @staticmethod
-    def process_files_batch(raw_files: List[Dict[str, str]], options: SimpleNamespace) -> List[ProcessedFile]:
-        from ..services import cleaner_service, skeleton_service, token_service
-        processed_files = []
-        for raw in raw_files:
-            cleaned = cleaner_service.clean(raw['content'], raw['ext'], options)
-            if getattr(options, 'skeleton_mode', False):
-                cleaned = skeleton_service.make_skeleton(cleaned, raw['ext'])
-            tokens = token_service.count_tokens(cleaned)
-            processed_files.append(ProcessedFile(path=raw['path'], content=cleaned, tokens=tokens))
-        return processed_files
-
+    # ponytail: queue.pop(0) is O(n) — pre-3.13 deque. Swap to collections.deque.popleft if queue exceeds 10k items.
     @staticmethod
     async def resolve_and_collect_dependencies_async(initial_queue: List[Tuple[str, int]], visited_paths: Set[str], all_paths: List[str], is_deep: bool, fs_repo: Any) -> None:
         from ..services import dependency_service, import_resolution_service

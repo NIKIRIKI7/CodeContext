@@ -1,9 +1,18 @@
 import os
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem, \
-    QHeaderView, QProgressBar, QHBoxLayout
+    QHeaderView, QProgressBar
 from PySide6.QtCore import Qt
 from ..theme_manager import ThemeManager, theme_bus
 from src.i18n import tr
+
+
+def _get_theme_size_int(category: str, key: str, default: int) -> int:
+    theme = ThemeManager._themes.get(ThemeManager._current_theme, {})
+    val_str = theme.get("default_styles", {}).get(category, {}).get(key, f"{default}px")
+    try:
+        return int(str(val_str).replace("px", "").strip())
+    except ValueError:
+        return default
 
 
 class AnalyticsPanel(QWidget):
@@ -31,14 +40,6 @@ class AnalyticsPanel(QWidget):
         self._apply_theme()
         theme_bus.theme_changed.connect(self._apply_theme)
 
-    def _get_theme_size_int(self, category: str, key: str, default: int) -> int:
-        theme = ThemeManager._themes.get(ThemeManager._current_theme, {})
-        val_str = theme.get("default_styles", {}).get(category, {}).get(key, f"{default}px")
-        try:
-            return int(str(val_str).replace("px", "").strip())
-        except ValueError:
-            return default
-
     def _apply_theme(self):
         colors = ThemeManager.get_current_colors()
 
@@ -47,7 +48,7 @@ class AnalyticsPanel(QWidget):
         c_border = colors.get('border', '#cccccc')
         c_hover = colors.get('secondary', '#eeeeee')
 
-        f_size = self._get_theme_size_int("fonts", "size", 14)
+        f_size = _get_theme_size_int("fonts", "size", 14)
         row_height = int(f_size * 2.5)
         self.table.verticalHeader().setDefaultSectionSize(row_height)
         self.table.setColumnWidth(2, int(f_size * 10))
@@ -92,7 +93,7 @@ class AnalyticsPanel(QWidget):
         c_danger = colors.get('danger', '#ff3b30')
         c_track = colors.get('secondary', '#e8e8ed')
 
-        prog_radius = self._get_theme_size_int("radii", "progress", 4)
+        prog_radius = _get_theme_size_int("radii", "progress", 4)
 
         for row in range(self.table.rowCount()):
             bar_container = self.table.cellWidget(row, 2)
@@ -150,8 +151,8 @@ class AnalyticsPanel(QWidget):
         c_danger = colors.get('danger', '#ff3b30')
         c_track = colors.get('secondary', '#e8e8ed')
 
-        prog_height = self._get_theme_size_int("sizes", "progress_height", 6)
-        prog_radius = self._get_theme_size_int("radii", "progress", 4)
+        prog_height = _get_theme_size_int("sizes", "progress_height", 6)
+        prog_radius = _get_theme_size_int("radii", "progress", 4)
 
         for row, (path, tokens) in enumerate(valid_files[:100]):
             self.table.insertRow(row)

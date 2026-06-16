@@ -1,7 +1,7 @@
 import os
-import sys
 import shutil
 import platform
+import webbrowser
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QTabWidget, QFormLayout,
                                QCheckBox, QComboBox, QLineEdit, QTextEdit,
                                QPushButton, QHBoxLayout, QLabel, QFileDialog,
@@ -12,6 +12,14 @@ from ...utils.config import PRESETS, PROMPT_PRESETS, get_app_version
 from ..theme_manager import ThemeManager, theme_bus
 from ..dialogs import UICustomizationDialog
 from src.i18n import tr, set_language, current_lang, available_languages
+
+
+def _get_user_themes_dir():
+    from ...utils.config import get_app_data_dir
+    path = os.path.join(get_app_data_dir(), "themes")
+    os.makedirs(path, exist_ok=True)
+    return path
+
 
 class Sidebar(QWidget):
     TAB_DEFS = [
@@ -475,7 +483,7 @@ class Sidebar(QWidget):
         if item.checkState() == Qt.Checked:
             if p_id not in approved:
                 # Install reqs NOW
-                pm = getattr(self.controller._plugin_api.container, 'plugin_manager', None)
+                pm = getattr(self.controller.plugin_api.container, 'plugin_manager', None)
                 if pm:
                     manifest = next((m for m in pm.discover_plugins() if m.get('id') == p_id), None)
                     if manifest:
@@ -501,18 +509,17 @@ class Sidebar(QWidget):
                 tr("sidebar.plugins.restart_msg", default="Please restart the application to apply plugin changes.")
             )
 
-    def _open_plugins_folder(self):
-        import subprocess
-        import platform
-        plugins_dir = os.path.join(os.getcwd(), "plugins")
-        os.makedirs(plugins_dir, exist_ok=True)
-        system = platform.system()
+    def _open_folder_cross_platform(self, path: str):
+        # ponytail: stdlib webbrowser handles startfile/open/xdg-open automatically
         try:
-            if system == "Windows": os.startfile(plugins_dir)
-            elif system == "Darwin": subprocess.call(["open", plugins_dir])
-            else: subprocess.call(["xdg-open", plugins_dir])
+            webbrowser.open(f"file://{os.path.abspath(path)}")
         except Exception as e:
             QMessageBox.warning(self, tr("sidebar.error.title"), tr("sidebar.open_folder.error", error=str(e)))
+
+    def _open_plugins_folder(self):
+        plugins_dir = os.path.join(os.getcwd(), "plugins")
+        os.makedirs(plugins_dir, exist_ok=True)
+        self._open_folder_cross_platform(plugins_dir)
 
     def _build_appearance_tab(self, tab):
         layout = QVBoxLayout(tab)
@@ -720,30 +727,13 @@ class Sidebar(QWidget):
             self.controller.save_settings()
             self._refresh_prompt_presets()
 
-    def _get_user_themes_dir(self):
-        from ...utils.config import get_app_data_dir
-        path = os.path.join(get_app_data_dir(), "themes")
-        os.makedirs(path, exist_ok=True)
-        return path
-
     def _open_themes_folder(self):
-        themes_dir = self._get_user_themes_dir()
-        system = platform.system()
-        try:
-            if system == "Windows": os.startfile(themes_dir)
-            elif system == "Darwin":
-                import subprocess
-                subprocess.call(["open", themes_dir])
-            else:
-                import subprocess
-                subprocess.call(["xdg-open", themes_dir])
-        except Exception as e:
-            QMessageBox.warning(self, tr("sidebar.error.title"), tr("sidebar.open_folder.error", error=str(e)))
+        self._open_folder_cross_platform(_get_user_themes_dir())
 
     def _import_theme(self):
         path, _ = QFileDialog.getOpenFileName(self, tr("sidebar.import_theme.title"), "", "JSON Files (*.json)")
         if path:
-            themes_dir = self._get_user_themes_dir()
+            themes_dir = _get_user_themes_dir()
             filename = os.path.basename(path)
             dest = os.path.join(themes_dir, filename)
             try:
@@ -757,22 +747,29 @@ class Sidebar(QWidget):
             except Exception as e:
                 QMessageBox.warning(self, tr("sidebar.error.title"), tr("sidebar.import_theme.error", error=e))
 
-    def _refresh_ext_presets(self):
-        current = self.cmb_preset.currentText()
-        self.cmb_preset.blockSignals(True)
-        self.cmb_preset.clear()
-        self.cmb_preset.addItems(list(PRESETS.keys()))
-        custom = self.controller.state.settings.custom_presets
-        if custom:
-            self.cmb_preset.insertSeparator(self.cmb_preset.count())
-            self.cmb_preset.addItems(list(custom.keys()))
-        if current and self.cmb_preset.findText(current) >= 0:
-            self.cmb_preset.setCurrentText(current)
+    def _update_combobox(self, combo: QComboBox, base_items: list, custom_items: list = None):
+        # ponytail: dry up repetitive combobox refresh boilerplate
+        current = combo.currentText()
+        combo.blockSignals(True)
+        combo.clear()
+        combo.addItems(base_items)
+        if custom_items:
+            combo.insertSeparator(combo.count())
+            combo.addItems(custom_items)
+        if current and combo.findText(current) >= 0:
+            combo.setCurrentText(current)
         else:
+            combo.setCurrentIndex(0)
+        combo.blockSignals(False)
+
+    def _refresh_ext_presets(self):
+        custom_keys = list(self.controller.state.settings.custom_presets.keys()) if self.controller.state.settings.custom_presets else []
+        self._update_combobox(self.cmb_preset, list(PRESETS.keys()), custom_keys)
+        if self.cmb_preset.currentIndex() == 0 and not self.cmb_preset.currentText():
             settings_ext = self.controller.state.settings.extensions
             settings_ign = self.controller.state.settings.ignored_paths
             matched = False
-            for pool in [PRESETS, custom or {}]:
+            for pool in [PRESETS, self.controller.state.settings.custom_presets or {}]:
                 for k, v in pool.items():
                     if v['ext'] == settings_ext and v['ign'] == settings_ign:
                         idx = self.cmb_preset.findText(k)
@@ -780,35 +777,13 @@ class Sidebar(QWidget):
                         matched = True
                         break
                 if matched: break
-            if not matched: self.cmb_preset.setCurrentIndex(0)
-        self.cmb_preset.blockSignals(False)
 
     def _refresh_prompt_presets(self):
-        current = self.cmb_prompt.currentText()
-        self.cmb_prompt.blockSignals(True)
-        self.cmb_prompt.clear()
-        self.cmb_prompt.addItems(list(PROMPT_PRESETS.keys()))
-        custom = self.controller.state.settings.custom_prompt_presets
-        if custom:
-            self.cmb_prompt.insertSeparator(self.cmb_prompt.count())
-            self.cmb_prompt.addItems(list(custom.keys()))
-        if current and self.cmb_prompt.findText(current) >= 0:
-            self.cmb_prompt.setCurrentText(current)
-        else:
-            self.cmb_prompt.setCurrentIndex(0)
-        self.cmb_prompt.blockSignals(False)
+        custom = list(self.controller.state.settings.custom_prompt_presets.keys())
+        self._update_combobox(self.cmb_prompt, list(PROMPT_PRESETS.keys()), custom)
 
     def _refresh_themes(self):
-        current = self.cmb_theme.currentText()
-        self.cmb_theme.blockSignals(True)
-        self.cmb_theme.clear()
-        themes = ThemeManager.get_available_themes()
-        self.cmb_theme.addItems(themes)
-        if current and self.cmb_theme.findText(current) >= 0:
-            self.cmb_theme.setCurrentText(current)
-        elif themes:
-            self.cmb_theme.setCurrentIndex(0)
-        self.cmb_theme.blockSignals(False)
+        self._update_combobox(self.cmb_theme, ThemeManager.get_available_themes())
 
     def update_ui(self, settings):
         visible_tabs = getattr(settings, 'visible_tabs',

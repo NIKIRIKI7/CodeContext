@@ -1,10 +1,30 @@
 import os
 import pathspec
 import asyncio
-import time
 import threading
 from typing import List, Callable, Optional, Set
 from ..data.file_system_repository import FileSystemRepository
+
+
+def find_project_root(file_path: str) -> str:
+    """
+    Находит корень проекта, поднимаясь вверх по директориям.
+    Ищет индикаторы проектов (Git, Node.js, Python, монорепозитории).
+    """
+    markers = [
+        '.git', 'package.json', 'pyproject.toml', 'requirements.txt',
+        'lerna.json', 'nx.json', 'turbo.json', 'pnpm-workspace.yaml',
+    ]
+    current_dir = os.path.dirname(os.path.abspath(file_path))
+    check_dir = current_dir
+    for _ in range(7):
+        if any(os.path.exists(os.path.join(check_dir, m)) for m in markers):
+            return check_dir
+        parent = os.path.dirname(check_dir)
+        if parent == check_dir:
+            break
+        check_dir = parent
+    return current_dir
 
 
 class FileService:
@@ -71,26 +91,6 @@ class FileService:
             pass
         return result
 
-    def find_project_root(self, file_path: str) -> str:
-        """
-        Находит корень проекта, поднимаясь вверх по директориям.
-        Ищет индикаторы проектов (Git, Node.js, Python, монорепозитории).
-        """
-        markers = [
-            '.git', 'package.json', 'pyproject.toml', 'requirements.txt',
-            'lerna.json', 'nx.json', 'turbo.json', 'pnpm-workspace.yaml',
-        ]
-        current_dir = os.path.dirname(os.path.abspath(file_path))
-        check_dir = current_dir
-        for _ in range(7):
-            if any(os.path.exists(os.path.join(check_dir, m)) for m in markers):
-                return check_dir
-            parent = os.path.dirname(check_dir)
-            if parent == check_dir:
-                break
-            check_dir = parent
-        return current_dir
-
     def start_watching(self, paths: List[str], exts_set: Set[str], ign_set: Set[str],
                        on_change: Callable, interval: float = 3.0) -> None:
         """Запускает фоновый поток для отслеживания изменений в файлах (поллинг)"""
@@ -114,7 +114,6 @@ class FileService:
         """Проверяет mtime файлов через интервал и вызывает callback при изменениях"""
         state: dict = {}
         while not self._watcher_stop.is_set():
-            changed = False
             for base in paths:
                 for dirpath, dirnames, filenames in os.walk(base):
                     dirnames[:] = [d for d in dirnames if d not in ign_set]
@@ -128,13 +127,8 @@ class FileService:
                             prev = state.get(fpath)
                             if prev is None:
                                 state[fpath] = mtime
-                                changed = True
                             elif abs(mtime - prev) > 0.5:
                                 state[fpath] = mtime
-                                changed = True
                         except OSError:
                             state.pop(fpath, None)
-                            changed = True
-            if changed and self._on_change_callback:
-                self._on_change_callback()
             self._watcher_stop.wait(interval)

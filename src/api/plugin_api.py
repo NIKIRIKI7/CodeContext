@@ -13,11 +13,6 @@ class PluginAPI:
             ui_registry = SimpleNamespace(sidebar_tabs={}, action_buttons={})
         self.ui = ui_registry
 
-        if not hasattr(self.ui, 'sidebar_tabs'):
-            self.ui.sidebar_tabs = {}
-        if not hasattr(self.ui, 'action_buttons'):
-            self.ui.action_buttons = {}
-
         self.ui.register_sidebar_tab = self._register_sidebar_tab
         self.ui.register_action_button = self._register_action_button
 

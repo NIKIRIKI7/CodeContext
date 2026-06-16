@@ -1,11 +1,14 @@
 import dataclasses
-from typing import List, Set, Dict, Optional
+from typing import List, Set, Dict
+
 from PySide6.QtCore import QObject, Signal
+
 from src.i18n import tr
 
 
 @dataclasses.dataclass
 class AppSettings:
+    __dataclass_fields__ = None
     extensions: str = ".py .js .ts .vue .jsx .tsx .html .css .json .md .sql .xml .yaml .yml .sh .bat .go .java .cpp"
     ignored_paths: str = ".git, node_modules, .nuxt, __pycache__, dist, build, .idea, .vscode, venv, .venv, coverage, .next, target, bin, obj"
     minify: bool = True

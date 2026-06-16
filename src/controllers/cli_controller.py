@@ -1,12 +1,11 @@
 import os
 import sys
 import asyncio
-import time
 import traceback
 import difflib
 
 from ..store.state import AppState
-from ..data.settings_repository import SettingsRepository
+from ..data.settings_repository import load as load_settings
 from ..use_cases.scan_use_case import ScanWorkspaceUseCase
 from ..use_cases.process_use_case import ProcessWorkspaceUseCase
 from ..use_cases.patch_use_case import PatchUseCase
@@ -18,13 +17,11 @@ class CliController:
     def __init__(
         self,
         state: AppState,
-        settings_repo: SettingsRepository,
         scan_use_case: ScanWorkspaceUseCase,
         process_use_case: ProcessWorkspaceUseCase,
         patch_use_case: PatchUseCase = None,
     ):
         self.state = state
-        self._settings_repo = settings_repo
         self._scan_uc = scan_use_case
         self._process_uc = process_use_case
         self._patch_uc = patch_use_case
@@ -45,7 +42,7 @@ class CliController:
         if not self._validate(target_path, silent):
             return
 
-        config = self._settings_repo.load() or {}
+        config = load_settings() or {}
         self._init_state(config, target_path, kwargs)
 
         try:
@@ -207,5 +204,5 @@ class CliController:
 
     @staticmethod
     def _keep_window_open():
-        print(tr("cli_controller.window_closing"))
-        time.sleep(3)
+        if sys.stdout is not None and sys.stdout.isatty():
+            input(tr("cli_controller.window_closing"))

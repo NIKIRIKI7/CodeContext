@@ -20,16 +20,6 @@ class PatchUseCase:
         blocks = re.findall(r'```(?:json)?\s*(.*?)\s*```', patch_str, re.DOTALL)
 
         if not blocks:
-            match = re.search(r'\[\s*\{.*?\}\s*\]', patch_str, re.DOTALL)
-            if match:
-                blocks = [match.group(0)]
-
-        if not blocks:
-            match = re.search(r'\{\s*"action".*?\}', patch_str, re.DOTALL)
-            if match:
-                blocks = ["[" + match.group(0) + "]"]
-
-        if not blocks:
             blocks = [patch_str.strip()]
 
         all_patches = []

@@ -36,7 +36,6 @@ class GitHubUseCase:
             self.state.add_log(tr("github_use_case.cloning_url", url=clone_url))
 
             target_path = None
-            is_temp = True
             if base_dest_path:
                 repo_name = clone_url.rstrip('/').split('/')[-1]
                 if repo_name.endswith('.git'):
@@ -44,7 +43,6 @@ class GitHubUseCase:
                 if not repo_name:
                     repo_name = "github_repo"
                 target_path = os.path.join(base_dest_path, repo_name)
-                is_temp = False
 
             final_path = await self._github_service.clone_repo_async(clone_url, target_path)
 

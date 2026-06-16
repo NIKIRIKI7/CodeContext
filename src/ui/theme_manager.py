@@ -482,7 +482,6 @@ class ThemeManager:
             svg_check=_create_svg_url(svg_check_str),
             svg_down_arrow=_create_svg_url(svg_arrow_str),
             c_secondary=selected_mode_colors.get("secondary", "#e0e0e0"),
-            c_secondary_fg=selected_mode_colors.get("secondary_fg", "#000000"),
             c_border=selected_mode_colors.get("border", "#cccccc"),
             c_success=selected_mode_colors.get("success", "#28a745"),
             c_danger=selected_mode_colors.get("danger", "#dc3545"),
@@ -529,3 +528,5 @@ class ThemeManager:
     def get_font_settings(cls) -> dict:
         theme = cls._themes.get(cls._current_theme, {})
         return theme.get("default_styles", {}).get("fonts", {})
+
+

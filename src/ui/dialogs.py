@@ -1,15 +1,16 @@
-import os
 import re
 import subprocess
+
+from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtGui import QSyntaxHighlighter, QTextCharFormat, QColor, QFont
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QTextEdit,
                                QPushButton, QTabWidget, QWidget, QLabel, QLineEdit,
                                QListWidget, QListWidgetItem, QTextBrowser, QSplitter,
                                QPlainTextEdit, QComboBox, QCheckBox, QMessageBox,
                                QProgressBar, QGroupBox)
-from PySide6.QtCore import Qt, QThread, Signal
-from PySide6.QtGui import QSyntaxHighlighter, QTextCharFormat, QColor, QFont
-from .theme_manager import ThemeManager
+
 from src.i18n import tr
+from .theme_manager import ThemeManager
 
 
 class ChatDialog(QDialog):
@@ -59,7 +60,7 @@ class ChatDialog(QDialog):
         self.btn_send.setText(tr("dialogs.chat.waiting"))
 
         async def fetch_reply():
-            reply = await self.controller._llm_checker.send_chat_message(self.messages, self.controller._store.state.settings)
+            reply = await self.controller.llm_checker.send_chat_message(self.messages, self.controller.store.state.settings)
             from PySide6.QtCore import QTimer
             QTimer.singleShot(0, lambda: self._on_reply(reply))
 
@@ -663,6 +664,7 @@ class PluginInstallDialog(QDialog):
 class UpdateDialog(QDialog):
     def __init__(self, parent, update_info, on_close, controller):
         super().__init__(parent)
+        self.update_info = None
         self.on_close = on_close
         self.controller = controller
 
@@ -1011,6 +1013,39 @@ class UICustomizationDialog(QDialog):
         self.accept()
 
 
+def _get_logs(mode_idx):
+    if mode_idx == 2:
+        return ""
+
+    from src.utils.config import get_app_data_dir
+    import os, datetime, re
+
+    log_file = os.path.join(get_app_data_dir(), "logs", "app.log")
+    if not os.path.exists(log_file):
+        return "Log file not found."
+
+    try:
+        with open(log_file, "r", encoding="utf-8", errors="replace") as f:
+            lines = f.readlines()
+    except Exception as e:
+        return f"Error reading logs: {e}"
+
+    if mode_idx == 1:
+        return "".join(lines[-500:])
+
+    today_str = datetime.datetime.now().strftime("%Y-%m-%d")
+    filtered = []
+    for line in lines:
+        if re.match(r'^\d{4}-\d{2}-\d{2}', line):
+            if line.startswith(today_str):
+                filtered.append(line)
+        else:
+            if filtered and not line.startswith(today_str):
+                filtered.append(line)
+
+    return "".join(filtered[-500:])
+
+
 class BugReportDialog(QDialog):
     def __init__(self, parent, controller):
         super().__init__(parent)
@@ -1054,38 +1089,6 @@ class BugReportDialog(QDialog):
         btn_layout.addWidget(btn_send)
         layout.addLayout(btn_layout)
 
-    def _get_logs(self, mode_idx):
-        if mode_idx == 2:
-            return ""
-
-        from src.utils.config import get_app_data_dir
-        import os, datetime, re
-
-        log_file = os.path.join(get_app_data_dir(), "logs", "app.log")
-        if not os.path.exists(log_file):
-            return "Log file not found."
-
-        try:
-            with open(log_file, "r", encoding="utf-8", errors="replace") as f:
-                lines = f.readlines()
-        except Exception as e:
-            return f"Error reading logs: {e}"
-
-        if mode_idx == 1:
-            return "".join(lines[-500:])
-
-        today_str = datetime.datetime.now().strftime("%Y-%m-%d")
-        filtered = []
-        for line in lines:
-            if re.match(r'^\d{4}-\d{2}-\d{2}', line):
-                if line.startswith(today_str):
-                    filtered.append(line)
-            else:
-                if filtered and not line.startswith(today_str):
-                    filtered.append(line)
-
-        return "".join(filtered[-500:])
-
     def _prepare_and_send(self):
         import pyperclip
         import platform as pf
@@ -1098,7 +1101,7 @@ class BugReportDialog(QDialog):
             QMessageBox.warning(self, tr("sidebar.error.title"), tr("dialogs.bug_report.empty_desc"))
             return
 
-        logs = self._get_logs(self.cmb_logs.currentIndex())
+        logs = _get_logs(self.cmb_logs.currentIndex())
         sys_info = f"OS: {pf.system()} {pf.release()}\nVersion: {get_app_version()}"
 
         issue_body = (

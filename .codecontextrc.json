@@ -1,6 +1,6 @@
 {
-    "extensions": "",
-    "ignored_paths": "",
+    "extensions": ".py .js .ts .vue .jsx .tsx .html .css .json .md .sql .xml .yaml .yml .sh .bat .go .java .cpp",
+    "ignored_paths": ".git, node_modules, .nuxt, __pycache__, dist, build, .idea, .vscode, venv, .venv, coverage, .next, target, bin, obj",
     "minify": true,
     "remove_comments": true,
     "remove_secrets": true,
@@ -9,18 +9,12 @@
     "include_mermaid": false,
     "skeleton_mode": false,
     "use_git": false,
+    "git_base": "",
     "use_gitignore": false,
     "system_prompt": "",
     "output_format": "plain",
     "template_path": "",
     "enable_logging": true,
-    "cli_minify": true,
-    "cli_remove_comments": true,
-    "cli_remove_secrets": true,
-    "cli_include_tree": true,
-    "cli_skeleton_mode": false,
-    "cli_use_gitignore": true,
-    "cli_format": "plain",
     "external_editor": "",
     "receive_prereleases": false,
     "llm_check_enabled": false,
@@ -40,5 +34,21 @@
         "editor",
         "file"
     ],
-    "language": "ru"
+    "visible_checkboxes": [
+        "dedup",
+        "aggressive",
+        "checkpoints",
+        "watch"
+    ],
+    "language": "ru",
+    "deduplicate": false,
+    "save_checkpoints": false,
+    "auto_watch": false,
+    "prioritize_entry_files": true,
+    "preserve_docstrings": false,
+    "preserve_imports": false,
+    "aggressive_minify": false,
+    "approved_plugins": [
+        "hello_world"
+    ]
 }
