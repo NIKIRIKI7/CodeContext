@@ -11,7 +11,7 @@
 **AI 기반 코드베이스 분석 및 프롬프트 준비 도구**
 
 [![AUR](https://img.shields.io/aur/version/codecontext-ai?style=flat-square&logo=archlinux&label=AUR)](https://aur.archlinux.org/packages/codecontext-ai)
-[![Version](https://img.shields.io/badge/version-1.25.1-blue?style=flat-square)](../VERSION.txt)
+[![Version](https://img.shields.io/badge/version-1.27.0-blue?style=flat-square)](../VERSION.txt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](../LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square&logo=python)](https://www.python.org/downloads/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20|%20Linux%20|%20macOS-lightgrey?style=flat-square)]()
@@ -266,14 +266,14 @@ cd yay && makepkg -si</pre>
 }</pre>
 
 <h4>🐍 plugin.py (예제)</h4>
-<pre>from src.api.plugin_api import IPlugin, PluginAPI
+<pre>from src.services.plugin_manager import IPlugin
 
 class MyPlugin(IPlugin):
     id = "my_plugin"
     name = "My Plugin"
     version = "1.0.0"
 
-    def on_init(self, api: PluginAPI) -> None:
+    def on_init(self, controller: MainController) -> None:
         api.ui.register_sidebar_tab(
             "my_tab", "My Tab",
             lambda: QLabel("플러그인에서 안녕!")
@@ -299,11 +299,8 @@ class MyPlugin(IPlugin):
 <table>
 <thead><tr><th>속성 / 메서드</th><th>설명</th></tr></thead>
 <tbody>
-<tr><td><code>api.store</code></td><td>읽기 전용 Redux 저장소 (<code>state.settings.xxx</code>로 상태 접근)</td></tr>
-<tr><td><code>api.dispatcher</code></td><td>액션 전송 (예: <code>UI_ADD_LOG</code>)</td></tr>
 <tr><td><code>api.ui.register_sidebar_tab(id, label, factory)</code></td><td>왼쪽 사이드바에 탭 추가</td></tr>
 <tr><td><code>api.ui.register_action_button(id, label, callback)</code></td><td>"플러그인 🔽" 드롭다운에 버튼 추가</td></tr>
-<tr><td><code>api.add_translations(lang, data)</code></td><td>런타임 번역 추가 (내장 번역 위에 병합)</td></tr>
 <tr><td><code>api.add_log(message)</code></td><td>앱 로그 패널에 기록</td></tr>
 </tbody>
 </table>
@@ -377,7 +374,7 @@ python main.py --cli --path . --git --git-base origin/main --minify true --stdou
 <tbody>
 <tr><td>언어</td><td>Python 3.10+</td></tr>
 <tr><td>GUI 프레임워크</td><td>PySide6 (Qt 6)</td></tr>
-<tr><td>아키텍처</td><td>Clean Architecture + Redux-like</td></tr>
+<tr><td>아키텍처</td><td>Clean Architecture</td></tr>
 <tr><td>토큰화</td><td>tiktoken (OpenAI)</td></tr>
 <tr><td>템플릿</td><td>jinja2 (11 내장)</td></tr>
 <tr><td>AST 파서</td><td>ast (Python), tree-sitter (JS/TS/Go/Rust)</td></tr>

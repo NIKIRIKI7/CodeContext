@@ -11,7 +11,7 @@
 **AI-powered codebase analysis & prompt preparation tool**
 
 [![AUR](https://img.shields.io/aur/version/codecontext-ai?style=flat-square&logo=archlinux&label=AUR)](https://aur.archlinux.org/packages/codecontext-ai)
-[![Version](https://img.shields.io/badge/version-1.25.3-blue?style=flat-square)](VERSION.txt)
+[![Version](https://img.shields.io/badge/version-1.27.0-blue?style=flat-square)](VERSION.txt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square&logo=python)](https://www.python.org/downloads/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20|%20Linux%20|%20macOS-lightgrey?style=flat-square)]()
@@ -266,14 +266,14 @@ cd yay && makepkg -si</pre>
 }</pre>
 
 <h4>🐍 plugin.py (Example)</h4>
-<pre>from src.api.plugin_api import IPlugin, PluginAPI
+<pre>from src.services.plugin_manager import IPlugin
 
 class MyPlugin(IPlugin):
     id = "my_plugin"
     name = "My Plugin"
     version = "1.0.0"
 
-    def on_init(self, api: PluginAPI) -> None:
+    def on_init(self, controller: MainController) -> None:
         # Add translations from locales/ folder (auto-loaded)
         # Register a sidebar tab
         api.ui.register_sidebar_tab(
@@ -302,11 +302,8 @@ class MyPlugin(IPlugin):
 <table>
 <thead><tr><th>Property / Method</th><th>Description</th></tr></thead>
 <tbody>
-<tr><td><code>api.store</code></td><td>Read-only Redux store (state access via <code>state.settings.xxx</code>)</td></tr>
-<tr><td><code>api.dispatcher</code></td><td>Dispatch actions (e.g. <code>UI_ADD_LOG</code>)</td></tr>
 <tr><td><code>api.ui.register_sidebar_tab(id, label, factory)</code></td><td>Add a tab to the left sidebar</td></tr>
 <tr><td><code>api.ui.register_action_button(id, label, callback)</code></td><td>Add a button to the "Plugins 🔽" dropdown</td></tr>
-<tr><td><code>api.add_translations(lang, data)</code></td><td>Add runtime translations (merged on top of built-in)</td></tr>
 <tr><td><code>api.add_log(message)</code></td><td>Write to the app log panel</td></tr>
 </tbody>
 </table>
@@ -461,7 +458,7 @@ jobs:
 <tbody>
 <tr><td>Language</td><td>Python 3.10+</td></tr>
 <tr><td>GUI Framework</td><td>PySide6 (Qt 6)</td></tr>
-<tr><td>Architecture</td><td>Clean Architecture + Redux-like</td></tr>
+<tr><td>Architecture</td><td>Clean Architecture</td></tr>
 <tr><td>Tokenization</td><td>tiktoken (OpenAI)</td></tr>
 <tr><td>Templating</td><td>jinja2 (11 built-in)</td></tr>
 <tr><td>AST parsers</td><td>ast (Python), tree-sitter (JS/TS/Go/Rust)</td></tr>

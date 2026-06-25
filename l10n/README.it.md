@@ -11,7 +11,7 @@
 **Strumento di analisi del codebase e preparazione di prompt basato sull'IA**
 
 [![AUR](https://img.shields.io/aur/version/codecontext-ai?style=flat-square&logo=archlinux&label=AUR)](https://aur.archlinux.org/packages/codecontext-ai)
-[![Version](https://img.shields.io/badge/version-1.25.1-blue?style=flat-square)](../VERSION.txt)
+[![Version](https://img.shields.io/badge/version-1.27.0-blue?style=flat-square)](../VERSION.txt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](../LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square&logo=python)](https://www.python.org/downloads/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20|%20Linux%20|%20macOS-lightgrey?style=flat-square)]()
@@ -266,14 +266,14 @@ cd yay && makepkg -si</pre>
 }</pre>
 
 <h4>🐍 plugin.py (Esempio)</h4>
-<pre>from src.api.plugin_api import IPlugin, PluginAPI
+<pre>from src.services.plugin_manager import IPlugin
 
 class MyPlugin(IPlugin):
     id = "my_plugin"
     name = "My Plugin"
     version = "1.0.0"
 
-    def on_init(self, api: PluginAPI) -> None:
+    def on_init(self, controller: MainController) -> None:
         api.ui.register_sidebar_tab(
             "my_tab", "La Mia Scheda",
             lambda: QLabel("Ciao dal plugin!")
@@ -299,11 +299,8 @@ class MyPlugin(IPlugin):
 <table>
 <thead><tr><th>Proprietà / Metodo</th><th>Descrizione</th></tr></thead>
 <tbody>
-<tr><td><code>api.store</code></td><td>Store Redux di sola lettura (accesso allo stato tramite <code>state.settings.xxx</code>)</td></tr>
-<tr><td><code>api.dispatcher</code></td><td>Invia azioni (es. <code>UI_ADD_LOG</code>)</td></tr>
 <tr><td><code>api.ui.register_sidebar_tab(id, label, factory)</code></td><td>Aggiunge una scheda alla barra laterale sinistra</td></tr>
 <tr><td><code>api.ui.register_action_button(id, label, callback)</code></td><td>Aggiunge un pulsante al menu a discesa "Plugin 🔽"</td></tr>
-<tr><td><code>api.add_translations(lang, data)</code></td><td>Aggiunge traduzioni runtime (unite sopra quelle integrate)</td></tr>
 <tr><td><code>api.add_log(message)</code></td><td>Scrive nel pannello dei log dell'app</td></tr>
 </tbody>
 </table>
@@ -377,7 +374,7 @@ python main.py --cli --path . --git --git-base origin/main --minify true --stdou
 <tbody>
 <tr><td>Linguaggio</td><td>Python 3.10+</td></tr>
 <tr><td>Framework GUI</td><td>PySide6 (Qt 6)</td></tr>
-<tr><td>Architettura</td><td>Clean Architecture + Redux-like</td></tr>
+<tr><td>Architettura</td><td>Clean Architecture</td></tr>
 <tr><td>Tokenizzazione</td><td>tiktoken (OpenAI)</td></tr>
 <tr><td>Template</td><td>jinja2 (11 integrati)</td></tr>
 <tr><td>Parser AST</td><td>ast (Python), tree-sitter (JS/TS/Go/Rust)</td></tr>

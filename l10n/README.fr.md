@@ -11,7 +11,7 @@
 **Outil d'analyse de codebase et de préparation de prompts, piloté par IA**
 
 [![AUR](https://img.shields.io/aur/version/codecontext-ai?style=flat-square&logo=archlinux&label=AUR)](https://aur.archlinux.org/packages/codecontext-ai)
-[![Version](https://img.shields.io/badge/version-1.25.1-blue?style=flat-square)](../VERSION.txt)
+[![Version](https://img.shields.io/badge/version-1.27.0-blue?style=flat-square)](../VERSION.txt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](../LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square&logo=python)](https://www.python.org/downloads/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20|%20Linux%20|%20macOS-lightgrey?style=flat-square)]()
@@ -266,14 +266,14 @@ cd yay && makepkg -si</pre>
 }</pre>
 
 <h4>🐍 plugin.py (Exemple)</h4>
-<pre>from src.api.plugin_api import IPlugin, PluginAPI
+<pre>from src.services.plugin_manager import IPlugin
 
 class MyPlugin(IPlugin):
     id = "my_plugin"
     name = "My Plugin"
     version = "1.0.0"
 
-    def on_init(self, api: PluginAPI) -> None:
+    def on_init(self, controller: MainController) -> None:
         # Les traductions du dossier locales/ sont chargées automatiquement
         # Enregistrer un onglet dans la barre latérale
         api.ui.register_sidebar_tab(
@@ -302,11 +302,8 @@ class MyPlugin(IPlugin):
 <table>
 <thead><tr><th>Propriété / Méthode</th><th>Description</th></tr></thead>
 <tbody>
-<tr><td><code>api.store</code></td><td>Store Redux en lecture seule (accès via <code>state.settings.xxx</code>)</td></tr>
-<tr><td><code>api.dispatcher</code></td><td>Envoyer des actions (ex. <code>UI_ADD_LOG</code>)</td></tr>
 <tr><td><code>api.ui.register_sidebar_tab(id, label, factory)</code></td><td>Ajouter un onglet à la barre latérale gauche</td></tr>
 <tr><td><code>api.ui.register_action_button(id, label, callback)</code></td><td>Ajouter un bouton au menu déroulant « Plugins 🔽 »</td></tr>
-<tr><td><code>api.add_translations(lang, data)</code></td><td>Ajouter des traductions à l'exécution (fusionnées avec les traductions intégrées)</td></tr>
 <tr><td><code>api.add_log(message)</code></td><td>Écrire dans le panneau de journal de l'application</td></tr>
 </tbody>
 </table>
@@ -380,7 +377,7 @@ python main.py --cli --path . --git --git-base origin/main --minify true --stdou
 <tbody>
 <tr><td>Langage</td><td>Python 3.10+</td></tr>
 <tr><td>Framework GUI</td><td>PySide6 (Qt 6)</td></tr>
-<tr><td>Architecture</td><td>Clean Architecture + Redux-like</td></tr>
+<tr><td>Architecture</td><td>Clean Architecture</td></tr>
 <tr><td>Tokenisation</td><td>tiktoken (OpenAI)</td></tr>
 <tr><td>Templating</td><td>jinja2 (11 modèles intégrés)</td></tr>
 <tr><td>Analyseurs AST</td><td>ast (Python), tree-sitter (JS/TS/Go/Rust)</td></tr>

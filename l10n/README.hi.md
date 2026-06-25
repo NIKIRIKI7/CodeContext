@@ -11,7 +11,7 @@
 **AI-संचालित कोडबेस विश्लेषण और प्रॉम्प्ट तैयारी उपकरण**
 
 [![AUR](https://img.shields.io/aur/version/codecontext-ai?style=flat-square&logo=archlinux&label=AUR)](https://aur.archlinux.org/packages/codecontext-ai)
-[![Version](https://img.shields.io/badge/version-1.25.1-blue?style=flat-square)](../VERSION.txt)
+[![Version](https://img.shields.io/badge/version-1.27.0-blue?style=flat-square)](../VERSION.txt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](../LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square&logo=python)](https://www.python.org/downloads/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20|%20Linux%20|%20macOS-lightgrey?style=flat-square)]()
@@ -266,14 +266,14 @@ cd yay && makepkg -si</pre>
 }</pre>
 
 <h4>🐍 plugin.py (उदाहरण)</h4>
-<pre>from src.api.plugin_api import IPlugin, PluginAPI
+<pre>from src.services.plugin_manager import IPlugin
 
 class MyPlugin(IPlugin):
     id = "my_plugin"
     name = "My Plugin"
     version = "1.0.0"
 
-    def on_init(self, api: PluginAPI) -> None:
+    def on_init(self, controller: MainController) -> None:
         api.ui.register_sidebar_tab(
             "my_tab", "My Tab",
             lambda: QLabel("प्लगइन से नमस्ते!")
@@ -299,11 +299,8 @@ class MyPlugin(IPlugin):
 <table>
 <thead><tr><th>प्रॉपर्टी / मेथड</th><th>विवरण</th></tr></thead>
 <tbody>
-<tr><td><code>api.store</code></td><td>रीड-ओनली Redux स्टोर (<code>state.settings.xxx</code> के माध्यम से स्थिति पहुँच)</td></tr>
-<tr><td><code>api.dispatcher</code></td><td>क्रियाएँ भेजें (जैसे <code>UI_ADD_LOG</code>)</td></tr>
 <tr><td><code>api.ui.register_sidebar_tab(id, label, factory)</code></td><td>बाएँ साइडबार में टैब जोड़ें</td></tr>
 <tr><td><code>api.ui.register_action_button(id, label, callback)</code></td><td>"प्लगइन्स 🔽" ड्रॉपडाउन में बटन जोड़ें</td></tr>
-<tr><td><code>api.add_translations(lang, data)</code></td><td>रनटाइम अनुवाद जोड़ें (अंतर्निहित के ऊपर मर्ज किए जाते हैं)</td></tr>
 <tr><td><code>api.add_log(message)</code></td><td>ऐप लॉग पैनल में लिखें</td></tr>
 </tbody>
 </table>
@@ -377,7 +374,7 @@ python main.py --cli --path . --git --git-base origin/main --minify true --stdou
 <tbody>
 <tr><td>भाषा</td><td>Python 3.10+</td></tr>
 <tr><td>GUI फ्रेमवर्क</td><td>PySide6 (Qt 6)</td></tr>
-<tr><td>आर्किटेक्चर</td><td>Clean Architecture + Redux-like</td></tr>
+<tr><td>आर्किटेक्चर</td><td>Clean Architecture</td></tr>
 <tr><td>टोकनीकरण</td><td>tiktoken (OpenAI)</td></tr>
 <tr><td>टेम्प्लेटिंग</td><td>jinja2 (11 अंतर्निहित)</td></tr>
 <tr><td>AST पार्सर</td><td>ast (Python), tree-sitter (JS/TS/Go/Rust)</td></tr>

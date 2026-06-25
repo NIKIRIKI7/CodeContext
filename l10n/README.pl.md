@@ -11,7 +11,7 @@
 **Narzędzie do analizy kodu źródłowego i przygotowywania promptów z wykorzystaniem AI**
 
 [![AUR](https://img.shields.io/aur/version/codecontext-ai?style=flat-square&logo=archlinux&label=AUR)](https://aur.archlinux.org/packages/codecontext-ai)
-[![Version](https://img.shields.io/badge/version-1.25.1-blue?style=flat-square)](../VERSION.txt)
+[![Version](https://img.shields.io/badge/version-1.27.0-blue?style=flat-square)](../VERSION.txt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](../LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square&logo=python)](https://www.python.org/downloads/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20|%20Linux%20|%20macOS-lightgrey?style=flat-square)]()
@@ -266,14 +266,14 @@ cd yay && makepkg -si</pre>
 }</pre>
 
 <h4>🐍 plugin.py (Przykład)</h4>
-<pre>from src.api.plugin_api import IPlugin, PluginAPI
+<pre>from src.services.plugin_manager import IPlugin
 
 class MyPlugin(IPlugin):
     id = "my_plugin"
     name = "My Plugin"
     version = "1.0.0"
 
-    def on_init(self, api: PluginAPI) -> None:
+    def on_init(self, controller: MainController) -> None:
         # Tłumaczenia z folderu locales/ są ładowane automatycznie
         # Rejestrujemy zakładkę w panelu bocznym
         api.ui.register_sidebar_tab(
@@ -302,11 +302,8 @@ class MyPlugin(IPlugin):
 <table>
 <thead><tr><th>Właściwość / Metoda</th><th>Opis</th></tr></thead>
 <tbody>
-<tr><td><code>api.store</code></td><td>Redux-store (tylko do odczytu, dostęp: <code>state.settings.xxx</code>)</td></tr>
-<tr><td><code>api.dispatcher</code></td><td>Wysyłanie akcji (np. <code>UI_ADD_LOG</code>)</td></tr>
 <tr><td><code>api.ui.register_sidebar_tab(id, label, factory)</code></td><td>Dodaje zakładkę do lewego panelu bocznego</td></tr>
 <tr><td><code>api.ui.register_action_button(id, label, callback)</code></td><td>Dodaje przycisk do menu rozwijanego "Wtyczki 🔽"</td></tr>
-<tr><td><code>api.add_translations(lang, data)</code></td><td>Dodaje tłumaczenia w czasie wykonania (scalane z wbudowanymi)</td></tr>
 <tr><td><code>api.add_log(message)</code></td><td>Zapisuje do panelu logów aplikacji</td></tr>
 </tbody>
 </table>
@@ -380,7 +377,7 @@ python main.py --cli --path . --git --git-base origin/main --minify true --stdou
 <tbody>
 <tr><td>Język</td><td>Python 3.10+</td></tr>
 <tr><td>Framework GUI</td><td>PySide6 (Qt 6)</td></tr>
-<tr><td>Architektura</td><td>Clean Architecture + Redux-podobna</td></tr>
+<tr><td>Architektura</td><td>Clean Architecture</td></tr>
 <tr><td>Tokenizacja</td><td>tiktoken (OpenAI)</td></tr>
 <tr><td>Szablony</td><td>jinja2 (11 wbudowanych)</td></tr>
 <tr><td>Parsery AST</td><td>ast (Python), tree-sitter (JS/TS/Go/Rust)</td></tr>
