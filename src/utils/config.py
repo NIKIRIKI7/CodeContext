@@ -1,4 +1,5 @@
 import os
+import sys
 import platform
 import re
 import json
@@ -38,26 +39,20 @@ SECRET_PATTERNS = [
     re.compile(r'(eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,})')
 ]
 
-def get_font_path():
-    system = platform.system()
-    if system == "Windows":
-        path = os.path.join(os.environ.get("WINDIR", "C:\\Windows"), "Fonts", "arial.ttf")
-        if os.path.exists(path): return path
-    elif system == "Darwin":
-        path = "/Library/Fonts/Arial.ttf"
-        if os.path.exists(path): return path
-    else:
-        paths = [
-            "/usr/share/fonts/truetype/msttcorefonts/Arial.ttf",
-            "/usr/share/fonts/TTF/Arial.ttf",
-            "/usr/share/fonts/liberation/LiberationSans-Regular.ttf",
-            "/usr/share/fonts/gnu-free/FreeSans.ttf"
-        ]
-        for p in paths:
-            if os.path.exists(p): return p
-    return None
-
-FONT_PATH = get_font_path()
+def get_resource_path(relative_path: str) -> str:
+    if getattr(sys, 'frozen', False):
+        return os.path.join(sys._MEIPASS, relative_path)
+    start = os.path.dirname(os.path.abspath(__file__))
+    d = start
+    while True:
+        candidate = os.path.join(d, relative_path)
+        if os.path.exists(candidate):
+            return candidate
+        parent = os.path.dirname(d)
+        if parent == d:
+            break
+        d = parent
+    return os.path.join(start, relative_path)
 
 def get_app_data_dir() -> str:
     system = platform.system()
@@ -73,18 +68,11 @@ def get_app_data_dir() -> str:
 
 def get_app_version() -> str:
     try:
-        start = os.path.dirname(os.path.abspath(__file__))
-        d = start
-        while True:
-            candidate = os.path.join(d, "VERSION.txt")
-            if os.path.exists(candidate):
-                with open(candidate, "r", encoding="utf-8") as f:
-                    ver = f.read().strip()
-                    if ver: return ver
-            parent = os.path.dirname(d)
-            if parent == d:
-                break
-            d = parent
+        ver_path = get_resource_path("VERSION.txt")
+        if os.path.exists(ver_path):
+            with open(ver_path, "r", encoding="utf-8") as f:
+                ver = f.read().strip()
+                if ver: return ver
     except Exception:
         pass
     return "1.0.0"

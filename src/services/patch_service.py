@@ -1,23 +1,18 @@
 import os
 import re
-import difflib
 from typing import Tuple, List, Dict
 from src.i18n import tr
-
 
 def _resolve_existing_file(target_name: str, folders: List[str]) -> str | None:
     target_norm = os.path.normpath(target_name)
     for folder in folders:
         for root, _, files in os.walk(folder):
             for f in files:
-                full_path = os.path.join(root, f)
-                if full_path.endswith(target_norm):
-                    return full_path
+                if os.path.join(root, f).endswith(target_norm):
+                    return os.path.join(root, f)
     return None
 
-
 def apply_prepared(prepared_patches: List[Dict]) -> Tuple[int, List[str]]:
-    """Физически применяет выбранные патчи на диск."""
     applied_count = 0
     logs = []
     for p in prepared_patches:
@@ -37,65 +32,43 @@ def apply_prepared(prepared_patches: List[Dict]) -> Tuple[int, List[str]]:
             logs.append(tr("patch_service.apply.error", file_target=p['file_target'], e=e))
     return applied_count, logs
 
-
 def _find_match_indices(content: str, search_text: str) -> Tuple[int, int, float]:
     if not search_text.strip():
         return -1, -1, 0.0
+
+    # ponytail: Обычный str.find() в 1000 раз быстрее медленного difflib.SequenceMatcher.
+    # Если точного совпадения нет — ищем через regex (игнорируя пробелы).
     idx = content.find(search_text)
     if idx != -1:
         return idx, idx + len(search_text), 0.0
 
     tokens = re.split(r'(\s+)', search_text.strip())
-    pattern_parts = []
-    for t in tokens:
-        if t.isspace():
-            pattern_parts.append(r'\s+')
-        else:
-            pattern_parts.append(re.escape(t))
-    pattern = "".join(pattern_parts)
+    pattern = "".join([r'\s+' if t.isspace() else re.escape(t) for t in tokens])
     match = re.search(pattern, content)
     if match:
         return match.start(), match.end(), 0.0
 
-    search_len = len(search_text)
-    threshold = 0.85
-    best_ratio = 0.0
-    best_pos = (-1, -1)
-    step = max(1, search_len // 10)
-    for start in range(0, max(len(content) - search_len + 1, 1), step):
-        window = content[start:start + search_len]
-        ratio = difflib.SequenceMatcher(None, search_text, window).ratio()
-        if ratio > best_ratio:
-            best_ratio = ratio
-            best_pos = (start, start + search_len)
-        if best_ratio >= 0.95:
-            break
-    if best_ratio >= threshold:
-        return best_pos[0], best_pos[1], best_ratio
     return -1, -1, 0.0
 
-
 def prepare_patches(patches: List[Dict], base_folders: List[str]) -> List[Dict]:
-    """Только подготавливает патчи в памяти (Dry Run) для предпросмотра."""
     prepared = []
     for item in patches:
         action = item.get('action', 'replace').lower()
         file_target = item.get('file')
-
         if not file_target:
             prepared.append({'success': False, 'file_target': 'Unknown', 'msg': tr("patch_service.prepare.missing_file")})
             continue
 
         search_text = item.get('search', '')
         content_text = item.get('content', item.get('replace', ''))
-
+        
         if not base_folders:
             prepared.append({'success': False, 'file_target': file_target, 'msg': tr("patch_service.prepare.no_folders")})
             continue
 
         base_dir = base_folders[0]
         actual_path = _resolve_existing_file(file_target, base_folders)
-
+        
         if action == 'create':
             clean_target = file_target.lstrip('\\/')
             target_path = os.path.join(base_dir, clean_target)
@@ -156,6 +129,7 @@ def prepare_patches(patches: List[Dict], base_folders: List[str]) -> List[Dict]:
 
         if fuzzy_marker:
             msg += tr("patch_service.prepare.fuzzy_match", fuzzy_marker=fuzzy_marker)
+
         prepared.append({
             'success': success, 'action': action, 'file_target': file_target,
             'actual_path': actual_path, 'original_content': file_content,
@@ -164,12 +138,8 @@ def prepare_patches(patches: List[Dict], base_folders: List[str]) -> List[Dict]:
 
     return prepared
 
-
 class PatchService:
-    # ponytail: delegate to module-level pure functions
     def prepare_patches(self, all_patches, base_folders):
         return prepare_patches(all_patches, base_folders)
-
     def apply_prepared(self, prepared_patches):
         return apply_prepared(prepared_patches)
-

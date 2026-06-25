@@ -1,15 +1,12 @@
-import platform
 import functools
 from .store.state import AppState
-from .data.file_system_repository import FileSystemRepository
-from .api.plugin_api import PluginAPI
 from .services.plugin_manager import PluginManager
 from .services.file_service import FileService
 from .services.github_service import GitHubService
 from .services.patch_service import PatchService
 from .services import llm_checker_service
 from .services.updater_service import UpdaterService
-from .services.strategies.integration_strategies import WindowsContextMenuStrategy, LinuxContextMenuStrategy, MacOSContextMenuStrategy
+from .services.integration_service import IntegrationService
 from .use_cases.scan_use_case import ScanWorkspaceUseCase
 from .use_cases.process_use_case import ProcessWorkspaceUseCase
 from .use_cases.github_use_case import GitHubUseCase
@@ -19,27 +16,14 @@ from .use_cases.updater_use_case import UpdaterUseCase
 from .controllers.main_controller import MainController
 from .controllers.cli_controller import CliController
 
-
-def _make_integration_strategy():
-    system = platform.system()
-    if system == "Windows": return WindowsContextMenuStrategy()
-    if system == "Linux": return LinuxContextMenuStrategy()
-    return MacOSContextMenuStrategy()
-
-
 class DIContainer:
     def __init__(self):
         self.state = AppState()
-        self.fs_repo = FileSystemRepository()
-        from types import SimpleNamespace
-        self._ui_registry = SimpleNamespace(sidebar_tabs={}, action_buttons={})
-
-        self.plugin_api = PluginAPI("core", self.state, self, self._ui_registry)
-        self.plugin_manager = PluginManager(self.state, self, self._ui_registry)
+        self.plugin_manager = PluginManager(self.state, self)
 
     @functools.cached_property
     def file_service(self):
-        return FileService(self.fs_repo)
+        return FileService()
 
     @functools.cached_property
     def github_service(self):
@@ -58,16 +42,16 @@ class DIContainer:
         return UpdaterService()
 
     @functools.cached_property
-    def integration_strategy(self):
-        return _make_integration_strategy()
+    def integration_service(self):
+        return IntegrationService()
 
     @functools.cached_property
     def scan_use_case(self):
-        return ScanWorkspaceUseCase(self.state, self.file_service, self.fs_repo)
+        return ScanWorkspaceUseCase(self.state, self.file_service)
 
     @functools.cached_property
     def process_use_case(self):
-        return ProcessWorkspaceUseCase(self.fs_repo)
+        return ProcessWorkspaceUseCase()
 
     @functools.cached_property
     def github_use_case(self):
@@ -75,7 +59,7 @@ class DIContainer:
 
     @functools.cached_property
     def settings_use_case(self):
-        return SettingsUseCase(self.state, self.fs_repo)
+        return SettingsUseCase(self.state)
 
     @functools.cached_property
     def patch_use_case(self):
@@ -95,10 +79,8 @@ class DIContainer:
             settings_use_case=self.settings_use_case,
             patch_use_case=self.patch_use_case,
             updater_use_case=self.updater_use_case,
-            integration_strategy=self.integration_strategy,
-            fs_repo=self.fs_repo,
+            integration_service=self.integration_service,
             llm_checker=self.llm_checker,
-            plugin_api=self.plugin_api,
             plugin_manager=self.plugin_manager,
         )
 

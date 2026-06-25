@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QTextEdit,
                                QPlainTextEdit, QComboBox, QCheckBox, QMessageBox,
                                QProgressBar, QGroupBox)
 
+import asyncio
 from src.i18n import tr
 from .theme_manager import ThemeManager
 
@@ -64,8 +65,7 @@ class ChatDialog(QDialog):
             from PySide6.QtCore import QTimer
             QTimer.singleShot(0, lambda: self._on_reply(reply))
 
-        from ..utils.async_runtime import AsyncRuntime
-        AsyncRuntime.run_coroutine(fetch_reply())
+        asyncio.create_task(fetch_reply())
 
     def _on_reply(self, reply):
         self.messages.append({"role": "assistant", "content": reply})
@@ -263,8 +263,7 @@ class AdvancedPreviewDialog(QDialog):
             from PySide6.QtCore import QTimer
             QTimer.singleShot(0, lambda: self.diff_browser.setHtml(html_diff))
 
-        from src.utils.async_runtime import AsyncRuntime
-        AsyncRuntime.run_coroutine(_generate_diff_bg())
+        asyncio.create_task(_generate_diff_bg())
 
     def _copy_all(self):
         self.controller.copy_to_clipboard(self.txt_preview.toPlainText())
@@ -737,15 +736,12 @@ class UpdateDialog(QDialog):
         from PySide6.QtCore import QTimer
         self._spinner_timer = QTimer(self)
         self._spinner_timer.timeout.connect(self._rotate_spinner)
-        self._spinner_angle = 0
 
         self.update_data(update_info)
 
     def _rotate_spinner(self):
-        self._spinner_angle = (self._spinner_angle + 30) % 360
-        if self._spinner_angle % 60 == 0:
-            current = self.lbl_icon.text()
-            self.lbl_icon.setText("⌛" if current == "⏳" else "⏳")
+        current = self.lbl_icon.text()
+        self.lbl_icon.setText("⌛" if current == "⏳" else "⏳")
 
     def update_data(self, update_info):
         self.update_info = update_info
@@ -1013,37 +1009,10 @@ class UICustomizationDialog(QDialog):
         self.accept()
 
 
-def _get_logs(mode_idx):
+def _get_logs(controller, mode_idx):
     if mode_idx == 2:
         return ""
-
-    from src.utils.config import get_app_data_dir
-    import os, datetime, re
-
-    log_file = os.path.join(get_app_data_dir(), "logs", "app.log")
-    if not os.path.exists(log_file):
-        return "Log file not found."
-
-    try:
-        with open(log_file, "r", encoding="utf-8", errors="replace") as f:
-            lines = f.readlines()
-    except Exception as e:
-        return f"Error reading logs: {e}"
-
-    if mode_idx == 1:
-        return "".join(lines[-500:])
-
-    today_str = datetime.datetime.now().strftime("%Y-%m-%d")
-    filtered = []
-    for line in lines:
-        if re.match(r'^\d{4}-\d{2}-\d{2}', line):
-            if line.startswith(today_str):
-                filtered.append(line)
-        else:
-            if filtered and not line.startswith(today_str):
-                filtered.append(line)
-
-    return "".join(filtered[-500:])
+    return "\n".join(controller.state.logs[-500:])
 
 
 class BugReportDialog(QDialog):
@@ -1101,7 +1070,7 @@ class BugReportDialog(QDialog):
             QMessageBox.warning(self, tr("sidebar.error.title"), tr("dialogs.bug_report.empty_desc"))
             return
 
-        logs = _get_logs(self.cmb_logs.currentIndex())
+        logs = _get_logs(self.controller, self.cmb_logs.currentIndex())
         sys_info = f"OS: {pf.system()} {pf.release()}\nVersion: {get_app_version()}"
 
         issue_body = (

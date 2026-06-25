@@ -43,10 +43,9 @@ class PipelineUtils:
         if getattr(options, 'prioritize_entry_files', True):
             raw_files = sorted(raw_files, key=_priority_sort_key)
 
-        workers = max(1, (os.cpu_count() or 2))
         result = []
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
+        with concurrent.futures.ThreadPoolExecutor() as executor:
             futures = [executor.submit(_process_single_worker, raw, opts_dict) for raw in raw_files]
             for future in concurrent.futures.as_completed(futures):
                 try:

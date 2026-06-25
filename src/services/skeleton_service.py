@@ -1,6 +1,22 @@
 import ast
 import re
 
+_KEEP_PATTERNS = [
+    re.compile(p) for p in [
+        r'^\s*(import|export|from|require)\s+',
+        r'^\s*(abstract\s+)?class\s+\w+',
+        r'^\s*interface\s+\w+',
+        r'^\s*type\s+\w+\s*=',
+        r'^\s*enum\s+\w+',
+        r'^\s*@\w+',
+        r'^\s*(async\s+)?function\s*\w*',
+        r'^\s*(public|private|protected|static|readonly|async|override)*\s*\w+\s*\(.*\).*{?',
+        r'^\s*(const|let|var)\s+\w+\s*[:=]\s*(\(.*\)|.*)\s*=>',
+        r'^\s*<script', r'^\s*</script', r'^\s*<template', r'^\s*</template',
+        r'^\s*<style', r'^\s*</style',
+    ]
+]
+
 def make_skeleton(code: str, ext: str) -> str:
     if not code or not code.strip(): return ""
     ext = ext.lower()
@@ -23,25 +39,10 @@ def _python_skeleton(code: str) -> str:
 def _web_skeleton(code: str) -> str:
     lines = code.splitlines()
     skeleton_lines = []
-    keep_patterns = [
-        re.compile(p) for p in [
-            r'^\s*(import|export|from|require)\s+',
-            r'^\s*(abstract\s+)?class\s+\w+',
-            r'^\s*interface\s+\w+',
-            r'^\s*type\s+\w+\s*=',
-            r'^\s*enum\s+\w+',
-            r'^\s*@\w+',
-            r'^\s*(async\s+)?function\s*\w*',
-            r'^\s*(public|private|protected|static|readonly|async|override)*\s*\w+\s*\(.*\).*{?',
-            r'^\s*(const|let|var)\s+\w+\s*[:=]\s*(\(.*\)|.*)\s*=>',
-            r'^\s*<script', r'^\s*</script', r'^\s*<template', r'^\s*</template',
-            r'^\s*<style', r'^\s*</style',
-        ]
-    ]
     for line in lines:
         line_stripped = line.strip()
         if not line_stripped: continue
-        for pattern in keep_patterns:
+        for pattern in _KEEP_PATTERNS:
             if pattern.match(line):
                 if line_stripped.endswith('{'): skeleton_lines.append(line + " // ... }")
                 elif '=>' in line_stripped and '{' in line_stripped: skeleton_lines.append(line.split('{')[0] + "{ // ... }")

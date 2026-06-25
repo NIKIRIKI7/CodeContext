@@ -2,35 +2,20 @@ import argparse
 import os
 import sys
 import platform
+import shutil
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from src.di_container import DIContainer
-from src.utils.async_runtime import AsyncRuntime
 from src.utils.logger import app_logger
+from src.utils.config import get_resource_path
 from src.i18n import tr
-
 from PySide6.QtWidgets import QApplication
 from PySide6.QtGui import QIcon
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
-
+import PySide6.QtAsyncio as QtAsyncio
 from src.ui.theme_manager import ThemeManager
 from src.ui.main_window import MainWindow
-
-def get_resource_path(relative_path: str) -> str:
-    if getattr(sys, 'frozen', False):
-        return os.path.join(sys._MEIPASS, relative_path)
-    start = os.path.dirname(os.path.abspath(__file__))
-    d = start
-    while True:
-        candidate = os.path.join(d, relative_path)
-        if os.path.exists(candidate):
-            return candidate
-        parent = os.path.dirname(d)
-        if parent == d:
-            break
-        d = parent
-    return os.path.join(start, relative_path)
 
 def send_to_existing_instance(path: str) -> bool:
     socket = QLocalSocket()
@@ -45,7 +30,6 @@ def send_to_existing_instance(path: str) -> bool:
 def main():
     app_logger.info("=" * 50)
     app_logger.info("🚀 CodeContext AI Started")
-
     if getattr(sys, 'frozen', False):
         exe_path = sys.executable
         if platform.system() == "Darwin":
@@ -55,7 +39,6 @@ def main():
                 app_path = os.sep.join(parts[:app_idx+1])
                 old_app = app_path + ".old"
                 if os.path.exists(old_app):
-                    import shutil
                     try: shutil.rmtree(old_app, ignore_errors=True)
                     except Exception: pass
         else:
@@ -85,13 +68,14 @@ def main():
     container = DIContainer()
 
     if args.install_context:
-        container.integration_strategy.install()
+        container.integration_service.install_context_menu()
         sys.exit(0)
     if args.remove_context:
-        container.integration_strategy.remove()
+        container.integration_service.remove_context_menu()
         sys.exit(0)
 
     if args.cli or args.silent or args.dry_run or args.stdout:
+        import asyncio
         if not args.path:
             args.path = os.getcwd()
         kwargs = {
@@ -115,10 +99,8 @@ def main():
     app_logger.info("Starting GUI Mode (PySide6)...")
     os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
     os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "1"
-    AsyncRuntime.start()
 
     app = QApplication(sys.argv)
-
     logo_path = get_resource_path(os.path.join("assets", "images", "logo.png"))
     if os.path.exists(logo_path):
         app.setWindowIcon(QIcon(logo_path))
@@ -151,17 +133,16 @@ def main():
                 container.main_controller.add_folder(received_path)
                 window.activateWindow()
                 window.raise_()
-
+                
     ipc_server.newConnection.connect(on_new_connection)
 
     if args.path and os.path.exists(args.path):
         container.main_controller.add_folder(os.path.abspath(args.path))
 
     window.show()
-    exit_code = app.exec()
+    # ponytail: Встроенный луп событий PySide6 вместо самописного фонового потока
+    QtAsyncio.run(handle_sigint=True)
     ipc_server.close()
-    AsyncRuntime.stop()
-    sys.exit(exit_code)
 
 if __name__ == "__main__":
     main()

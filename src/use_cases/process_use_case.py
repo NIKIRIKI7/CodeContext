@@ -3,33 +3,38 @@ import asyncio
 import datetime
 import gc
 import json
+from pathlib import Path
 from typing import Optional, List
+
 from ..store.state import AppState, ProcessedFile
 from ..utils.config import get_app_data_dir, MAX_FILE_SIZE_MB
 from ..utils.pipeline_utils import PipelineUtils
 from src.i18n import tr
-
 from ..services import dependency_service, formatting_service, output_service, token_service, cleaner_service, skeleton_service
 
 _CHECKPOINT_FILE = os.path.join(get_app_data_dir(), "processing_checkpoint.json")
 
+def read_file_sync(path: str) -> str | None:
+    try:
+        # ponytail: Отказ от mmap(). Дисковый кэш ОС делает read_text() достаточно быстрым.
+        with open(path, 'rb') as f:
+            if b'\x00' in f.read(1024): return None
+        return Path(path).read_text(encoding='utf-8', errors='replace')
+    except OSError:
+        return None
+
+async def read_file_async(path: str) -> str | None:
+    return await asyncio.to_thread(read_file_sync, path)
 
 def _save_checkpoint(processed: List[ProcessedFile]) -> None:
     try:
-        data = [{"path": p.path, "content": p.content, "tokens": p.tokens} for p in processed]
         with open(_CHECKPOINT_FILE, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False)
-    except Exception:
-        pass
-
+            json.dump([{"path": p.path, "content": p.content, "tokens": p.tokens} for p in processed], f, ensure_ascii=False)
+    except Exception: pass
 
 def _clear_checkpoint() -> None:
-    try:
-        if os.path.exists(_CHECKPOINT_FILE):
-            os.remove(_CHECKPOINT_FILE)
-    except Exception:
-        pass
-
+    try: os.remove(_CHECKPOINT_FILE)
+    except Exception: pass
 
 async def _export(target: str, text: str, save_path: Optional[str], state: AppState):
     if target == 'editor':
@@ -42,8 +47,7 @@ async def _export(target: str, text: str, save_path: Optional[str], state: AppSt
         import sys
         out = sys.__stdout__
         out.reconfigure(encoding='utf-8')
-        out.write(text)
-        out.write("\n")
+        out.write(text + "\n")
         out.flush()
     elif target == 'preview':
         state.preview_text = text
@@ -56,108 +60,61 @@ async def _export(target: str, text: str, save_path: Optional[str], state: AppSt
         output_service.save_to_file(text, save_path)
         state.add_log(tr("process_use_case.export.saved", path=save_path))
 
-
 class ProcessWorkspaceUseCase:
-    def __init__(self, fs_repo):
-        self.fs_repo = fs_repo
-
     async def execute(self, state: AppState, target: str, save_path: Optional[str] = None) -> None:
         state.is_loading = True
         state.status_message = tr("process_use_case.workflow.preparing")
-        state.progress = 0.1
         state.notify()
-
         gc.disable()
+        
         try:
             files_to_process = [p for p in state.scanned_files_paths if p not in state.manual_exclusions]
             if not files_to_process:
                 state.add_log(tr("process_use_case.workflow.no_files"))
                 return
-
-            state.status_message = tr("process_use_case.workflow.reading", count=len(files_to_process))
-            state.progress = 0.3
-            state.notify()
-
+                
             raw_files = []
             for path in files_to_process:
-                if not os.path.exists(path): continue
-                if os.path.getsize(path) > MAX_FILE_SIZE_MB * 1024 * 1024:
-                    state.add_log(f"Skipping {path}: File too large")
-                    continue
-                content = await self.fs_repo.read_file_async(path)
+                if not os.path.exists(path) or os.path.getsize(path) > MAX_FILE_SIZE_MB * 1024 * 1024: continue
+                content = await read_file_async(path)
                 if content is not None:
                     raw_files.append({"path": path, "content": content, "ext": os.path.splitext(path)[1].lower()})
-
+                    
             dependency_map = None
             if state.settings.include_dependencies or getattr(state.settings, 'include_mermaid', False):
-                state.status_message = tr("process_use_case.workflow.analyzing")
-                state.progress = 0.5
-                state.notify()
                 dependency_map = await dependency_service.resolve_dependencies(raw_files)
-
-            state.status_message = tr("process_use_case.workflow.processing_minifying")
-            state.progress = 0.6
-            state.notify()
-
+                
             if target == 'file' and save_path:
                 await self._stream_to_file(files_to_process, state, save_path)
-                state.status_message = tr("store.status.done")
-                state.progress = 1.0
-                state.notify()
                 return
-
+                
             processed = await asyncio.to_thread(PipelineUtils.process_files_batch_parallel, raw_files, state.settings)
-
-            if getattr(state.settings, 'save_checkpoints', False):
-                _save_checkpoint(processed)
-
+            
+            if getattr(state.settings, 'save_checkpoints', False): _save_checkpoint(processed)
             state.processed_files = processed
-
-            state.status_message = tr("process_use_case.workflow.formatting")
-            state.progress = 0.85
-            state.notify()
-
+            
             text_result = await asyncio.to_thread(
                 formatting_service.format_output,
                 processed, state.settings.output_format, state.settings.include_tree,
                 state.settings.system_prompt, dependency_map, state.settings.template_path,
                 getattr(state.settings, 'include_mermaid', False), getattr(state.settings, 'deduplicate', False)
             )
-
-            if getattr(state.settings, 'save_checkpoints', False):
-                _clear_checkpoint()
-
+            
+            if getattr(state.settings, 'save_checkpoints', False): _clear_checkpoint()
+            
             final_tokens = await asyncio.to_thread(token_service.count_tokens, text_result)
-
-            # ponytail: fix O(N^2) diff hang. PipelineUtils sorts processed files by priority,
-            # so zip(raw_files, processed) pairs wrong files. We match them strictly by path.
-            raw_map = {r['path']: r['content'] for r in raw_files}
-            state.before_after_data = [
-                {"path": p.path, "original": raw_map[p.path], "processed": p.content}
-                for p in processed
-            ]
-
+            state.before_after_data = [{"path": p.path, "original": next((r['content'] for r in raw_files if r['path'] == p.path), ""), "processed": p.content} for p in processed]
+            
             timestamp = datetime.datetime.now().strftime("%H:%M:%S")
             state.preview_history.insert(0, {"time": timestamp, "text": text_result, "tokens": final_tokens})
             if len(state.preview_history) > 20: state.preview_history.pop()
-
+            
             state.final_output_text = text_result
             state.total_tokens = final_tokens
-
-            state.status_message = tr("process_use_case.workflow.saving")
-            state.progress = 0.95
-            state.notify()
-
             await _export(target, text_result, save_path, state)
-
-            state.status_message = tr("store.status.done")
-            state.progress = 1.0
-            state.add_log(tr("process_use_case.workflow.done", count=final_tokens))
-
+            
         except Exception as exc:
-            state.status_message = tr("store.status.error_with_msg", error_msg=str(exc))
             state.add_log(f"CRITICAL ERROR: {exc}")
-            state.add_log(tr("process_use_case.workflow.error", error=exc))
         finally:
             gc.enable()
             gc.collect()
@@ -173,26 +130,16 @@ class ProcessWorkspaceUseCase:
             settings.template_path, getattr(settings, 'include_mermaid', False), False
         )
         total_tokens = token_service.count_tokens(header_text)
-
         with open(save_path, 'w', encoding='utf-8') as f:
             f.write(header_text + "\n")
-
-            for idx, path in enumerate(file_paths):
-                content = self.fs_repo._read_file_sync(path)
+            for path in file_paths:
+                content = read_file_sync(path)
                 if not content: continue
                 ext = os.path.splitext(path)[1].lower()
-
                 cleaned = cleaner_service.clean(content, ext, settings)
                 if getattr(settings, 'skeleton_mode', False):
                     cleaned = skeleton_service.make_skeleton(cleaned, ext)
-
-                state.status_message = tr("process_use_case.workflow.writing", path=os.path.basename(path))
-                state.progress = 0.6 + (0.3 * (idx + 1) / len(file_paths))
-                state.notify()
-
                 file_chunk = f"{'='*50}\nFILE: {path}\n{'='*50}\n{cleaned}\n"
                 total_tokens += token_service.count_tokens(file_chunk)
                 f.write(file_chunk + "\n")
-
-        state.add_log(tr("process_use_case.export.saved", path=save_path))
         return total_tokens

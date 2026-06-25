@@ -34,10 +34,8 @@ def clean(text: str, extension: str, options: Any) -> str:
 
     if getattr(options, 'minify', True):
         text = "\n".join([line.strip() for line in text.splitlines() if line.strip()])
-
-    if getattr(options, 'aggressive_minify', False):
+    elif getattr(options, 'aggressive_minify', False):
         text = _TRAILING_WS.sub('', text)
-        text = _MULTI_BLANK.sub('\n\n', text)
-        text = text.strip()
+        text = _MULTI_BLANK.sub('\n\n', text).strip()
 
     return text

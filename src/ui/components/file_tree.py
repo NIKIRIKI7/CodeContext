@@ -162,15 +162,11 @@ class FileTree(QWidget):
 
     def _propagate_check(self, parent_item, state):
         self._is_updating = True
-        for row in range(parent_item.rowCount()):
-            child = parent_item.child(row)
-            child.setCheckState(Qt.Checked if state else Qt.Unchecked)
-            path = child.data(Qt.UserRole)
-            is_file = child.data(Qt.UserRole + 1)
-            if path and is_file:
-                self.on_toggle(path, state)
-            if child.hasChildren():
-                self._propagate_check(child, state)
+        base = parent_item.data(Qt.UserRole) or ""
+        for item, full_path in self._all_items:
+            if full_path.startswith(base):
+                item.setCheckState(Qt.Checked if state else Qt.Unchecked)
+                self.on_toggle(full_path, state)
         self._is_updating = False
 
     def _apply_filter(self):
@@ -224,38 +220,25 @@ class FileTree(QWidget):
 
     def _filter_children_by_ext(self, parent_item, exts):
         self._is_updating = True
-        self._apply_ext_filter_recursive(parent_item, exts)
-        self._is_updating = False
-
-    def _apply_ext_filter_recursive(self, parent_item, exts):
-        for row in range(parent_item.rowCount()):
-            child = parent_item.child(row)
-            is_file = child.data(Qt.UserRole + 1)
-            path = child.data(Qt.UserRole)
-            if is_file and path:
-                ext = os.path.splitext(path)[1].lower()
+        base = parent_item.data(Qt.UserRole) or ""
+        for item, full_path in self._all_items:
+            if full_path.startswith(base):
+                ext = os.path.splitext(full_path)[1].lower()
                 state = Qt.Checked if ext in exts else Qt.Unchecked
-                child.setCheckState(state)
-                self.on_toggle(path, state == Qt.Checked)
-            elif child.hasChildren():
-                self._apply_ext_filter_recursive(child, exts)
+                item.setCheckState(state)
+                self.on_toggle(full_path, state == Qt.Checked)
+        self._is_updating = False
 
     def _exclude_heavy_children(self, parent_item):
         self._is_updating = True
-        self._apply_heavy_filter_recursive(parent_item)
-        self._is_updating = False
-
-    def _apply_heavy_filter_recursive(self, parent_item):
-        for row in range(parent_item.rowCount()):
-            child = parent_item.child(row)
-            is_file = child.data(Qt.UserRole + 1)
-            if is_file:
-                category = child.data(Qt.UserRole + 3)
+        base = parent_item.data(Qt.UserRole) or ""
+        for item, full_path in self._all_items:
+            if full_path.startswith(base):
+                category = item.data(Qt.UserRole + 3)
                 if category in ("HUGE", "HEAVY", "DEPENDENCY"):
-                    child.setCheckState(Qt.Unchecked)
-                    self.on_toggle(child.data(Qt.UserRole), False)
-            elif child.hasChildren():
-                self._apply_heavy_filter_recursive(child)
+                    item.setCheckState(Qt.Unchecked)
+                    self.on_toggle(full_path, False)
+        self._is_updating = False
 
     def _exclude_all_children(self, parent_item):
         self._is_updating = True

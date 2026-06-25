@@ -1,4 +1,4 @@
-from src.api import IPlugin, PluginAPI
+from src.services.plugin_manager import IPlugin
 
 
 class HelloWorldPlugin(IPlugin):
@@ -6,19 +6,13 @@ class HelloWorldPlugin(IPlugin):
     name = "Hello World"
     version = "1.0.0"
 
-    def on_init(self, api: PluginAPI) -> None:
-        api.add_translations("ru", {
-            "hello_world.greeting": "Привет, мир! Плагин работает.",
-            "hello_world.btn_label": "Сказать «Привет»",
-        })
-
-        api.ui.register_sidebar_tab(
+    def on_init(self, controller) -> None:
+        controller.register_sidebar_tab(
             tab_id="hello_world",
             label="Hello",
-            widget_factory=lambda: self._build_widget(api),
+            factory=lambda: self._build_widget(controller),
         )
-
-        api.ui.register_action_button(
+        controller.register_action_button(
             action_id="hello_world_say_hi",
             label="👋 Hello World",
             callback=self._show_hello_dialog,
@@ -29,7 +23,7 @@ class HelloWorldPlugin(IPlugin):
         parent = QApplication.activeWindow()
         QMessageBox.information(parent, "Hello World", "Привет, мир! Плагин работает.")
 
-    def _build_widget(self, api: PluginAPI):
+    def _build_widget(self, controller):
         from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton
         from src.i18n import tr
 

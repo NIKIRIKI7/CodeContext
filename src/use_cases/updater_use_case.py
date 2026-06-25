@@ -1,5 +1,5 @@
+import os
 import sys
-import subprocess
 from ..services.updater_service import UpdaterService
 from ..store.state import AppState
 from ..utils.logger import app_logger
@@ -75,8 +75,7 @@ class UpdaterUseCase:
                 self.state.notify()
                 app_logger.info("Restarting application to apply update...")
 
-                subprocess.Popen([sys.executable])
-                sys.exit(0)
+                os.execv(sys.executable, [sys.executable] + sys.argv)
         except Exception as e:
             err_msg = str(e)
             self.state.add_log(tr("updater_use_case.install_error", error=err_msg))

@@ -1,8 +1,8 @@
 import os
+import asyncio
 from typing import Optional, Tuple, List
 from PySide6.QtCore import QTimer
 from src.i18n import tr
-
 from ..store.state import AppState, ProcessedFile
 from ..use_cases.scan_use_case import ScanWorkspaceUseCase
 from ..use_cases.process_use_case import ProcessWorkspaceUseCase
@@ -10,11 +10,7 @@ from ..use_cases.github_use_case import GitHubUseCase
 from ..use_cases.settings_use_case import SettingsUseCase
 from ..use_cases.patch_use_case import PatchUseCase
 from ..use_cases.updater_use_case import UpdaterUseCase
-from ..utils.async_runtime import AsyncRuntime
-from ..data.file_system_repository import FileSystemRepository
-from ..api.plugin_api import PluginAPI
 from ..services.plugin_manager import PluginManager
-
 from ..services import formatting_service
 from ..services import output_service
 from ..services.tour_service import TOUR_STEPS
@@ -29,10 +25,8 @@ class MainController:
         settings_use_case: SettingsUseCase,
         patch_use_case: PatchUseCase,
         updater_use_case: UpdaterUseCase,
-        integration_strategy,
-        fs_repo: FileSystemRepository,
+        integration_service,
         llm_checker,
-        plugin_api: PluginAPI,
         plugin_manager: PluginManager
     ):
         self.state = state
@@ -42,11 +36,18 @@ class MainController:
         self._settings_uc = settings_use_case
         self._patch_uc = patch_use_case
         self._updater_uc = updater_use_case
-        self._integration_strategy = integration_strategy
-        self._fs_repo = fs_repo
+        self._integration_service = integration_service
         self._llm_checker = llm_checker
-        self._plugin_api = plugin_api
         self._plugin_manager = plugin_manager
+        
+        self._plugin_tabs = {}
+        self._plugin_actions = {}
+
+    def register_sidebar_tab(self, tab_id: str, label: str, factory):
+        self._plugin_tabs[tab_id] = {"id": tab_id, "label": label, "factory": factory}
+    
+    def register_action_button(self, action_id: str, label: str, callback):
+        self._plugin_actions[action_id] = {"id": action_id, "label": label, "callback": callback}
 
     def init_plugins(self, parent_widget):
         manifests = self._plugin_manager.discover_plugins()
@@ -56,47 +57,46 @@ class MainController:
 
         for manifest in manifests:
             p_id = manifest.get("id")
-            
             if p_id not in approved:
                 from src.ui.dialogs import PluginApprovalDialog
                 dlg = PluginApprovalDialog(parent_widget, manifest)
                 if dlg.exec():
                     approved.append(p_id)
                     changed = True
-                    
-                    req_path = os.path.join(manifest['_dir'], "requirements.txt")
-                    if os.path.exists(req_path):
-                        from src.ui.dialogs import PluginInstallDialog
-                        install_dlg = PluginInstallDialog(parent_widget, manifest, req_path)
-                        install_dlg.exec()
-                else:
-                    continue
 
-            old_tabs = set(self._plugin_api.ui.sidebar_tabs.keys())
-            old_actions = set(self._plugin_api.ui.action_buttons.keys())
+            req_path = os.path.join(manifest['_dir'], "requirements.txt")
+            if os.path.exists(req_path):
+                from src.ui.dialogs import PluginInstallDialog
+                install_dlg = PluginInstallDialog(parent_widget, manifest, req_path)
+                install_dlg.exec()
 
-            self._plugin_manager.load_plugin(manifest)
+        old_tabs = set(self._plugin_tabs.keys())
+        old_actions = set(self._plugin_actions.keys())
+        
+        for manifest in manifests:
+            if manifest.get("id") in approved:
+                self._plugin_manager.load_plugin(manifest)
 
-            new_tabs = set(self._plugin_api.ui.sidebar_tabs.keys()) - old_tabs
-            new_actions = set(self._plugin_api.ui.action_buttons.keys()) - old_actions
+        new_tabs = set(self._plugin_tabs.keys()) - old_tabs
+        new_actions = set(self._plugin_actions.keys()) - old_actions
 
-            if new_tabs or new_actions:
-                vis_tabs = list(self.state.settings.visible_tabs)
-                vis_acts = list(self.state.settings.visible_actions)
-                needs_save = False
+        if new_tabs or new_actions:
+            vis_tabs = list(self.state.settings.visible_tabs)
+            vis_acts = list(self.state.settings.visible_actions)
+            needs_save = False
 
-                for t in new_tabs:
-                    if t not in vis_tabs:
-                        vis_tabs.append(t)
-                        needs_save = True
-                for a in new_actions:
-                    if a not in vis_acts:
-                        vis_acts.append(a)
-                        needs_save = True
+            for t in new_tabs:
+                if t not in vis_tabs:
+                    vis_tabs.append(t)
+                    needs_save = True
+            for a in new_actions:
+                if a not in vis_acts:
+                    vis_acts.append(a)
+                    needs_save = True
 
-                if needs_save:
-                    self.update_settings({"visible_tabs": vis_tabs, "visible_actions": vis_acts})
-                    changed = True
+            if needs_save:
+                self.update_settings({"visible_tabs": vis_tabs, "visible_actions": vis_acts})
+                changed = True
 
         if changed:
             self.update_settings({"approved_plugins": approved})
@@ -157,17 +157,6 @@ class MainController:
 
     def clear_folders(self):
         self._settings_uc.load_initial()
-        temp = self.state.temp_folders
-        if temp:
-            self.state.add_log(tr("main_controller.clear_temp_files"))
-            AsyncRuntime.run_coroutine(self._clear_temp_async(temp))
-        else:
-            self.state.selected_folders.clear()
-            self.state.notify()
-
-    async def _clear_temp_async(self, folders):
-        for folder in folders:
-            await self._fs_repo.delete_directory_async(folder)
         self.state.selected_folders.clear()
         self.state.notify()
 
@@ -175,19 +164,21 @@ class MainController:
         if not self.state.selected_folders:
             self.state.add_log(tr("main_controller.choose_folders"))
             return
+
         async def _scan_and_filter():
             await self._scan_uc.execute(self.state)
             self._apply_pr_filter()
-        AsyncRuntime.run_coroutine(_scan_and_filter())
+            
+        asyncio.create_task(_scan_and_filter())
 
     def start_processing(self, target: str, save_path: Optional[str] = None) -> Tuple[bool, str]:
         if not self.state.selected_folders:
             return False, tr("main_controller.choose_folders_or_url")
 
         if not self.state.scanned_files_paths:
-            AsyncRuntime.run_coroutine(self._scan_then_process(target, save_path))
+            asyncio.create_task(self._scan_then_process(target, save_path))
         else:
-            AsyncRuntime.run_coroutine(self._process_uc.execute(self.state, target, save_path))
+            asyncio.create_task(self._process_uc.execute(self.state, target, save_path))
         return True, ""
 
     async def _scan_then_process(self, target: str, save_path: Optional[str]):
@@ -202,18 +193,18 @@ class MainController:
         else:
             self.state.manual_exclusions.add(path)
         self.state.final_output_text = ""
-
         total = sum(meta.get("tokens", 0) for p, meta in self.state.scanned_file_metadata.items() if p not in self.state.manual_exclusions)
         self.state.selected_tokens = total
         self.state.notify()
 
     def copy_file_with_dependencies(self, target_file: str, mode: str):
-        AsyncRuntime.run_coroutine(self._copy_deps_async(target_file, mode))
+        asyncio.create_task(self._copy_deps_async(target_file, mode))
 
     async def _copy_deps_async(self, target_file: str, mode: str):
         if mode == 'none':
-            content = await self._fs_repo.read_file_async(target_file)
-            if content is not None:
+            from pathlib import Path
+            try:
+                content = Path(target_file).read_text(encoding='utf-8', errors='replace')
                 pf = ProcessedFile(path=target_file, content=content, tokens=len(content)//4)
                 text = formatting_service.format_output(
                     files=[pf],
@@ -222,13 +213,13 @@ class MainController:
                     system_prompt=""
                 )
                 self.copy_to_clipboard(text)
-            else:
+            except OSError:
                 self.state.add_log(tr("main_controller.read_file_error", target_file=target_file))
         else:
             self.state.add_log(tr("main_controller.use_copy_deps_use_case", mode=mode))
 
     def add_github_repo(self, url: str, dest_path: str = ""):
-        AsyncRuntime.run_coroutine(self._github_uc.execute(url, dest_path))
+        asyncio.create_task(self._github_uc.execute(url, dest_path))
 
     def save_local_config(self):
         if self.state.selected_folders:
@@ -237,18 +228,16 @@ class MainController:
             self.state.add_log(tr("main_controller.no_folders_config"))
 
     def install_context_menu(self) -> Tuple[bool, str]:
-        python_path = self.state.settings.python_interpreter
-        return self._integration_strategy.install(python_path)
+        return self._integration_service.install_context_menu(self.state.settings.python_interpreter)
 
     def remove_context_menu(self) -> Tuple[bool, str]:
-        return self._integration_strategy.remove()
+        return self._integration_service.remove_context_menu()
 
     def install_cli(self) -> Tuple[bool, str]:
-        python_path = self.state.settings.python_interpreter
-        return self._integration_strategy.install_cli(python_path)
+        return self._integration_service.install_cli(self.state.settings.python_interpreter)
 
     def remove_cli(self) -> Tuple[bool, str]:
-        return self._integration_strategy.remove_cli()
+        return self._integration_service.remove_cli()
 
     def close_preview(self):
         self.state.show_preview = False
@@ -269,7 +258,7 @@ class MainController:
                 self.state.settings
             )
             QTimer.singleShot(0, lambda: callback(verdict))
-        AsyncRuntime.run_coroutine(task())
+        asyncio.create_task(task())
 
     def apply_prepared_patches(self, prepared_patches: list):
         self._patch_uc.apply_prepared(prepared_patches)
@@ -278,20 +267,22 @@ class MainController:
         if not self.state.scanned_files_paths:
             self.state.add_log(tr("main_controller.scan_first"))
             return
+            
         matched = []
         for path in self.state.scanned_files_paths:
             basename = os.path.basename(path)
             if basename in text:
                 matched.append(path)
+                
         if not matched:
             self.state.add_log(tr("main_controller.no_files_in_log"))
             return
-
+            
         self.state.manual_exclusions.clear()
         all_paths = set(self.state.scanned_files_paths)
         for p in (all_paths - set(matched)):
             self.state.manual_exclusions.add(p)
-
+            
         self.state.add_log(tr("main_controller.files_matched", count=len(matched)))
         self.state.notify()
 
@@ -319,13 +310,13 @@ class MainController:
     def _apply_pr_filter(self):
         if not self.state.pr_target_files or not self.state.scanned_files_paths:
             return
-
+            
         self.state.manual_exclusions.clear()
         pr_files_norm = [p.replace('/', os.sep) for p in self.state.pr_target_files]
         for p in self.state.scanned_files_paths:
             if not any(p.endswith(pr_f) for pr_f in pr_files_norm):
                 self.state.manual_exclusions.add(p)
-
+                
         self.state.add_log(tr("main_controller.pr_filter_applied", count=len(self.state.pr_target_files)))
         self.state.pr_target_files.clear()
         self.state.notify()
@@ -340,10 +331,10 @@ class MainController:
         return formatting_service.generate_html_diff(source_text, target_text, colors, fonts)
 
     def check_for_updates(self, current_version: str):
-        AsyncRuntime.run_coroutine(self._updater_uc.check_for_updates(self.state, current_version))
+        asyncio.create_task(self._updater_uc.check_for_updates(self.state, current_version))
 
     def apply_update(self, download_url: str):
-        AsyncRuntime.run_coroutine(self._updater_uc.apply_update(download_url))
+        asyncio.create_task(self._updater_uc.apply_update(download_url))
 
     def close_update_dialog(self):
         self.state.show_update = False
@@ -352,17 +343,7 @@ class MainController:
     @staticmethod
     def _normalize_path(path: str) -> str:
         if not path: return ""
-        clean = path
-        while True:
-            prev = clean
-            clean = clean.strip().strip('"\'')
-            if clean == prev:
-                break
-        try:
-            return os.path.normpath(clean)
-        except (TypeError, ValueError, OSError):
-            return clean
+        return os.path.abspath(path.strip('"\''))
 
-    @property
-    def plugin_api(self):
-        return self._plugin_api
+    def add_log(self, text: str):
+        self.state.add_log(text)

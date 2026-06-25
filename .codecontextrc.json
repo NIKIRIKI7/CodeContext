@@ -25,7 +25,9 @@
         "filters",
         "prompts",
         "llm_os",
-        "appearance"
+        "appearance",
+        "plugins",
+        "hello_world"
     ],
     "visible_actions": [
         "preview",

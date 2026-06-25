@@ -1,8 +1,8 @@
 import os
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
                                QSplitter, QFileDialog, QStackedWidget,
-                               QLabel, QGraphicsOpacityEffect, QTabWidget)
-from PySide6.QtCore import Qt, QPropertyAnimation, QTimer
+                               QLabel, QTabWidget)
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QKeySequence, QShortcut
 
 from ..store.state import AppState
@@ -19,39 +19,6 @@ from .dialogs import AdvancedPreviewDialog, InteractiveTourDialog, EditFolderDia
 from .theme_manager import ThemeManager, theme_bus
 from ..utils.config import PricingManager, get_app_version
 from src.i18n import tr
-
-class ToastNotification(QLabel):
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.setProperty("cssClass", "toast")
-        self.setAlignment(Qt.AlignCenter)
-        self.hide()
-        self.opacity_effect = QGraphicsOpacityEffect(self)
-        self.setGraphicsEffect(self.opacity_effect)
-        self.animation = QPropertyAnimation(self.opacity_effect, b"opacity")
-        self.timer = QTimer()
-        self.timer.setSingleShot(True)
-        self.timer.timeout.connect(self.fade_out)
-
-    def show_message(self, message):
-        self.setText(message)
-        self.adjustSize()
-        self.resize(self.width() + 40, self.height() + 10)
-        parent_rect = self.parent().rect()
-        x = (parent_rect.width() - self.width()) // 2
-        y = parent_rect.height() - self.height() - 80
-        self.move(x, y)
-        self.opacity_effect.setOpacity(1.0)
-        self.show()
-        self.raise_()
-        self.timer.start(2000)
-
-    def fade_out(self):
-        self.animation.setDuration(500)
-        self.animation.setStartValue(1.0)
-        self.animation.setEndValue(0.0)
-        self.animation.finished.connect(self.hide)
-        self.animation.start()
 
 
 def dragEnterEvent(event):
@@ -122,7 +89,7 @@ class MainWindow(QMainWindow):
 
         self.folder_list = FolderList(self._on_edit_folder, self.controller.remove_folder)
         self.file_tree = FileTree(self.controller.toggle_file_exclusion, self.controller.copy_file_with_dependencies)
-        self.action_panel = ActionPanel(self._on_run, self.controller.plugin_api)
+        self.action_panel = ActionPanel(self._on_run, self.controller)
         self.log_panel = LogPanel()
         self.status_bar = StatusBar()
 
@@ -139,8 +106,6 @@ class MainWindow(QMainWindow):
 
         self.right_stack.addWidget(right_panel)
         self.splitter.addWidget(self.right_stack)
-
-        self.toast = ToastNotification(self.central_widget)
 
         QShortcut(QKeySequence("Ctrl+C"), self, activated=lambda: self._on_run('clipboard'))
         QShortcut(QKeySequence("Ctrl+Return"), self, activated=lambda: self._on_run('preview'))
@@ -227,7 +192,7 @@ class MainWindow(QMainWindow):
         self.status_bar.update_ui(state.status_message, state.progress, tokens_display, estimated_cost)
 
         if state.toast_message:
-            self.toast.show_message(state.toast_message)
+            self.statusBar().showMessage(state.toast_message, 3000)
             self.controller.clear_toast()
 
         if getattr(state, 'show_command_palette', False):
@@ -246,7 +211,7 @@ class MainWindow(QMainWindow):
                     tr("main_window.command.toggle_theme", default="Theme"): lambda: ThemeManager.apply_theme(mode="dark" if ThemeManager._current_mode == "light" else "light"),
                     tr("main_window.command.check_updates", default="Update"): lambda: self.controller.check_for_updates(get_app_version()),
                 }
-                for a_id, a_data in self.controller.plugin_api.ui.action_buttons.items():
+                for a_id, a_data in self.controller._plugin_actions.items():
                     commands[a_data["label"]] = a_data["callback"]
 
                 self._command_palette = CommandPaletteDialog(self, commands, self._close_command_palette)
