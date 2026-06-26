@@ -458,5 +458,6 @@
   "sidebar.tab.plugins": "🔌 الإضافات",
   "sidebar.plugins.open_folder": "📂 فتح مجلد الإضافات",
   "sidebar.plugins.restart_required": "⚠️ إعادة التشغيل مطلوبة",
-  "sidebar.plugins.restart_msg": "يرجى إعادة تشغيل التطبيق لتطبيق تغييرات الإضافات."
+  "sidebar.plugins.restart_msg": "يرجى إعادة تشغيل التطبيق لتطبيق تغييرات الإضافات.",
+  "sidebar.hide_tab": "👁 إخفاء التبويب"
 }

@@ -8,7 +8,7 @@ from typing import Optional, List
 
 from ..store.state import AppState, ProcessedFile
 from ..utils.config import get_app_data_dir, MAX_FILE_SIZE_MB
-from ..utils.pipeline_utils import PipelineUtils
+from ..utils import pipeline_utils
 from src.i18n import tr
 from ..services import dependency_service, formatting_service, output_service, token_service, cleaner_service, skeleton_service
 
@@ -60,8 +60,7 @@ async def _export(target: str, text: str, save_path: Optional[str], state: AppSt
         output_service.save_to_file(text, save_path)
         state.add_log(tr("process_use_case.export.saved", path=save_path))
 
-class ProcessWorkspaceUseCase:
-    async def execute(self, state: AppState, target: str, save_path: Optional[str] = None) -> None:
+async def process_workspace(state: AppState, target: str, save_path: Optional[str] = None) -> None:
         state.is_loading = True
         state.status_message = tr("process_use_case.workflow.preparing")
         state.notify()
@@ -70,6 +69,7 @@ class ProcessWorkspaceUseCase:
         try:
             files_to_process = [p for p in state.scanned_files_paths if p not in state.manual_exclusions]
             if not files_to_process:
+                state.status_message = tr("process_use_case.workflow.no_files")
                 state.add_log(tr("process_use_case.workflow.no_files"))
                 return
                 
@@ -85,10 +85,11 @@ class ProcessWorkspaceUseCase:
                 dependency_map = await dependency_service.resolve_dependencies(raw_files)
                 
             if target == 'file' and save_path:
-                await self._stream_to_file(files_to_process, state, save_path)
+                total = await _stream_to_file(files_to_process, state, save_path)
+                state.status_message = tr("process_use_case.workflow.done", count=total)
                 return
                 
-            processed = await asyncio.to_thread(PipelineUtils.process_files_batch_parallel, raw_files, state.settings)
+            processed = await asyncio.to_thread(pipeline_utils.process_files_batch_parallel, raw_files, state.settings)
             
             if getattr(state.settings, 'save_checkpoints', False): _save_checkpoint(processed)
             state.processed_files = processed
@@ -111,9 +112,10 @@ class ProcessWorkspaceUseCase:
             
             state.final_output_text = text_result
             state.total_tokens = final_tokens
+            state.status_message = tr("process_use_case.workflow.done", count=final_tokens)
             await _export(target, text_result, save_path, state)
-            
         except Exception as exc:
+            state.status_message = tr("process_use_case.workflow.error", error=str(exc))
             state.add_log(f"CRITICAL ERROR: {exc}")
         finally:
             gc.enable()
@@ -121,7 +123,7 @@ class ProcessWorkspaceUseCase:
             state.is_loading = False
             state.notify()
 
-    async def _stream_to_file(self, file_paths: list, state: AppState, save_path: str) -> int:
+async def _stream_to_file(file_paths: list, state: AppState, save_path: str) -> int:
         settings = state.settings
         header_text = await asyncio.to_thread(
             formatting_service.format_output,

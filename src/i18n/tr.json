@@ -458,5 +458,6 @@
   "sidebar.tab.plugins": "🔌 Eklentiler",
   "sidebar.plugins.open_folder": "📂 Eklenti klasörünü aç",
   "sidebar.plugins.restart_required": "⚠️ Yeniden başlatma gerekli",
-  "sidebar.plugins.restart_msg": "Plugin değişikliklerini uygulamak için uygulamayı yeniden başlatın."
+  "sidebar.plugins.restart_msg": "Plugin değişikliklerini uygulamak için uygulamayı yeniden başlatın.",
+  "sidebar.hide_tab": "👁 Sekmeyi gizle"
 }

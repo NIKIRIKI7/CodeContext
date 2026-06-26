@@ -458,5 +458,6 @@
   "sidebar.tab.plugins": "🔌 プラグイン",
   "sidebar.plugins.open_folder": "📂 プラグインフォルダを開く",
   "sidebar.plugins.restart_required": "⚠️ 再起動が必要です",
-  "sidebar.plugins.restart_msg": "プラグインの変更を適用するにはアプリケーションを再起動してください。"
+  "sidebar.plugins.restart_msg": "プラグインの変更を適用するにはアプリケーションを再起動してください。",
+  "sidebar.hide_tab": "👁 タブを隠す"
 }

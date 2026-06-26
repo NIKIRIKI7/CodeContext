@@ -458,5 +458,6 @@
   "sidebar.tab.plugins": "🔌 प्लगइन्स",
   "sidebar.plugins.open_folder": "📂 प्लगइन फ़ोल्डर खोलें",
   "sidebar.plugins.restart_required": "⚠️ पुनरारंभ आवश्यक",
-  "sidebar.plugins.restart_msg": "प्लगइन परिवर्तन लागू करने के लिए कृपया एप्लिकेशन को पुनरारंभ करें।"
+  "sidebar.plugins.restart_msg": "प्लगइन परिवर्तन लागू करने के लिए कृपया एप्लिकेशन को पुनरारंभ करें।",
+  "sidebar.hide_tab": "👁 टैब छुपाएं"
 }

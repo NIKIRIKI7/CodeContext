@@ -458,5 +458,6 @@
   "sidebar.tab.plugins": "🔌 Plugins",
   "sidebar.plugins.open_folder": "📂 Open plugins folder",
   "sidebar.plugins.restart_required": "⚠️ Restart Required",
-  "sidebar.plugins.restart_msg": "Please restart the application to apply plugin changes."
+  "sidebar.plugins.restart_msg": "Please restart the application to apply plugin changes.",
+  "sidebar.hide_tab": "👁 Hide tab"
 }

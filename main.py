@@ -68,10 +68,12 @@ def main():
     container = DIContainer()
 
     if args.install_context:
-        container.integration_service.install_context_menu()
+        from src.services import integration_service
+        integration_service.install_context_menu()
         sys.exit(0)
     if args.remove_context:
-        container.integration_service.remove_context_menu()
+        from src.services import integration_service
+        integration_service.remove_context_menu()
         sys.exit(0)
 
     if args.cli or args.silent or args.dry_run or args.stdout:

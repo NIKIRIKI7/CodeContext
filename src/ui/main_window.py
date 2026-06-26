@@ -189,7 +189,7 @@ class MainWindow(QMainWindow):
         model = state.settings.llm_model
         estimated_cost = tokens_display * PricingManager.get_price(model)
 
-        self.status_bar.update_ui(state.status_message, state.progress, tokens_display, estimated_cost)
+        self.status_bar.update_ui(state.status_message, state.progress, tokens_display, estimated_cost, state.is_loading)
 
         if state.toast_message:
             self.statusBar().showMessage(state.toast_message, 3000)

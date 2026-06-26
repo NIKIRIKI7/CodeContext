@@ -165,89 +165,85 @@ async def download_and_install(download_url: str, progress_cb: Callable[[float],
     return await asyncio.to_thread(_download_sync, download_url, current_exe, progress_cb)
 
 
-class UpdaterService:
-    """Сервис для проверки и загрузки обновлений с GitHub с полной поддержкой Mac/Linux/Win."""
+REPO_API_URL = "https://api.github.com/repos/NIKIRIKI7/CodeContext/releases"
 
-    REPO_API_URL = "https://api.github.com/repos/NIKIRIKI7/CodeContext/releases"
 
-    async def check_for_updates(self, current_version: str, include_prerelease: bool) -> Optional[dict]:
-        return await asyncio.to_thread(self._check_sync, current_version, include_prerelease)
+async def check_for_updates(current_version: str, include_prerelease: bool) -> Optional[dict]:
+    return await asyncio.to_thread(_check_sync, current_version, include_prerelease)
 
-    def _check_sync(self, current_version: str, include_prerelease: bool) -> Optional[dict]:
-        app_logger.info(f"[Updater] Проверка обновлений. Текущая: {current_version}, Prerelease: {include_prerelease}")
-        try:
-            req = urllib.request.Request(
-                self.REPO_API_URL,
-                headers={
-                    "Accept": "application/vnd.github.v3+json",
-                    "User-Agent": "CodeContextAI-App"
-                }
-            )
-            app_logger.debug(f"[Updater] Отправка запроса к {self.REPO_API_URL}")
-            with urllib.request.urlopen(req, timeout=10) as response:
-                releases = json.loads(response.read().decode('utf-8'))
 
-            app_logger.debug(f"[Updater] Получено {len(releases)} релизов от GitHub.")
-
-            curr_tuple = _parse_version(current_version)
-            latest_release = None
-
-            for release in releases:
-                if release.get("prerelease") and not include_prerelease:
-                    continue
-                
-                rel_tuple = _parse_version(release.get("tag_name", "v0.0.0"))
-                app_logger.debug(f"[Updater] Анализ релиза: {release.get('tag_name')} -> parsed: {rel_tuple}")
-                
-                if rel_tuple > curr_tuple:
-                    latest_release = release
-                    break
-
-            if not latest_release:
-                app_logger.info("[Updater] Новых версий не найдено. Установлена самая актуальная.")
-                return None
-
-            sys_os = platform.system()
-            sys_arch = platform.machine().lower()
-            asset_url = None
-            
-            app_logger.info(f"[Updater] Найдена новая версия: {latest_release.get('tag_name')}. Поиск ассетов под {sys_os} ({sys_arch})...")
-
-            for asset in latest_release.get('assets', []):
-                name = asset['name'].lower()
-                app_logger.debug(f"[Updater] Проверка ассета: {name}")
-
-                if sys_os == "Windows" and "windows" in name and name.endswith(".exe"):
-                    asset_url = asset['browser_download_url']
-                    break
-                elif sys_os == "Linux" and "linux" in name and not name.endswith(".exe"):
-                    asset_url = asset['browser_download_url']
-                    break
-                elif sys_os == "Darwin" and "macos" in name and name.endswith(".zip"):
-                    if ("arm64" in sys_arch or "aarch64" in sys_arch) and "arm64" in name:
-                        asset_url = asset['browser_download_url']
-                        break
-                    elif ("x86_64" in sys_arch or "amd64" in sys_arch) and "x86_64" in name:
-                        asset_url = asset['browser_download_url']
-                        break
-
-            if not asset_url:
-                app_logger.warning(f"[Updater] Ассет для {sys_os} ({sys_arch}) не найден в релизе {latest_release.get('tag_name')}.")
-                return None
-
-            app_logger.info(f"[Updater] Ассет успешно найден: {asset_url}")
-            return {
-                "version": latest_release.get("tag_name"),
-                "notes": latest_release.get("body", tr("updater_service.check.no_description")),
-                "download_url": asset_url
+def _check_sync(current_version: str, include_prerelease: bool) -> Optional[dict]:
+    app_logger.info(f"[Updater] Проверка обновлений. Текущая: {current_version}, Prerelease: {include_prerelease}")
+    try:
+        req = urllib.request.Request(
+            REPO_API_URL,
+            headers={
+                "Accept": "application/vnd.github.v3+json",
+                "User-Agent": "CodeContextAI-App"
             }
+        )
+        app_logger.debug(f"[Updater] Отправка запроса к {REPO_API_URL}")
+        with urllib.request.urlopen(req, timeout=10) as response:
+            releases = json.loads(response.read().decode('utf-8'))
 
-        except HTTPError as e:
-            app_logger.error(f"[Updater] Ошибка API GitHub: Код {e.code} - {e.read().decode('utf-8')}")
-            raise RuntimeError(tr("updater_service.check.github_api_error", code=e.code))
-        except Exception as e:
-            app_logger.error(f"[Updater] Критическая ошибка проверки обновлений: {e}")
-            raise RuntimeError(tr("updater_service.check.connection_error", error=e))
+        app_logger.debug(f"[Updater] Получено {len(releases)} релизов от GitHub.")
 
-    async def download_and_install(self, download_url, progress_callback):
-        pass
+        curr_tuple = _parse_version(current_version)
+        latest_release = None
+
+        for release in releases:
+            if release.get("prerelease") and not include_prerelease:
+                continue
+
+            rel_tuple = _parse_version(release.get("tag_name", "v0.0.0"))
+            app_logger.debug(f"[Updater] Анализ релиза: {release.get('tag_name')} -> parsed: {rel_tuple}")
+
+            if rel_tuple > curr_tuple:
+                latest_release = release
+                break
+
+        if not latest_release:
+            app_logger.info("[Updater] Новых версий не найдено. Установлена самая актуальная.")
+            return None
+
+        sys_os = platform.system()
+        sys_arch = platform.machine().lower()
+        asset_url = None
+
+        app_logger.info(f"[Updater] Найдена новая версия: {latest_release.get('tag_name')}. Поиск ассетов под {sys_os} ({sys_arch})...")
+
+        for asset in latest_release.get('assets', []):
+            name = asset['name'].lower()
+            app_logger.debug(f"[Updater] Проверка ассета: {name}")
+
+            if sys_os == "Windows" and "windows" in name and name.endswith(".exe"):
+                asset_url = asset['browser_download_url']
+                break
+            elif sys_os == "Linux" and "linux" in name and not name.endswith(".exe"):
+                asset_url = asset['browser_download_url']
+                break
+            elif sys_os == "Darwin" and "macos" in name and name.endswith(".zip"):
+                if ("arm64" in sys_arch or "aarch64" in sys_arch) and "arm64" in name:
+                    asset_url = asset['browser_download_url']
+                    break
+                elif ("x86_64" in sys_arch or "amd64" in sys_arch) and "x86_64" in name:
+                    asset_url = asset['browser_download_url']
+                    break
+
+        if not asset_url:
+            app_logger.warning(f"[Updater] Ассет для {sys_os} ({sys_arch}) не найден в релизе {latest_release.get('tag_name')}.")
+            return None
+
+        app_logger.info(f"[Updater] Ассет успешно найден: {asset_url}")
+        return {
+            "version": latest_release.get("tag_name"),
+            "notes": latest_release.get("body", tr("updater_service.check.no_description")),
+            "download_url": asset_url
+        }
+
+    except HTTPError as e:
+        app_logger.error(f"[Updater] Ошибка API GitHub: Код {e.code} - {e.read().decode('utf-8')}")
+        raise RuntimeError(tr("updater_service.check.github_api_error", code=e.code))
+    except Exception as e:
+        app_logger.error(f"[Updater] Критическая ошибка проверки обновлений: {e}")
+        raise RuntimeError(tr("updater_service.check.connection_error", error=e))

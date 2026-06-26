@@ -458,5 +458,6 @@
   "sidebar.tab.plugins": "🔌 Plugin",
   "sidebar.plugins.open_folder": "📂 Apri cartella plugin",
   "sidebar.plugins.restart_required": "⚠️ Riavvio richiesto",
-  "sidebar.plugins.restart_msg": "Riavvia l'applicazione per applicare le modifiche ai plugin."
+  "sidebar.plugins.restart_msg": "Riavvia l'applicazione per applicare le modifiche ai plugin.",
+  "sidebar.hide_tab": "👁 Nascondi scheda"
 }

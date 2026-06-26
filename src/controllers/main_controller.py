@@ -4,48 +4,31 @@ from typing import Optional, Tuple, List
 from PySide6.QtCore import QTimer
 from src.i18n import tr
 from ..store.state import AppState, ProcessedFile
-from ..use_cases.scan_use_case import ScanWorkspaceUseCase
-from ..use_cases.process_use_case import ProcessWorkspaceUseCase
-from ..use_cases.github_use_case import GitHubUseCase
-from ..use_cases.settings_use_case import SettingsUseCase
-from ..use_cases.patch_use_case import PatchUseCase
-from ..use_cases.updater_use_case import UpdaterUseCase
+from ..use_cases import scan_use_case, process_use_case, github_use_case, settings_use_case, patch_use_case, updater_use_case
+from ..services import integration_service
 from ..services.plugin_manager import PluginManager
 from ..services import formatting_service
 from ..services import output_service
 from ..services.tour_service import TOUR_STEPS
 
+
 class MainController:
     def __init__(
         self,
         state: AppState,
-        scan_use_case: ScanWorkspaceUseCase,
-        process_use_case: ProcessWorkspaceUseCase,
-        github_use_case: GitHubUseCase,
-        settings_use_case: SettingsUseCase,
-        patch_use_case: PatchUseCase,
-        updater_use_case: UpdaterUseCase,
-        integration_service,
+        plugin_manager: PluginManager,
         llm_checker,
-        plugin_manager: PluginManager
     ):
         self.state = state
-        self._scan_uc = scan_use_case
-        self._process_uc = process_use_case
-        self._github_uc = github_use_case
-        self._settings_uc = settings_use_case
-        self._patch_uc = patch_use_case
-        self._updater_uc = updater_use_case
-        self._integration_service = integration_service
         self._llm_checker = llm_checker
         self._plugin_manager = plugin_manager
-        
+
         self._plugin_tabs = {}
         self._plugin_actions = {}
 
     def register_sidebar_tab(self, tab_id: str, label: str, factory):
         self._plugin_tabs[tab_id] = {"id": tab_id, "label": label, "factory": factory}
-    
+
     def register_action_button(self, action_id: str, label: str, callback):
         self._plugin_actions[action_id] = {"id": action_id, "label": label, "callback": callback}
 
@@ -72,7 +55,7 @@ class MainController:
 
         old_tabs = set(self._plugin_tabs.keys())
         old_actions = set(self._plugin_actions.keys())
-        
+
         for manifest in manifests:
             if manifest.get("id") in approved:
                 self._plugin_manager.load_plugin(manifest)
@@ -106,25 +89,25 @@ class MainController:
         self._plugin_manager.shutdown_all()
 
     def load_initial_settings(self):
-        self._settings_uc.load_initial()
+        settings_use_case.load_initial(self.state)
 
     def update_settings(self, data: dict):
-        self._settings_uc.update(data)
+        settings_use_case.update_settings(self.state, data)
 
     def save_settings(self):
-        self._settings_uc.save()
+        settings_use_case.save(self.state)
 
     def reset_settings(self):
-        self._settings_uc.reset()
+        settings_use_case.reset(self.state)
 
     def apply_preset(self, preset_name: str):
-        self._settings_uc.apply_preset(preset_name)
+        settings_use_case.apply_preset(self.state, preset_name)
 
     def save_workspace(self, path: str):
-        self._settings_uc.save_workspace(path)
+        settings_use_case.save_workspace(self.state, path)
 
     def load_workspace(self, path: str):
-        self._settings_uc.load_workspace(path)
+        settings_use_case.load_workspace(self.state, path)
         self.scan_only()
 
     def add_folder(self, path: str):
@@ -133,14 +116,14 @@ class MainController:
             if clean not in self.state.selected_folders:
                 self.state.selected_folders.append(clean)
                 self.state.notify()
-            self._settings_uc.load_local_config(clean)
+            settings_use_case.load_local_config(self.state, clean)
             recent = list(self.state.settings.recent_workspaces)
             if clean in recent:
                 recent.remove(clean)
             recent.insert(0, clean)
             recent = recent[:6]
-            self._settings_uc.update({'recent_workspaces': recent})
-            self._settings_uc.save()
+            settings_use_case.update_settings(self.state, {'recent_workspaces': recent})
+            settings_use_case.save(self.state)
 
     def remove_folder(self, path: str):
         if path in self.state.selected_folders:
@@ -156,7 +139,7 @@ class MainController:
                 self.state.notify()
 
     def clear_folders(self):
-        self._settings_uc.load_initial()
+        settings_use_case.load_initial(self.state)
         self.state.selected_folders.clear()
         self.state.notify()
 
@@ -166,9 +149,9 @@ class MainController:
             return
 
         async def _scan_and_filter():
-            await self._scan_uc.execute(self.state)
+            await scan_use_case.scan_workspace(self.state)
             self._apply_pr_filter()
-            
+
         asyncio.create_task(_scan_and_filter())
 
     def start_processing(self, target: str, save_path: Optional[str] = None) -> Tuple[bool, str]:
@@ -178,14 +161,14 @@ class MainController:
         if not self.state.scanned_files_paths:
             asyncio.create_task(self._scan_then_process(target, save_path))
         else:
-            asyncio.create_task(self._process_uc.execute(self.state, target, save_path))
+            asyncio.create_task(process_use_case.process_workspace(self.state, target, save_path))
         return True, ""
 
     async def _scan_then_process(self, target: str, save_path: Optional[str]):
-        await self._scan_uc.execute(self.state)
+        await scan_use_case.scan_workspace(self.state)
         self._apply_pr_filter()
         if self.state.scanned_files_paths:
-            await self._process_uc.execute(self.state, target, save_path)
+            await process_use_case.process_workspace(self.state, target, save_path)
 
     def toggle_file_exclusion(self, path: str, is_included: bool):
         if is_included:
@@ -219,25 +202,25 @@ class MainController:
             self.state.add_log(tr("main_controller.use_copy_deps_use_case", mode=mode))
 
     def add_github_repo(self, url: str, dest_path: str = ""):
-        asyncio.create_task(self._github_uc.execute(url, dest_path))
+        asyncio.create_task(github_use_case.github_use_case(self.state, url, dest_path))
 
     def save_local_config(self):
         if self.state.selected_folders:
-            self._settings_uc.save_local_config(self.state.selected_folders[0])
+            settings_use_case.save_local_config(self.state, self.state.selected_folders[0])
         else:
             self.state.add_log(tr("main_controller.no_folders_config"))
 
     def install_context_menu(self) -> Tuple[bool, str]:
-        return self._integration_service.install_context_menu(self.state.settings.python_interpreter)
+        return integration_service.install_context_menu(self.state.settings.python_interpreter)
 
     def remove_context_menu(self) -> Tuple[bool, str]:
-        return self._integration_service.remove_context_menu()
+        return integration_service.remove_context_menu()
 
     def install_cli(self) -> Tuple[bool, str]:
-        return self._integration_service.install_cli(self.state.settings.python_interpreter)
+        return integration_service.install_cli(self.state.settings.python_interpreter)
 
     def remove_cli(self) -> Tuple[bool, str]:
-        return self._integration_service.remove_cli()
+        return integration_service.remove_cli()
 
     def close_preview(self):
         self.state.show_preview = False
@@ -248,7 +231,7 @@ class MainController:
         self.state.notify()
 
     def prepare_llm_patch(self, json_str: str) -> list:
-        return self._patch_uc.prepare_json_patch(json_str, self.state.selected_folders)
+        return patch_use_case.prepare_json_patch(self.state, json_str, self.state.selected_folders)
 
     def verify_patch_with_llm(self, patch: dict, callback):
         async def task():
@@ -261,28 +244,28 @@ class MainController:
         asyncio.create_task(task())
 
     def apply_prepared_patches(self, prepared_patches: list):
-        self._patch_uc.apply_prepared(prepared_patches)
+        patch_use_case.apply_patches(self.state, prepared_patches)
 
     def parse_error_log(self, text: str):
         if not self.state.scanned_files_paths:
             self.state.add_log(tr("main_controller.scan_first"))
             return
-            
+
         matched = []
         for path in self.state.scanned_files_paths:
             basename = os.path.basename(path)
             if basename in text:
                 matched.append(path)
-                
+
         if not matched:
             self.state.add_log(tr("main_controller.no_files_in_log"))
             return
-            
+
         self.state.manual_exclusions.clear()
         all_paths = set(self.state.scanned_files_paths)
         for p in (all_paths - set(matched)):
             self.state.manual_exclusions.add(p)
-            
+
         self.state.add_log(tr("main_controller.files_matched", count=len(matched)))
         self.state.notify()
 
@@ -310,13 +293,13 @@ class MainController:
     def _apply_pr_filter(self):
         if not self.state.pr_target_files or not self.state.scanned_files_paths:
             return
-            
+
         self.state.manual_exclusions.clear()
         pr_files_norm = [p.replace('/', os.sep) for p in self.state.pr_target_files]
         for p in self.state.scanned_files_paths:
             if not any(p.endswith(pr_f) for pr_f in pr_files_norm):
                 self.state.manual_exclusions.add(p)
-                
+
         self.state.add_log(tr("main_controller.pr_filter_applied", count=len(self.state.pr_target_files)))
         self.state.pr_target_files.clear()
         self.state.notify()
@@ -331,10 +314,10 @@ class MainController:
         return formatting_service.generate_html_diff(source_text, target_text, colors, fonts)
 
     def check_for_updates(self, current_version: str):
-        asyncio.create_task(self._updater_uc.check_for_updates(self.state, current_version))
+        asyncio.create_task(updater_use_case.check_for_updates(self.state, current_version))
 
     def apply_update(self, download_url: str):
-        asyncio.create_task(self._updater_uc.apply_update(download_url))
+        asyncio.create_task(updater_use_case.apply_update(self.state, download_url))
 
     def close_update_dialog(self):
         self.state.show_update = False

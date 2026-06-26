@@ -6,7 +6,7 @@ import webbrowser
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QTabWidget, QFormLayout, 
                                QCheckBox, QComboBox, QLineEdit, QTextEdit, 
                                QPushButton, QHBoxLayout, QLabel, QFileDialog, 
-                               QInputDialog, QMessageBox, QPlainTextEdit, QListWidget, QListWidgetItem)
+                               QInputDialog, QMessageBox, QPlainTextEdit, QListWidget, QListWidgetItem, QMenu)
 from PySide6.QtCore import Qt
 
 from ...utils.config import PRESETS, PROMPT_PRESETS, get_app_version, get_resource_path
@@ -54,6 +54,8 @@ class Sidebar(QWidget):
         self.layout.addWidget(title)
 
         self.tabs = QTabWidget()
+        self.tabs.tabBar().setContextMenuPolicy(Qt.CustomContextMenu)
+        self.tabs.tabBar().customContextMenuRequested.connect(self._show_tab_context_menu)
         self.layout.addWidget(self.tabs)
         self.tab_widgets = {}
 
@@ -871,5 +873,29 @@ class Sidebar(QWidget):
             'external_editor': self.entry_editor.text().strip(),
             'receive_prereleases': self.chk_prerelease.isChecked()
         }
+
+    def _show_tab_context_menu(self, position):
+        idx = self.tabs.tabBar().tabAt(position)
+        if idx < 0: return
+
+        widget = self.tabs.widget(idx)
+        tab_id = None
+        for tid, w in self.tab_widgets.items():
+            if w == widget:
+                tab_id = tid
+                break
+
+        if tab_id:
+            menu = QMenu()
+            hide_action = menu.addAction(tr("sidebar.hide_tab"))
+            action = menu.exec(self.tabs.tabBar().mapToGlobal(position))
+
+            if action == hide_action:
+                settings = self.controller.state.settings
+                visible_tabs = list(getattr(settings, 'visible_tabs', []))
+                if tab_id in visible_tabs:
+                    visible_tabs.remove(tab_id)
+                    self.controller.update_settings({'visible_tabs': visible_tabs})
+                    self.controller.save_settings()
 
 

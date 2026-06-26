@@ -6,9 +6,7 @@ import difflib
 
 from ..store.state import AppState
 from ..data.settings_repository import load as load_settings
-from ..use_cases.scan_use_case import ScanWorkspaceUseCase
-from ..use_cases.process_use_case import ProcessWorkspaceUseCase
-from ..use_cases.patch_use_case import PatchUseCase
+from ..use_cases import scan_use_case, process_use_case, patch_use_case
 from ..utils.config import PRESETS, DEFAULT_SYSTEM_PROMPT, PricingManager
 from ..utils.logger import app_logger
 from src.i18n import tr
@@ -17,14 +15,8 @@ class CliController:
     def __init__(
         self,
         state: AppState,
-        scan_use_case: ScanWorkspaceUseCase,
-        process_use_case: ProcessWorkspaceUseCase,
-        patch_use_case: PatchUseCase = None,
     ):
         self.state = state
-        self._scan_uc = scan_use_case
-        self._process_uc = process_use_case
-        self._patch_uc = patch_use_case
 
     def run(self, target_path: str, **kwargs) -> None:
         target_path = self._normalize_path(target_path)
@@ -74,7 +66,7 @@ class CliController:
             patch_str = f.read()
 
         self.state.selected_folders.append(target_path)
-        prepared_patches = self._patch_uc.prepare_json_patch(patch_str, [target_path])
+        prepared_patches = patch_use_case.prepare_json_patch(self.state, patch_str, [target_path])
         if not prepared_patches:
             print(tr("cli_controller.patches_invalid"))
             return
@@ -109,7 +101,7 @@ class CliController:
             print(tr("cli_controller.no_patches"))
             return
         print(tr("cli_controller.applying_patches", count=len(patches)))
-        applied, logs = self._patch_uc.apply_prepared(patches)
+        applied, logs = patch_use_case.apply_patches(self.state, patches)
         for log in logs: print(log)
         print(tr("cli_controller.applied_count", applied=applied))
 
@@ -153,7 +145,7 @@ class CliController:
             self.state.selected_folders.append(target_path)
 
     async def _pipeline(self, kwargs: dict) -> None:
-        await self._scan_uc.execute(self.state)
+        await scan_use_case.scan_workspace(self.state)
 
         if not self.state.scanned_files_paths:
             app_logger.warning("CLI: Файлы не найдены.")
@@ -186,7 +178,7 @@ class CliController:
             return
 
         target = 'stdout' if kwargs.get('stdout') else 'clipboard'
-        await self._process_uc.execute(self.state, target=target)
+        await process_use_case.process_workspace(self.state, target)
 
     @staticmethod
     def _normalize_path(path: str) -> str:

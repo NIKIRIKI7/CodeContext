@@ -33,9 +33,14 @@ class StatusBar(QWidget):
         s = ThemeManager.get_layout("main_spacing", 12)
         self.layout.setSpacing(s)
 
-    def update_ui(self, msg: str, prog: float, tokens: int, cost: float = 0.0):
+    def update_ui(self, msg: str, prog: float, tokens: int, cost: float = 0.0, is_loading: bool = False):
         self.lbl_status.setText(msg)
-        self.progress.setValue(int(prog * 100))
+
+        if is_loading and prog == 0.0:
+            self.progress.setRange(0, 0)
+        else:
+            self.progress.setRange(0, 100)
+            self.progress.setValue(int(prog * 100))
 
         cost_str = f" (~${cost:.4f})" if cost > 0 else tr("status_bar.local_model")
         self.lbl_tokens.setText(tr("status_bar.tokens_count", tokens=tokens) + cost_str)

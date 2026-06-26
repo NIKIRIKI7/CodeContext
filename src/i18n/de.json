@@ -458,5 +458,6 @@
   "sidebar.tab.plugins": "🔌 Plugins",
   "sidebar.plugins.open_folder": "📂 Plugins-Ordner öffnen",
   "sidebar.plugins.restart_required": "⚠️ Neustart erforderlich",
-  "sidebar.plugins.restart_msg": "Bitte starten Sie die Anwendung neu, um Plugin-Änderungen zu übernehmen."
+  "sidebar.plugins.restart_msg": "Bitte starten Sie die Anwendung neu, um Plugin-Änderungen zu übernehmen.",
+  "sidebar.hide_tab": "👁 Tab ausblenden"
 }

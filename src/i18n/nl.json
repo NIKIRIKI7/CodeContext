@@ -458,5 +458,6 @@
   "sidebar.tab.plugins": "🔌 Plugins",
   "sidebar.plugins.open_folder": "📂 Pluginmap openen",
   "sidebar.plugins.restart_required": "⚠️ Herstart vereist",
-  "sidebar.plugins.restart_msg": "Herstart de applicatie om plugin-wijzigingen toe te passen."
+  "sidebar.plugins.restart_msg": "Herstart de applicatie om plugin-wijzigingen toe te passen.",
+  "sidebar.hide_tab": "👁 Tab verbergen"
 }

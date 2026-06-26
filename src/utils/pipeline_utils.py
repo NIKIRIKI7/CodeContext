@@ -34,45 +34,43 @@ def _process_single_worker(raw: Dict[str, str], opts_dict: dict) -> ProcessedFil
     tokens = token_service.count_tokens(cleaned)
     return ProcessedFile(path=raw['path'], content=cleaned, tokens=tokens)
 
-class PipelineUtils:
-    @staticmethod
-    def process_files_batch_parallel(raw_files: List[Dict[str, str]], options: Any) -> List[ProcessedFile]:
-        if not raw_files: return []
+def process_files_batch_parallel(raw_files: List[Dict[str, str]], options: Any) -> List[ProcessedFile]:
+    if not raw_files: return []
 
-        opts_dict = options.__dict__ if hasattr(options, '__dict__') else options
-        if getattr(options, 'prioritize_entry_files', True):
-            raw_files = sorted(raw_files, key=_priority_sort_key)
+    opts_dict = options.__dict__ if hasattr(options, '__dict__') else options
+    if getattr(options, 'prioritize_entry_files', True):
+        raw_files = sorted(raw_files, key=_priority_sort_key)
 
-        result = []
+    result = []
 
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            futures = [executor.submit(_process_single_worker, raw, opts_dict) for raw in raw_files]
-            for future in concurrent.futures.as_completed(futures):
-                try:
-                    result.append(future.result())
-                except Exception as e:
-                    print(f"Error processing file: {e}")
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = [executor.submit(_process_single_worker, raw, opts_dict) for raw in raw_files]
+        for future in concurrent.futures.as_completed(futures):
+            try:
+                result.append(future.result())
+            except Exception as e:
+                print(f"Error processing file: {e}")
 
-        return result
+    return result
 
-    # ponytail: queue.pop(0) is O(n) — pre-3.13 deque. Swap to collections.deque.popleft if queue exceeds 10k items.
-    @staticmethod
-    async def resolve_and_collect_dependencies_async(initial_queue: List[Tuple[str, int]], visited_paths: Set[str], all_paths: List[str], is_deep: bool, fs_repo: Any) -> None:
-        from ..services import dependency_service, import_resolution_service
-        queue = initial_queue
-        while queue:
-            curr_path, depth = queue.pop(0)
-            if curr_path in visited_paths: continue
-            if not is_deep and depth > 1: continue
 
-            visited_paths.add(curr_path)
-            content = await fs_repo.read_file_async(curr_path)
-            if not content: continue
+# ponytail: queue.pop(0) is O(n) — pre-3.13 deque. Swap to collections.deque.popleft if queue exceeds 10k items.
+async def resolve_and_collect_dependencies_async(initial_queue: List[Tuple[str, int]], visited_paths: Set[str], all_paths: List[str], is_deep: bool, fs_repo: Any) -> None:
+    from ..services import dependency_service, import_resolution_service
+    queue = initial_queue
+    while queue:
+        curr_path, depth = queue.pop(0)
+        if curr_path in visited_paths: continue
+        if not is_deep and depth > 1: continue
 
-            dep_map = await dependency_service.resolve_dependencies([{"path": curr_path, "content": content}])
-            imports = dep_map.get(curr_path, set())
+        visited_paths.add(curr_path)
+        content = await fs_repo.read_file_async(curr_path)
+        if not content: continue
 
-            for imp in imports:
-                for p in import_resolution_service.resolve(imp, all_paths):
-                    if p not in visited_paths:
-                        queue.append((p, depth + 1))
+        dep_map = await dependency_service.resolve_dependencies([{"path": curr_path, "content": content}])
+        imports = dep_map.get(curr_path, set())
+
+        for imp in imports:
+            for p in import_resolution_service.resolve(imp, all_paths):
+                if p not in visited_paths:
+                    queue.append((p, depth + 1))

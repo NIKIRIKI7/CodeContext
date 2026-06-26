@@ -10,11 +10,7 @@ from src.i18n import tr
 from ..utils.logger import app_logger
 
 
-class GitHubService:
-    """Сервис для работы с GitHub репозиториями (Async)"""
-
-    @staticmethod
-    async def clone_repo_async(url: str, dest_path: str = None) -> str:
+async def clone_repo_async(url: str, dest_path: str = None) -> str:
         """
         Асинхронно клонирует репозиторий.
         Если dest_path указан - клонирует туда. Иначе во временную папку.
@@ -56,8 +52,7 @@ class GitHubService:
                     pass
             raise e
 
-    @staticmethod
-    async def fetch_pr_files_async(url: str) -> list:
+async def fetch_pr_files_async(url: str) -> list:
         parts = url.rstrip('/').split('/')
         if "pull" not in parts:
             return []

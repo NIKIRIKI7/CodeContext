@@ -137,9 +137,3 @@ def prepare_patches(patches: List[Dict], base_folders: List[str]) -> List[Dict]:
         })
 
     return prepared
-
-class PatchService:
-    def prepare_patches(self, all_patches, base_folders):
-        return prepare_patches(all_patches, base_folders)
-    def apply_prepared(self, prepared_patches):
-        return apply_prepared(prepared_patches)

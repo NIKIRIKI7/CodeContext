@@ -458,5 +458,6 @@
   "sidebar.tab.plugins": "🔌 插件",
   "sidebar.plugins.open_folder": "📂 打开插件文件夹",
   "sidebar.plugins.restart_required": "⚠️ 需要重启",
-  "sidebar.plugins.restart_msg": "请重新启动应用程序以应用插件更改。"
+  "sidebar.plugins.restart_msg": "请重新启动应用程序以应用插件更改。",
+  "sidebar.hide_tab": "👁 隐藏标签页"
 }

@@ -458,5 +458,6 @@
   "sidebar.tab.plugins": "🔌 Wtyczki",
   "sidebar.plugins.open_folder": "📂 Otwórz folder wtyczek",
   "sidebar.plugins.restart_required": "⚠️ Wymagany restart",
-  "sidebar.plugins.restart_msg": "Uruchom ponownie aplikację, aby zastosować zmiany wtyczek."
+  "sidebar.plugins.restart_msg": "Uruchom ponownie aplikację, aby zastosować zmiany wtyczek.",
+  "sidebar.hide_tab": "👁 Ukryj zakładkę"
 }

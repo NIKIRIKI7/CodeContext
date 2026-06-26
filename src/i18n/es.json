@@ -458,5 +458,6 @@
   "sidebar.tab.plugins": "🔌 Plugins",
   "sidebar.plugins.open_folder": "📂 Abrir carpeta de plugins",
   "sidebar.plugins.restart_required": "⚠️ Reinicio requerido",
-  "sidebar.plugins.restart_msg": "Reinicie la aplicación para aplicar los cambios de los plugins."
+  "sidebar.plugins.restart_msg": "Reinicie la aplicación para aplicar los cambios de los plugins.",
+  "sidebar.hide_tab": "👁 Ocultar pestaña"
 }

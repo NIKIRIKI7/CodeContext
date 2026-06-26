@@ -558,14 +558,17 @@ class PluginApprovalDialog(QDialog):
 
         layout = QVBoxLayout(self)
 
-        heading = QLabel(tr("plugins.approval.heading"))
+        p_id = manifest.get('id', '?')
+        p_name = manifest.get('name', p_id)
+
+        heading = QLabel(tr("plugins.approval.heading", name=p_name))
         heading.setProperty("cssClass", "heading")
         layout.addWidget(heading)
 
         info_group = QGroupBox(tr("plugins.approval.info"))
         info_layout = QVBoxLayout(info_group)
-        p_id = manifest.get('id', '?')
-        info_layout.addWidget(QLabel(f"<b>{tr('plugins.approval.name')}:</b> {manifest.get('name', p_id)}"))
+
+        info_layout.addWidget(QLabel(f"<b>{tr('plugins.approval.name')}:</b> {p_name}"))
         info_layout.addWidget(QLabel(f"<b>{tr('plugins.approval.id')}:</b> {p_id}"))
         info_layout.addWidget(QLabel(f"<b>{tr('plugins.approval.version')}:</b> {manifest.get('version', '?')}"))
         desc = manifest.get("description", "")

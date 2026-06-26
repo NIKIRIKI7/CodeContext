@@ -1,9 +1,8 @@
 import os
 import pathspec
 import asyncio
-import threading
 from pathlib import Path
-from typing import List, Callable, Optional, Set
+from typing import List, Set
 
 def read_gitignore(folder_path: str) -> List[str]:
     gitignore_path = Path(folder_path) / '.gitignore'
@@ -58,11 +57,6 @@ async def get_git_changed_files_async(repo_path: str, extensions: List[str], ign
         return []
 
 class FileService:
-    def __init__(self):
-        self._watcher_thread = None
-        self._watcher_stop = threading.Event()
-        self._on_change_callback: Optional[Callable] = None
-        
     async def scan_folders_async(self, paths: List[str], extensions_str: str, ignored_str: str, use_git: bool, use_gitignore: bool, git_base: str = "") -> List[str]:
         if not extensions_str.strip():
             from ..utils.config import PRESETS
@@ -100,37 +94,3 @@ class FileService:
                             result.append(entry.path)
         except PermissionError: pass
         return result
-
-    def start_watching(self, paths: List[str], exts_set: Set[str], ign_set: Set[str], on_change: Callable, interval: float = 3.0) -> None:
-        self.stop_watching()
-        self._on_change_callback = on_change
-        self._watcher_stop.clear()
-        self._watcher_thread = threading.Thread(target=self._watcher_loop, args=(paths, exts_set, ign_set, interval), daemon=True)
-        self._watcher_thread.start()
-
-    def stop_watching(self) -> None:
-        self._watcher_stop.set()
-        if self._watcher_thread and self._watcher_thread.is_alive():
-            self._watcher_thread.join(timeout=2)
-            self._watcher_thread = None
-
-    def _watcher_loop(self, paths: List[str], exts_set: Set[str], ign_set: Set[str], interval: float) -> None:
-        state: dict = {}
-        while not self._watcher_stop.is_set():
-            for base in paths:
-                for dirpath, dirnames, filenames in os.walk(base):
-                    dirnames[:] = [d for d in dirnames if d not in ign_set]
-                    for fname in filenames:
-                        ext = os.path.splitext(fname)[1].lower()
-                        if ext not in exts_set: continue
-                        fpath = os.path.join(dirpath, fname)
-                        try:
-                            mtime = os.path.getmtime(fpath)
-                            prev = state.get(fpath)
-                            if prev is None: state[fpath] = mtime
-                            elif abs(mtime - prev) > 0.5:
-                                state[fpath] = mtime
-                                if self._on_change_callback: self._on_change_callback()
-                        except OSError:
-                            state.pop(fpath, None)
-            self._watcher_stop.wait(interval)

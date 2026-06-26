@@ -458,5 +458,6 @@
   "sidebar.tab.plugins": "🔌 Плагины",
   "sidebar.plugins.open_folder": "📂 Открыть папку плагинов",
   "sidebar.plugins.restart_required": "⚠️ Требуется перезапуск",
-  "sidebar.plugins.restart_msg": "Пожалуйста, перезапустите приложение, чтобы изменения плагинов вступили в силу."
+  "sidebar.plugins.restart_msg": "Пожалуйста, перезапустите приложение, чтобы изменения плагинов вступили в силу.",
+  "sidebar.hide_tab": "👁 Скрыть вкладку"
 }
