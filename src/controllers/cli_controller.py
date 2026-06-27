@@ -196,5 +196,5 @@ class CliController:
 
     @staticmethod
     def _keep_window_open():
-        if sys.stdout is not None and sys.stdout.isatty():
+        if sys.stdin is not None and sys.stdin.isatty():
             input(tr("cli_controller.window_closing"))
