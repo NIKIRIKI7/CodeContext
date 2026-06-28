@@ -54,12 +54,13 @@ def process_files_batch_parallel(raw_files: List[Dict[str, str]], options: Any) 
     return result
 
 
-# ponytail: queue.pop(0) is O(n) — pre-3.13 deque. Swap to collections.deque.popleft if queue exceeds 10k items.
+# ponytail: queue.pop(0) was O(n). Optimized with collections.deque.popleft for O(1) performance.
 async def resolve_and_collect_dependencies_async(initial_queue: List[Tuple[str, int]], visited_paths: Set[str], all_paths: List[str], is_deep: bool, fs_repo: Any) -> None:
+    from collections import deque
     from ..services import dependency_service, import_resolution_service
-    queue = initial_queue
+    queue = deque(initial_queue)
     while queue:
-        curr_path, depth = queue.pop(0)
+        curr_path, depth = queue.popleft()
         if curr_path in visited_paths: continue
         if not is_deep and depth > 1: continue
 

@@ -237,7 +237,6 @@ def _install_mac(custom_python_path: Optional[str] = None) -> Tuple[bool, str]:
         workflow_path = os.path.join(services_dir, f"{name}.workflow")
         shutil.rmtree(workflow_path, ignore_errors=True)
         os.makedirs(os.path.join(workflow_path, "Contents"), exist_ok=True)
-        uid = lambda: str(uuid.uuid4()).upper()
         plistlib.dump({
             "CFBundleIdentifier": f"com.codecontext.ai.{uuid.uuid4().hex}", "CFBundleName": name,
             "CFBundlePackageType": "BNDL", "CFBundleShortVersionString": "1.0", "CFBundleVersion": "1.0",
