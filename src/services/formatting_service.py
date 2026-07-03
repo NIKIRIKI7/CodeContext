@@ -146,7 +146,8 @@ def _to_jsonl_chunks(files: List[ProcessedFile]) -> str:
             chunk_str = "\n".join(content_lines[i:i + 150])
             lines_out.append(json.dumps({
                 "file_path": f.path, "chunk_index": i // 150, "total_chunks": (len(content_lines) // 150) + 1,
-                "tokens_approx": len(chunk_str) // 4, "content": chunk_str
+                "tokens_approx": len(chunk_str) // 4, # ponytail: naive token estimate
+                "content": chunk_str
             }, ensure_ascii=False))
     return "\n".join(lines_out)
 
