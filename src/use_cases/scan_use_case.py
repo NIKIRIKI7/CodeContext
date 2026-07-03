@@ -33,6 +33,7 @@ async def scan_workspace(state: AppState) -> None:
             metadata = {}
             for path in file_paths:
                 try:
+                    # ponytail: os.stat().st_size // 4, use tiktoken for precision if needed
                     tokens = os.stat(path).st_size // 4
                 except OSError:
                     tokens = 0
