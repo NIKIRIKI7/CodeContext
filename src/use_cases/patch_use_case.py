@@ -12,11 +12,7 @@ def prepare_json_patch(state: AppState, patch_str: str, base_folders: list) -> l
 
     state.add_log(tr("patch_use_case.parsing.parsing_llm"))
 
-    blocks = re.findall(r'```(?:json)?\s*(.*?)\s*```', patch_str, re.DOTALL)
-
-    if not blocks:
-        blocks = [patch_str.strip()]
-
+    blocks = re.findall(r'```(?:json)?\s*(.*?)\s*```', patch_str, re.DOTALL) or [patch_str.strip()]
     all_patches = []
     for block in blocks:
         block = block.strip()
