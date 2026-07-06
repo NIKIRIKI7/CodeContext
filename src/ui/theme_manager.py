@@ -484,7 +484,6 @@ class ThemeManager:
             c_secondary=selected_mode_colors.get("secondary", "#e0e0e0"),
             c_border=selected_mode_colors.get("border", "#cccccc"),
             c_success=selected_mode_colors.get("success", "#28a745"),
-            c_danger=selected_mode_colors.get("danger", "#dc3545"),
             c_input_bg=selected_mode_colors.get("input_bg", "#ffffff"),
 
             r_card=radii.get("card", "8px"),
