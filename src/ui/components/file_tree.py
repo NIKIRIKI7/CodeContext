@@ -160,14 +160,14 @@ class FileTree(QWidget):
         else:
             self._propagate_check(item, state)
 
-    def _propagate_check(self, parent_item, state):
-        self._is_updating = True
+    def _propagate_check(self, parent_item, state, set_updating=True):
+        if set_updating: self._is_updating = True
         base = parent_item.data(Qt.UserRole) or ""
         for item, full_path in self._all_items:
             if full_path.startswith(base):
                 item.setCheckState(Qt.Checked if state else Qt.Unchecked)
                 self.on_toggle(full_path, state)
-        self._is_updating = False
+        if set_updating: self._is_updating = False
 
     def _apply_filter(self):
         text = self.search.text()
@@ -242,7 +242,7 @@ class FileTree(QWidget):
 
     def _exclude_all_children(self, parent_item):
         self._is_updating = True
-        self._propagate_check(parent_item, False)
+        self._propagate_check(parent_item, False, set_updating=False)
         parent_item.setCheckState(Qt.Unchecked)
         self._is_updating = False
 

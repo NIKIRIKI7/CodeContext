@@ -12,6 +12,7 @@ def prepare_json_patch(state: AppState, patch_str: str, base_folders: list) -> l
 
     state.add_log(tr("patch_use_case.parsing.parsing_llm"))
 
+    # ponytail: llms always wrap json in code blocks. if no blocks, try the whole string as fallback.
     blocks = re.findall(r'```(?:json)?\s*(.*?)\s*```', patch_str, re.DOTALL)
 
     if not blocks:

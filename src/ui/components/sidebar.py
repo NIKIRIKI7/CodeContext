@@ -897,5 +897,3 @@ class Sidebar(QWidget):
                     visible_tabs.remove(tab_id)
                     self.controller.update_settings({'visible_tabs': visible_tabs})
                     self.controller.save_settings()
-
-
