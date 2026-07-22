@@ -53,6 +53,9 @@ async def clone_repo_async(url: str, dest_path: str = None) -> str:
             raise e
 
 async def fetch_pr_files_async(url: str) -> list:
+        """
+        Fetch PR file list from GitHub API.
+        """
         parts = url.rstrip('/').split('/')
         if "pull" not in parts:
             return []

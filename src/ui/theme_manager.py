@@ -528,5 +528,3 @@ class ThemeManager:
     def get_font_settings(cls) -> dict:
         theme = cls._themes.get(cls._current_theme, {})
         return theme.get("default_styles", {}).get("fonts", {})
-
-

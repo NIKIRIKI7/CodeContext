@@ -2,7 +2,7 @@ import os
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
                                QSplitter, QFileDialog, QStackedWidget,
                                QLabel, QTabWidget)
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeySequence, QShortcut
 
 from ..store.state import AppState
@@ -197,6 +197,7 @@ class MainWindow(QMainWindow):
 
         if getattr(state, 'show_command_palette', False):
             if not self._command_palette:
+                from .dialogs import CommandPaletteDialog
                 commands = {
                     tr("main_window.command.copy_to_clipboard", default="Copy"): lambda: self._on_run('clipboard'),
                     tr("main_window.command.open_in_editor", default="Editor"): lambda: self._on_run('editor'),
@@ -207,7 +208,7 @@ class MainWindow(QMainWindow):
                     tr("main_window.command.toggle_skeleton", default="Skeleton"): lambda: self.action_panel.chk_skeleton.setChecked(not self.action_panel.chk_skeleton.isChecked()),
                     tr("main_window.command.toggle_mermaid", default="Mermaid"): lambda: self.sidebar.chk_mermaid.setChecked(not self.sidebar.chk_mermaid.isChecked()),
                     tr("main_window.command.clear_workspace", default="Clear"): self.controller.clear_folders,
-                    tr("main_window.command.apply_json_patch", default="JSON Patch"): self.sidebar.open_patch_dialog,
+                    tr("main_window.command.apply_json_patch", default="JSON Patch"): self.sidebar._open_patch_dialog,
                     tr("main_window.command.toggle_theme", default="Theme"): lambda: ThemeManager.apply_theme(mode="dark" if ThemeManager._current_mode == "light" else "light"),
                     tr("main_window.command.check_updates", default="Update"): lambda: self.controller.check_for_updates(get_app_version()),
                 }
