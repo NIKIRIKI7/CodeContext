@@ -1,7 +1,7 @@
 import json
 import os
 from typing import Dict, Any
-from ..utils.config import get_app_data_dir
+from src.utils.config import get_app_data_dir
 
 
 def load(filename: str = "user_settings.json") -> Dict[str, Any]:

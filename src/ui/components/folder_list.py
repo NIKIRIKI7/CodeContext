@@ -2,7 +2,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QScrollArea, QFrame
 
 from src.i18n import tr
-from ..theme_manager import ThemeManager, theme_bus
+from src.ui.theme_manager import ThemeManager, theme_bus
 
 
 class FolderList(QScrollArea):

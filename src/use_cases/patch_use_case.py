@@ -1,8 +1,8 @@
 import json
 import re
 from src.i18n import tr
-from ..services.patch_service import prepare_patches, apply_prepared
-from ..store.state import AppState
+from src.services.patch_service import prepare_patches, apply_prepared
+from src.store.state import AppState
 
 
 def prepare_json_patch(state: AppState, patch_str: str, base_folders: list) -> list:

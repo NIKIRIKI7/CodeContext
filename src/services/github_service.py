@@ -7,7 +7,7 @@ import shutil
 import urllib.request
 
 from src.i18n import tr
-from ..utils.logger import app_logger
+from src.utils.logger import app_logger
 
 
 async def clone_repo_async(url: str, dest_path: str = None) -> str:

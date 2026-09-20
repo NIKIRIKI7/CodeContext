@@ -1,7 +1,7 @@
 import os
 import re
-from ..services.github_service import clone_repo_async, fetch_pr_files_async
-from ..store.state import AppState
+from src.services.github_service import clone_repo_async, fetch_pr_files_async
+from src.store.state import AppState
 from src.i18n import tr
 
 

@@ -1,9 +1,9 @@
 import functools
-from .store.state import AppState
-from .services.plugin_manager import PluginManager
-from .services import llm_checker_service
-from .controllers.main_controller import MainController
-from .controllers.cli_controller import CliController
+from src.store.state import AppState
+from src.services.plugin_manager import PluginManager
+from src.services import llm_checker_service
+from src.controllers.main_controller import MainController
+from src.controllers.cli_controller import CliController
 
 
 class DIContainer:

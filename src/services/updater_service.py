@@ -11,7 +11,7 @@ from typing import Optional, Tuple, Callable
 from urllib.error import HTTPError
 
 from src.i18n import tr
-from ..utils.logger import app_logger
+from src.utils.logger import app_logger
 
 
 def _get_mac_app_path(exe_path: str) -> str:

@@ -9,13 +9,13 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QTabWidget, QFormLayout,
                                QInputDialog, QMessageBox, QPlainTextEdit, QListWidget, QListWidgetItem, QMenu)
 from PySide6.QtCore import Qt
 
-from ...utils.config import PRESETS, PROMPT_PRESETS, get_app_version, get_resource_path
-from ..theme_manager import ThemeManager, theme_bus
-from ..dialogs import UICustomizationDialog
+from src.utils.config import PRESETS, PROMPT_PRESETS, get_app_version, get_resource_path
+from src.ui.theme_manager import ThemeManager, theme_bus
+from src.ui.dialogs import UICustomizationDialog
 from src.i18n import tr, set_language, current_lang, available_languages
 
 def _get_user_themes_dir():
-    from ...utils.config import get_app_data_dir
+    from src.utils.config import get_app_data_dir
     path = os.path.join(get_app_data_dir(), "themes")
     os.makedirs(path, exist_ok=True)
     return path
@@ -192,7 +192,7 @@ class Sidebar(QWidget):
         dialog.exec()
 
     def _open_bug_report(self):
-        from ..dialogs import BugReportDialog
+        from src.ui.dialogs import BugReportDialog
         dialog = BugReportDialog(self, self.controller)
         dialog.exec()
 
@@ -511,7 +511,7 @@ class Sidebar(QWidget):
                     if manifest:
                         req_path = os.path.join(manifest['_dir'], "requirements.txt")
                         if os.path.exists(req_path):
-                            from ..dialogs import PluginInstallDialog
+                            from src.ui.dialogs import PluginInstallDialog
                             dlg = PluginInstallDialog(self, manifest, req_path)
                             dlg.exec()
                 approved.append(p_id)
@@ -659,7 +659,7 @@ class Sidebar(QWidget):
         else: QMessageBox.warning(self, tr("sidebar.error.title"), msg)
 
     def _open_patch_dialog(self):
-        from ..dialogs import JsonPatchDialog, InteractiveDiffDialog
+        from src.ui.dialogs import JsonPatchDialog, InteractiveDiffDialog
         dialog = JsonPatchDialog(self)
         if dialog.exec():
             json_str = dialog.get_json()
@@ -768,7 +768,7 @@ class Sidebar(QWidget):
             dest = os.path.join(themes_dir, filename)
             try:
                 shutil.copy2(path, dest)
-                from ...utils.config import get_app_data_dir
+                from src.utils.config import get_app_data_dir
                 built_in = get_resource_path("themes")
                 ThemeManager.load_themes(built_in, themes_dir)
                 self._refresh_themes()

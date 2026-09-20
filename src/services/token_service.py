@@ -1,6 +1,6 @@
 import functools
 import tiktoken
-from ..utils.logger import app_logger
+from src.utils.logger import app_logger
 
 @functools.cache
 def _get_encoding():

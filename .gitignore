@@ -35,6 +35,10 @@ venv/
 env/
 ENV/
 .venv-build/
+build_venv/
+
+# Serena tool cache
+.serena/
 
 # Coverage
 .coverage

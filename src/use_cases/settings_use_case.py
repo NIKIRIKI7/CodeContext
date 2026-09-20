@@ -4,9 +4,9 @@ from pathlib import Path
 from typing import Optional
 from src.i18n import tr
 
-from ..data.settings_repository import load as load_settings, save as save_settings
-from ..store.state import AppState, AppSettings
-from ..utils.config import PRESETS, DEFAULT_SYSTEM_PROMPT
+from src.data.settings_repository import load as load_settings, save as save_settings
+from src.store.state import AppState, AppSettings
+from src.utils.config import PRESETS, DEFAULT_SYSTEM_PROMPT
 
 _DEFAULT_SETTINGS = {
     'extensions': PRESETS['Default']['ext'],

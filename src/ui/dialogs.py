@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QTextEdit,
 
 import asyncio
 from src.i18n import tr
-from .theme_manager import ThemeManager
+from src.ui.theme_manager import ThemeManager
 
 
 class ChatDialog(QDialog):

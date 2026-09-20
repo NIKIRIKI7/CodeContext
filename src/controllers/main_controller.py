@@ -3,13 +3,22 @@ import asyncio
 from typing import Optional, Tuple, List
 from PySide6.QtCore import QTimer
 from src.i18n import tr
-from ..store.state import AppState, ProcessedFile
-from ..use_cases import scan_use_case, process_use_case, github_use_case, settings_use_case, patch_use_case, updater_use_case
-from ..services import integration_service
-from ..services.plugin_manager import PluginManager
-from ..services import formatting_service
-from ..services import output_service
-from ..services.tour_service import TOUR_STEPS
+from src.store.state import AppState, ProcessedFile
+from src.use_cases import (
+    github_use_case,
+    patch_use_case,
+    process_use_case,
+    scan_use_case,
+    settings_use_case,
+    updater_use_case,
+)
+from src.services import (
+    formatting_service,
+    integration_service,
+    output_service,
+)
+from src.services.plugin_manager import PluginManager
+from src.services.tour_service import TOUR_STEPS
 
 
 class MainController:

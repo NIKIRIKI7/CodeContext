@@ -3,7 +3,7 @@ import json
 import sys
 import importlib.util
 from typing import List, Dict
-from ..utils.logger import app_logger
+from src.utils.logger import app_logger
 
 class IPlugin:
     id: str = ""

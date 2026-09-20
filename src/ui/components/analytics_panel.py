@@ -2,7 +2,7 @@ import os
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem, \
     QHeaderView, QProgressBar
 from PySide6.QtCore import Qt
-from ..theme_manager import ThemeManager, theme_bus
+from src.ui.theme_manager import ThemeManager, theme_bus
 from src.i18n import tr
 
 

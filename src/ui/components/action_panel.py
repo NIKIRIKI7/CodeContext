@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QCheckBox, QComboBox, QPushButton, QFileDialog, QMenu
 from PySide6.QtCore import Qt
-from ..theme_manager import ThemeManager, theme_bus
+from src.ui.theme_manager import ThemeManager, theme_bus
 from src.i18n import tr
 
 class ActionPanel(QWidget):

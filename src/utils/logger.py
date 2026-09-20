@@ -32,7 +32,7 @@ def setup_logger(name: str = "CodeContext") -> logging.Logger:
     logger.addHandler(console_handler)
 
     # 2. Вывод в файл (DEBUG и выше - логируем всё)
-    from .config import get_app_data_dir
+    from src.utils.config import get_app_data_dir
     logs_dir = os.path.join(get_app_data_dir(), "logs")
 
     try:

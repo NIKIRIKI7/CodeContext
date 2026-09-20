@@ -5,19 +5,19 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QHBoxLayout, 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeySequence, QShortcut
 
-from ..store.state import AppState
-from ..controllers.main_controller import MainController
-from .components.sidebar import Sidebar
-from .components.folder_list import FolderList
-from .components.action_panel import ActionPanel
-from .components.log_panel import LogPanel
-from .components.status_bar import StatusBar
-from .components.file_tree import FileTree
-from .components.empty_state import EmptyState
-from .components.analytics_panel import AnalyticsPanel
-from .dialogs import AdvancedPreviewDialog, InteractiveTourDialog, EditFolderDialog, UpdateDialog, CommandPaletteDialog
-from .theme_manager import ThemeManager, theme_bus
-from ..utils.config import PricingManager, get_app_version
+from src.store.state import AppState
+from src.controllers.main_controller import MainController
+from src.ui.components.sidebar import Sidebar
+from src.ui.components.folder_list import FolderList
+from src.ui.components.action_panel import ActionPanel
+from src.ui.components.log_panel import LogPanel
+from src.ui.components.status_bar import StatusBar
+from src.ui.components.file_tree import FileTree
+from src.ui.components.empty_state import EmptyState
+from src.ui.components.analytics_panel import AnalyticsPanel
+from src.ui.dialogs import AdvancedPreviewDialog, InteractiveTourDialog, EditFolderDialog, UpdateDialog, CommandPaletteDialog
+from src.ui.theme_manager import ThemeManager, theme_bus
+from src.utils.config import PricingManager, get_app_version
 from src.i18n import tr
 
 
@@ -197,7 +197,7 @@ class MainWindow(QMainWindow):
 
         if getattr(state, 'show_command_palette', False):
             if not self._command_palette:
-                from .dialogs import CommandPaletteDialog
+                from src.ui.dialogs import CommandPaletteDialog
                 commands = {
                     tr("main_window.command.copy_to_clipboard", default="Copy"): lambda: self._on_run('clipboard'),
                     tr("main_window.command.open_in_editor", default="Editor"): lambda: self._on_run('editor'),
@@ -226,7 +226,7 @@ class MainWindow(QMainWindow):
 
         if state.show_chat:
             if not self._chat_dialog:
-                from .dialogs import ChatDialog
+                from src.ui.dialogs import ChatDialog
                 self._chat_dialog = ChatDialog(self, state, self.controller)
                 self._chat_dialog.update_data(state)
                 self._chat_dialog.show()

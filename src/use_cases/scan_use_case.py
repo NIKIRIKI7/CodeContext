@@ -1,8 +1,8 @@
 import os
 
 from src.i18n import tr
-from ..services.file_service import FileService, get_git_status_async
-from ..store.state import AppState
+from src.services.file_service import FileService, get_git_status_async
+from src.store.state import AppState
 
 
 async def scan_workspace(state: AppState) -> None:

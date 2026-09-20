@@ -135,7 +135,7 @@ def _remove_win() -> Tuple[bool, str]:
 
 def _install_cli_win(custom_python_path: Optional[str] = None) -> Tuple[bool, str]:
     import winreg
-    from ..utils.config import get_app_data_dir
+    from src.utils.config import get_app_data_dir
     is_frozen = getattr(sys, 'frozen', False)
     exe_path = sys.executable
     python_exe = custom_python_path if custom_python_path and os.path.exists(custom_python_path) else sys.executable
@@ -167,7 +167,7 @@ def _install_cli_win(custom_python_path: Optional[str] = None) -> Tuple[bool, st
 
 def _remove_cli_win() -> Tuple[bool, str]:
     import winreg
-    from ..utils.config import get_app_data_dir
+    from src.utils.config import get_app_data_dir
     bin_dir = os.path.join(get_app_data_dir(), "bin")
     shutil.rmtree(bin_dir, ignore_errors=True)
     key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment", 0, winreg.KEY_ALL_ACCESS)

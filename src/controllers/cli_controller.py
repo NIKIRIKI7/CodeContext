@@ -4,11 +4,11 @@ import asyncio
 import traceback
 import difflib
 
-from ..store.state import AppState
-from ..data.settings_repository import load as load_settings
-from ..use_cases import scan_use_case, process_use_case, patch_use_case
-from ..utils.config import PRESETS, DEFAULT_SYSTEM_PROMPT, PricingManager
-from ..utils.logger import app_logger
+from src.store.state import AppState
+from src.data.settings_repository import load as load_settings
+from src.use_cases import scan_use_case, process_use_case, patch_use_case
+from src.utils.config import PRESETS, DEFAULT_SYSTEM_PROMPT, PricingManager
+from src.utils.logger import app_logger
 from src.i18n import tr
 
 class CliController:

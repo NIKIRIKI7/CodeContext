@@ -59,7 +59,7 @@ async def get_git_changed_files_async(repo_path: str, extensions: List[str], ign
 class FileService:
     async def scan_folders_async(self, paths: List[str], extensions_str: str, ignored_str: str, use_git: bool, use_gitignore: bool, git_base: str = "") -> List[str]:
         if not extensions_str.strip():
-            from ..utils.config import PRESETS
+            from src.utils.config import PRESETS
             extensions_str = PRESETS['Default']['ext']
             
         exts = [e.strip().lower() for e in extensions_str.split()]

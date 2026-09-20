@@ -3,7 +3,7 @@ import os
 from types import SimpleNamespace
 from typing import List, Dict, Any, Tuple, Set
 
-from ..store.state import ProcessedFile
+from src.store.state import ProcessedFile
 
 _ENTRY_PRIORITY_NAMES = {
     'main.py', 'app.py', 'index.py', 'cli.py',
@@ -24,7 +24,7 @@ def _priority_sort_key(item: Dict[str, str]) -> tuple:
     return 2, path.lower()
 
 def _process_single_worker(raw: Dict[str, str], opts_dict: dict) -> ProcessedFile:
-    from ..services import cleaner_service, skeleton_service, token_service
+    from src.services import cleaner_service, skeleton_service, token_service
     opts = SimpleNamespace(**opts_dict)
 
     cleaned = cleaner_service.clean(raw['content'], raw['ext'], opts)
@@ -57,7 +57,7 @@ def process_files_batch_parallel(raw_files: List[Dict[str, str]], options: Any) 
 # ponytail: queue.pop(0) was O(n). Optimized with collections.deque.popleft for O(1) performance.
 async def resolve_and_collect_dependencies_async(initial_queue: List[Tuple[str, int]], visited_paths: Set[str], all_paths: List[str], is_deep: bool, fs_repo: Any) -> None:
     from collections import deque
-    from ..services import dependency_service, import_resolution_service
+    from src.services import dependency_service, import_resolution_service
     queue = deque(initial_queue)
     while queue:
         curr_path, depth = queue.popleft()

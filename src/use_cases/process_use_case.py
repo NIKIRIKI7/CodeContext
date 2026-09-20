@@ -6,11 +6,18 @@ import json
 from pathlib import Path
 from typing import Optional, List
 
-from ..store.state import AppState, ProcessedFile
-from ..utils.config import get_app_data_dir, MAX_FILE_SIZE_MB
-from ..utils import pipeline_utils
+from src.store.state import AppState, ProcessedFile
+from src.utils.config import get_app_data_dir, MAX_FILE_SIZE_MB
+from src.utils import pipeline_utils
 from src.i18n import tr
-from ..services import dependency_service, formatting_service, output_service, token_service, cleaner_service, skeleton_service
+from src.services import (
+    cleaner_service,
+    dependency_service,
+    formatting_service,
+    output_service,
+    skeleton_service,
+    token_service,
+)
 
 _CHECKPOINT_FILE = os.path.join(get_app_data_dir(), "processing_checkpoint.json")
 

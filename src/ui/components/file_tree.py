@@ -2,7 +2,7 @@ import os
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTreeView, QLineEdit, QMenu, QPushButton
 from PySide6.QtGui import QStandardItemModel, QStandardItem
 from PySide6.QtCore import Qt, QTimer
-from ..theme_manager import ThemeManager, theme_bus
+from src.ui.theme_manager import ThemeManager, theme_bus
 from src.i18n import tr
 
 

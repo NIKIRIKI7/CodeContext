@@ -1,6 +1,6 @@
 import re
 from typing import Any
-from ..utils.config import SECRET_PATTERNS
+from src.utils.config import SECRET_PATTERNS
 
 _COMMENT_PATTERNS_BLOCK = re.compile(r'/\*.*?\*/', re.DOTALL)
 _COMMENT_PATTERNS_LINE_JS = re.compile(r'//.*$', re.MULTILINE)

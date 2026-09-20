@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QLabel, QProgressBar
-from ..theme_manager import ThemeManager, theme_bus
+from src.ui.theme_manager import ThemeManager, theme_bus
 from src.i18n import tr
 
 

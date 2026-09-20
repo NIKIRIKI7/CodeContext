@@ -14,8 +14,8 @@ except ImportError:
     JINJA_AVAILABLE = False
     Template = Environment = FileSystemLoader = select_autoescape = None
 
-from ..i18n import tr
-from ..store.state import ProcessedFile
+from src.i18n import tr
+from src.store.state import ProcessedFile
 
 def format_output(
     files: List[ProcessedFile], fmt: str, include_tree: bool, system_prompt: str,

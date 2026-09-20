@@ -1,8 +1,8 @@
 import os
 import sys
-from ..services.updater_service import check_for_updates as updater_check, download_and_install
-from ..store.state import AppState
-from ..utils.logger import app_logger
+from src.services.updater_service import check_for_updates as updater_check, download_and_install
+from src.store.state import AppState
+from src.utils.logger import app_logger
 from src.i18n import tr
 
 
