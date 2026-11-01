@@ -1,0 +1,72 @@
+[build]
+rustflags = [
+    "-C",
+    "target-cpu=native",
+    "-C",
+    "llvm-args=-inline-threshold=400",
+    "-C",
+    "llvm-args=-unroll-threshold=300",
+    "-C",
+    "force-frame-pointers=no",
+    "-C",
+    "symbol-mangling-version=v0",
+]
+
+[target.x86_64-pc-windows-msvc]
+linker = "rust-lld.exe"
+rustflags = [
+    "-C",
+    "target-cpu=native",
+    "-C",
+    "llvm-args=-inline-threshold=400",
+    "-C",
+    "llvm-args=-unroll-threshold=300",
+    "-C",
+    "force-frame-pointers=no",
+    "-C",
+    "symbol-mangling-version=v0",
+    "-C",
+    "link-arg=/OPT:REF,ICF",
+]
+
+[target.x86_64-unknown-linux-gnu]
+rustflags = [
+    "-C",
+    "target-cpu=native",
+    "-C",
+    "llvm-args=-inline-threshold=400",
+    "-C",
+    "llvm-args=-unroll-threshold=300",
+    "-C",
+    "force-frame-pointers=no",
+    "-C",
+    "symbol-mangling-version=v0",
+    "-C",
+    "link-arg=-fuse-ld=lld",
+    "-C",
+    "link-arg=-Wl,--gc-sections,--icf=all,-O3",
+]
+
+[target.aarch64-apple-darwin]
+rustflags = [
+    "-C",
+    "target-cpu=native",
+    "-C",
+    "llvm-args=-inline-threshold=400",
+    "-C",
+    "llvm-args=-unroll-threshold=300",
+    "-C",
+    "force-frame-pointers=no",
+    "-C",
+    "symbol-mangling-version=v0",
+    "-C",
+    "link-arg=-Wl,-dead_strip",
+]
+
+[alias]
+r = "run --release --package app"
+headless = "run --release --package app -- --pack-headless"
+t = "nextest run --workspace --release"
+b = "bench --workspace"
+arch = "test --package app --test architecture -- --nocapture"
+alloc = "test --package scanner --test heap_allocations -- --test-threads=1 --nocapture"

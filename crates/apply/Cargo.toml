@@ -1,0 +1,41 @@
+[package]
+name = "apply"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+core.workspace = true
+similar.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+
+[dev-dependencies]
+scanner.workspace = true
+divan.workspace = true
+tempfile.workspace = true
+proptest.workspace = true
+insta.workspace = true
+assert_fs.workspace = true
+predicates.workspace = true
+
+[[bench]]
+name = "apply_throughput"
+harness = false
+
+[package.metadata.cargo-machete]
+ignored = [
+    "core",
+    "similar",
+    "serde",
+    "serde_json",
+    "anyhow",
+    "insta",
+    "assert_fs",
+    "predicates",
+]

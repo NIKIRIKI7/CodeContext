@@ -1,0 +1,19 @@
+pre-commit:
+  parallel: true
+  commands:
+    fmt:
+      run: cargo fmt --all -- --check
+    clippy:
+      run: cargo clippy --workspace --all-targets -- -D warnings
+    arch:
+      run: cargo test --package app --test architecture -- --nocapture
+
+pre-push:
+  parallel: false
+  commands:
+    deny:
+      run: cargo deny check
+    tests:
+      run: cargo nextest run --workspace --release
+    alloc:
+      run: cargo test --release --package scanner --test heap_allocations -- --test-threads=1 --nocapture

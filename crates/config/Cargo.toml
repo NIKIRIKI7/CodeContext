@@ -1,0 +1,31 @@
+[package]
+name = "config"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+dirs.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+
+[dev-dependencies]
+divan.workspace = true
+tempfile.workspace = true
+proptest.workspace = true
+insta.workspace = true
+assert_fs.workspace = true
+predicates.workspace = true
+
+[[bench]]
+name = "config_throughput"
+harness = false
+
+[package.metadata.cargo-machete]
+ignored = ["thiserror", "anyhow", "insta", "assert_fs", "predicates"]

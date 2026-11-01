@@ -1,0 +1,42 @@
+[package]
+name = "ui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+core.workspace = true
+di.workspace = true
+gpui.workspace = true
+gpui-component.workspace = true
+fluent-templates.workspace = true
+unic-langid.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+
+[dev-dependencies]
+divan.workspace = true
+dhat.workspace = true
+proptest.workspace = true
+tempfile.workspace = true
+
+[[bench]]
+name = "ui_projections"
+harness = false
+
+[package.metadata.cargo-machete]
+ignored = [
+    "core",
+    "di",
+    "gpui",
+    "gpui-component",
+    "fluent-templates",
+    "unic-langid",
+    "serde",
+    "serde_json",
+    "anyhow",
+]

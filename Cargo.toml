@@ -1,0 +1,146 @@
+[workspace]
+members = [
+    "crates/app",
+    "crates/core",
+    "crates/config",
+    "crates/scanner",
+    "crates/apply",
+    "crates/platform",
+    "crates/di",
+    "crates/ui",
+]
+default-members = ["crates/app"]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+description = "Cross-platform desktop tool for zero-reallocation codebase context packing and transactional AI patch application"
+readme = "docs/README.md"
+keywords = ["context", "llm", "gpui", "packer", "diff"]
+categories = ["command-line-utilities", "development-tools", "gui"]
+
+[workspace.dependencies]
+core = { version = "0.1.0", path = "crates/core" }
+config = { version = "0.1.0", path = "crates/config" }
+scanner = { version = "0.1.0", path = "crates/scanner" }
+apply = { version = "0.1.0", path = "crates/apply" }
+platform = { version = "0.1.0", path = "crates/platform" }
+di = { version = "0.1.0", path = "crates/di" }
+ui = { version = "0.1.0", path = "crates/ui" }
+gpui = "0.2.2"
+gpui-component = "0.5.1"
+fluent-templates = "0.14"
+unic-langid = "0.9"
+ignore = "0.4"
+globset = "0.4"
+memchr = "2.7"
+rayon = "1.10"
+similar = { version = "2.6", features = ["inline"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+anyhow = "1.0"
+thiserror = "2.0"
+arboard = "3.4"
+interprocess = "2.2"
+global-hotkey = "0.6"
+dirs = "6.0"
+winreg = "0.56"
+mimalloc = { version = "0.1", default-features = false }
+cargo_metadata = "0.19"
+divan = "0.1"
+dhat = "0.3"
+tempfile = "3.14"
+proptest = "1.6"
+insta = { version = "1.42", features = ["yaml"] }
+assert_fs = "1.1"
+predicates = "3.1"
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+unreachable_pub = "deny"
+missing_debug_implementations = "warn"
+unused_qualifications = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+unimplemented = "deny"
+exit = "deny"
+indexing_slicing = "warn"
+todo = "warn"
+dbg_macro = "warn"
+format_push_string = "deny"
+inefficient_to_string = "warn"
+implicit_clone = "warn"
+cloned_instead_of_copied = "warn"
+large_types_passed_by_value = "warn"
+needless_pass_by_value = "warn"
+rc_buffer = "warn"
+unnecessary_wraps = "warn"
+wildcard_imports = "deny"
+path_buf_push_overwrite = "deny"
+suspicious_open_options = "deny"
+manual_let_else = "warn"
+inconsistent_struct_constructor = "warn"
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+missing_errors_doc = "allow"
+
+[workspace.metadata.cargo-machete]
+ignored = ["unic-langid"]
+
+[workspace.metadata.cargo-machete.renamed]
+gpui-component = "gpui_component"
+fluent-templates = "fluent_templates"
+unic-langid = "unic_langid"
+global-hotkey = "global_hotkey"
+
+[workspace.metadata.cargo-udeps.ignore]
+normal = []
+development = ["cargo_metadata"]
+build = []
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
+debug = false
+debug-assertions = false
+overflow-checks = false
+incremental = false
+
+[profile.release.package."*"]
+opt-level = 3
+codegen-units = 1
+debug = false
+debug-assertions = false
+overflow-checks = false
+
+[profile.release.build-override]
+opt-level = 3
+codegen-units = 1
+
+[profile.dev]
+opt-level = 2
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+opt-level = 3
+debug = false
+
+[profile.bench]
+inherits = "release"
+strip = "none"
+debug = "line-tables-only"
+
+[profile.profiling]
+inherits = "release"
+strip = "none"
+debug = true

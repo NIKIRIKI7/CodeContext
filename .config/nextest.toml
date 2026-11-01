@@ -1,0 +1,17 @@
+[profile.default]
+slow-timeout = { period = "2s", terminate-after = 5 }
+fail-fast = false
+retries = 0
+
+[test-groups]
+cargo-subprocesses = { max-threads = 1 }
+
+[[profile.default.overrides]]
+filter = "binary(architecture)"
+test-group = "cargo-subprocesses"
+slow-timeout = { period = "30s", terminate-after = 3 }
+
+[[profile.default.overrides]]
+filter = "binary(heap_allocations)"
+threads-required = 1
+slow-timeout = { period = "10s", terminate-after = 2 }

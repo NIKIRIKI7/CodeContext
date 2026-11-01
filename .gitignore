@@ -1,0 +1,47 @@
+# 1. Артефакты сборки Rust и Cargo
+/target/
+**/*.rs.bk
+*.pdb
+
+# 2. Артефакты тестирования, бенчмарков и профилирования (dhat, proptest, insta)
+dhat-heap.json
+*.profraw
+*.profdata
+perf.data*
+flamegraph.svg
+*.snap.new
+
+# 3. Служебные папки самого CodeContext (бэкапы и стейджинг транзакций)
+.ctxpack/backups/
+.ctxpack/staging/
+.ctxpack/logs/
+
+# 4. Секреты и локальные переменные окружения
+.env
+.env.*
+!.env.example
+!.env.template
+*.pem
+*.key
+*.pfx
+*.p12
+
+# 5. Временные файлы ОС, редакторов и MS Office
+~$*.docx
+~$*.xlsx
+~$*.pptx
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+*.swp
+*.swo
+srcipts/
+.zed/
+.ctxpack.json
+app.exe
+Текстовый документ.txt

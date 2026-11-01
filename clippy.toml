@@ -1,0 +1,25 @@
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-dbg-in-tests = true
+allow-panic-in-tests = true
+allow-indexing-slicing-in-tests = true
+max-struct-bools = 6
+max-fn-params-bools = 5
+cognitive-complexity-threshold = 25
+too-many-lines-threshold = 120
+too-many-arguments-threshold = 7
+type-complexity-threshold = 300
+doc-valid-idents = [
+    "CodeContext",
+    "GPUI",
+    "macOS",
+    "OpenSSH",
+    "GitHub",
+    "Single-Instance",
+    "State-Entity-View",
+    "..",
+]
+disallowed-methods = [
+    { path = "std::env::set_current_dir", reason = "Меняет рабочую папку глобально для всех потоков rayon/GPUI. Передавайте project_root явно!" },
+    { path = "std::env::set_var", reason = "Небезопасно в многопоточной среде Rust 2024." },
+]
