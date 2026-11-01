@@ -217,11 +217,7 @@ pub fn current_target_triple() -> &'static str {
             "x86_64-pc-windows-msvc"
         }
     } else if cfg!(target_os = "macos") {
-        if cfg!(target_arch = "x86_64") {
-            "x86_64-apple-darwin"
-        } else {
-            "aarch64-apple-darwin"
-        }
+        if cfg!(target_arch = "x86_64") { "x86_64-apple-darwin" } else { "aarch64-apple-darwin" }
     } else if cfg!(target_os = "freebsd") {
         if cfg!(target_arch = "aarch64") {
             "aarch64-unknown-freebsd"
