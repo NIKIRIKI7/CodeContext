@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="220" viewBox="0 0 1200 220" role="img" aria-labelledby="wf-title wf-desc">
+  <title id="wf-title">CodeContext Workflow: Pack, Chat, Apply</title>
+  <desc id="wf-desc">Three-step deterministic loop: Module A packs codebase into clipboard, user pastes into any free web AI chat, Module B autofixes and transactionally applies changes.</desc>
+
+  <rect width="1200" height="220" rx="16" fill="#0e1116" stroke="#262e3d" stroke-width="1.5"/>
+
+  <!-- Step 1: Module A -->
+  <g transform="translate(32, 28)">
+    <rect width="340" height="164" rx="12" fill="#141820" stroke="#29446b" stroke-width="1.5"/>
+    <rect x="18" y="18" width="110" height="24" rx="5" fill="#17253b"/>
+    <text x="28" y="34" fill="#93c5fd" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" font-weight="700">01 · МОДУЛЬ A</text>
+    <text x="18" y="68" fill="#edf2f7" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="20" font-weight="700">Context Packer</text>
+    <text x="18" y="94" fill="#a0aec0" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="13">• Параллельный обход .gitignore (Rayon)</text>
+    <text x="18" y="116" fill="#a0aec0" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="13">• Блокировка секретов (SecretGuard)</text>
+    <text x="18" y="138" fill="#34d399" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12">→ 1 клик в Проводнике / Ctrl+Shift+C</text>
+  </g>
+
+  <!-- Arrow 1 -> 2 -->
+  <path d="M384 110 L418 110" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M412 104 L420 110 L412 116" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Step 2: Any Web AI Chat -->
+  <g transform="translate(430, 28)">
+    <rect width="340" height="164" rx="12" fill="#141820" stroke="#262e3d" stroke-width="1.5"/>
+    <rect x="18" y="18" width="136" height="24" rx="5" fill="#1c222d"/>
+    <text x="28" y="34" fill="#a0aec0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" font-weight="700">02 · ВЕБ-ЧАТ ИИ</text>
+    <text x="18" y="68" fill="#edf2f7" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="20" font-weight="700">1M+ Token LLM Chat</text>
+    <text x="18" y="94" fill="#a0aec0" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="13">• AI Studio, Claude, ChatGPT, DeepSeek</text>
+    <text x="18" y="116" fill="#a0aec0" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="13">• Без платных API-ключей и телеметрии</text>
+    <text x="18" y="138" fill="#fbbf24" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12">→ Разбивка на тома 512K / 1M / 2M</text>
+  </g>
+
+  <!-- Arrow 2 -> 3 -->
+  <path d="M782 110 L816 110" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M810 104 L818 110 L810 116" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Step 3: Module B -->
+  <g transform="translate(828, 28)">
+    <rect width="340" height="164" rx="12" fill="#141820" stroke="#0f5c42" stroke-width="1.5"/>
+    <rect x="18" y="18" width="110" height="24" rx="5" fill="#062e22"/>
+    <text x="28" y="34" fill="#34d399" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" font-weight="700">03 · МОДУЛЬ B</text>
+    <text x="18" y="68" fill="#edf2f7" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="20" font-weight="700">Change Applier</text>
+    <text x="18" y="94" fill="#a0aec0" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="13">• Автофикс обрывов + 6-этапный Fuzzy</text>
+    <text x="18" y="116" fill="#a0aec0" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="13">• Песочница путей + построчный Diff</text>
+    <text x="18" y="138" fill="#34d399" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12">→ Атомарная запись + Undo бэкапов</text>
+  </g>
+</svg>

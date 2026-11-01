@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="380" viewBox="0 0 1200 380" role="img" aria-labelledby="title desc">
+  <title id="title">CodeContext — Zero-Reallocation Codebase Packer &amp; Transactional AI Patch Applier</title>
+  <desc id="desc">Native Rust and GPUI desktop and CLI tool for packing 1M+ token repositories in 21ms with 1 heap allocation and applying AI patches transactionally.</desc>
+
+  <defs>
+    <linearGradient id="bg-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0e1116"/>
+      <stop offset="100%" stop-color="#141820"/>
+    </linearGradient>
+    <linearGradient id="accent-glow" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#3b82f6"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="380" rx="20" fill="url(#bg-grad)" stroke="#262e3d" stroke-width="2"/>
+
+  <!-- Subtle architectural grid lines -->
+  <line x1="640" y1="0" x2="640" y2="380" stroke="#1c222d" stroke-width="1"/>
+  <line x1="0" y1="310" x2="640" y2="310" stroke="#1c222d" stroke-width="1"/>
+
+  <!-- Left Column: Title, Value Proposition & Metric Badges -->
+  <g id="title-block" transform="translate(48, 44)">
+    <rect x="0" y="0" width="236" height="28" rx="6" fill="#17253b" stroke="#29446b" stroke-width="1"/>
+    <circle cx="14" cy="14" r="4" fill="#3b82f6"/>
+    <text x="26" y="18" fill="#93c5fd" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" font-weight="600">RUST 2024 · GPUI 120 FPS · NO API</text>
+
+    <text x="0" y="82" fill="#edf2f7" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif" font-size="54" font-weight="800" letter-spacing="-1">CodeContext</text>
+
+    <text x="0" y="122" fill="#a0aec0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif" font-size="19" font-weight="500">Упаковка 1M+ токенов кода за 21 мс (1 аллокация кучи)</text>
+    <text x="0" y="150" fill="#a0aec0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif" font-size="19" font-weight="500">и транзакционное применение ответов ИИ-чатов с автофиксом.</text>
+
+    <!-- Proof Pills -->
+    <g transform="translate(0, 182)">
+      <rect x="0" y="0" width="132" height="54" rx="8" fill="#141820" stroke="#262e3d" stroke-width="1"/>
+      <text x="14" y="24" fill="#34d399" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18" font-weight="700">~21 ms</text>
+      <text x="14" y="42" fill="#64748b" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11">4 MB / 1K files</text>
+
+      <rect x="144" y="0" width="136" height="54" rx="8" fill="#141820" stroke="#262e3d" stroke-width="1"/>
+      <text x="158" y="24" fill="#60a5fa" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18" font-weight="700">1 Alloc</text>
+      <text x="158" y="42" fill="#64748b" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11">0 reallocs (dhat)</text>
+
+      <rect x="292" y="0" width="136" height="54" rx="8" fill="#141820" stroke="#262e3d" stroke-width="1"/>
+      <text x="306" y="24" fill="#fbbf24" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18" font-weight="700">SecretGuard</text>
+      <text x="306" y="42" fill="#64748b" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11">.env &amp; SSH locked</text>
+
+      <rect x="440" y="0" width="136" height="54" rx="8" fill="#141820" stroke="#262e3d" stroke-width="1"/>
+      <text x="454" y="24" fill="#e08250" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18" font-weight="700">Unit of Work</text>
+      <text x="454" y="42" fill="#64748b" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11">Sandbox + Undo</text>
+    </g>
+
+    <text x="0" y="294" fill="#64748b" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13">$ codecontext --pack-headless .   ·   $ codecontext --apply-headless .</text>
+  </g>
+
+  <!-- Right Column: Project-Native UI Specimen (Context Packer + Change Applier) -->
+  <g id="project-proof" transform="translate(668, 32)">
+    <rect x="0" y="0" width="496" height="316" rx="12" fill="#0a0d12" stroke="#435168" stroke-width="1.5"/>
+
+    <!-- Window Titlebar -->
+    <rect x="1" y="1" width="494" height="34" rx="11" fill="#141820"/>
+    <circle cx="18" cy="18" r="5" fill="#ef4444"/>
+    <circle cx="34" cy="18" r="5" fill="#f59e0b"/>
+    <circle cx="50" cy="18" r="5" fill="#10b981"/>
+    <text x="72" y="22" fill="#edf2f7" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" font-weight="600">CodeContext — /workspace/CodeContext</text>
+    <rect x="386" y="8" width="96" height="20" rx="4" fill="#2563eb"/>
+    <text x="400" y="22" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="11" font-weight="600">Копировать</text>
+
+    <!-- Left Pane: Virtualized File Tree -->
+    <rect x="1" y="36" width="184" height="279" fill="#141820"/>
+    <line x1="185" y1="36" x2="185" y2="315" stroke="#262e3d" stroke-width="1"/>
+
+    <text x="14" y="58" fill="#93c5fd" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11">[✓] crates/core</text>
+    <text x="26" y="80" fill="#edf2f7" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11">[✓] packing/</text>
+    <text x="26" y="102" fill="#edf2f7" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11">[✓] applying/</text>
+    <text x="14" y="124" fill="#93c5fd" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11">[✓] crates/scanner</text>
+    <text x="14" y="146" fill="#93c5fd" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11">[✓] crates/apply</text>
+    <text x="14" y="168" fill="#93c5fd" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11">[✓] crates/ui</text>
+
+    <!-- Blocked Secret Row -->
+    <rect x="8" y="182" width="170" height="22" rx="4" fill="#3b0d11" stroke="#7d1d24" stroke-width="1"/>
+    <text x="14" y="197" fill="#ffb4ab" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11">[🔒] .env.prod</text>
+    <text x="138" y="197" fill="#ef4444" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="10" font-weight="700">SEC</text>
+
+    <!-- Footer Stats -->
+    <rect x="8" y="280" width="170" height="26" rx="4" fill="#1c222d" stroke="#262e3d" stroke-width="1"/>
+    <text x="16" y="297" fill="#a0aec0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11">Фильтры (4) · 1 том</text>
+
+    <!-- Right Pane: Virtual Text & Unified Diff Specimen -->
+    <g transform="translate(196, 48)">
+      <rect x="0" y="0" width="286" height="22" rx="4" fill="#17253b"/>
+      <text x="8" y="15" fill="#93c5fd" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11">=== FILE: crates/apply/src/lib.rs ===</text>
+
+      <text x="8" y="40" fill="#a0aec0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11">@@ -12,4 +12,5 @@</text>
+      <text x="8" y="60" fill="#edf2f7" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11"> pub fn execute_plan() {</text>
+
+      <rect x="0" y="70" width="286" height="20" rx="3" fill="#3b0d11"/>
+      <text x="8" y="84" fill="#ffb4ab" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11">-    write_unverified(path);</text>
+
+      <rect x="0" y="94" width="286" height="20" rx="3" fill="#062e22"/>
+      <text x="8" y="108" fill="#34d399" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11">+    validate_sandbox_path(root, path)?;</text>
+
+      <rect x="0" y="118" width="286" height="20" rx="3" fill="#062e22"/>
+      <text x="8" y="132" fill="#34d399" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11">+    write_file_atomically(path, body)?;</text>
+
+      <text x="8" y="154" fill="#edf2f7" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11"> }</text>
+      <text x="8" y="176" fill="#64748b" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11">=== END FILE ===</text>
+
+      <!-- Toast Notification Specimen -->
+      <rect x="12" y="216" width="274" height="38" rx="6" fill="#1c222d" stroke="#0f5c42" stroke-width="1.5"/>
+      <circle cx="28" cy="235" r="5" fill="#10b981"/>
+      <text x="42" y="239" fill="#edf2f7" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="11" font-weight="600">Записано: 7 · Бэкап .ctxpack/backups</text>
+    </g>
+  </g>
+</svg>

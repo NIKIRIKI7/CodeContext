@@ -17,7 +17,7 @@ version = "0.1.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 description = "Cross-platform desktop tool for zero-reallocation codebase context packing and transactional AI patch application"
-readme = "docs/README.md"
+readme = "README.md"
 keywords = ["context", "llm", "gpui", "packer", "diff"]
 categories = ["command-line-utilities", "development-tools", "gui"]
 

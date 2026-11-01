@@ -256,7 +256,11 @@ jobs:
 
           cd out
           for f in *; do
-            shasum -a 256 "$f" > "$f.sha256"
+            if command -v sha256sum >/dev/null 2>&1; then
+              sha256sum "$f" > "$f.sha256"
+            else
+              shasum -a 256 "$f" > "$f.sha256"
+            fi
           done
 
       - name: Package Linux artifacts (.tar.gz, .tar.xz, .tar.zst, .zip, .deb, .rpm, .pkg.tar.zst, .AppImage)
@@ -481,11 +485,44 @@ jobs:
           path: artifacts
           merge-multiple: true
 
-      - name: Generate unified SHA256SUMS.txt and signed releases-index.json
+      - name: Generate unified SHA256SUMS.txt, bilingual release notes, and signed releases-index.json
         shell: bash
         run: |
           VER="$(tr -d '[:space:]' < VERSION)"
           echo "RELEASE_TAG=v${VER}" >> "${GITHUB_ENV}"
+          python3 - "${VER}" <<'PY_NOTES'
+          import pathlib, re, sys
+
+          ver = sys.argv[1]
+          def extract_section(path_str: str) -> str:
+              p = pathlib.Path(path_str)
+              if not p.exists():
+                  return ""
+              text = p.read_text(encoding="utf-8")
+              pattern = rf"(?ms)^## \[{re.escape(ver)}\][^\n]*\n(.*?)(?=^## \[|\Z)"
+              m = re.search(pattern, text)
+              return m.group(1).strip() if m else ""
+
+          ru_notes = extract_section("CHANGELOG.md")
+          en_notes = extract_section("CHANGELOG.en.md")
+          body = [
+              f"# CodeContext v{ver}",
+              "",
+              "🌍 **Language / Язык:** [🇷🇺 Русский](#ru-notes) · [🇬🇧 English](#en-notes)",
+              "",
+              "<a id=\"ru-notes\"></a>",
+              f"## 🇷🇺 Изменения в версии v{ver} (RU)",
+              ru_notes or f"Релиз CodeContext v{ver}.",
+              "",
+              "---",
+              "",
+              "<a id=\"en-notes\"></a>",
+              f"## 🇬🇧 Release Notes v{ver} (EN)",
+              en_notes or f"CodeContext v{ver} release.",
+          ]
+          pathlib.Path("artifacts/RELEASE_NOTES.md").write_text("\n".join(body) + "\n", encoding="utf-8")
+          PY_NOTES
+
           cd artifacts
           cat *.sha256 > SHA256SUMS.txt
           cat SHA256SUMS.txt
@@ -537,6 +574,7 @@ jobs:
         uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
         with:
           tag_name: ${{ env.RELEASE_TAG }}
+          body_path: artifacts/RELEASE_NOTES.md
           generate_release_notes: true
           files: |
             artifacts/*.zip
