@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "v*.*.*"
+    branches:
+      - "main"
+      - "master"
+    paths:
+      - "VERSION"
+      - ".github/workflows/release.yml"
   workflow_dispatch:
 
 permissions:
@@ -40,7 +46,7 @@ jobs:
             deb_arch: ""
             rpm_arch: ""
             arch_pkg_arch: ""
-            enable_pgo: true
+            enable_pgo: false
             enable_msi: false
             rustflags: "-C llvm-args=-inline-threshold=400 -C llvm-args=-unroll-threshold=300 -C force-frame-pointers=no -C symbol-mangling-version=v0 -C link-arg=/OPT:REF,ICF"
           - label: Linux x86_64 (.tar.gz, .tar.xz, .tar.zst, .zip, .deb, .rpm, .pkg.tar.zst, .AppImage)
@@ -54,7 +60,7 @@ jobs:
             arch_pkg_arch: x86_64
             enable_pgo: true
             enable_msi: false
-            rustflags: "-C target-cpu=x86-64-v3 -C llvm-args=-inline-threshold=400 -C llvm-args=-unroll-threshold=300 -C force-frame-pointers=no -C symbol-mangling-version=v0 -C link-arg=-fuse-ld=lld -C link-arg=-Wl,--gc-sections,--icf=all,-O3"
+            rustflags: "-C target-cpu=x86-64-v3 -C llvm-args=-inline-threshold=400 -C llvm-args=-unroll-threshold=300 -C force-frame-pointers=no -C symbol-mangling-version=v0 -C link-arg=-Wl,--gc-sections,-O3"
           - label: Linux ARM64 (.tar.gz, .tar.xz, .tar.zst, .zip, .deb, .rpm, .pkg.tar.zst, .AppImage)
             os: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
@@ -64,9 +70,9 @@ jobs:
             deb_arch: arm64
             rpm_arch: aarch64
             arch_pkg_arch: aarch64
-            enable_pgo: true
+            enable_pgo: false
             enable_msi: false
-            rustflags: "-C llvm-args=-inline-threshold=400 -C llvm-args=-unroll-threshold=300 -C force-frame-pointers=no -C symbol-mangling-version=v0 -C link-arg=-fuse-ld=lld -C link-arg=-Wl,--gc-sections,--icf=all,-O3"
+            rustflags: "-C llvm-args=-inline-threshold=400 -C llvm-args=-unroll-threshold=300 -C force-frame-pointers=no -C symbol-mangling-version=v0 -C link-arg=-Wl,--gc-sections,-O3"
           - label: macOS Apple Silicon (.tar.gz, .zip, .dmg, .pkg)
             os: macos-latest
             target: aarch64-apple-darwin
@@ -112,7 +118,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            lld clang libclang-dev pkg-config rpm zstd xz-utils zip file \
+            build-essential binutils lld clang libclang-dev pkg-config rpm zstd xz-utils zip file \
             libxcb1-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev \
             libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libvulkan-dev \
             libfontconfig1-dev libfreetype6-dev libx11-dev libxcursor-dev libxi-dev
@@ -159,13 +165,18 @@ jobs:
               "./target/${{ matrix.target }}/release/${{ matrix.bin_name }}" --pack-headless . || true
             done
 
-            LLVM_BIN_DIR="$(dirname "$(rustc --print target-libdir)")/bin"
-            "${LLVM_BIN_DIR}/llvm-profdata" merge -o "${PGO_DIR}/merged.profdata" "${PGO_DIR}"
-
-            echo "=== [PGO 3/3] Recompiling with PGO + Fat LTO + CGU=1 ==="
-            cargo clean --release --package app --package scanner --package apply --package config --package core
-            RUSTFLAGS="${{ matrix.rustflags }} -C profile-use=${PGO_DIR}/merged.profdata -C llvm-args=-pgo-warn-missing-function" \
-              cargo build --release --locked --package app --target ${{ matrix.target }}
+            LLVM_PROFDATA="$(find "$(rustc --print sysroot)" -name "llvm-profdata*" -type f | head -n 1)"
+            if [ -n "${LLVM_PROFDATA}" ] && "${LLVM_PROFDATA}" merge -o "${PGO_DIR}/merged.profdata" "${PGO_DIR}"; then
+              echo "=== [PGO 3/3] Recompiling with PGO + Fat LTO + CGU=1 ==="
+              cargo clean --release --package app --package scanner --package apply --package config --package core
+              RUSTFLAGS="${{ matrix.rustflags }} -C profile-use=${PGO_DIR}/merged.profdata -C llvm-args=-pgo-warn-missing-function" \
+                cargo build --release --locked --package app --target ${{ matrix.target }}
+            else
+              echo "=== PGO profile merge skipped: building clean Fat LTO release binary ==="
+              cargo clean --release --package app --package scanner --package apply --package config --package core
+              RUSTFLAGS="${{ matrix.rustflags }}" \
+                cargo build --release --locked --package app --target ${{ matrix.target }}
+            fi
           else
             RUSTFLAGS="${{ matrix.rustflags }}" \
               cargo build --release --locked --package app --target ${{ matrix.target }}
@@ -373,7 +384,9 @@ jobs:
           out_p.write_bytes(plistlib.dumps(plist))
           ' "${VER}" "${PKG_VER}" "${APP_DIR}/Info.plist"
           ln -s /Applications dmg_stage/Applications
-          hdiutil create -volname "CodeContext" -srcfolder dmg_stage -ov -format UDZO "out/${{ matrix.pkg_prefix }}.dmg"
+          for _ in 1 2 3; do
+            hdiutil create -volname "CodeContext" -srcfolder dmg_stage -ov -format UDZO "out/${{ matrix.pkg_prefix }}.dmg" && break || sleep 2
+          done
           pkgbuild --root dmg_stage/CodeContext.app --install-location /Applications/CodeContext.app --identifier io.github.nikiriki7.codecontext --version "${PKG_VER}" "out/${{ matrix.pkg_prefix }}.pkg"
 
           cd out
@@ -437,7 +450,9 @@ jobs:
           out_p.write_bytes(plistlib.dumps(plist))
           ' "${VER}" "${PKG_VER}" "${APP_DIR}/Info.plist"
           ln -s /Applications univ_stage/Applications
-          hdiutil create -volname "CodeContext Universal" -srcfolder univ_stage -ov -format UDZO out/codecontext-universal-apple-darwin.dmg
+          for _ in 1 2 3; do
+            hdiutil create -volname "CodeContext Universal" -srcfolder univ_stage -ov -format UDZO out/codecontext-universal-apple-darwin.dmg && break || sleep 2
+          done
           pkgbuild --root univ_stage/CodeContext.app --install-location /Applications/CodeContext.app --identifier io.github.nikiriki7.codecontext --version "${PKG_VER}" out/codecontext-universal-apple-darwin.pkg
 
           cd out
@@ -454,7 +469,6 @@ jobs:
 
   publish-github-release:
     name: Publish GitHub Release & Signed Manifest
-    if: startsWith(github.ref, 'refs/tags/v')
     needs: [build-release-artifacts, build-macos-universal]
     runs-on: ubuntu-latest
     steps:
@@ -471,6 +485,7 @@ jobs:
         shell: bash
         run: |
           VER="$(tr -d '[:space:]' < VERSION)"
+          echo "RELEASE_TAG=v${VER}" >> "${GITHUB_ENV}"
           cd artifacts
           cat *.sha256 > SHA256SUMS.txt
           cat SHA256SUMS.txt
@@ -518,9 +533,10 @@ jobs:
           pathlib.Path("releases-index.json").write_text(json.dumps([manifest], indent=2) + "\n", encoding="utf-8")
           PY
 
-      - name: Create GitHub Release
+      - name: Create or Update GitHub Release
         uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
         with:
+          tag_name: ${{ env.RELEASE_TAG }}
           generate_release_notes: true
           files: |
             artifacts/*.zip
