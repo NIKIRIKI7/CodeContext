@@ -9,6 +9,11 @@ pub use lifecycle::ipc::{
     decode_ipc_json_fallback, default_ipc_endpoint_config, encode_ipc_frame,
     encode_ipc_json_fallback,
 };
+pub use lifecycle::updater::{
+    SystemUpdater, atomic_swap_executable, canonical_install_binary_path, compute_sha256_hex,
+    current_target_triple, parse_forge_releases_tags, sign_release_payload,
+    verify_payload_integrity, verify_release_signature,
+};
 pub use shell::{
     FileManifest, LinuxShellImp, MacOsShellImp, RegistryKeySpec, ShellFileArtifact,
     SystemShellIntegration, WINDOWS_DEFAULT_CLASSES_PREFIX, WindowsRegistryManifest,

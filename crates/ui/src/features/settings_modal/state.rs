@@ -4,7 +4,11 @@ use core::system::ports::hotkey::{
     GlobalHotkeyPort as _, HotkeyPortError, HotkeyRegistrationStatus, HotkeyShortcut,
 };
 use core::system::ports::shell::{
-    ShellIntegrationError, ShellIntegrationPort as _, ShellRegistrationStatus,
+    ShellIntegrationError, ShellIntegrationPort as _, ShellMenuConfig, ShellRegistrationStatus,
+};
+use core::system::ports::updater::{
+    SelfInstallStatus, SemanticVersion, UpdateChannel, UpdateStage, UpdaterPort as _,
+    UpdaterPortError,
 };
 use di::AppContainer;
 
@@ -19,6 +23,9 @@ pub struct SettingsModalState {
     global_config: GlobalConfig,
     shell_status: ShellRegistrationStatus,
     hotkey_status: HotkeyRegistrationStatus,
+    update_channel: UpdateChannel,
+    update_stage: UpdateStage,
+    self_install_status: SelfInstallStatus,
     locale: AppLocale,
     theme_variant: ThemeVariant,
     recording_hotkey: bool,
@@ -37,12 +44,18 @@ impl SettingsModalState {
         } else {
             current_hk_status
         };
+        let update_channel = UpdateChannel::parse(&global_config.update_channel);
+        let update_stage = container.updater().stage();
+        let self_install_status = container.updater().self_install_status();
 
         Self {
             container,
             global_config,
             shell_status,
             hotkey_status,
+            update_channel,
+            update_stage,
+            self_install_status,
             locale: AppLocale::default(),
             theme_variant: ThemeVariant::default(),
             recording_hotkey: false,
@@ -162,5 +175,85 @@ impl SettingsModalState {
     #[inline]
     pub const fn hotkey_status(&self) -> &HotkeyRegistrationStatus {
         &self.hotkey_status
+    }
+
+    #[inline]
+    pub const fn update_channel(&self) -> UpdateChannel {
+        self.update_channel
+    }
+
+    #[inline]
+    pub const fn update_stage(&self) -> &UpdateStage {
+        &self.update_stage
+    }
+
+    #[inline]
+    pub const fn self_install_status(&self) -> &SelfInstallStatus {
+        &self.self_install_status
+    }
+
+    #[inline]
+    pub fn current_version(&self) -> SemanticVersion {
+        self.container.updater().current_version()
+    }
+
+    #[inline]
+    pub const fn container(&self) -> &AppContainer {
+        &self.container
+    }
+
+    pub fn sync_from_container(&mut self) {
+        self.update_stage = self.container.updater().stage();
+        self.self_install_status = self.container.updater().self_install_status();
+        self.shell_status = self.container.shell_integration().status();
+    }
+
+    pub fn select_update_channel(&mut self, channel: UpdateChannel) -> Result<(), ConfigPortError> {
+        if self.update_channel == channel {
+            return Ok(());
+        }
+        self.update_channel = channel;
+        let updated = self.container.preset_service().set_update_channel(channel.as_str())?;
+        self.global_config = updated;
+        self.update_stage = self.container.updater().switch_channel_cached(channel);
+        Ok(())
+    }
+
+    pub fn check_for_updates(&mut self) -> Result<UpdateStage, UpdaterPortError> {
+        let stage = self
+            .container
+            .updater()
+            .check_for_updates(self.update_channel, &self.global_config.update_repo_url)?;
+        self.update_stage = stage.clone();
+        Ok(stage)
+    }
+
+    pub fn trigger_update_or_self_install(&mut self) -> Result<(), UpdaterPortError> {
+        if let SelfInstallStatus::PortableMode { .. } = self.self_install_status {
+            let status = self.container.updater().perform_self_install()?;
+            if let SelfInstallStatus::InstalledCanonical { ref install_path } = status {
+                let cfg = ShellMenuConfig::with_executable(install_path.clone());
+                let _ = self.container.shell_integration().register_with_config(&cfg);
+                self.shell_status = self.container.shell_integration().status_for_config(&cfg);
+            }
+            self.self_install_status = status;
+            return Ok(());
+        }
+
+        match self.update_stage {
+            UpdateStage::UpdateAvailable { .. } => {
+                self.update_stage = self.container.updater().apply_staged_update()?;
+            }
+            UpdateStage::Idle
+            | UpdateStage::UpToDate { .. }
+            | UpdateStage::ReadyToRestart { .. }
+            | UpdateStage::Failed { .. } => {
+                self.update_stage = self
+                    .container
+                    .updater()
+                    .check_for_updates(self.update_channel, &self.global_config.update_repo_url)?;
+            }
+        }
+        Ok(())
     }
 }

@@ -6,6 +6,10 @@ use super::preset::Preset;
 
 /// Глобальное сочетание клавиш по умолчанию.
 pub const DEFAULT_GLOBAL_HOTKEY: &str = "Ctrl+Shift+C";
+/// Канал обновлений по умолчанию.
+pub const DEFAULT_UPDATE_CHANNEL: &str = "stable";
+/// Канонический репозиторий синхронизации релизов по умолчанию.
+pub const DEFAULT_UPDATE_REPO_URL: &str = "https://github.com/NIKIRIKI7/CodeContext.git";
 
 /// Источник происхождения итогового пресета после прохождения каскада.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -67,6 +71,10 @@ pub struct GlobalConfig {
     pub auto_read_clipboard_on_apply: bool,
     /// Создавать ли резервные копии перед применением изменений по умолчанию.
     pub create_backups_by_default: bool,
+    /// Выбранный канал обновлений (`stable`, `beta`, `alpha`).
+    pub update_channel: String,
+    /// URL репозитория для синхронизации обновлений.
+    pub update_repo_url: String,
 }
 
 impl Default for GlobalConfig {
@@ -78,6 +86,8 @@ impl Default for GlobalConfig {
             global_hotkey: DEFAULT_GLOBAL_HOTKEY.to_owned(),
             auto_read_clipboard_on_apply: false,
             create_backups_by_default: true,
+            update_channel: DEFAULT_UPDATE_CHANNEL.to_owned(),
+            update_repo_url: DEFAULT_UPDATE_REPO_URL.to_owned(),
         }
     }
 }

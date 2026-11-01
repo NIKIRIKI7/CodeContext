@@ -24,12 +24,17 @@ use core::system::ports::ipc::{
     IpcCommand, MAX_IPC_FRAME_BYTES, PrimaryElectionResult, SingleInstanceIpcPort as _,
 };
 use core::system::ports::shell::{ShellIntegrationPort, ShellMenuConfig, ShellRegistrationStatus};
+use core::system::ports::updater::{
+    EMBEDDED_RELEASE_PUBLIC_KEY_HEX, GitHostKind, PreReleaseTag, ReleaseArtifact, ReleaseManifest,
+    ReleaseProviderSpec, SelfInstallStatus, SemanticVersion, UpdateChannel, UpdateStage,
+    UpdaterPort as _,
+};
 use platform::{
     InMemoryClipboard, IpcEndpointConfig, LinuxShellImp, MacOsShellImp, SystemGlobalHotkey,
-    SystemSingleInstanceIpc, WindowsShellImp, build_linux_xdg_manifest,
-    build_macos_workflow_manifest, build_windows_registry_manifest, decode_ipc_frame,
-    encode_ipc_frame, resolve_headless_target_path, sanitize_executable_path,
-    sanitize_explorer_path_arg,
+    SystemSingleInstanceIpc, SystemUpdater, WindowsShellImp, build_linux_xdg_manifest,
+    build_macos_workflow_manifest, build_windows_registry_manifest, compute_sha256_hex,
+    current_target_triple, decode_ipc_frame, encode_ipc_frame, resolve_headless_target_path,
+    sanitize_executable_path, sanitize_explorer_path_arg, sign_release_payload,
 };
 use proptest::prelude::*;
 use scanner::IgnoreFileScanner;
@@ -316,6 +321,98 @@ fn test_9_hotkey_lifecycle_register_rebind_conflict_and_wayland_degradation() {
     let wayland_hk = SystemGlobalHotkey::new_simulated_wayland_restricted();
     assert!(wayland_hk.register_str("Ctrl+Shift+C").is_err());
     assert!(wayland_hk.status().is_unsupported_display());
+}
+
+#[test]
+fn test_10_updater_channels_signature_sha256_and_self_install_lifecycle() {
+    assert_eq!(
+        compute_sha256_hex(b"abc"),
+        "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    );
+
+    let v_alpha = SemanticVersion::parse("v0.2.0-alpha.1").unwrap();
+    let v_beta = SemanticVersion::parse("v0.2.0-beta.1").unwrap();
+    let v_stable = SemanticVersion::parse("v0.2.0").unwrap();
+    assert!(v_alpha < v_beta && v_beta < v_stable);
+
+    let gh_spec =
+        ReleaseProviderSpec::from_repo_url("https://github.com/NIKIRIKI7/CodeContext.git");
+    assert_eq!(gh_spec.host_kind, GitHostKind::GitHub);
+    assert_eq!(gh_spec.owner, "NIKIRIKI7");
+    assert_eq!(gh_spec.repo, "CodeContext");
+
+    let target = current_target_triple().to_owned();
+    let make_manifest = |ver: SemanticVersion| {
+        let payload = format!("codecontext-binary-{ver}");
+        let sha = compute_sha256_hex(payload.as_bytes());
+        let sig = sign_release_payload(&ver, &target, &sha, EMBEDDED_RELEASE_PUBLIC_KEY_HEX);
+        ReleaseManifest {
+            version: ver,
+            channel: ver.channel(),
+            published_at: "2026-11-01".to_owned(),
+            changelog: "Release notes".to_owned(),
+            artifacts: vec![ReleaseArtifact {
+                target: target.clone(),
+                url: format!(
+                    "https://github.com/NIKIRIKI7/CodeContext/releases/download/v{ver}/app.zip"
+                ),
+                sha256: sha,
+                signature: sig,
+            }],
+        }
+    };
+
+    let updater = SystemUpdater::new_in_memory();
+    updater.set_simulated_remote_releases(vec![make_manifest(v_alpha), make_manifest(v_beta)]);
+
+    let st_stable = updater
+        .check_for_updates(UpdateChannel::Stable, "https://github.com/NIKIRIKI7/CodeContext.git")
+        .unwrap();
+    assert_eq!(st_stable, UpdateStage::UpToDate { version: SemanticVersion::new(0, 1, 0) });
+
+    let st_beta = updater
+        .check_for_updates(UpdateChannel::Beta, "https://github.com/NIKIRIKI7/CodeContext.git")
+        .unwrap();
+    assert_eq!(
+        st_beta,
+        UpdateStage::UpdateAvailable { version: v_beta, channel: UpdateChannel::Beta }
+    );
+
+    let applied = updater.apply_staged_update().unwrap();
+    assert_eq!(applied, UpdateStage::ReadyToRestart { version: v_beta });
+    assert_eq!(updater.current_version(), v_beta);
+
+    let temp = TempDir::new().unwrap();
+    let portable_exe = temp.path().join("Downloads/codecontext.exe");
+    let canonical_exe = temp.path().join("LocalAppData/Programs/CodeContext/codecontext.exe");
+    fs::create_dir_all(portable_exe.parent().unwrap()).unwrap();
+    fs::write(&portable_exe, b"portable_binary_bytes").unwrap();
+
+    updater.set_simulated_portable_paths(portable_exe, canonical_exe.clone());
+    assert!(!updater.self_install_status().is_installed());
+
+    let installed = updater.perform_self_install().unwrap();
+    assert_eq!(
+        installed,
+        SelfInstallStatus::InstalledCanonical { install_path: canonical_exe.clone() }
+    );
+    assert!(canonical_exe.exists());
+
+    let bad_ver = SemanticVersion::with_pre(0, 3, 0, PreReleaseTag::Alpha(1));
+    let tampered_manifest = ReleaseManifest {
+        version: bad_ver,
+        channel: UpdateChannel::Alpha,
+        published_at: String::new(),
+        changelog: String::new(),
+        artifacts: vec![ReleaseArtifact {
+            target,
+            url: String::new(),
+            sha256: compute_sha256_hex(b"tampered"),
+            signature: "invalid_signature".to_owned(),
+        }],
+    };
+    updater.set_simulated_staged_payload(tampered_manifest, b"tampered".to_vec());
+    assert!(updater.apply_staged_update().is_err());
 }
 
 proptest! {

@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::time::Duration;
 
 use core::packing::aggregates::project::Project;
 use core::system::ports::hotkey::GlobalHotkeyPort as _;
@@ -21,7 +22,6 @@ use crate::features::main_window::components::project_meta_modal::{
 use crate::features::main_window::state::{MainWindowState, WorkspaceTab};
 use crate::features::settings_modal::state::SettingsModalState;
 use crate::features::settings_modal::view::SettingsModalView;
-use std::time::Duration;
 
 use crate::locale::AppLocale;
 use crate::shared::primitives::button::{ButtonVariant, UiButton};

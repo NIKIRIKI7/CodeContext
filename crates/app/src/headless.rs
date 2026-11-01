@@ -4,7 +4,10 @@ use anyhow::Result;
 use core::applying::aggregates::backup_manifest::BackupManifest;
 use core::packing::aggregates::pack_result::PackResult;
 use core::shared_kernel::execution::cancel_token::CancelToken;
-use core::system::ports::shell::ShellIntegrationPort as _;
+use core::system::ports::shell::{ShellIntegrationPort as _, ShellMenuConfig};
+use core::system::ports::updater::{
+    SelfInstallStatus, UpdateChannel, UpdateStage, UpdaterPort as _,
+};
 use di::AppContainer;
 use platform::resolve_headless_target_path;
 
@@ -45,4 +48,22 @@ pub(crate) fn unregister_os_context_menu() -> Result<()> {
     let container = AppContainer::new();
     container.shell_integration().unregister_context_menu()?;
     Ok(())
+}
+
+pub(crate) fn run_self_install() -> Result<SelfInstallStatus> {
+    let container = AppContainer::new();
+    let status = container.updater().perform_self_install()?;
+    if let SelfInstallStatus::InstalledCanonical { ref install_path } = status {
+        let cfg = ShellMenuConfig::with_executable(install_path.clone());
+        container.shell_integration().register_with_config(&cfg)?;
+    }
+    Ok(status)
+}
+
+pub(crate) fn run_check_update() -> Result<UpdateStage> {
+    let container = AppContainer::new();
+    let global_cfg = container.preset_service().load_global_config();
+    let channel = UpdateChannel::parse(&global_cfg.update_channel);
+    let stage = container.updater().check_for_updates(channel, &global_cfg.update_repo_url)?;
+    Ok(stage)
 }

@@ -1,7 +1,9 @@
 use core::preset::models::preset::{
     DEFAULT_LARGE_FILE_THRESHOLD_BYTES, DEFAULT_MAX_DEPTH, DEFAULT_MAX_FILES,
 };
-use core::preset::models::resolution::DEFAULT_GLOBAL_HOTKEY;
+use core::preset::models::resolution::{
+    DEFAULT_GLOBAL_HOTKEY, DEFAULT_UPDATE_CHANNEL, DEFAULT_UPDATE_REPO_URL,
+};
 use core::preset::models::template::{
     DEFAULT_DIVIDER_MARKER, DEFAULT_FILE_FOOTER, DEFAULT_FILE_HEADER_PREFIX,
     DEFAULT_FILE_HEADER_SUFFIX, DEFAULT_REPLACE_MARKER, DEFAULT_SEARCH_MARKER,
@@ -24,6 +26,14 @@ fn default_preset_name() -> String {
 
 fn default_hotkey() -> String {
     DEFAULT_GLOBAL_HOTKEY.to_owned()
+}
+
+fn default_update_channel() -> String {
+    DEFAULT_UPDATE_CHANNEL.to_owned()
+}
+
+fn default_update_repo_url() -> String {
+    DEFAULT_UPDATE_REPO_URL.to_owned()
 }
 
 const fn default_max_depth() -> usize {
@@ -193,6 +203,10 @@ pub struct GlobalConfigDto {
     pub auto_read_clipboard_on_apply: bool,
     #[serde(default = "default_true")]
     pub create_backups_by_default: bool,
+    #[serde(default = "default_update_channel")]
+    pub update_channel: String,
+    #[serde(default = "default_update_repo_url")]
+    pub update_repo_url: String,
 }
 
 impl Default for GlobalConfigDto {
@@ -204,6 +218,8 @@ impl Default for GlobalConfigDto {
             global_hotkey: default_hotkey(),
             auto_read_clipboard_on_apply: false,
             create_backups_by_default: true,
+            update_channel: default_update_channel(),
+            update_repo_url: default_update_repo_url(),
         }
     }
 }

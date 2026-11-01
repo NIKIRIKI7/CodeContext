@@ -37,6 +37,12 @@ fn main() {
         LaunchMode::UnregisterShell => {
             let _ = headless::unregister_os_context_menu();
         }
+        LaunchMode::SelfInstall => {
+            let _ = headless::run_self_install();
+        }
+        LaunchMode::CheckUpdate => {
+            let _ = headless::run_check_update();
+        }
         LaunchMode::Gui { initial_project_root } => {
             let container = AppContainer::new();
             if matches!(

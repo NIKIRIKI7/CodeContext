@@ -3,7 +3,10 @@ use core::preset::models::preset::{
     MIN_ALLOWED_CHUNK_BYTES, MIN_ALLOWED_MAX_DEPTH, MIN_ALLOWED_MAX_FILES,
     MIN_LARGE_FILE_THRESHOLD_BYTES, Preset,
 };
-use core::preset::models::resolution::{ConfigWarning, DEFAULT_GLOBAL_HOTKEY, GlobalConfig};
+use core::preset::models::resolution::{
+    ConfigWarning, DEFAULT_GLOBAL_HOTKEY, DEFAULT_UPDATE_CHANNEL, DEFAULT_UPDATE_REPO_URL,
+    GlobalConfig,
+};
 use core::preset::models::template::{
     DEFAULT_DIVIDER_MARKER, DEFAULT_FILE_FOOTER, DEFAULT_FILE_HEADER_PREFIX,
     DEFAULT_FILE_HEADER_SUFFIX, DEFAULT_REPLACE_MARKER, DEFAULT_SEARCH_MARKER, OutputTemplate,
@@ -36,12 +39,24 @@ pub(crate) fn global_dto_to_domain(
     } else {
         dto.global_hotkey.trim().to_owned()
     };
+    let update_channel = if dto.update_channel.trim().is_empty() {
+        DEFAULT_UPDATE_CHANNEL.to_owned()
+    } else {
+        dto.update_channel.trim().to_ascii_lowercase()
+    };
+    let update_repo_url = if dto.update_repo_url.trim().is_empty() {
+        DEFAULT_UPDATE_REPO_URL.to_owned()
+    } else {
+        dto.update_repo_url.trim().to_owned()
+    };
     GlobalConfig {
         active_preset_name,
         presets,
         global_hotkey,
         auto_read_clipboard_on_apply: dto.auto_read_clipboard_on_apply,
         create_backups_by_default: dto.create_backups_by_default,
+        update_channel,
+        update_repo_url,
     }
 }
 
@@ -53,6 +68,8 @@ pub(crate) fn global_domain_to_dto(domain: &GlobalConfig) -> GlobalConfigDto {
         global_hotkey: domain.global_hotkey.clone(),
         auto_read_clipboard_on_apply: domain.auto_read_clipboard_on_apply,
         create_backups_by_default: domain.create_backups_by_default,
+        update_channel: domain.update_channel.clone(),
+        update_repo_url: domain.update_repo_url.clone(),
     }
 }
 

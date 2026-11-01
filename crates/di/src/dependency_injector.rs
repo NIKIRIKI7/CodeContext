@@ -15,7 +15,7 @@ use core::shared_kernel::fs::line_ending::LineEnding;
 use gpui::Global;
 use platform::{
     InMemoryClipboard, SystemClipboard, SystemGlobalHotkey, SystemShellIntegration,
-    SystemSingleInstanceIpc,
+    SystemSingleInstanceIpc, SystemUpdater,
 };
 use scanner::IgnoreFileScanner;
 
@@ -84,6 +84,7 @@ pub struct AppContainerBuilder {
     shell_integration: Option<SystemShellIntegration>,
     hotkey: Option<SystemGlobalHotkey>,
     ipc: Option<SystemSingleInstanceIpc>,
+    updater: Option<SystemUpdater>,
 }
 
 impl AppContainerBuilder {
@@ -127,6 +128,13 @@ impl AppContainerBuilder {
         self
     }
 
+    #[must_use]
+    #[inline]
+    pub fn with_updater(mut self, updater: SystemUpdater) -> Self {
+        self.updater = Some(updater);
+        self
+    }
+
     pub fn build(self) -> AppContainer {
         let clipboard = self.clipboard.unwrap_or_default();
         let config_loader = self
@@ -135,6 +143,7 @@ impl AppContainerBuilder {
         let shell_integration = self.shell_integration.unwrap_or_default();
         let hotkey = self.hotkey.unwrap_or_default();
         let ipc = self.ipc.unwrap_or_default();
+        let updater = self.updater.unwrap_or_default();
         let scanner = IgnoreFileScanner::new();
         let applier = ResponseApplier::new();
 
@@ -146,6 +155,7 @@ impl AppContainerBuilder {
             shell_integration,
             hotkey,
             ipc,
+            updater,
         }
     }
 }
@@ -159,6 +169,7 @@ pub struct AppContainer {
     shell_integration: SystemShellIntegration,
     hotkey: SystemGlobalHotkey,
     ipc: SystemSingleInstanceIpc,
+    updater: SystemUpdater,
 }
 
 impl Global for AppContainer {}
@@ -188,6 +199,7 @@ impl AppContainer {
             .with_shell_integration(SystemShellIntegration::new_in_memory())
             .with_hotkey(SystemGlobalHotkey::new_in_memory())
             .with_ipc(SystemSingleInstanceIpc::new_in_memory())
+            .with_updater(SystemUpdater::new_in_memory())
             .build()
     }
 
@@ -229,6 +241,11 @@ impl AppContainer {
     #[inline]
     pub const fn ipc(&self) -> &SystemSingleInstanceIpc {
         &self.ipc
+    }
+
+    #[inline]
+    pub const fn updater(&self) -> &SystemUpdater {
+        &self.updater
     }
 
     #[inline]

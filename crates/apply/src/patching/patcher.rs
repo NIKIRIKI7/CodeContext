@@ -7,6 +7,11 @@ use core::applying::values::patch_status::{
 use core::shared_kernel::fs::line_ending::LineEnding;
 use similar::{ChangeTag, TextDiff};
 
+use super::fuzzy_matcher::{
+    try_ellipsis_and_comment_tolerant_replace, try_syntax_normalized_replace,
+    try_trimmed_subsequence_replace, try_zed_fuzzy_similarity_replace,
+};
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DiffSummary {
     pub unified_diff_text: String,
@@ -27,11 +32,10 @@ type BlockMatcherFn = fn(&str, &str, &str, LineEnding) -> Option<String>;
 const SEARCH_REPLACE_MATCHER_CHAIN: &[BlockMatcherFn] = &[
     try_exact_replace,
     try_line_ending_normalized_replace,
-    try_fuzzy_whitespace_replace,
-    try_normalized_syntax_replace,
-    try_comment_insensitive_replace,
-    try_fuzzy_anchor_similarity_replace,
-    try_anchor_bounds_replace,
+    try_trimmed_subsequence_replace,
+    try_syntax_normalized_replace,
+    try_ellipsis_and_comment_tolerant_replace,
+    try_zed_fuzzy_similarity_replace,
     try_idempotent_already_applied,
 ];
 
@@ -270,368 +274,9 @@ fn try_line_ending_normalized_replace(
     Some(updated)
 }
 
-fn try_fuzzy_whitespace_replace(
-    working: &str,
-    search: &str,
-    replace: &str,
-    target_ending: LineEnding,
-) -> Option<String> {
-    let mut search_lines: Vec<&str> = Vec::with_capacity((search.len() / 24).max(4));
-    for line in search.lines().map(str::trim) {
-        if !line.is_empty() {
-            search_lines.push(line);
-        }
-    }
-    let first_search = search_lines.first().copied()?;
-
-    let mut work_lines: Vec<&str> = Vec::with_capacity((working.len() / 20).max(16));
-    work_lines.extend(working.lines());
-    if work_lines.len() < search_lines.len() {
-        return None;
-    }
-
-    for start_idx in 0..work_lines.len() {
-        if work_lines.get(start_idx).copied().unwrap_or("").trim() != first_search {
-            continue;
-        }
-        if let Some(end_idx) = match_trimmed_subsequence(&work_lines, start_idx, &search_lines) {
-            let eol = target_ending.as_str();
-            let mut out = String::with_capacity(working.len() + replace.len() + 16);
-            let mut first = true;
-            for &line in work_lines.get(..start_idx).unwrap_or(&[]) {
-                if !first {
-                    out.push_str(eol);
-                }
-                out.push_str(line);
-                first = false;
-            }
-            for rep_line in replace.lines() {
-                if !first {
-                    out.push_str(eol);
-                }
-                out.push_str(rep_line);
-                first = false;
-            }
-            for &line in work_lines.get(end_idx..).unwrap_or(&[]) {
-                if !first {
-                    out.push_str(eol);
-                }
-                out.push_str(line);
-                first = false;
-            }
-            if working.ends_with('\n') {
-                out.push_str(eol);
-            }
-            return Some(out);
-        }
-    }
-    None
-}
-
-fn match_trimmed_subsequence(
-    work_lines: &[&str],
-    start_idx: usize,
-    search_trimmed: &[&str],
-) -> Option<usize> {
-    let mut w_idx = start_idx;
-    for (s_pos, &s_line) in search_trimmed.iter().enumerate() {
-        while w_idx < work_lines.len() {
-            let candidate = work_lines.get(w_idx).copied().unwrap_or("").trim();
-            if candidate.is_empty() && s_pos > 0 {
-                w_idx += 1;
-                continue;
-            }
-            break;
-        }
-        let actual = work_lines.get(w_idx).copied()?.trim();
-        if actual != s_line {
-            return None;
-        }
-        w_idx += 1;
-    }
-    Some(w_idx)
-}
-
-fn normalize_loose_code_line(line: &str) -> String {
-    let trimmed = line.trim().trim_end_matches([',', ';']);
-    let replaced = trimmed.replace("Option::None", "None");
-    let mut out = String::with_capacity(replaced.len());
-    let mut prev_space = false;
-    for ch in replaced.chars() {
-        if ch == '"' || ch == '\'' {
-            continue;
-        }
-        if ch.is_whitespace() {
-            if !prev_space {
-                out.push(' ');
-                prev_space = true;
-            }
-        } else {
-            out.push(ch);
-            prev_space = false;
-        }
-    }
-    out
-}
-
-fn replace_work_lines_range(
-    working: &str,
-    work_lines: &[&str],
-    start_idx: usize,
-    end_idx: usize,
-    replace: &str,
-    target_ending: LineEnding,
-) -> String {
-    let eol = target_ending.as_str();
-    let mut out = String::with_capacity(working.len() + replace.len() + 16);
-    let mut first = true;
-    for &line in work_lines.get(..start_idx).unwrap_or(&[]) {
-        if !first {
-            out.push_str(eol);
-        }
-        out.push_str(line);
-        first = false;
-    }
-    for rep_line in replace.lines() {
-        if !first {
-            out.push_str(eol);
-        }
-        out.push_str(rep_line);
-        first = false;
-    }
-    for &line in work_lines.get(end_idx..).unwrap_or(&[]) {
-        if !first {
-            out.push_str(eol);
-        }
-        out.push_str(line);
-        first = false;
-    }
-    if working.ends_with('\n') {
-        out.push_str(eol);
-    }
-    out
-}
-
-fn try_normalized_syntax_replace(
-    working: &str,
-    search: &str,
-    replace: &str,
-    target_ending: LineEnding,
-) -> Option<String> {
-    let search_norm: Vec<String> =
-        search.lines().map(normalize_loose_code_line).filter(|l| !l.is_empty()).collect();
-    let first_search = search_norm.first()?;
-    let work_lines: Vec<&str> = working.lines().collect();
-    if work_lines.len() < search_norm.len() {
-        return None;
-    }
-
-    for start_idx in 0..work_lines.len() {
-        let candidate_first =
-            normalize_loose_code_line(work_lines.get(start_idx).copied().unwrap_or(""));
-        if &candidate_first != first_search {
-            continue;
-        }
-        let mut w_idx = start_idx;
-        let mut matched_all = true;
-        for (s_pos, s_norm) in search_norm.iter().enumerate() {
-            while w_idx < work_lines.len() {
-                let raw = work_lines.get(w_idx).copied().unwrap_or("").trim();
-                if raw.is_empty() && s_pos > 0 {
-                    w_idx += 1;
-                    continue;
-                }
-                break;
-            }
-            let Some(actual_raw) = work_lines.get(w_idx).copied() else {
-                matched_all = false;
-                break;
-            };
-            if &normalize_loose_code_line(actual_raw) != s_norm {
-                matched_all = false;
-                break;
-            }
-            w_idx += 1;
-        }
-        if matched_all {
-            return Some(replace_work_lines_range(
-                working,
-                &work_lines,
-                start_idx,
-                w_idx,
-                replace,
-                target_ending,
-            ));
-        }
-    }
-    None
-}
-
-fn try_fuzzy_anchor_similarity_replace(
-    working: &str,
-    search: &str,
-    replace: &str,
-    target_ending: LineEnding,
-) -> Option<String> {
-    let search_lines: Vec<String> =
-        search.lines().map(normalize_loose_code_line).filter(|l| !l.is_empty()).collect();
-    let s_len = search_lines.len();
-    if s_len < 2 {
-        return None;
-    }
-    let work_lines: Vec<&str> = working.lines().collect();
-    if work_lines.len() < s_len {
-        return None;
-    }
-    let work_norm: Vec<String> =
-        work_lines.iter().copied().map(normalize_loose_code_line).collect();
-
-    let min_matches = if s_len == 2 { 2 } else { ((s_len * 3) / 4).max(2) };
-    let mut best_match: Option<(usize, usize)> = None;
-
-    for start_idx in 0..=(work_lines.len() - s_len) {
-        let first_ok = work_norm.get(start_idx) == search_lines.first();
-        let last_ok = work_norm.get(start_idx + s_len - 1) == search_lines.last();
-        if !first_ok && !last_ok {
-            continue;
-        }
-        let mut matched = 0_usize;
-        for offset in 0..s_len {
-            if work_norm.get(start_idx + offset) == search_lines.get(offset) {
-                matched += 1;
-            }
-        }
-        if matched >= min_matches && best_match.is_none_or(|(_, best_score)| matched > best_score) {
-            best_match = Some((start_idx, matched));
-        }
-    }
-
-    let (best_start, _) = best_match?;
-    Some(replace_work_lines_range(
-        working,
-        &work_lines,
-        best_start,
-        best_start + s_len,
-        replace,
-        target_ending,
-    ))
-}
-
-fn is_comment_or_placeholder_line(trimmed: &str) -> bool {
-    trimmed.is_empty()
-        || trimmed.starts_with("//")
-        || trimmed.starts_with('#')
-        || trimmed == "..."
-        || (trimmed.starts_with("/*") && trimmed.ends_with("*/"))
-}
-
-fn try_comment_insensitive_replace(
-    working: &str,
-    search: &str,
-    replace: &str,
-    target_ending: LineEnding,
-) -> Option<String> {
-    let search_code: Vec<String> = search
-        .lines()
-        .map(str::trim)
-        .filter(|l| !is_comment_or_placeholder_line(l))
-        .map(normalize_loose_code_line)
-        .filter(|l| !l.is_empty())
-        .collect();
-    if search_code.len() < 2 {
-        return None;
-    }
-    let first_code = search_code.first()?;
-    let work_lines: Vec<&str> = working.lines().collect();
-
-    for start_idx in 0..work_lines.len() {
-        let candidate_raw = work_lines.get(start_idx).copied().unwrap_or("").trim();
-        if is_comment_or_placeholder_line(candidate_raw)
-            || &normalize_loose_code_line(candidate_raw) != first_code
-        {
-            continue;
-        }
-        let mut w_idx = start_idx;
-        let mut matched_all = true;
-        for (s_pos, expected) in search_code.iter().enumerate() {
-            while w_idx < work_lines.len() {
-                let raw = work_lines.get(w_idx).copied().unwrap_or("").trim();
-                if is_comment_or_placeholder_line(raw) && s_pos > 0 {
-                    w_idx += 1;
-                    continue;
-                }
-                break;
-            }
-            let Some(actual_raw) = work_lines.get(w_idx).copied() else {
-                matched_all = false;
-                break;
-            };
-            if &normalize_loose_code_line(actual_raw) != expected {
-                matched_all = false;
-                break;
-            }
-            w_idx += 1;
-        }
-        if matched_all {
-            return Some(replace_work_lines_range(
-                working,
-                &work_lines,
-                start_idx,
-                w_idx,
-                replace,
-                target_ending,
-            ));
-        }
-    }
-    None
-}
-
-fn try_anchor_bounds_replace(
-    working: &str,
-    search: &str,
-    replace: &str,
-    target_ending: LineEnding,
-) -> Option<String> {
-    let search_norm: Vec<String> =
-        search.lines().map(normalize_loose_code_line).filter(|l| !l.is_empty()).collect();
-    if search_norm.len() < 2 {
-        return None;
-    }
-    let first_anchor = search_norm.first()?;
-    let last_anchor = search_norm.last()?;
-    if first_anchor.len() < 4 || (last_anchor.len() < 4 && search_norm.len() < 3) {
-        return None;
-    }
-
-    let work_lines: Vec<&str> = working.lines().collect();
-    let work_norm: Vec<String> =
-        work_lines.iter().copied().map(normalize_loose_code_line).collect();
-    let max_span = search_norm.len() + 4;
-
-    let mut found_span: Option<(usize, usize)> = None;
-    for start_idx in 0..work_norm.len() {
-        if work_norm.get(start_idx) != Some(first_anchor) {
-            continue;
-        }
-        let max_end = (start_idx + max_span).min(work_norm.len());
-        for end_idx in (start_idx + 1)..max_end {
-            if work_norm.get(end_idx) == Some(last_anchor) {
-                if found_span.is_some() {
-                    return None;
-                }
-                found_span = Some((start_idx, end_idx + 1));
-                break;
-            }
-        }
-    }
-
-    let (start_idx, end_idx) = found_span?;
-    Some(replace_work_lines_range(working, &work_lines, start_idx, end_idx, replace, target_ending))
-}
-
 fn try_idempotent_already_applied(
     working: &str,
-    _search: &str,
+    search: &str,
     replace: &str,
     _target_ending: LineEnding,
 ) -> Option<String> {
@@ -639,10 +284,14 @@ fn try_idempotent_already_applied(
     if trimmed_rep.is_empty() {
         return None;
     }
-    if working.contains(trimmed_rep) {
-        return Some(working.to_owned());
-    }
     let norm_rep = trimmed_rep.replace("\r\n", "\n");
+    if norm_rep.lines().count() < 2 && norm_rep.len() < 24 {
+        return None;
+    }
+    let norm_search = search.trim().replace("\r\n", "\n");
+    if norm_search.contains(&norm_rep) {
+        return None;
+    }
     let norm_work = working.replace("\r\n", "\n");
     if norm_work.contains(&norm_rep) {
         return Some(working.to_owned());
@@ -697,5 +346,116 @@ mod tests {
         assert!(out.resolved_content.contains("saturating_add"));
         assert_eq!(out.diff.added_lines, 1);
         assert_eq!(out.diff.removed_lines, 2);
+    }
+
+    #[test]
+    fn zed_fuzzy_matcher_never_leaves_dangling_closing_braces_with_blank_lines() {
+        let orig = concat!(
+            "use std::path::PathBuf;\n\n",
+            "use core::system::ports::updater::{\n",
+            "    SemanticVersion, UpdateChannel, UpdateStage, UpdaterPort as _,\n",
+            "};\n",
+            "use di::AppContainer;\n",
+            "use gpui::{\n",
+            "    App, Context, Window,\n",
+            "};\n\n",
+            "use crate::features::change_applier::state::ChangeApplierState;\n"
+        );
+        let op = FileOperation::SearchReplace {
+            blocks: vec![SearchReplaceBlock::new(
+                concat!(
+                    "use std::path::PathBuf;\n",
+                    "use core::system::ports::updater::{\n",
+                    "    SemanticVersion, UpdateChannel,\n",
+                    "};\n",
+                    "    Window, div, px,\n",
+                    "};\n",
+                    "use crate::features::change_applier::state::ChangeApplierState;"
+                )
+                .to_owned(),
+                concat!(
+                    "use std::path::PathBuf;\n",
+                    "use std::time::Duration;\n\n",
+                    "use di::AppContainer;\n",
+                    "use crate::features::change_applier::state::ChangeApplierState;"
+                )
+                .to_owned(),
+            )],
+        };
+        let out = apply_operation_to_text("src/view.rs", Some(orig), &op, false);
+        assert_eq!(out.status, PatchResolutionStatus::Ready);
+        assert!(!out.resolved_content.contains("\n};\n"));
+        assert!(out.resolved_content.contains("use std::time::Duration;"));
+    }
+
+    #[test]
+    fn zed_fuzzy_matcher_supports_ellipsis_placeholders_in_search_block() {
+        let orig = concat!(
+            "pub fn process_items(items: &[u32]) -> u32 {\n",
+            "    let mut sum = 0;\n",
+            "    for &item in items {\n",
+            "        sum += item;\n",
+            "    }\n",
+            "    sum\n",
+            "}\n"
+        );
+        let op = FileOperation::SearchReplace {
+            blocks: vec![SearchReplaceBlock::new(
+                "pub fn process_items(items: &[u32]) -> u32 {\n    // ... existing code ...\n    sum\n}"
+                    .to_owned(),
+                "pub fn process_items(items: &[u32]) -> u32 {\n    items.iter().sum()\n}"
+                    .to_owned(),
+            )],
+        };
+        let out = apply_operation_to_text("src/calc.rs", Some(orig), &op, false);
+        assert_eq!(out.status, PatchResolutionStatus::Ready);
+        assert_eq!(
+            out.resolved_content,
+            "pub fn process_items(items: &[u32]) -> u32 {\n    items.iter().sum()\n}\n"
+        );
+    }
+
+    #[test]
+    fn fuzzy_matcher_does_not_corrupt_similar_struct_fields_or_duplicate_lines() {
+        let orig = concat!(
+            "pub struct UiLabels {\n",
+            "    pub update_modal_title: &'static str,\n",
+            "    pub update_modal_subtitle: &'static str,\n",
+            "    pub update_modal_current_label: &'static str,\n",
+            "    pub btn_update_now: &'static str,\n",
+            "    pub meta_modal_title: &'static str,\n",
+            "    pub meta_section_metrics: &'static str,\n",
+            "}\n"
+        );
+        let op = FileOperation::SearchReplace {
+            blocks: vec![SearchReplaceBlock::new(
+                concat!(
+                    "    pub update_modal_title: &'static str,\n",
+                    "    pub update_modal_subtitle: &'static str,\n",
+                    "    pub update_modal_current_label: &'static str,\n",
+                    "    pub btn_update_now: &'static str,\n",
+                    "    pub meta_modal_title: &'static str,"
+                )
+                .to_owned(),
+                "    pub meta_modal_title: &'static str,".to_owned(),
+            )],
+        };
+        let out = apply_operation_to_text("src/locale.rs", Some(orig), &op, false);
+        assert_eq!(out.status, PatchResolutionStatus::Ready);
+        assert!(!out.resolved_content.contains("update_modal_subtitle"));
+        assert_eq!(out.resolved_content.matches("meta_modal_title").count(), 1);
+    }
+
+    #[test]
+    fn idempotent_check_does_not_falsely_succeed_when_replace_is_subset_of_search() {
+        let orig = "pub struct S {\n    pub a: u32,\n    pub b: u32,\n}\n";
+        let op = FileOperation::SearchReplace {
+            blocks: vec![SearchReplaceBlock::new(
+                "    pub non_existent_field: u32,\n    pub b: u32,".to_owned(),
+                "    pub b: u32,".to_owned(),
+            )],
+        };
+        let out = apply_operation_to_text("src/s.rs", Some(orig), &op, false);
+        assert_eq!(out.status, PatchResolutionStatus::SearchBlockConflict { unmatched_count: 1 });
     }
 }

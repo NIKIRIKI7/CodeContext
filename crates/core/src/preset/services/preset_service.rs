@@ -57,6 +57,13 @@ where
         Ok(global)
     }
 
+    pub fn set_update_channel(&self, channel: &str) -> Result<GlobalConfig, ConfigPortError> {
+        let mut global = self.load_global_config();
+        channel.trim().clone_into(&mut global.update_channel);
+        self.repo.save_global(&global)?;
+        Ok(global)
+    }
+
     pub fn switch_active_preset(&self, preset_name: &str) -> Result<GlobalConfig, ConfigPortError> {
         let (mut global, _) = self.repo.load_global().unwrap_or_default();
         if let Some(found_name) = global.find_preset(preset_name).map(|f| f.name.clone()) {

@@ -1,12 +1,15 @@
 use core::system::ports::hotkey::HotkeyRegistrationStatus;
 use core::system::ports::shell::ShellRegistrationStatus;
+use core::system::ports::updater::{
+    SelfInstallStatus, SemanticVersion, UpdateChannel, UpdateStage,
+};
 use gpui::{
     App, ClickEvent, Context, Entity, InteractiveElement as _, IntoElement, ParentElement as _,
     Render, Rgba, SharedString, StatefulInteractiveElement as _, Styled as _, Window, div, px,
 };
 
 use crate::features::settings_modal::state::SettingsModalState;
-use crate::locale::AppLocale;
+use crate::locale::{AppLocale, UiLabels};
 use crate::shared::primitives::button::{ButtonVariant, UiButton};
 use crate::shared::primitives::icon::{UiIcon, render_vector_checkbox};
 use crate::theme::{
@@ -182,6 +185,8 @@ impl SettingsModalView {
                 });
             });
 
+        let (channel_selector, update_button) = self.build_update_controls(theme, cx);
+
         let shell_button = render_compact_toggle_pill(
             "settings-toggle-shell-menu",
             is_shell_active,
@@ -214,6 +219,98 @@ impl SettingsModalView {
             )
             .child(render_setting_row(hotkey_row_label, hk_button, theme))
             .child(render_setting_row(shell_row_label, shell_button, theme))
+            .child(render_setting_row(
+                labels.settings_update_channel_label,
+                channel_selector,
+                theme,
+            ))
+            .child(render_setting_row(labels.settings_version_row_label, update_button, theme))
+    }
+
+    fn build_update_controls(
+        &self,
+        theme: &'static ThemeTokens,
+        cx: &Context<Self>,
+    ) -> (gpui::Div, UiButton) {
+        let colors = &theme.colors;
+        let labels = self.locale.labels();
+        let snap = self.state.read(cx);
+        let active_channel = snap.update_channel();
+        let update_button_label = format_update_action_label(
+            labels,
+            snap.current_version(),
+            snap.self_install_status(),
+            snap.update_stage(),
+        );
+        let is_update_cta = matches!(snap.update_stage(), UpdateStage::UpdateAvailable { .. })
+            || !snap.self_install_status().is_installed();
+
+        let state_ch_stable = self.state.clone();
+        let state_ch_beta = self.state.clone();
+        let state_ch_alpha = self.state.clone();
+        let channel_selector = div()
+            .w(px(220.0))
+            .h(px(theme.layout.control_height))
+            .p(px(2.0))
+            .rounded(px(theme.radius.md))
+            .bg(colors.bg_app)
+            .border_1()
+            .border_color(colors.border)
+            .flex()
+            .flex_row()
+            .items_center()
+            .gap(px(2.0))
+            .child(render_segment_item(
+                "settings-ch-stable",
+                labels.settings_channel_stable,
+                active_channel == UpdateChannel::Stable,
+                move |_ev, _win, cx| {
+                    spawn_channel_switch_and_check(
+                        state_ch_stable.clone(),
+                        UpdateChannel::Stable,
+                        cx,
+                    );
+                },
+                theme,
+            ))
+            .child(render_segment_item(
+                "settings-ch-beta",
+                labels.settings_channel_beta,
+                active_channel == UpdateChannel::Beta,
+                move |_ev, _win, cx| {
+                    spawn_channel_switch_and_check(state_ch_beta.clone(), UpdateChannel::Beta, cx);
+                },
+                theme,
+            ))
+            .child(render_segment_item(
+                "settings-ch-alpha",
+                labels.settings_channel_alpha,
+                active_channel == UpdateChannel::Alpha,
+                move |_ev, _win, cx| {
+                    spawn_channel_switch_and_check(
+                        state_ch_alpha.clone(),
+                        UpdateChannel::Alpha,
+                        cx,
+                    );
+                },
+                theme,
+            ));
+
+        let state_upd = self.state.clone();
+        let update_button =
+            UiButton::new("settings-trigger-update", SharedString::from(update_button_label))
+                .variant(if is_update_cta {
+                    ButtonVariant::Primary
+                } else {
+                    ButtonVariant::FilterPill
+                })
+                .fixed_width(220.0)
+                .with_theme(theme)
+                .on_click(move |_ev, _win, cx| {
+                    spawn_update_or_self_install_action(state_upd.clone(), cx);
+                });
+
+        (channel_selector, update_button)
     }
 
     fn render_safety_section(
@@ -383,6 +480,99 @@ fn render_compact_toggle_pill(
                 .text_color(if enabled { colors.text_primary } else { colors.text_secondary })
                 .child(locale.toggle_state_label(enabled)),
         )
+}
+
+fn spawn_update_or_self_install_action(state_upd: Entity<SettingsModalState>, cx: &mut App) {
+    let (container, channel, repo_url, is_portable, has_available) = {
+        let snap = state_upd.read(cx);
+        (
+            snap.container().clone(),
+            snap.update_channel(),
+            snap.global_config().update_repo_url.clone(),
+            !snap.self_install_status().is_installed(),
+            matches!(snap.update_stage(), UpdateStage::UpdateAvailable { .. }),
+        )
+    };
+    cx.spawn(async move |cx| {
+        cx.background_executor()
+            .spawn(async move {
+                use core::system::ports::shell::{ShellIntegrationPort as _, ShellMenuConfig};
+                use core::system::ports::updater::UpdaterPort as _;
+                if is_portable {
+                    if let Ok(SelfInstallStatus::InstalledCanonical { install_path }) =
+                        container.updater().perform_self_install()
+                    {
+                        let cfg = ShellMenuConfig::with_executable(install_path);
+                        let _ = container.shell_integration().register_with_config(&cfg);
+                    }
+                } else if has_available {
+                    let _ = container.updater().apply_staged_update();
+                } else {
+                    let _ = container.updater().check_for_updates(channel, &repo_url);
+                }
+            })
+            .await;
+        let _ = state_upd.update(cx, |s, cx| {
+            s.sync_from_container();
+            cx.notify();
+        });
+    })
+    .detach();
+}
+
+fn spawn_channel_switch_and_check(
+    state: Entity<SettingsModalState>,
+    channel: UpdateChannel,
+    cx: &mut App,
+) {
+    let (container, repo_url) = state.update(cx, |s, cx| {
+        let _ = s.select_update_channel(channel);
+        cx.notify();
+        (s.container().clone(), s.global_config().update_repo_url.clone())
+    });
+
+    cx.spawn(async move |cx| {
+        cx.background_executor()
+            .spawn(async move {
+                use core::system::ports::updater::UpdaterPort as _;
+                let _ = container.updater().check_for_updates(channel, &repo_url);
+            })
+            .await;
+        let _ = state.update(cx, |s, cx| {
+            s.sync_from_container();
+            cx.notify();
+        });
+    })
+    .detach();
+}
+
+fn format_update_action_label(
+    labels: &'static UiLabels,
+    current_version: SemanticVersion,
+    install_status: &SelfInstallStatus,
+    stage: &UpdateStage,
+) -> String {
+    if matches!(install_status, SelfInstallStatus::PortableMode { .. }) {
+        return format!("v{current_version} · {}", labels.updater_btn_self_install);
+    }
+    match stage {
+        UpdateStage::Idle => format!("v{current_version} · {}", labels.updater_btn_check),
+        UpdateStage::UpToDate { version } => {
+            format!("v{version} · {}", labels.updater_status_up_to_date)
+        }
+        UpdateStage::UpdateAvailable { version, .. } => {
+            format!(
+                "{} v{version} · {}",
+                labels.updater_btn_apply_prefix, labels.updater_btn_apply_action
+            )
+        }
+        UpdateStage::ReadyToRestart { version } => {
+            format!("v{version} · {}", labels.updater_status_ready_restart)
+        }
+        UpdateStage::Failed { .. } => {
+            format!("v{current_version} · {}", labels.updater_status_failed)
+        }
+    }
 }
 
 fn render_setting_row(

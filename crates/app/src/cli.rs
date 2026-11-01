@@ -8,6 +8,8 @@ pub(crate) enum LaunchMode {
     HeadlessApply { project_root: PathBuf },
     RegisterShell,
     UnregisterShell,
+    SelfInstall,
+    CheckUpdate,
     Version,
     Gui { initial_project_root: Option<PathBuf> },
 }
@@ -38,6 +40,12 @@ where
         }
         if arg == "--unregister-shell" {
             return LaunchMode::UnregisterShell;
+        }
+        if arg == "--self-install" {
+            return LaunchMode::SelfInstall;
+        }
+        if arg == "--check-update" {
+            return LaunchMode::CheckUpdate;
         }
         if arg == "--project" || arg == "-p" {
             let path = iter.next().map(|raw| resolve_headless_target_path(&raw));

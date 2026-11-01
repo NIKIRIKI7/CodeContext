@@ -1,6 +1,7 @@
 use core::packing::aggregates::project::Project;
 use core::system::ports::hotkey::GlobalHotkeyPort as _;
 use core::system::ports::ipc::{IpcCommand, SingleInstanceIpcPort as _, SystemActivationEvent};
+use core::system::ports::updater::{SemanticVersion, UpdateChannel};
 use di::AppContainer;
 
 use crate::features::change_applier::state::ChangeApplierState;
@@ -27,6 +28,9 @@ pub struct MainWindowState {
     active_tab: WorkspaceTab,
     settings_open: bool,
     project_meta_open: bool,
+    update_modal_open: bool,
+    available_update: Option<(SemanticVersion, UpdateChannel)>,
+    dismissed_update_version: Option<SemanticVersion>,
     locale: AppLocale,
     theme_variant: ThemeVariant,
 }
@@ -98,6 +102,36 @@ impl MainWindowState {
     #[inline]
     pub const fn is_project_meta_open(&self) -> bool {
         self.project_meta_open
+    }
+
+    pub fn notify_update_available(&mut self, version: SemanticVersion, channel: UpdateChannel) {
+        self.available_update = Some((version, channel));
+        if self.dismissed_update_version != Some(version) {
+            self.update_modal_open = true;
+        }
+    }
+
+    #[inline]
+    pub const fn dismiss_update_modal(&mut self) {
+        if let Some((ver, _)) = self.available_update {
+            self.dismissed_update_version = Some(ver);
+        }
+        self.update_modal_open = false;
+    }
+
+    #[inline]
+    pub const fn close_update_modal(&mut self) {
+        self.update_modal_open = false;
+    }
+
+    #[inline]
+    pub const fn is_update_modal_open(&self) -> bool {
+        self.update_modal_open
+    }
+
+    #[inline]
+    pub const fn available_update(&self) -> Option<(SemanticVersion, UpdateChannel)> {
+        self.available_update
     }
 
     #[inline]
