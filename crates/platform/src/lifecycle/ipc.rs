@@ -278,6 +278,10 @@ impl SingleInstanceIpcPort for SystemSingleInstanceIpc {
         }
 
         let mut stale_socket_recovered = false;
+        if self.config.socket_file_path.exists() {
+            let _ = fs::remove_file(&self.config.socket_file_path);
+            stale_socket_recovered = true;
+        }
 
         for _attempt in 0..CONNECT_RETRY_ATTEMPTS {
             match bind_listener(&self.config) {

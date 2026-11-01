@@ -3,7 +3,7 @@ use gpui::{
     App, IntoElement, ParentElement as _, RenderOnce, SharedString, Styled as _, Window, div, px,
 };
 
-use crate::locale::{RU_LABELS, UiLabels};
+use crate::locale::{AppLocale, UiLabels};
 use crate::shared::containers::virtual_text::{
     LineHighlightMode, VirtualTextBuffer, VirtualTextView,
 };
@@ -31,8 +31,8 @@ pub struct DiffViewComponent {
 
 impl DiffViewComponent {
     #[inline]
-    pub const fn new(meta: DiffViewMeta, buffer: VirtualTextBuffer) -> Self {
-        Self { meta, buffer, labels: &RU_LABELS, theme: active_theme() }
+    pub fn new(meta: DiffViewMeta, buffer: VirtualTextBuffer) -> Self {
+        Self { meta, buffer, labels: AppLocale::Ru.labels(), theme: active_theme() }
     }
 
     #[must_use]

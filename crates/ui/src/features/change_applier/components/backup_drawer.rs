@@ -6,7 +6,7 @@ use gpui::{
     StatefulInteractiveElement as _, Styled as _, Window, div, px,
 };
 
-use crate::locale::{RU_LABELS, UiLabels};
+use crate::locale::{AppLocale, UiLabels};
 use crate::shared::primitives::badge::{Badge, BadgeVariant};
 use crate::shared::primitives::icon::render_vector_checkbox;
 use crate::theme::{FONT_FAMILY_UI, ThemeTokens, active_theme};
@@ -31,8 +31,13 @@ impl fmt::Debug for BackupDrawerComponent {
 
 impl BackupDrawerComponent {
     #[inline]
-    pub const fn new(backups_enabled: bool) -> Self {
-        Self { backups_enabled, labels: &RU_LABELS, theme: active_theme(), on_toggle: None }
+    pub fn new(backups_enabled: bool) -> Self {
+        Self {
+            backups_enabled,
+            labels: AppLocale::Ru.labels(),
+            theme: active_theme(),
+            on_toggle: None,
+        }
     }
 
     #[must_use]

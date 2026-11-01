@@ -264,7 +264,7 @@ pub fn atomic_swap_executable(
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt as _;
-        let _ = fs::set_permissions(&staged_path, fs::Permissions::from_mode(0o755));
+        let _ = fs::set_permissions(&staged_path, fs::Permissions::from_mode(0o700));
     }
 
     if backup_old_path.exists() {
@@ -429,17 +429,7 @@ impl UpdaterPort for SystemUpdater {
             return UpdateStage::Idle;
         };
 
-        let current = guard.current_version;
-        let next_stage = if let Some(best) = select_best_release(&releases, &current, channel) {
-            let sample_payload = format!("codecontext-binary-{}", best.version).into_bytes();
-            guard.staged_update = Some((best.clone(), sample_payload));
-            UpdateStage::UpdateAvailable { version: best.version, channel: best.channel }
-        } else {
-            guard.staged_update = None;
-            UpdateStage::UpToDate { version: current }
-        };
-        guard.stage = next_stage.clone();
-        next_stage
+        apply_selected_release_to_state(&mut guard, &releases, channel)
     }
 
     fn check_for_updates(
@@ -463,18 +453,7 @@ impl UpdaterPort for SystemUpdater {
             guard.cached_remote_releases = Some(releases.clone());
         }
 
-        let current = guard.current_version;
-        let next_stage = if let Some(best) = select_best_release(&releases, &current, channel) {
-            let sample_payload = format!("codecontext-binary-{}", best.version).into_bytes();
-            guard.staged_update = Some((best.clone(), sample_payload));
-            UpdateStage::UpdateAvailable { version: best.version, channel: best.channel }
-        } else {
-            guard.staged_update = None;
-            UpdateStage::UpToDate { version: current }
-        };
-
-        guard.stage = next_stage.clone();
-        Ok(next_stage)
+        Ok(apply_selected_release_to_state(&mut guard, &releases, channel))
     }
 
     fn apply_staged_update(&self) -> Result<UpdateStage, UpdaterPortError> {
@@ -519,6 +498,24 @@ impl UpdaterPort for SystemUpdater {
         }
         Ok(SelfInstallStatus::InstalledCanonical { install_path: target_exe })
     }
+}
+
+fn apply_selected_release_to_state(
+    guard: &mut UpdaterInnerState,
+    releases: &[ReleaseManifest],
+    channel: UpdateChannel,
+) -> UpdateStage {
+    let current = guard.current_version;
+    let next_stage = if let Some(best) = select_best_release(releases, &current, channel) {
+        let sample_payload = format!("codecontext-binary-{}", best.version).into_bytes();
+        guard.staged_update = Some((best.clone(), sample_payload));
+        UpdateStage::UpdateAvailable { version: best.version, channel: best.channel }
+    } else {
+        guard.staged_update = None;
+        UpdateStage::UpToDate { version: current }
+    };
+    guard.stage = next_stage.clone();
+    next_stage
 }
 
 fn fetch_remote_releases(

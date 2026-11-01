@@ -6,7 +6,7 @@ use gpui::{
     Window, div, px,
 };
 
-use crate::locale::{RU_LABELS, UiLabels};
+use crate::locale::{AppLocale, UiLabels};
 use crate::shared::containers::virtual_text::{
     LineHighlightMode, VirtualTextBuffer, VirtualTextView,
 };
@@ -40,7 +40,7 @@ impl fmt::Debug for ResponseEditorComponent {
 
 impl ResponseEditorComponent {
     #[inline]
-    pub const fn new(
+    pub fn new(
         buffer: VirtualTextBuffer,
         preamble_stripped: bool,
         closed_truncated_block: bool,
@@ -50,7 +50,7 @@ impl ResponseEditorComponent {
             parsed_blocks_count: 0,
             preamble_stripped,
             closed_truncated_block,
-            labels: &RU_LABELS,
+            labels: AppLocale::Ru.labels(),
             theme: active_theme(),
             on_paste_clipboard: None,
             on_autofix: None,

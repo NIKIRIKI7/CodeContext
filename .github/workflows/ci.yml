@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Install Linux system libraries for GPUI & Platform
         run: |
@@ -31,12 +31,13 @@ jobs:
             libfontconfig1-dev libfreetype6-dev libx11-dev libxcursor-dev libxi-dev
 
       - name: Install Rust stable toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
         with:
+          toolchain: stable
           components: rustfmt, clippy
 
       - name: Cache Cargo registry and target
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2.7.8
 
       - name: Verify VERSION synchronization with Cargo.toml
         run: |
@@ -52,10 +53,15 @@ jobs:
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
 
       - name: Check licenses, bans & security advisories (cargo-deny)
-        uses: EmbarkStudios/cargo-deny-action@v2
+        uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
 
       - name: Run DDD & Ports-and-Adapters architectural fitness functions
         run: cargo test --package app --test architecture --locked -- --nocapture
+
+      - name: Verify FreeBSD x86_64 target compatibility
+        run: |
+          rustup target add x86_64-unknown-freebsd
+          cargo check --locked --target x86_64-unknown-freebsd -p core -p config -p scanner -p apply
 
   test-and-release-build:
     name: Build & Test (${{ matrix.label }})
@@ -103,7 +109,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Install Linux system libraries
         if: runner.os == 'Linux'
@@ -116,16 +122,19 @@ jobs:
             libfontconfig1-dev libfreetype6-dev libx11-dev libxcursor-dev libxi-dev
 
       - name: Install Rust stable toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
         with:
+          toolchain: stable
           targets: ${{ matrix.target }}
 
       - name: Install cargo-nextest
         if: matrix.run_tests
-        uses: taiki-e/install-action@nextest
+        uses: taiki-e/install-action@07b4745e0c39a41822af610387492e3e53aa222b # v2.83.4
+        with:
+          tool: cargo-nextest
 
       - name: Cache Cargo registry and target
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2.7.8
         with:
           key: ci-${{ matrix.target }}
 
@@ -146,57 +155,51 @@ jobs:
         run: ./target/${{ matrix.target }}/release/${{ matrix.bin_name }} --version
 
       - name: Upload optimized release binary artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: ${{ matrix.artifact_name }}
           path: target/${{ matrix.target }}/release/${{ matrix.bin_name }}
           if-no-files-found: error
 
-  linux-distros-and-freebsd:
-    name: Distro & BSD Verification (${{ matrix.distro }})
+  linux-distros-matrix:
+    name: Distro Verification (${{ matrix.distro }})
     needs: quality-gate
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
-          - distro: Debian Bookworm
-            image: debian:bookworm
+          - distro: Debian Trixie/Sid
+            image: debian:testing
           - distro: Fedora Latest (RPM)
             image: fedora:latest
           - distro: Arch Linux (Pacman)
             image: archlinux:latest
+          - distro: openSUSE Tumbleweed
+            image: opensuse/tumbleweed
           - distro: Alpine Linux (musl)
-            image: alpine:latest
-          - distro: FreeBSD x86_64 (Cross-Check)
-            image: ubuntu:24.04
+            image: alpine:edge
     container:
       image: ${{ matrix.image }}
     steps:
-      - name: Install container dependencies and Rust
+      - name: Install distribution-packaged Rust toolchain
         shell: sh
         run: |
           if command -v apt-get >/dev/null 2>&1; then
-            apt-get update && apt-get install -y --no-install-recommends curl ca-certificates build-essential pkg-config git
+            apt-get update && apt-get install -y --no-install-recommends cargo rustc build-essential pkg-config git ca-certificates
           elif command -v dnf >/dev/null 2>&1; then
-            dnf install -y curl ca-certificates gcc make pkgconf-pkg-config git
+            dnf install -y rust cargo gcc make pkgconf-pkg-config git ca-certificates
           elif command -v pacman >/dev/null 2>&1; then
-            pacman -Sy --noconfirm curl ca-certificates base-devel pkgconf git
+            pacman -Sy --noconfirm rust base-devel pkgconf git ca-certificates
+          elif command -v zypper >/dev/null 2>&1; then
+            zypper --non-interactive install rust cargo gcc make pkg-config git ca-certificates
           elif command -v apk >/dev/null 2>&1; then
-            apk add --no-cache curl ca-certificates build-base pkgconf git
+            apk add --no-cache rust cargo build-base pkgconf git ca-certificates
           fi
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Verify Core, Config, Scanner & Apply Subdomains
         shell: sh
-        run: |
-          export PATH="$HOME/.cargo/bin:$PATH"
-          if [ "${{ matrix.distro }}" = "FreeBSD x86_64 (Cross-Check)" ]; then
-            rustup target add x86_64-unknown-freebsd
-            cargo check --locked --target x86_64-unknown-freebsd -p core -p config -p scanner -p apply
-          else
-            cargo test --release --locked -p core -p config -p scanner -p apply
-          fi
+        run: cargo test --locked -p core -p config -p scanner -p apply

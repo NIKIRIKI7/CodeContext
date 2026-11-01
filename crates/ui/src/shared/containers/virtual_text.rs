@@ -10,7 +10,7 @@ use gpui::{
     UniformListScrollHandle, Window, div, px, uniform_list,
 };
 
-use crate::locale::{RU_LABELS, UiLabels};
+use crate::locale::{AppLocale, UiLabels};
 use crate::theme::{FONT_FAMILY_MONO, FONT_FAMILY_UI, ThemeTokens, active_theme};
 
 pub const DEFAULT_MAX_DISPLAY_LINE_BYTES: usize = 256;
@@ -189,7 +189,7 @@ impl VirtualTextView {
             buffer,
             highlight_mode: LineHighlightMode::PackedContext,
             markers: HighlightMarkers::default(),
-            labels: &RU_LABELS,
+            labels: AppLocale::Ru.labels(),
             theme: active_theme(),
             scroll_handle: None,
         }

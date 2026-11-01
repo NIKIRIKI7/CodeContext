@@ -8,7 +8,7 @@ use gpui::{
     SharedString, StatefulInteractiveElement as _, Styled as _, Window, div, px,
 };
 
-use crate::locale::{AppLocale, RU_LABELS, UiLabels};
+use crate::locale::{AppLocale, UiLabels};
 use crate::shared::primitives::icon::{UiIcon, render_icon};
 use crate::theme::{ThemeTokens, active_theme, format_bytes_human};
 
@@ -204,7 +204,7 @@ impl fmt::Debug for WarningBanner {
 impl WarningBanner {
     #[inline]
     pub fn new(items: Vec<WarningBannerItem>) -> Self {
-        Self { items, labels: &RU_LABELS, theme: active_theme(), on_dismiss: None }
+        Self { items, labels: AppLocale::Ru.labels(), theme: active_theme(), on_dismiss: None }
     }
 
     #[must_use]

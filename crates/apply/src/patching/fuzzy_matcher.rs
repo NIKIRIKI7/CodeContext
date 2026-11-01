@@ -190,51 +190,9 @@ pub(crate) fn try_trimmed_subsequence_replace(
     replace: &str,
     target_ending: LineEnding,
 ) -> Option<String> {
-    let search_idx = IndexedText::new(search);
-    let s_len = search_idx.non_empty.len();
-    if s_len == 0 {
-        return None;
-    }
-    let work_idx = IndexedText::new(working);
-    if work_idx.non_empty.len() < s_len {
-        return None;
-    }
-
-    let max_raw_span = search_idx.raw_lines.len().saturating_add(12);
-    let mut matched_span: Option<(usize, usize)> = None;
-
-    for start_ne in 0..=(work_idx.non_empty.len() - s_len) {
-        let end_ne = start_ne + s_len - 1;
-        let window = work_idx.non_empty.get(start_ne..=end_ne)?;
-        let raw_span =
-            window.last()?.raw_idx.saturating_sub(window.first()?.raw_idx).saturating_add(1);
-        if raw_span > max_raw_span {
-            continue;
-        }
-        let all_eq =
-            window.iter().zip(search_idx.non_empty.iter()).all(|(w, s)| w.trimmed == s.trimmed);
-        if all_eq {
-            if matched_span.is_some() {
-                return None;
-            }
-            matched_span = Some((start_ne, end_ne));
-        }
-    }
-
-    let (first_ne, last_ne) = matched_span?;
-    let first_work = work_idx.non_empty.get(first_ne)?;
-    let last_work = work_idx.non_empty.get(last_ne)?;
-    let first_search = search_idx.non_empty.first()?;
-    let indent_delta =
-        compute_auto_indent_delta(first_work.indent_cols, first_search.indent_cols, replace);
-
-    Some(work_idx.replace_raw_line_range(
-        first_work.raw_idx,
-        last_work.raw_idx + 1,
-        replace,
-        indent_delta,
-        target_ending,
-    ))
+    try_subsequence_replace_by(working, search, replace, target_ending, |w, s| {
+        w.trimmed == s.trimmed
+    })
 }
 
 /// Этап 4: Сопоставление по синтаксически нормализованным строкам.
@@ -243,6 +201,18 @@ pub(crate) fn try_syntax_normalized_replace(
     search: &str,
     replace: &str,
     target_ending: LineEnding,
+) -> Option<String> {
+    try_subsequence_replace_by(working, search, replace, target_ending, |w, s| {
+        !s.syntax_norm.is_empty() && w.syntax_norm == s.syntax_norm
+    })
+}
+
+fn try_subsequence_replace_by(
+    working: &str,
+    search: &str,
+    replace: &str,
+    target_ending: LineEnding,
+    line_eq: fn(&NonEmptyLine<'_>, &NonEmptyLine<'_>) -> bool,
 ) -> Option<String> {
     let search_idx = IndexedText::new(search);
     let s_len = search_idx.non_empty.len();
@@ -265,11 +235,7 @@ pub(crate) fn try_syntax_normalized_replace(
         if raw_span > max_raw_span {
             continue;
         }
-        let all_eq = window
-            .iter()
-            .zip(search_idx.non_empty.iter())
-            .all(|(w, s)| !s.syntax_norm.is_empty() && w.syntax_norm == s.syntax_norm);
-        if all_eq {
+        if window.iter().zip(search_idx.non_empty.iter()).all(|(w, s)| line_eq(w, s)) {
             if matched_span.is_some() {
                 return None;
             }

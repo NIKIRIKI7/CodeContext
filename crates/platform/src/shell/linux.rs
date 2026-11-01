@@ -111,7 +111,7 @@ impl ShellIntegrationPort for LinuxShellImp {
                     #[cfg(unix)]
                     if artifact.executable {
                         use std::os::unix::fs::PermissionsExt as _;
-                        let perms = fs::Permissions::from_mode(0o755);
+                        let perms = fs::Permissions::from_mode(0o700);
                         let _ = fs::set_permissions(&full_path, perms);
                     }
                 }

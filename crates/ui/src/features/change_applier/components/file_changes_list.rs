@@ -8,7 +8,7 @@ use gpui::{
 };
 
 use crate::features::change_applier::components::backup_drawer::BackupDrawerComponent;
-use crate::locale::{RU_LABELS, UiLabels};
+use crate::locale::{AppLocale, UiLabels};
 use crate::shared::primitives::button::{ButtonVariant, UiButton};
 use crate::shared::primitives::icon::UiIcon;
 use crate::theme::{FONT_FAMILY_MONO, ThemeTokens, active_theme};
@@ -44,14 +44,14 @@ impl fmt::Debug for FileChangesListComponent {
 
 impl FileChangesListComponent {
     #[inline]
-    pub const fn new(files: Vec<ParsedResponseFile>, selected_index: usize) -> Self {
+    pub fn new(files: Vec<ParsedResponseFile>, selected_index: usize) -> Self {
         Self {
             files,
             selected_index,
             backups_enabled: true,
             options_open: false,
             status_message: None,
-            labels: &RU_LABELS,
+            labels: AppLocale::Ru.labels(),
             theme: active_theme(),
             on_select: None,
             on_toggle_backup: None,

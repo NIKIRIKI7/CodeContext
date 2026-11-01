@@ -94,7 +94,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Verify Git tag matches VERSION and Cargo.toml
         if: startsWith(github.ref, 'refs/tags/v')
@@ -118,17 +118,20 @@ jobs:
             libfontconfig1-dev libfreetype6-dev libx11-dev libxcursor-dev libxi-dev
 
       - name: Install Rust stable toolchain with LLVM PGO tools
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
         with:
+          toolchain: stable
           targets: ${{ matrix.target }}
           components: llvm-tools-preview
 
       - name: Install cargo-nextest
         if: matrix.enable_pgo
-        uses: taiki-e/install-action@nextest
+        uses: taiki-e/install-action@07b4745e0c39a41822af610387492e3e53aa222b # v2.83.4
+        with:
+          tool: cargo-nextest
 
       - name: Cache Cargo registry and target
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2.7.8
         with:
           key: release-${{ matrix.target }}
 
@@ -253,18 +256,16 @@ jobs:
           RPM_VER="$(echo "${VER}" | tr '-' '_')"
           mkdir -p dist out
           cp "target/${{ matrix.target }}/release/${{ matrix.bin_name }}" "dist/${{ matrix.out_bin }}"
-          chmod +x "dist/${{ matrix.out_bin }}"
+          chmod 0755 "dist/${{ matrix.out_bin }}"
           cp LICENSE-MIT LICENSE-APACHE CHANGELOG.md VERSION dist/
 
-          # 1. Standard archives (.tar.gz, .tar.xz, .tar.zst, .zip)
           tar -C dist -czf "out/${{ matrix.pkg_prefix }}.tar.gz" "${{ matrix.out_bin }}" LICENSE-MIT LICENSE-APACHE CHANGELOG.md VERSION
           tar -C dist -cJf "out/${{ matrix.pkg_prefix }}.tar.xz" "${{ matrix.out_bin }}" LICENSE-MIT LICENSE-APACHE CHANGELOG.md VERSION
           tar -C dist --zstd -cf "out/${{ matrix.pkg_prefix }}.tar.zst" "${{ matrix.out_bin }}" LICENSE-MIT LICENSE-APACHE CHANGELOG.md VERSION
           (cd dist && zip -q "../out/${{ matrix.pkg_prefix }}.zip" "${{ matrix.out_bin }}" LICENSE-MIT LICENSE-APACHE CHANGELOG.md VERSION)
 
-          # 2. Debian / Ubuntu / Mint (.deb)
           DEB_DIR="deb_root"
-          mkdir -p "${DEB_DIR}/DEBIAN" "${DEB_DIR}/usr/bin" "${DEB_DIR}/usr/share/applications" "${DEB_DIR}/usr/share/kio/servicemenus"
+          mkdir -p "${DEB_DIR}/DEBIAN" "${DEB_DIR}/usr/bin" "${DEB_DIR}/usr/share/applications"
           cp "dist/${{ matrix.out_bin }}" "${DEB_DIR}/usr/bin/codecontext"
           chmod 0755 "${DEB_DIR}/usr/bin/codecontext"
           cat > "${DEB_DIR}/usr/share/applications/codecontext.desktop" <<EOF
@@ -288,7 +289,6 @@ jobs:
           EOF
           dpkg-deb --root-owner-group --build "${DEB_DIR}" "out/${{ matrix.pkg_prefix }}.deb"
 
-          # 3. Fedora / RHEL / Rocky / openSUSE (.rpm)
           RPM_TOP="${RUNNER_TEMP}/rpmbuild"
           mkdir -p "${RPM_TOP}/BUILD" "${RPM_TOP}/RPMS" "${RPM_TOP}/SOURCES" "${RPM_TOP}/SPECS" "${RPM_TOP}/SRPMS"
           cat > "${RPM_TOP}/SPECS/codecontext.spec" <<EOF
@@ -311,7 +311,6 @@ jobs:
           rpmbuild --define "_topdir ${RPM_TOP}" --target "${{ matrix.rpm_arch }}" -bb "${RPM_TOP}/SPECS/codecontext.spec"
           find "${RPM_TOP}/RPMS" -name "*.rpm" -exec cp {} "out/${{ matrix.pkg_prefix }}.rpm" \;
 
-          # 4. Arch Linux / Manjaro / SteamOS (.pkg.tar.zst)
           ARCH_DIR="arch_root"
           mkdir -p "${ARCH_DIR}/usr/bin"
           cp "dist/${{ matrix.out_bin }}" "${ARCH_DIR}/usr/bin/codecontext"
@@ -331,7 +330,6 @@ jobs:
           EOF
           tar -C "${ARCH_DIR}" --zstd -cf "out/${{ matrix.pkg_prefix }}.pkg.tar.zst" .PKGINFO usr
 
-          # 5. Portable Linux AppImage / Self-Contained Bundle (.AppImage)
           cp "dist/${{ matrix.out_bin }}" "out/${{ matrix.pkg_prefix }}.AppImage"
           chmod 0755 "out/${{ matrix.pkg_prefix }}.AppImage"
 
@@ -348,43 +346,32 @@ jobs:
           PKG_VER="$(echo "${VER}" | cut -d '-' -f 1)"
           mkdir -p dist out
           cp "target/${{ matrix.target }}/release/${{ matrix.bin_name }}" "dist/${{ matrix.out_bin }}"
-          chmod +x "dist/${{ matrix.out_bin }}"
+          chmod 0755 "dist/${{ matrix.out_bin }}"
           cp LICENSE-MIT LICENSE-APACHE CHANGELOG.md VERSION dist/
 
-          # 1. Tarball & Zip
           tar -C dist -czf "out/${{ matrix.pkg_prefix }}.tar.gz" "${{ matrix.out_bin }}" LICENSE-MIT LICENSE-APACHE CHANGELOG.md VERSION
           (cd dist && zip -q "../out/${{ matrix.pkg_prefix }}.zip" "${{ matrix.out_bin }}" LICENSE-MIT LICENSE-APACHE CHANGELOG.md VERSION)
 
-          # 2. macOS .app bundle + .dmg + .pkg
           APP_DIR="dmg_stage/CodeContext.app/Contents"
           mkdir -p "${APP_DIR}/MacOS" "${APP_DIR}/Resources"
           cp "dist/${{ matrix.out_bin }}" "${APP_DIR}/MacOS/codecontext"
           chmod 0755 "${APP_DIR}/MacOS/codecontext"
           printf "APPL????" > "${APP_DIR}/PkgInfo"
-          cat > "${APP_DIR}/Info.plist" <<EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>CFBundleExecutable</key>
-            <string>codecontext</string>
-            <key>CFBundleIdentifier</key>
-            <string>io.github.nikiriki7.codecontext</string>
-            <key>CFBundleName</key>
-            <string>CodeContext</string>
-            <key>CFBundleDisplayName</key>
-            <string>CodeContext</string>
-            <key>CFBundleVersion</key>
-            <string>${VER}</string>
-            <key>CFBundleShortVersionString</key>
-            <string>${PKG_VER}</string>
-            <key>CFBundlePackageType</key>
-            <string>APPL</string>
-            <key>NSHighResolutionCapable</key>
-            <true/>
-          </dict>
-          </plist>
-          EOF
+          python3 -c '
+          import pathlib, plistlib, sys
+          ver, pkg_ver, out_p = sys.argv[1], sys.argv[2], pathlib.Path(sys.argv[3])
+          plist = {
+              "CFBundleExecutable": "codecontext",
+              "CFBundleIdentifier": "io.github.nikiriki7.codecontext",
+              "CFBundleName": "CodeContext",
+              "CFBundleDisplayName": "CodeContext",
+              "CFBundleVersion": ver,
+              "CFBundleShortVersionString": pkg_ver,
+              "CFBundlePackageType": "APPL",
+              "NSHighResolutionCapable": True,
+          }
+          out_p.write_bytes(plistlib.dumps(plist))
+          ' "${VER}" "${PKG_VER}" "${APP_DIR}/Info.plist"
           ln -s /Applications dmg_stage/Applications
           hdiutil create -volname "CodeContext" -srcfolder dmg_stage -ov -format UDZO "out/${{ matrix.pkg_prefix }}.dmg"
           pkgbuild --root dmg_stage/CodeContext.app --install-location /Applications/CodeContext.app --identifier io.github.nikiriki7.codecontext --version "${PKG_VER}" "out/${{ matrix.pkg_prefix }}.pkg"
@@ -395,7 +382,7 @@ jobs:
           done
 
       - name: Upload target release assets
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: release-${{ matrix.target }}
           path: out/*
@@ -407,10 +394,10 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Download Apple Silicon and Intel macOS artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           path: mac_inputs
 
@@ -434,30 +421,21 @@ jobs:
           mkdir -p "${APP_DIR}/MacOS" "${APP_DIR}/Resources"
           cp universal_dist/codecontext "${APP_DIR}/MacOS/codecontext"
           printf "APPL????" > "${APP_DIR}/PkgInfo"
-          cat > "${APP_DIR}/Info.plist" <<EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>CFBundleExecutable</key>
-            <string>codecontext</string>
-            <key>CFBundleIdentifier</key>
-            <string>io.github.nikiriki7.codecontext</string>
-            <key>CFBundleName</key>
-            <string>CodeContext</string>
-            <key>CFBundleDisplayName</key>
-            <string>CodeContext</string>
-            <key>CFBundleVersion</key>
-            <string>${VER}</string>
-            <key>CFBundleShortVersionString</key>
-            <string>${PKG_VER}</string>
-            <key>CFBundlePackageType</key>
-            <string>APPL</string>
-            <key>NSHighResolutionCapable</key>
-            <true/>
-          </dict>
-          </plist>
-          EOF
+          python3 -c '
+          import pathlib, plistlib, sys
+          ver, pkg_ver, out_p = sys.argv[1], sys.argv[2], pathlib.Path(sys.argv[3])
+          plist = {
+              "CFBundleExecutable": "codecontext",
+              "CFBundleIdentifier": "io.github.nikiriki7.codecontext",
+              "CFBundleName": "CodeContext",
+              "CFBundleDisplayName": "CodeContext",
+              "CFBundleVersion": ver,
+              "CFBundleShortVersionString": pkg_ver,
+              "CFBundlePackageType": "APPL",
+              "NSHighResolutionCapable": True,
+          }
+          out_p.write_bytes(plistlib.dumps(plist))
+          ' "${VER}" "${PKG_VER}" "${APP_DIR}/Info.plist"
           ln -s /Applications univ_stage/Applications
           hdiutil create -volname "CodeContext Universal" -srcfolder univ_stage -ov -format UDZO out/codecontext-universal-apple-darwin.dmg
           pkgbuild --root univ_stage/CodeContext.app --install-location /Applications/CodeContext.app --identifier io.github.nikiriki7.codecontext --version "${PKG_VER}" out/codecontext-universal-apple-darwin.pkg
@@ -468,7 +446,7 @@ jobs:
           done
 
       - name: Upload Universal2 macOS assets
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: release-universal-apple-darwin
           path: out/*
@@ -481,10 +459,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Download all release artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           path: artifacts
           merge-multiple: true
@@ -541,7 +519,7 @@ jobs:
           PY
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
         with:
           generate_release_notes: true
           files: |
