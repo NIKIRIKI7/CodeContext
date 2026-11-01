@@ -25,6 +25,7 @@ const CONNECT_RETRY_ATTEMPTS: usize = 6;
 const CONNECT_RETRY_PAUSE_MS: u64 = 2;
 
 static DEFAULT_ENDPOINT: OnceLock<IpcEndpointConfig> = OnceLock::new();
+static ELECTION_LOCK: Mutex<()> = Mutex::new(());
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IpcEndpointConfig {
@@ -270,13 +271,15 @@ impl SingleInstanceIpcPort for SystemSingleInstanceIpc {
             return Ok(PrimaryElectionResult::ForwardedToPrimary);
         }
 
-        let mut stale_socket_recovered = false;
-        if self.config.socket_file_path.exists() {
-            let _ = fs::remove_file(&self.config.socket_file_path);
-            stale_socket_recovered = true;
+        let _election_guard = ELECTION_LOCK.lock().ok();
+
+        if self.send_command_to_primary(&forward_cmd)? {
+            return Ok(PrimaryElectionResult::ForwardedToPrimary);
         }
 
-        for attempt in 0..CONNECT_RETRY_ATTEMPTS {
+        let mut stale_socket_recovered = false;
+
+        for _attempt in 0..CONNECT_RETRY_ATTEMPTS {
             match bind_listener(&self.config) {
                 Ok(listener) => {
                     let guard = spawn_accept_worker(
@@ -296,7 +299,7 @@ impl SingleInstanceIpcPort for SystemSingleInstanceIpc {
                     if self.send_command_to_primary(&forward_cmd)? {
                         return Ok(PrimaryElectionResult::ForwardedToPrimary);
                     }
-                    if attempt == 0 && self.config.socket_file_path.exists() {
+                    if !stale_socket_recovered && self.config.socket_file_path.exists() {
                         let _ = fs::remove_file(&self.config.socket_file_path);
                         stale_socket_recovered = true;
                     } else {
