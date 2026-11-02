@@ -34,23 +34,36 @@ pub(crate) fn autofix_response_with_config(
     let divider_marker = config.search_replace_markers.divider.as_str();
     let replace_marker = config.search_replace_markers.replace_footer.as_str();
 
-    let (unwrapped, outer_fence_stripped) =
-        strip_outer_markdown_wrapper(raw, header_prefix, footer_marker);
+    let normalized = normalize_glued_code_fences(raw);
+    let mut current = normalized.as_str();
+    let mut preamble_stripped = false;
 
-    let start_idx = find_first_block_offset(
-        unwrapped,
-        header_prefix,
-        search_marker,
-        config.enable_unified_diff,
-    )
-    .unwrap_or(0);
-    let preamble_stripped = outer_fence_stripped || start_idx > 0;
-    let working_slice = unwrapped.get(start_idx..).unwrap_or(unwrapped);
+    for _ in 0..2 {
+        if let Some(start_idx) = find_first_block_offset(
+            current,
+            header_prefix,
+            search_marker,
+            config.enable_unified_diff,
+        ) && start_idx > 0
+        {
+            preamble_stripped = true;
+            current = current.get(start_idx..).unwrap_or(current);
+        }
 
-    let mut fixed = normalize_glued_code_fences(working_slice);
+        let (unwrapped, stripped) =
+            strip_outer_markdown_wrapper(current, header_prefix, search_marker);
+        if stripped {
+            preamble_stripped = true;
+            current = unwrapped;
+        } else {
+            break;
+        }
+    }
+
+    let mut fixed = current.to_owned();
     let mut closed_truncated_block = false;
 
-    if let Some(last_header_pos) = rfind_unquoted_line_start_marker(&fixed, header_prefix) {
+    if let Some(last_header_pos) = rfind_last_canonical_header(&fixed, header_prefix) {
         let is_unclosed = rfind_unquoted_standalone_line_marker(&fixed, footer_marker)
             .is_none_or(|last_footer_pos| last_header_pos > last_footer_pos);
         if is_unclosed {
@@ -102,10 +115,36 @@ pub(crate) fn autofix_response_with_config(
     AutofixResult { fixed_text: fixed, preamble_stripped, closed_truncated_block }
 }
 
+fn contains_canonical_or_nested_blocks(
+    inner: &str,
+    header_prefix: &str,
+    search_marker: &str,
+) -> bool {
+    if !header_prefix.is_empty() && rfind_line_start_marker(inner, header_prefix).is_some() {
+        return true;
+    }
+    for &prefix in super::fenced_blocks::CREATE_HEADER_PREFIXES {
+        if rfind_line_start_marker(inner, prefix).is_some() {
+            return true;
+        }
+    }
+    if !search_marker.is_empty() && rfind_line_start_marker(inner, search_marker).is_some() {
+        return true;
+    }
+    inner.lines().any(|l| {
+        let t = l.trim();
+        t.starts_with("=== DELETE FILE:")
+            || t.starts_with("=== DELETE:")
+            || t.starts_with("=== REMOVE FILE:")
+            || t.starts_with("--- a/")
+            || t.starts_with("--- /dev/null")
+    })
+}
+
 fn strip_outer_markdown_wrapper<'a>(
     raw: &'a str,
     header_prefix: &str,
-    footer_marker: &str,
+    search_marker: &str,
 ) -> (&'a str, bool) {
     let trimmed = raw.trim();
     if !trimmed.starts_with(CODE_FENCE) {
@@ -123,16 +162,26 @@ fn strip_outer_markdown_wrapper<'a>(
         || lang.eq_ignore_ascii_case("md");
 
     let inner = trimmed.get(first_nl + 1..).unwrap_or("");
-    let contains_canonical_or_nested = rfind_line_start_marker(inner, header_prefix).is_some()
-        || rfind_line_start_marker(inner, footer_marker).is_some()
-        || inner.lines().any(|l| l.trim().starts_with("=== DELETE"));
+    let contains_nested = contains_canonical_or_nested_blocks(inner, header_prefix, search_marker);
 
-    if !is_wrapper_lang || !contains_canonical_or_nested {
+    if !is_wrapper_lang || !contains_nested {
         return (raw, false);
     }
 
     let cleaned = inner.trim_end().strip_suffix(CODE_FENCE).map_or(inner, str::trim_end);
     (cleaned, true)
+}
+
+fn rfind_last_canonical_header(haystack: &str, primary_prefix: &str) -> Option<usize> {
+    let mut best = rfind_unquoted_line_start_marker(haystack, primary_prefix);
+    for &prefix in super::fenced_blocks::CREATE_HEADER_PREFIXES {
+        if let Some(pos) = rfind_unquoted_line_start_marker(haystack, prefix)
+            && best.is_none_or(|best_pos| pos > best_pos)
+        {
+            best = Some(pos);
+        }
+    }
+    best
 }
 
 fn normalize_glued_code_fences(input: &str) -> String {
@@ -269,11 +318,9 @@ fn find_first_block_offset(
 ) -> Option<usize> {
     let mut offset = 0;
     for line in raw.split_inclusive('\n') {
-        if !header_prefix.is_empty() && line.starts_with(header_prefix) {
-            return Some(offset);
-        }
         let trimmed = line.trim();
-        if trimmed.starts_with("=== CREATE FILE:")
+        if (!header_prefix.is_empty() && trimmed.starts_with(header_prefix))
+            || trimmed.starts_with("=== CREATE FILE:")
             || trimmed.starts_with("=== NEW FILE:")
             || trimmed.starts_with("=== DELETE FILE:")
             || trimmed.starts_with("=== DELETE:")

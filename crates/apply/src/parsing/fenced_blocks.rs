@@ -19,7 +19,7 @@ pub struct ParsedFile {
 
 const CODE_FENCE: &str = "\x60\x60\x60";
 
-const CREATE_HEADER_PREFIXES: &[&str] = &[
+pub(crate) const CREATE_HEADER_PREFIXES: &[&str] = &[
     "=== CREATE FILE: ",
     "=== NEW FILE: ",
     "=== CREATE: ",

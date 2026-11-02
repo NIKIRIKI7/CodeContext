@@ -127,10 +127,10 @@ impl ApplierPort for ResponseApplier {
             ));
         }
 
-        if raw_ops.is_empty() {
-            let diff_files =
-                unified_diff::parse_unified_diff_blocks(raw_response, project_root, config);
-            for df in diff_files {
+        let diff_files =
+            unified_diff::parse_unified_diff_blocks(raw_response, project_root, config);
+        for df in diff_files {
+            if !raw_ops.iter().any(|(existing, _, _)| existing == &df.rel_path) {
                 let op = if df.is_deleted {
                     FileOperation::DeleteFile
                 } else {
@@ -140,14 +140,14 @@ impl ApplierPort for ResponseApplier {
             }
         }
 
-        if raw_ops.is_empty() {
-            let full_files = fenced_blocks::parse_ai_response_with_config(
-                raw_response,
-                project_root,
-                template,
-                config,
-            );
-            for pf in full_files {
+        let full_files = fenced_blocks::parse_ai_response_with_config(
+            raw_response,
+            project_root,
+            template,
+            config,
+        );
+        for pf in full_files {
+            if !raw_ops.iter().any(|(existing, _, _)| existing == &pf.rel_path) {
                 raw_ops.push((
                     pf.rel_path,
                     FileOperation::OverwriteFull { content: pf.content },
