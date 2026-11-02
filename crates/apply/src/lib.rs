@@ -3,9 +3,7 @@ mod patching;
 mod safety;
 mod storage;
 
-pub use parsing::{
-    AutofixResult, ParsedFile, ParsedSearchReplaceFile, ParsedUnifiedDiffFile, ResponseApplier,
-};
+pub use parsing::{AutofixResult, ParsedFile, ResponseApplier};
 pub use patching::patcher::{
     DiffSummary, PatchedOutcome, apply_operation_to_text, build_unified_diff_preview,
 };

@@ -2,7 +2,7 @@ use core::preset::models::preset::{
     DEFAULT_LARGE_FILE_THRESHOLD_BYTES, DEFAULT_MAX_DEPTH, DEFAULT_MAX_FILES,
 };
 use core::preset::models::resolution::{
-    DEFAULT_GLOBAL_HOTKEY, DEFAULT_UPDATE_CHANNEL, DEFAULT_UPDATE_REPO_URL,
+    DEFAULT_GLOBAL_HOTKEY, DEFAULT_UPDATE_CHANNEL, DEFAULT_UPDATE_REPO_URL, KeymapConfig,
 };
 use core::preset::models::template::{
     DEFAULT_DIVIDER_MARKER, DEFAULT_FILE_FOOTER, DEFAULT_FILE_HEADER_PREFIX,
@@ -207,6 +207,10 @@ pub struct GlobalConfigDto {
     pub update_channel: String,
     #[serde(default = "default_update_repo_url")]
     pub update_repo_url: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub recent_projects: Vec<String>,
+    #[serde(default)]
+    pub keymap: KeymapConfig,
 }
 
 impl Default for GlobalConfigDto {
@@ -220,6 +224,8 @@ impl Default for GlobalConfigDto {
             create_backups_by_default: true,
             update_channel: default_update_channel(),
             update_repo_url: default_update_repo_url(),
+            recent_projects: Vec::new(),
+            keymap: KeymapConfig::default(),
         }
     }
 }

@@ -2,8 +2,7 @@ use std::path::Path;
 
 use core::applying::values::patch_status::SearchReplaceBlock;
 use core::preset::models::template::{
-    DEFAULT_FILE_FOOTER, DEFAULT_FILE_HEADER_PREFIX, DEFAULT_FILE_HEADER_SUFFIX, OutputTemplate,
-    ParserConfig,
+    DEFAULT_FILE_HEADER_PREFIX, DEFAULT_FILE_HEADER_SUFFIX, OutputTemplate, ParserConfig,
 };
 
 use super::fenced_blocks::{
@@ -12,10 +11,10 @@ use super::fenced_blocks::{
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ParsedSearchReplaceFile {
-    pub rel_path: String,
-    pub blocks: Vec<SearchReplaceBlock>,
-    pub is_truncated: bool,
+pub(crate) struct ParsedSearchReplaceFile {
+    pub(crate) rel_path: String,
+    pub(crate) blocks: Vec<SearchReplaceBlock>,
+    pub(crate) is_truncated: bool,
 }
 
 const CODE_FENCE: &str = "\x60\x60\x60";
@@ -34,9 +33,7 @@ pub(crate) fn parse_search_replace_blocks(
     let divider_marker = config.search_replace_markers.divider.as_str();
     let replace_marker = config.search_replace_markers.replace_footer.as_str();
 
-    if find_line_start_marker(input, search_marker, 0).is_none()
-        && find_line_start_marker(input, "<<<<<", 0).is_none()
-    {
+    if find_line_start_marker(input, search_marker, 0).is_none() {
         return Vec::new();
     }
 
@@ -50,30 +47,22 @@ pub(crate) fn parse_search_replace_blocks(
     } else {
         DEFAULT_FILE_HEADER_SUFFIX.trim_end_matches(['\r', '\n'])
     };
-    let footer_marker = if config.sync_with_output_template {
-        template.footer_trimmed()
-    } else {
-        DEFAULT_FILE_FOOTER.trim_matches(['\r', '\n'])
-    };
 
-    let estimated_files = (input.len() / 128).clamp(4, 512);
-    let mut files: Vec<ParsedSearchReplaceFile> = Vec::with_capacity(estimated_files);
+    let mut files: Vec<ParsedSearchReplaceFile> = Vec::new();
     let mut current_path: Option<String> = None;
     let mut state = BlockParseState::Idle;
-    let mut search_buf = String::with_capacity(256);
-    let mut replace_buf = String::with_capacity(256);
+    let mut search_buf = String::new();
+    let mut replace_buf = String::new();
 
     for line in input.split_inclusive('\n') {
         let trimmed = line.trim();
 
         match state {
             BlockParseState::Idle => {
-                if is_search_open_line(trimmed, search_marker) {
+                if trimmed.starts_with(search_marker) {
                     state = BlockParseState::InSearch;
                     search_buf.clear();
                     replace_buf.clear();
-                } else if trimmed == footer_marker || trimmed.starts_with("=== END FILE") {
-                    current_path = None;
                 } else if let Some(path) = extract_candidate_path_line(
                     trimmed,
                     header_prefix,
@@ -82,19 +71,17 @@ pub(crate) fn parse_search_replace_blocks(
                     config,
                 ) {
                     current_path = Some(path);
-                } else if trimmed.starts_with("=== ") && trimmed.ends_with("===") {
-                    current_path = None;
                 }
             }
             BlockParseState::InSearch => {
-                if is_divider_line(trimmed, divider_marker) {
+                if trimmed.starts_with(divider_marker) {
                     state = BlockParseState::InReplace;
                 } else {
                     search_buf.push_str(line);
                 }
             }
             BlockParseState::InReplace => {
-                if is_replace_close_line(trimmed, replace_marker) {
+                if trimmed.starts_with(replace_marker) {
                     if let Some(ref rel_path) = current_path {
                         push_search_replace_block(
                             &mut files,
@@ -145,22 +132,12 @@ fn extract_candidate_path_line(
         return None;
     }
 
-    for prefix in [
-        header_prefix,
-        "=== FILE: ",
-        "=== CREATE FILE: ",
-        "=== NEW FILE: ",
-        "=== UPDATE FILE: ",
-        "=== MODIFY FILE: ",
-    ] {
-        if let Some(after_prefix) = trimmed.strip_prefix(prefix) {
-            let raw_path = after_prefix
-                .strip_suffix(header_suffix)
-                .unwrap_or_else(|| after_prefix.trim_end_matches('=').trim());
-            let clean = normalize_extracted_path(raw_path, project_root, config);
-            if looks_like_file_path(&clean) {
-                return Some(clean);
-            }
+    if let Some(after_prefix) = trimmed.strip_prefix(header_prefix)
+        && let Some(raw_path) = after_prefix.strip_suffix(header_suffix)
+    {
+        let clean = normalize_extracted_path(raw_path, project_root, config);
+        if looks_like_file_path(&clean) {
+            return Some(clean);
         }
     }
 
@@ -168,60 +145,13 @@ fn extract_candidate_path_line(
         return Some(h_path);
     }
 
-    if let Some(comment_stripped) = trimmed.strip_prefix("//").or_else(|| trimmed.strip_prefix('#'))
-    {
-        let clean = normalize_extracted_path(comment_stripped.trim(), project_root, config);
-        if looks_like_file_path(&clean) && !contains_code_syntax_chars(&clean) {
-            return Some(clean);
-        }
-    }
+    let comment_stripped = trimmed
+        .strip_prefix("//")
+        .or_else(|| trimmed.strip_prefix('#'))
+        .map_or(trimmed, str::trim);
 
-    None
-}
-
-#[inline]
-fn contains_code_syntax_chars(s: &str) -> bool {
-    s.contains(['(', ')', '{', '}', '[', ']', ';', '=', ',', '<', '>', '|'])
-}
-
-#[inline]
-fn is_search_open_line(trimmed: &str, search_marker: &str) -> bool {
-    if trimmed.starts_with(search_marker) {
-        return true;
-    }
-    if let Some(rest) = trimmed.strip_prefix("<<<<<") {
-        let after_angles = rest.trim_start_matches('<').trim();
-        return after_angles.is_empty()
-            || after_angles.eq_ignore_ascii_case("SEARCH")
-            || after_angles.eq_ignore_ascii_case("HEAD")
-            || after_angles.eq_ignore_ascii_case("ORIGINAL")
-            || after_angles.eq_ignore_ascii_case("OLD");
-    }
-    false
-}
-
-#[inline]
-fn is_divider_line(trimmed: &str, divider_marker: &str) -> bool {
-    if trimmed.starts_with(divider_marker) {
-        return true;
-    }
-    trimmed.starts_with("=====") && trimmed.trim_start_matches('=').trim().is_empty()
-}
-
-#[inline]
-fn is_replace_close_line(trimmed: &str, replace_marker: &str) -> bool {
-    if trimmed.starts_with(replace_marker) {
-        return true;
-    }
-    if let Some(rest) = trimmed.strip_prefix(">>>>>") {
-        let after_angles = rest.trim_start_matches('>').trim();
-        return after_angles.is_empty()
-            || after_angles.eq_ignore_ascii_case("REPLACE")
-            || after_angles.eq_ignore_ascii_case("UPDATED")
-            || after_angles.eq_ignore_ascii_case("NEW")
-            || after_angles.eq_ignore_ascii_case("MODIFIED");
-    }
-    false
+    let clean = normalize_extracted_path(comment_stripped, project_root, config);
+    looks_like_file_path(&clean).then_some(clean)
 }
 
 fn push_search_replace_block(

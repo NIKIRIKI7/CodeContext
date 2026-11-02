@@ -5,13 +5,11 @@ use core::applying::aggregates::apply_plan::{ApplyPlan, FileOperation, PlannedFi
 use core::applying::aggregates::backup_manifest::{BackupFileEntry, BackupManifest};
 use core::applying::ports::applier::{ApplierPort, ApplierPortError};
 use core::applying::values::patch_status::PatchResolutionStatus;
-use core::preset::models::template::{DEFAULT_FILE_HEADER_PREFIX, OutputTemplate, ParserConfig};
+use core::preset::models::template::{OutputTemplate, ParserConfig};
 
 use crate::patching::patcher::apply_operation_to_text;
 use crate::safety::git_status::check_dirty_git_files;
-use crate::safety::sandbox::{
-    SandboxError, validate_sandbox_path, validate_sandbox_path_with_fs_check,
-};
+use crate::safety::sandbox::{SandboxError, validate_sandbox_path};
 use crate::storage::transaction::{
     ApplyTransactionError, ApplyTransactionReport, execute_apply_transaction,
     execute_apply_with_deletions, execute_undo_transaction,
@@ -24,143 +22,6 @@ pub(crate) mod unified_diff;
 
 pub use autofix::AutofixResult;
 pub use fenced_blocks::ParsedFile;
-pub use search_replace::ParsedSearchReplaceFile;
-pub use unified_diff::ParsedUnifiedDiffFile;
-
-#[derive(Debug, Default)]
-struct PlanOperationsCollector {
-    ops: Vec<(String, FileOperation, bool)>,
-}
-
-impl PlanOperationsCollector {
-    #[inline]
-    fn with_capacity(cap: usize) -> Self {
-        Self { ops: Vec::with_capacity(cap) }
-    }
-
-    #[inline]
-    fn is_empty(&self) -> bool {
-        self.ops.is_empty()
-    }
-
-    #[inline]
-    fn contains_path(&self, rel_path: &str) -> bool {
-        self.ops.iter().any(|(existing, _, _)| existing == rel_path)
-    }
-
-    #[inline]
-    fn push_if_absent(&mut self, rel_path: String, op: FileOperation, is_truncated: bool) {
-        if !self.contains_path(&rel_path) {
-            self.ops.push((rel_path, op, is_truncated));
-        }
-    }
-
-    #[inline]
-    fn into_vec(self) -> Vec<(String, FileOperation, bool)> {
-        self.ops
-    }
-}
-
-type FormatExtractorFn =
-    fn(&str, Option<&Path>, &OutputTemplate, &ParserConfig, &mut PlanOperationsCollector);
-
-const FORMAT_EXTRACTOR_CHAIN: &[FormatExtractorFn] = &[
-    extract_search_replace_step,
-    extract_unified_diff_step,
-    extract_full_files_step,
-    extract_delete_directives_step,
-];
-
-fn extract_search_replace_step(
-    raw_response: &str,
-    project_root: Option<&Path>,
-    template: &OutputTemplate,
-    config: &ParserConfig,
-    collector: &mut PlanOperationsCollector,
-) {
-    let sr_files =
-        search_replace::parse_search_replace_blocks(raw_response, project_root, template, config);
-    for sr in sr_files {
-        collector.push_if_absent(
-            sr.rel_path,
-            FileOperation::SearchReplace { blocks: sr.blocks },
-            sr.is_truncated,
-        );
-    }
-}
-
-fn extract_unified_diff_step(
-    raw_response: &str,
-    project_root: Option<&Path>,
-    _template: &OutputTemplate,
-    config: &ParserConfig,
-    collector: &mut PlanOperationsCollector,
-) {
-    let diff_files = unified_diff::parse_unified_diff_blocks(raw_response, project_root, config);
-    for df in diff_files {
-        let op = if df.is_deleted {
-            FileOperation::DeleteFile
-        } else {
-            FileOperation::UnifiedDiff { hunks: df.hunks }
-        };
-        collector.push_if_absent(df.rel_path, op, false);
-    }
-}
-
-fn extract_full_files_step(
-    raw_response: &str,
-    project_root: Option<&Path>,
-    template: &OutputTemplate,
-    config: &ParserConfig,
-    collector: &mut PlanOperationsCollector,
-) {
-    let should_extract = collector.is_empty() || {
-        let header_prefix = if config.sync_with_output_template {
-            template.file_header_prefix.as_str()
-        } else {
-            DEFAULT_FILE_HEADER_PREFIX
-        };
-        fenced_blocks::find_line_start_marker(raw_response, header_prefix, 0).is_some()
-            || fenced_blocks::find_line_start_marker(
-                raw_response,
-                concat!("=== ", "CREATE FILE: "),
-                0,
-            )
-            .is_some()
-            || fenced_blocks::find_line_start_marker(raw_response, concat!("=== ", "NEW FILE: "), 0)
-                .is_some()
-    };
-
-    if should_extract {
-        let full_files = fenced_blocks::parse_ai_response_with_config(
-            raw_response,
-            project_root,
-            template,
-            config,
-        );
-        for pf in full_files {
-            collector.push_if_absent(
-                pf.rel_path,
-                FileOperation::OverwriteFull { content: pf.content },
-                pf.is_truncated,
-            );
-        }
-    }
-}
-
-fn extract_delete_directives_step(
-    raw_response: &str,
-    project_root: Option<&Path>,
-    template: &OutputTemplate,
-    config: &ParserConfig,
-    collector: &mut PlanOperationsCollector,
-) {
-    let explicit_deletes =
-        fenced_blocks::parse_delete_directives(raw_response, project_root, template, config);
-    for del_path in explicit_deletes {
-        collector.push_if_absent(del_path, FileOperation::DeleteFile, false);
-    }
-}
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct ResponseApplier;
@@ -250,31 +111,67 @@ impl ApplierPort for ResponseApplier {
         template: &OutputTemplate,
         config: &ParserConfig,
     ) -> ApplyPlan {
-        let estimated_ops = (raw_response.len() / 128).clamp(8, 512);
-        let mut collector = PlanOperationsCollector::with_capacity(estimated_ops);
-        for &extractor in FORMAT_EXTRACTOR_CHAIN {
-            extractor(raw_response, project_root, template, config, &mut collector);
+        let mut raw_ops: Vec<(String, FileOperation, bool)> = Vec::new();
+
+        let sr_files =
+            search_replace::parse_search_replace_blocks(raw_response, project_root, template, config);
+        for sr in sr_files {
+            raw_ops.push((
+                sr.rel_path,
+                FileOperation::SearchReplace { blocks: sr.blocks },
+                sr.is_truncated,
+            ));
         }
-        let raw_ops = collector.into_vec();
+
+        if raw_ops.is_empty() {
+            let diff_files =
+                unified_diff::parse_unified_diff_blocks(raw_response, project_root, config);
+            for df in diff_files {
+                let op = if df.is_deleted {
+                    FileOperation::DeleteFile
+                } else {
+                    FileOperation::UnifiedDiff { hunks: df.hunks }
+                };
+                raw_ops.push((df.rel_path, op, false));
+            }
+        }
+
+        if raw_ops.is_empty() {
+            let full_files = fenced_blocks::parse_ai_response_with_config(
+                raw_response,
+                project_root,
+                template,
+                config,
+            );
+            for pf in full_files {
+                raw_ops.push((
+                    pf.rel_path,
+                    FileOperation::OverwriteFull { content: pf.content },
+                    pf.is_truncated,
+                ));
+            }
+        }
+
+        let explicit_deletes =
+            fenced_blocks::parse_delete_directives(raw_response, project_root, template, config);
+        for del_path in explicit_deletes {
+            if !raw_ops.iter().any(|(existing, _, _)| existing == &del_path) {
+                raw_ops.push((del_path, FileOperation::DeleteFile, false));
+            }
+        }
 
         let fallback_root = Path::new(".");
         let validation_root = project_root.unwrap_or(fallback_root);
-        let check_disk_symlinks = project_root.is_some_and(Path::exists);
-
         let mut items = Vec::with_capacity(raw_ops.len());
         let mut valid_rel_paths = Vec::with_capacity(raw_ops.len());
 
         for (rel_path, operation, is_truncated) in raw_ops {
-            let sandbox_check = validate_sandbox_path_with_fs_check(
-                validation_root,
-                &rel_path,
-                check_disk_symlinks,
-            );
+            let sandbox_check = validate_sandbox_path(validation_root, &rel_path);
             let is_sandbox_safe = sandbox_check.is_ok();
 
-            let existing_content = if is_sandbox_safe && check_disk_symlinks {
+            let existing_content = if is_sandbox_safe {
                 valid_rel_paths.push(rel_path.clone());
-                project_root.and_then(|root| read_existing_disk_file(root, &rel_path))
+                project_root.and_then(|root| fs::read_to_string(root.join(&rel_path)).ok())
             } else {
                 None
             };
@@ -305,13 +202,9 @@ impl ApplierPort for ResponseApplier {
             });
         }
 
-        let dirty_git_files = if check_disk_symlinks {
-            project_root
-                .map(|root| check_dirty_git_files(root, &valid_rel_paths))
-                .unwrap_or_default()
-        } else {
-            Vec::new()
-        };
+        let dirty_git_files = project_root
+            .map(|root| check_dirty_git_files(root, &valid_rel_paths))
+            .unwrap_or_default();
 
         ApplyPlan::new(items, dirty_git_files, false, false)
     }
@@ -325,6 +218,7 @@ impl ApplierPort for ResponseApplier {
         if plan.items.is_empty() {
             return Err(ApplierPortError::EmptyPlan);
         }
+
         for item in &plan.items {
             if !item.is_sandbox_safe {
                 return Err(ApplierPortError::SandboxViolation(item.rel_path.clone()));
@@ -382,25 +276,4 @@ impl ApplierPort for ResponseApplier {
     fn undo_last_backup(&self, project_root: &Path) -> Result<usize, ApplierPortError> {
         execute_undo_transaction(project_root).map_err(ApplierPortError::StorageError)
     }
-}
-
-fn read_existing_disk_file(root: &Path, rel_path: &str) -> Option<String> {
-    let direct = root.join(rel_path);
-    if let Ok(content) = fs::read_to_string(&direct) {
-        return Some(content);
-    }
-    if let Some((_, after_first)) = rel_path.split_once(['/', '\\'])
-        && let Ok(content) = fs::read_to_string(root.join(after_first))
-    {
-        return Some(content);
-    }
-    let mut parent_opt = root.parent();
-    for _ in 0..3 {
-        let parent = parent_opt?;
-        if let Ok(content) = fs::read_to_string(parent.join(rel_path)) {
-            return Some(content);
-        }
-        parent_opt = parent.parent();
-    }
-    None
 }

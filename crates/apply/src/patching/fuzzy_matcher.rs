@@ -207,6 +207,138 @@ pub(crate) fn try_syntax_normalized_replace(
     })
 }
 
+/// Этап 4b: Сопоставление потока токенов, инвариантное к переносам строк и висячим запятым
+/// после автоформатирования (`cargo fmt`, `rustfmt`, `prettier`).
+pub(crate) fn try_formatter_agnostic_replace(
+    working: &str,
+    search: &str,
+    replace: &str,
+    target_ending: LineEnding,
+) -> Option<String> {
+    let search_norm = build_formatter_norm_bytes(search);
+    if search_norm.is_empty() {
+        return None;
+    }
+
+    let work_idx = IndexedText::new(working);
+    if work_idx.non_empty.is_empty() {
+        return None;
+    }
+
+    let (work_norm, line_bounds) = build_indexed_formatter_norm(&work_idx.raw_lines);
+    if work_norm.len() < search_norm.len() {
+        return None;
+    }
+
+    let mut matched_line_span: Option<(usize, usize)> = None;
+    for (start_line_idx, &(line_start, line_end)) in line_bounds.iter().enumerate() {
+        if line_start == line_end {
+            continue;
+        }
+        let Some(candidate_slice) = work_norm.get(line_start..line_start + search_norm.len())
+        else {
+            break;
+        };
+        if candidate_slice != search_norm.as_slice() {
+            continue;
+        }
+        let target_end_pos = line_start + search_norm.len();
+        let Some(end_line_idx) = line_bounds
+            .get(start_line_idx..)
+            .and_then(|tail| tail.iter().position(|&(s, e)| s < e && e == target_end_pos))
+            .map(|rel| start_line_idx + rel)
+        else {
+            continue;
+        };
+
+        if matched_line_span.is_some() {
+            return None;
+        }
+        matched_line_span = Some((start_line_idx, end_line_idx));
+    }
+
+    let (first_raw_idx, last_raw_idx) = matched_line_span?;
+    let first_work_indent =
+        work_idx.raw_lines.get(first_raw_idx).copied().map_or(0, count_leading_indent_cols);
+    let first_search_indent =
+        search.lines().find(|l| !l.trim().is_empty()).map_or(0, count_leading_indent_cols);
+    let indent_delta = compute_auto_indent_delta(first_work_indent, first_search_indent, replace);
+
+    Some(work_idx.replace_raw_line_range(
+        first_raw_idx,
+        last_raw_idx + 1,
+        replace,
+        indent_delta,
+        target_ending,
+    ))
+}
+
+fn build_formatter_norm_bytes(text: &str) -> Vec<u8> {
+    let bytes = text.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    for (idx, &b) in bytes.iter().enumerate() {
+        if b.is_ascii_whitespace() {
+            continue;
+        }
+        if b == b',' && next_non_ws_byte(bytes, idx + 1).is_some_and(is_closing_delimiter) {
+            continue;
+        }
+        out.push(if b == b'\'' { b'"' } else { b });
+    }
+    out
+}
+
+fn build_indexed_formatter_norm(raw_lines: &[&str]) -> (Vec<u8>, Vec<(usize, usize)>) {
+    let total_cap: usize = raw_lines.iter().map(|l| l.len()).sum();
+    let mut norm = Vec::with_capacity(total_cap);
+    let mut bounds = Vec::with_capacity(raw_lines.len());
+
+    for (line_idx, &line) in raw_lines.iter().enumerate() {
+        let start_len = norm.len();
+        let bytes = line.as_bytes();
+        for (byte_idx, &b) in bytes.iter().enumerate() {
+            if b.is_ascii_whitespace() {
+                continue;
+            }
+            if b == b','
+                && next_non_ws_in_lines(raw_lines, line_idx, byte_idx + 1)
+                    .is_some_and(is_closing_delimiter)
+            {
+                continue;
+            }
+            norm.push(if b == b'\'' { b'"' } else { b });
+        }
+        bounds.push((start_len, norm.len()));
+    }
+
+    (norm, bounds)
+}
+
+#[inline]
+const fn is_closing_delimiter(b: u8) -> bool {
+    matches!(b, b')' | b'}' | b']')
+}
+
+#[inline]
+fn next_non_ws_byte(bytes: &[u8], from: usize) -> Option<u8> {
+    bytes.get(from..)?.iter().copied().find(|b| !b.is_ascii_whitespace())
+}
+
+#[inline]
+fn next_non_ws_in_lines(raw_lines: &[&str], line_idx: usize, byte_from: usize) -> Option<u8> {
+    if let Some(first_line) = raw_lines.get(line_idx)
+        && let Some(found) = next_non_ws_byte(first_line.as_bytes(), byte_from)
+    {
+        return Some(found);
+    }
+    for &next_line in raw_lines.get(line_idx + 1..)?.iter().take(4) {
+        if let Some(found) = next_non_ws_byte(next_line.as_bytes(), 0) {
+            return Some(found);
+        }
+    }
+    None
+}
+
 fn try_subsequence_replace_by(
     working: &str,
     search: &str,
@@ -459,12 +591,36 @@ fn find_equal_length_fuzzy_window(
             continue;
         }
 
-        let first_match = window.first().map(|l| &l.syntax_norm)
-            == search_idx.non_empty.first().map(|l| &l.syntax_norm);
-        let last_match = window.last().map(|l| &l.syntax_norm)
-            == search_idx.non_empty.last().map(|l| &l.syntax_norm);
+        let (Some(w_first), Some(s_first), Some(w_last), Some(s_last)) = (
+            window.first(),
+            search_idx.non_empty.first(),
+            window.last(),
+            search_idx.non_empty.last(),
+        ) else {
+            continue;
+        };
+        let first_match = w_first.syntax_norm == s_first.syntax_norm;
+        let last_match = w_last.syntax_norm == s_last.syntax_norm
+            && (is_strong_boundary_anchor(&s_last.syntax_norm) || s_len <= 4);
         if !first_match && !last_match {
             continue;
+        }
+        if !first_match
+            && dice_similarity_permille(&w_first.syntax_norm, &s_first.syntax_norm) < 650
+        {
+            continue;
+        }
+        if w_last.syntax_norm != s_last.syntax_norm {
+            if dice_similarity_permille(&w_last.syntax_norm, &s_last.syntax_norm) < 650 {
+                continue;
+            }
+            let trailing_has_s_last = work_idx
+                .non_empty
+                .get(end_ne + 1..(end_ne + 5).min(w_len))
+                .is_some_and(|after| after.iter().any(|l| l.syntax_norm == s_last.syntax_norm));
+            if trailing_has_s_last {
+                continue;
+            }
         }
 
         let score = score_equal_length_window(window, &search_idx.non_empty);

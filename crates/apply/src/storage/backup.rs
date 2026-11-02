@@ -46,14 +46,33 @@ pub(crate) fn create_backup_snapshot(
         let existed_before = orig_path.exists() && orig_path.is_file();
         if existed_before && let Ok(orig_content) = fs::read_to_string(&orig_path) {
             let backup_file_path = files_dir.join(rel_path);
-            write_file_atomically(&backup_file_path, &orig_content)?;
+            if let Some(parent) = backup_file_path.parent()
+                && !parent.as_os_str().is_empty()
+            {
+                fs::create_dir_all(parent).map_err(|err| AtomicWriteError::CreateDirectory {
+                    path: parent.display().to_string(),
+                    reason: err.to_string(),
+                })?;
+            }
+            fs::write(&backup_file_path, orig_content.as_bytes()).map_err(|err| {
+                AtomicWriteError::TempWrite {
+                    path: backup_file_path.display().to_string(),
+                    reason: err.to_string(),
+                }
+            })?;
         }
         entries.push(BackupFileEntry { rel_path: rel_path.clone(), existed_before });
     }
 
     let manifest = BackupSnapshotManifest { timestamp_ms, entries };
     let manifest_json = serde_json::to_string_pretty(&manifest).unwrap_or_default();
-    write_file_atomically(&backup_dir.join(MANIFEST_FILE_NAME), &manifest_json)?;
+    let manifest_path = backup_dir.join(MANIFEST_FILE_NAME);
+    fs::write(&manifest_path, manifest_json.as_bytes()).map_err(|err| {
+        AtomicWriteError::TempWrite {
+            path: manifest_path.display().to_string(),
+            reason: err.to_string(),
+        }
+    })?;
 
     Ok(backup_dir)
 }

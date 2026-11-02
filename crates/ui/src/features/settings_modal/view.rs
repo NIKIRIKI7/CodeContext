@@ -1,3 +1,4 @@
+use core::preset::models::resolution::KeymapAction;
 use core::system::ports::hotkey::HotkeyRegistrationStatus;
 use core::system::ports::shell::ShellRegistrationStatus;
 use core::system::ports::updater::{
@@ -83,7 +84,7 @@ impl SettingsModalView {
 
         let lang_switcher = render_segmented_pair(
             "settings-lang-ru",
-            "Русский",
+            labels.lang_name_ru,
             self.locale == AppLocale::Ru,
             move |_ev, _win, cx| {
                 state_ru.update(cx, |s, cx| {
@@ -92,7 +93,7 @@ impl SettingsModalView {
                 });
             },
             "settings-lang-en",
-            "English",
+            labels.lang_name_en,
             self.locale == AppLocale::En,
             move |_ev, _win, cx| {
                 state_en.update(cx, |s, cx| {
@@ -132,7 +133,6 @@ impl SettingsModalView {
         let colors = &theme.colors;
         let labels = self.locale.labels();
         let snap = self.state.read(cx);
-        let default_hotkey = snap.global_config().global_hotkey.clone();
         let shell_status = snap.shell_status().clone();
         let hotkey_status = snap.hotkey_status().clone();
         let is_recording = snap.is_recording_hotkey();
@@ -145,28 +145,22 @@ impl SettingsModalView {
             ShellRegistrationStatus::NotRegistered => (labels.settings_context_menu_off, false),
         };
 
-        let (hotkey_row_label, hotkey_badge, is_hk_active) = if is_recording {
-            (labels.settings_hotkey_prefix, self.locale.hotkey_recording_label().to_owned(), true)
-        } else {
-            match hotkey_status {
-                HotkeyRegistrationStatus::RegisteredActive { shortcut } => {
-                    (labels.settings_hotkey_prefix, format_hotkey_for_current_os(&shortcut), true)
-                }
-                HotkeyRegistrationStatus::ConflictWithOtherApp { shortcut } => (
-                    labels.settings_hotkey_conflict_prefix,
-                    format_hotkey_for_current_os(&shortcut),
-                    false,
-                ),
-                HotkeyRegistrationStatus::UnsupportedByDisplayServer { hint_command } => {
-                    (labels.settings_hotkey_wayland_hint, hint_command.to_string(), false)
-                }
-                HotkeyRegistrationStatus::NotRegistered
-                | HotkeyRegistrationStatus::InvalidShortcut { .. } => (
-                    labels.settings_hotkey_prefix,
-                    format_hotkey_for_current_os(&default_hotkey),
-                    false,
-                ),
+        let (hotkey_row_label, hotkey_badge, is_hk_active) = match hotkey_status {
+            HotkeyRegistrationStatus::ConflictWithOtherApp { shortcut } => (
+                labels.settings_hotkey_conflict_prefix,
+                format_hotkey_for_current_os(&shortcut),
+                false,
+            ),
+            HotkeyRegistrationStatus::UnsupportedByDisplayServer { hint_command } => {
+                (labels.settings_hotkey_wayland_hint, hint_command.to_string(), false)
             }
+            HotkeyRegistrationStatus::RegisteredActive { .. }
+            | HotkeyRegistrationStatus::NotRegistered
+            | HotkeyRegistrationStatus::InvalidShortcut { .. } => (
+                labels.settings_hotkey_prefix,
+                labels.btn_open_hotkeys_modal.to_owned(),
+                is_recording,
+            ),
         };
 
         let state_hk = self.state.clone();
@@ -175,12 +169,12 @@ impl SettingsModalView {
         let hk_button = UiButton::new("settings-cycle-hotkey", SharedString::from(hotkey_badge))
             .icon(UiIcon::Keyboard)
             .variant(if is_recording { ButtonVariant::Primary } else { ButtonVariant::FilterPill })
-            .fixed_width(196.0)
+            .fixed_width(220.0)
             .with_theme(theme)
             .active(is_hk_active)
             .on_click(move |_ev, _win, cx| {
                 state_hk.update(cx, |s, cx| {
-                    s.toggle_recording_hotkey();
+                    s.open_hotkeys_modal();
                     cx.notify();
                 });
             });
@@ -372,6 +366,150 @@ impl SettingsModalView {
             .child(render_setting_row(labels.settings_auto_clipboard, clip_btn, theme))
             .child(render_setting_row(labels.settings_create_backups, bak_btn, theme))
     }
+
+    fn render_hotkeys_modal(
+        &self,
+        theme: &'static ThemeTokens,
+        cx: &Context<Self>,
+    ) -> impl IntoElement + use<> {
+        let colors = &theme.colors;
+        let labels = self.locale.labels();
+        let snap = self.state.read(cx);
+        let cfg = snap.global_config();
+        let recording_action = snap.recording_action();
+
+        let mut list_col = div().w_full().flex().flex_col().gap(px(theme.spacing.xs));
+        for (idx, action) in KeymapAction::ALL.into_iter().enumerate() {
+            let is_rec = recording_action == Some(action);
+            let raw_shortcut = cfg.keymap.shortcut_for(action, &cfg.global_hotkey);
+            let badge_text = if is_rec {
+                self.locale.hotkey_recording_label().to_owned()
+            } else {
+                format_hotkey_for_current_os(raw_shortcut)
+            };
+            let state_row = self.state.clone();
+            let btn = UiButton::new(("hotkey-action-btn", idx), SharedString::from(badge_text))
+                .icon(UiIcon::Keyboard)
+                .variant(if is_rec { ButtonVariant::Primary } else { ButtonVariant::FilterPill })
+                .fixed_width(196.0)
+                .with_theme(theme)
+                .active(is_rec)
+                .on_click(move |_ev, _win, cx| {
+                    state_row.update(cx, |s, cx| {
+                        s.toggle_recording_action(action);
+                        cx.notify();
+                    });
+                });
+            list_col = list_col.child(render_setting_row(
+                action_label_for(action, labels),
+                btn,
+                theme,
+            ));
+        }
+
+        let header = self.render_hotkeys_modal_header(labels, theme);
+        let state_backdrop = self.state.clone();
+        let backdrop = Rgba { r: 0.02, g: 0.03, b: 0.05, a: 0.78 };
+
+        div()
+            .id("hotkeys-modal-backdrop")
+            .absolute()
+            .top_0()
+            .left_0()
+            .size_full()
+            .bg(backdrop)
+            .flex()
+            .items_center()
+            .justify_center()
+            .p(px(theme.spacing.xxl))
+            .on_click(move |_ev, _win, cx| {
+                cx.stop_propagation();
+                state_backdrop.update(cx, |s, cx| {
+                    s.close_hotkeys_modal();
+                    cx.notify();
+                });
+            })
+            .child(
+                div()
+                    .id("hotkeys-modal-dialog")
+                    .on_click(|_ev, _win, cx| {
+                        cx.stop_propagation();
+                    })
+                    .w(px(560.0))
+                    .p(px(theme.spacing.xxl))
+                    .rounded(px(theme.radius.lg))
+                    .bg(colors.bg_panel)
+                    .border_1()
+                    .border_color(colors.border_active)
+                    .flex()
+                    .flex_col()
+                    .gap(px(theme.spacing.lg))
+                    .child(header)
+                    .child(
+                        div()
+                            .w_full()
+                            .p(px(theme.spacing.xl))
+                            .rounded(px(theme.radius.md))
+                            .bg(colors.bg_elevated)
+                            .border_1()
+                            .border_color(colors.border)
+                            .child(list_col),
+                    ),
+            )
+    }
+
+    fn render_hotkeys_modal_header(
+        &self,
+        labels: &'static UiLabels,
+        theme: &'static ThemeTokens,
+    ) -> impl IntoElement + use<> {
+        let state_reset = self.state.clone();
+        let state_close = self.state.clone();
+
+        div()
+            .w_full()
+            .flex()
+            .flex_row()
+            .items_center()
+            .justify_between()
+            .child(
+                div()
+                    .font_family(FONT_FAMILY_UI)
+                    .text_sm()
+                    .text_color(theme.colors.text_primary)
+                    .child(labels.hotkeys_modal_title),
+            )
+            .child(
+                div()
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .gap(px(theme.spacing.xs))
+                    .child(
+                        UiButton::new("hotkeys-reset-defaults-btn", labels.btn_reset_hotkeys)
+                            .icon(UiIcon::RotateCcw)
+                            .variant(ButtonVariant::Ghost)
+                            .with_theme(theme)
+                            .on_click(move |_ev, _win, cx| {
+                                state_reset.update(cx, |s, cx| {
+                                    s.reset_all_shortcuts_to_default();
+                                    cx.notify();
+                                });
+                            }),
+                    )
+                    .child(
+                        UiButton::icon_only("hotkeys-close-modal-btn", UiIcon::X)
+                            .variant(ButtonVariant::Ghost)
+                            .with_theme(theme)
+                            .on_click(move |_ev, _win, cx| {
+                                state_close.update(cx, |s, cx| {
+                                    s.close_hotkeys_modal();
+                                    cx.notify();
+                                });
+                            }),
+                    ),
+            )
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -483,7 +621,7 @@ fn render_compact_toggle_pill(
 }
 
 fn spawn_update_or_self_install_action(state_upd: Entity<SettingsModalState>, cx: &mut App) {
-    let (container, channel, repo_url, is_portable, has_available) = {
+    let (container, channel, repo_url, is_portable, has_available, is_ready_to_restart) = {
         let snap = state_upd.read(cx);
         (
             snap.container().clone(),
@@ -491,8 +629,15 @@ fn spawn_update_or_self_install_action(state_upd: Entity<SettingsModalState>, cx
             snap.global_config().update_repo_url.clone(),
             !snap.self_install_status().is_installed(),
             matches!(snap.update_stage(), UpdateStage::UpdateAvailable { .. }),
+            matches!(snap.update_stage(), UpdateStage::ReadyToRestart { .. }),
         )
     };
+    if is_ready_to_restart {
+        if container.updater().restart_into_updated_binary().is_ok() {
+            cx.quit();
+        }
+        return;
+    }
     cx.spawn(async move |cx| {
         cx.background_executor()
             .spawn(async move {
@@ -600,11 +745,25 @@ fn render_setting_row(
         .child(control)
 }
 
+const fn action_label_for(action: KeymapAction, labels: &'static UiLabels) -> &'static str {
+    match action {
+        KeymapAction::GlobalHotkey => labels.hotkey_action_global,
+        KeymapAction::OpenProject => labels.hotkey_action_open_project,
+        KeymapAction::SearchFiles => labels.hotkey_action_search_files,
+        KeymapAction::RescanProject => labels.hotkey_action_rescan,
+        KeymapAction::CopyContext => labels.hotkey_action_copy_context,
+        KeymapAction::PasteResponse => labels.hotkey_action_paste_response,
+        KeymapAction::ApplyChanges => labels.hotkey_action_apply_changes,
+        KeymapAction::UndoChanges => labels.hotkey_action_undo_changes,
+    }
+}
+
 impl Render for SettingsModalView {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = self.theme_variant.tokens();
         let colors = &theme.colors;
         let labels = self.locale.labels();
+        let hotkeys_modal_open = self.state.read(cx).is_hotkeys_modal_open();
         let state_close = self.state.clone();
         let appearance_sec = self.render_appearance_section(theme);
         let system_sec = self.render_system_section(theme, cx);
@@ -674,5 +833,6 @@ impl Render for SettingsModalView {
                     .child(system_sec)
                     .child(safety_sec),
             )
+            .children(hotkeys_modal_open.then(|| self.render_hotkeys_modal(theme, cx)))
     }
 }

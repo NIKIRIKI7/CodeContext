@@ -34,65 +34,21 @@ pub(crate) fn autofix_response_with_config(
     let divider_marker = config.search_replace_markers.divider.as_str();
     let replace_marker = config.search_replace_markers.replace_footer.as_str();
 
-    let (unwrapped_initial, outer_fence_stripped_1) =
+    let (unwrapped, outer_fence_stripped) =
         strip_outer_markdown_wrapper(raw, header_prefix, footer_marker);
-    let normalized_fences = normalize_glued_code_fences(unwrapped_initial);
 
-    let start_idx_1 = find_first_block_offset(
-        &normalized_fences,
+    let start_idx = find_first_block_offset(
+        unwrapped,
         header_prefix,
         search_marker,
         config.enable_unified_diff,
     )
     .unwrap_or(0);
-    let slice_after_preamble = normalized_fences.get(start_idx_1..).unwrap_or(&normalized_fences);
+    let preamble_stripped = outer_fence_stripped || start_idx > 0;
+    let working_slice = unwrapped.get(start_idx..).unwrap_or(unwrapped);
 
-    let (unwrapped_second, outer_fence_stripped_2) =
-        strip_outer_markdown_wrapper(slice_after_preamble, header_prefix, footer_marker);
-    let start_idx_2 = if outer_fence_stripped_2 {
-        find_first_block_offset(
-            unwrapped_second,
-            header_prefix,
-            search_marker,
-            config.enable_unified_diff,
-        )
-        .unwrap_or(0)
-    } else {
-        0
-    };
-
-    let preamble_stripped =
-        outer_fence_stripped_1 || outer_fence_stripped_2 || start_idx_1 > 0 || start_idx_2 > 0;
-    let working_slice = unwrapped_second.get(start_idx_2..).unwrap_or(unwrapped_second);
-
-    let mut fixed = working_slice.to_owned();
+    let mut fixed = normalize_glued_code_fences(working_slice);
     let mut closed_truncated_block = false;
-
-    if config.enable_search_replace
-        && let Some(last_search_pos) = rfind_line_start_marker(&fixed, search_marker)
-    {
-        let is_replace_unclosed = rfind_standalone_line_marker(&fixed, replace_marker)
-            .is_none_or(|last_rep| last_search_pos > last_rep);
-        if is_replace_unclosed {
-            if let Some(stripped_fence_tail) = fixed.trim_end().strip_suffix(CODE_FENCE)
-                && stripped_fence_tail.ends_with('\n')
-            {
-                fixed.truncate(stripped_fence_tail.len());
-            }
-            if !fixed.ends_with('\n') {
-                fixed.push('\n');
-            }
-            let has_divider = rfind_standalone_line_marker(&fixed, divider_marker)
-                .is_some_and(|div_pos| div_pos > last_search_pos);
-            if !has_divider {
-                fixed.push_str(divider_marker);
-                fixed.push('\n');
-            }
-            fixed.push_str(replace_marker);
-            fixed.push('\n');
-            closed_truncated_block = true;
-        }
-    }
 
     if let Some(last_header_pos) = rfind_unquoted_line_start_marker(&fixed, header_prefix) {
         let is_unclosed = rfind_unquoted_standalone_line_marker(&fixed, footer_marker)
@@ -111,6 +67,27 @@ pub(crate) fn autofix_response_with_config(
             closed_truncated_block = true;
         }
     } else {
+        if config.enable_search_replace
+            && let Some(last_search_pos) = rfind_line_start_marker(&fixed, search_marker)
+        {
+            let is_replace_unclosed = rfind_standalone_line_marker(&fixed, replace_marker)
+                .is_none_or(|last_rep| last_search_pos > last_rep);
+            if is_replace_unclosed {
+                if !fixed.ends_with('\n') {
+                    fixed.push('\n');
+                }
+                let has_divider = rfind_standalone_line_marker(&fixed, divider_marker)
+                    .is_some_and(|div_pos| div_pos > last_search_pos);
+                if !has_divider {
+                    fixed.push_str(divider_marker);
+                    fixed.push('\n');
+                }
+                fixed.push_str(replace_marker);
+                fixed.push('\n');
+                closed_truncated_block = true;
+            }
+        }
+
         let fence_count = fixed.lines().filter(|line| line.trim().starts_with(CODE_FENCE)).count();
         if fence_count % 2 == 1 {
             if !fixed.ends_with('\n') {
@@ -146,19 +123,18 @@ fn strip_outer_markdown_wrapper<'a>(
         || lang.eq_ignore_ascii_case("md");
 
     let inner = trimmed.get(first_nl + 1..).unwrap_or("");
-    let has_header = rfind_line_start_marker(inner, header_prefix).is_some()
-        || inner.lines().any(|l| {
-            let t = l.trim();
-            t.starts_with("=== CREATE") || t.starts_with("=== NEW") || t.starts_with("=== DELETE")
-        });
-    let has_both_header_and_footer =
-        has_header && rfind_line_start_marker(inner, footer_marker).is_some();
+    let contains_canonical_or_nested = rfind_line_start_marker(inner, header_prefix).is_some()
+        || rfind_line_start_marker(inner, footer_marker).is_some()
+        || inner.lines().any(|l| l.trim().starts_with("=== DELETE"));
 
-    if !is_wrapper_lang || (!has_header && !has_both_header_and_footer) {
+    if !is_wrapper_lang || !contains_canonical_or_nested {
         return (raw, false);
     }
 
-    let cleaned = inner.trim_end().strip_suffix(CODE_FENCE).map_or(inner, str::trim_end);
+    let cleaned = inner
+        .trim_end()
+        .strip_suffix(CODE_FENCE)
+        .map_or(inner, str::trim_end);
     (cleaned, true)
 }
 
@@ -172,11 +148,10 @@ fn normalize_glued_code_fences(input: &str) -> String {
             && !trimmed_end.contains('\"')
             && !trimmed_end.contains('\'')
         {
-            let without_fence = trimmed_end.trim_end_matches('`').trim_end();
-            if !without_fence.is_empty() {
-                out.push_str(without_fence);
-                out.push('\n');
-            }
+            let without_fence =
+                trimmed_end.strip_suffix(CODE_FENCE).unwrap_or(trimmed_end).trim_end();
+            out.push_str(without_fence);
+            out.push('\n');
             out.push_str(CODE_FENCE);
             out.push('\n');
         } else {
@@ -310,8 +285,7 @@ fn find_first_block_offset(
                 && (trimmed.contains('`') || trimmed.contains('/') || trimmed.contains('.')))
             || trimmed.starts_with(CODE_FENCE)
             || (!search_marker.is_empty() && trimmed.starts_with(search_marker))
-            || (enable_unified_diff
-                && (trimmed.starts_with("--- a/") || trimmed.starts_with("--- /dev/null")))
+            || (enable_unified_diff && (trimmed.starts_with("--- a/") || trimmed.starts_with("--- /dev/null")))
             || trimmed.starts_with("**`")
         {
             let leading_ws = line.len() - line.trim_start().len();

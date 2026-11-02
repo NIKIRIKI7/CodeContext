@@ -156,6 +156,44 @@ impl VirtualTextBuffer {
         let prefix = line.get(..safe_end).unwrap_or("");
         (prefix, true)
     }
+
+    /// Находит индекс строки заголовка файла (`=== FILE: <rel_path> ===`) за $O(\log N)$
+    /// по массиву `line_offsets` без единой аллокации в куче.
+    pub fn find_file_header_line(
+        &self,
+        rel_path: &str,
+        header_prefix: &str,
+        header_suffix: &str,
+    ) -> Option<usize> {
+        if rel_path.is_empty() || self.content.is_empty() {
+            return None;
+        }
+        let suffix_trimmed = header_suffix.trim_end_matches(['\r', '\n']);
+        let bytes = self.content.as_bytes();
+        let mut cursor = 0_usize;
+
+        while let Some(rel_pos) = self.content.get(cursor..).and_then(|s| s.find(rel_path)) {
+            let match_pos = cursor + rel_pos;
+            if match_pos >= header_prefix.len() {
+                let line_start = match_pos - header_prefix.len();
+                let at_line_start =
+                    line_start == 0 || bytes.get(line_start - 1).copied() == Some(b'\n');
+                let prefix_ok = self.content.get(line_start..match_pos) == Some(header_prefix);
+                let after_path = match_pos + rel_path.len();
+                let suffix_end = after_path + suffix_trimmed.len();
+                let suffix_ok = self.content.get(after_path..suffix_end) == Some(suffix_trimmed);
+                let line_end_ok =
+                    matches!(bytes.get(suffix_end).copied(), None | Some(b'\n' | b'\r'));
+
+                if at_line_start && prefix_ok && suffix_ok && line_end_ok {
+                    let target_offset = u32::try_from(line_start).ok()?;
+                    return self.line_offsets.binary_search(&target_offset).ok();
+                }
+            }
+            cursor = match_pos + rel_path.len();
+        }
+        None
+    }
 }
 
 #[inline]
@@ -245,14 +283,18 @@ impl RenderOnce for VirtualTextView {
             return div()
                 .size_full()
                 .flex()
+                .flex_row()
                 .items_center()
                 .justify_center()
-                .p(px(theme.spacing.xxl))
+                .p(px(theme.spacing.xl))
                 .bg(colors.bg_app)
+                .overflow_hidden()
                 .child(
                     div()
+                        .flex_1()
+                        .min_w(px(0.0))
                         .max_w(px(360.0))
-                        .p(px(theme.spacing.xxl))
+                        .p(px(theme.spacing.xl))
                         .rounded(px(theme.radius.lg))
                         .border_1()
                         .border_color(colors.border)

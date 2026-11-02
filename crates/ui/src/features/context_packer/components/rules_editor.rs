@@ -7,6 +7,7 @@ use gpui::{
     SharedString, StatefulInteractiveElement as _, Styled as _, Window, div, px,
 };
 
+use crate::features::context_packer::components::file_tree::TreeSortMode;
 use crate::locale::UiLabels;
 use crate::shared::primitives::badge::{Badge, BadgeVariant};
 use crate::shared::primitives::button::{ButtonVariant, UiButton};
@@ -35,12 +36,16 @@ pub type PopoverToggleCallback = Arc<dyn Fn(&ClickEvent, &mut Window, &mut App) 
 #[derive(IntoElement)]
 pub struct RulesEditorComponent {
     preset: Preset,
+    sort_mode: TreeSortMode,
+    all_collapsed: bool,
     popover_open: bool,
     labels: &'static UiLabels,
     theme: &'static ThemeTokens,
     on_toggle_rule: Option<RuleToggleCallback>,
     on_select_chunk_limit: Option<ChunkLimitSelectCallback>,
     on_toggle_popover: Option<PopoverToggleCallback>,
+    on_toggle_sort_mode: Option<PopoverToggleCallback>,
+    on_toggle_expand_collapse_all: Option<PopoverToggleCallback>,
 }
 
 impl fmt::Debug for RulesEditorComponent {
@@ -57,12 +62,16 @@ impl RulesEditorComponent {
     pub const fn new(preset: Preset, labels: &'static UiLabels) -> Self {
         Self {
             preset,
+            sort_mode: TreeSortMode::AlphabeticalTree,
+            all_collapsed: false,
             popover_open: false,
             labels,
             theme: active_theme(),
             on_toggle_rule: None,
             on_select_chunk_limit: None,
             on_toggle_popover: None,
+            on_toggle_sort_mode: None,
+            on_toggle_expand_collapse_all: None,
         }
     }
 
@@ -70,6 +79,18 @@ impl RulesEditorComponent {
     #[inline]
     pub const fn with_theme(mut self, theme: &'static ThemeTokens) -> Self {
         self.theme = theme;
+        self
+    }
+
+    #[must_use]
+    #[inline]
+    pub const fn with_tree_view_state(
+        mut self,
+        sort_mode: TreeSortMode,
+        all_collapsed: bool,
+    ) -> Self {
+        self.sort_mode = sort_mode;
+        self.all_collapsed = all_collapsed;
         self
     }
 
@@ -109,6 +130,17 @@ impl RulesEditorComponent {
         self.on_toggle_popover = Some(Arc::new(handler));
         self
     }
+
+    #[must_use]
+    pub fn with_tree_view_actions(
+        mut self,
+        on_toggle_sort_mode: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
+        on_toggle_expand_collapse_all: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.on_toggle_sort_mode = Some(Arc::new(on_toggle_sort_mode));
+        self.on_toggle_expand_collapse_all = Some(Arc::new(on_toggle_expand_collapse_all));
+        self
+    }
 }
 
 impl RenderOnce for RulesEditorComponent {
@@ -137,15 +169,18 @@ impl RenderOnce for RulesEditorComponent {
 
         let volume_summary = match self.preset.template.max_chunk_bytes {
             None => SharedString::from(labels.chunk_single_volume),
-            Some(CHUNK_PRESET_512_KB) => {
-                SharedString::from(format!("{}: 512K", labels.chunk_selector_prefix))
-            }
-            Some(CHUNK_PRESET_1_MB) => {
-                SharedString::from(format!("{}: 1M", labels.chunk_selector_prefix))
-            }
-            Some(CHUNK_PRESET_2_MB) => {
-                SharedString::from(format!("{}: 2M", labels.chunk_selector_prefix))
-            }
+            Some(CHUNK_PRESET_512_KB) => SharedString::from(format!(
+                "{}: {}",
+                labels.chunk_selector_prefix, labels.chunk_preset_512k
+            )),
+            Some(CHUNK_PRESET_1_MB) => SharedString::from(format!(
+                "{}: {}",
+                labels.chunk_selector_prefix, labels.chunk_preset_1m
+            )),
+            Some(CHUNK_PRESET_2_MB) => SharedString::from(format!(
+                "{}: {}",
+                labels.chunk_selector_prefix, labels.chunk_preset_2m
+            )),
             Some(custom) => SharedString::from(format_bytes_human(custom as u64)),
         };
 
@@ -157,19 +192,13 @@ impl RenderOnce for RulesEditorComponent {
             .text_color(theme.colors.text_muted)
             .child(volume_summary);
 
-        if let Some(cb) = self.on_toggle_popover {
-            volume_hint = volume_hint.on_click(move |ev, w, c| cb(ev, w, c));
+        if let Some(ref cb) = self.on_toggle_popover {
+            let cb_clone = Arc::clone(cb);
+            volume_hint = volume_hint.on_click(move |ev, w, c| cb_clone(ev, w, c));
         }
 
         let inspector_drawer = if self.popover_open {
-            render_categorized_filter_inspector(
-                &self.preset,
-                labels,
-                theme,
-                self.on_toggle_rule.as_ref(),
-                self.on_select_chunk_limit.as_ref(),
-            )
-            .into_any_element()
+            self.render_categorized_filter_inspector().into_any_element()
         } else {
             div().into_any_element()
         };
@@ -198,99 +227,154 @@ impl RenderOnce for RulesEditorComponent {
     }
 }
 
-fn render_categorized_filter_inspector(
-    preset: &Preset,
-    labels: &'static UiLabels,
-    theme: &'static ThemeTokens,
-    on_toggle: Option<&RuleToggleCallback>,
-    on_select_chunk_limit: Option<&ChunkLimitSelectCallback>,
-) -> impl IntoElement + use<> {
-    let colors = &theme.colors;
-    let fs_items: &[(&str, &str, bool, RuleToggleKind)] = &[
-        (
-            "rule-gitignore",
-            labels.rule_gitignore,
-            preset.respect_gitignore,
-            RuleToggleKind::RespectGitignore,
-        ),
-        (
-            "rule-symlinks",
-            labels.rule_symlinks,
-            preset.follow_symlinks,
-            RuleToggleKind::FollowSymlinks,
-        ),
-    ];
+impl RulesEditorComponent {
+    fn render_categorized_filter_inspector(&self) -> impl IntoElement + use<> {
+        let theme = self.theme;
+        let labels = self.labels;
+        let colors = &theme.colors;
+        let on_toggle = self.on_toggle_rule.as_ref();
 
-    let transform_items: &[(&str, &str, bool, RuleToggleKind)] = &[
-        ("rule-minify", labels.rule_minify, preset.minify_code, RuleToggleKind::MinifyCode),
-        (
-            "rule-crlf",
-            labels.rule_crlf_to_lf,
-            preset.normalize_line_endings,
-            RuleToggleKind::NormalizeLineEndings,
-        ),
-        (
-            "rule-tree",
-            labels.rule_ascii_tree,
-            preset.template.include_file_tree,
-            RuleToggleKind::IncludeFileTree,
-        ),
-    ];
+        let tree_controls_row = self.render_tree_view_controls_row();
 
-    let mut container = div()
-        .w_full()
-        .px(px(theme.spacing.lg))
-        .py(px(theme.spacing.md))
-        .bg(colors.bg_elevated)
-        .border_b_1()
-        .border_color(colors.border)
-        .flex()
-        .flex_col()
-        .gap(px(theme.spacing.xs))
-        .child(
-            div()
-                .font_family(FONT_FAMILY_UI)
-                .text_xs()
-                .text_color(colors.text_muted)
-                .child(labels.rules_section_fs),
-        );
+        let fs_items: &[(&str, &str, bool, RuleToggleKind)] = &[
+            (
+                "rule-gitignore",
+                labels.rule_gitignore,
+                self.preset.respect_gitignore,
+                RuleToggleKind::RespectGitignore,
+            ),
+            (
+                "rule-symlinks",
+                labels.rule_symlinks,
+                self.preset.follow_symlinks,
+                RuleToggleKind::FollowSymlinks,
+            ),
+        ];
 
-    for &(id, label, is_on, kind) in fs_items {
-        container =
-            container.child(render_inspector_switch_row(id, label, is_on, kind, theme, on_toggle));
-    }
+        let transform_items: &[(&str, &str, bool, RuleToggleKind)] = &[
+            (
+                "rule-minify",
+                labels.rule_minify,
+                self.preset.minify_code,
+                RuleToggleKind::MinifyCode,
+            ),
+            (
+                "rule-crlf",
+                labels.rule_crlf_to_lf,
+                self.preset.normalize_line_endings,
+                RuleToggleKind::NormalizeLineEndings,
+            ),
+            (
+                "rule-tree",
+                labels.rule_ascii_tree,
+                self.preset.template.include_file_tree,
+                RuleToggleKind::IncludeFileTree,
+            ),
+        ];
 
-    container = container.child(
-        div()
-            .pt(px(theme.spacing.xs))
-            .font_family(FONT_FAMILY_UI)
-            .text_xs()
-            .text_color(colors.text_muted)
-            .child(labels.rules_section_transform),
-    );
+        let mut container = div()
+            .w_full()
+            .px(px(theme.spacing.lg))
+            .py(px(theme.spacing.md))
+            .bg(colors.bg_elevated)
+            .border_b_1()
+            .border_color(colors.border)
+            .flex()
+            .flex_col()
+            .gap(px(theme.spacing.xs))
+            .child(
+                div()
+                    .font_family(FONT_FAMILY_UI)
+                    .text_xs()
+                    .text_color(colors.text_muted)
+                    .child(labels.rules_section_tree_view),
+            )
+            .child(tree_controls_row)
+            .child(
+                div()
+                    .pt(px(theme.spacing.xs))
+                    .font_family(FONT_FAMILY_UI)
+                    .text_xs()
+                    .text_color(colors.text_muted)
+                    .child(labels.rules_section_fs),
+            );
 
-    for &(id, label, is_on, kind) in transform_items {
-        container =
-            container.child(render_inspector_switch_row(id, label, is_on, kind, theme, on_toggle));
-    }
+        for &(id, label, is_on, kind) in fs_items {
+            container = container
+                .child(render_inspector_switch_row(id, label, is_on, kind, theme, on_toggle));
+        }
 
-    let chunks_row = render_chunk_size_selector(
-        preset.template.max_chunk_bytes,
-        labels,
-        theme,
-        on_select_chunk_limit,
-    );
-
-    container
-        .child(
+        container = container.child(
             div()
                 .pt(px(theme.spacing.xs))
                 .font_family(FONT_FAMILY_UI)
                 .text_xs()
                 .text_color(colors.text_muted)
-                .child(labels.rules_section_volumes),
-        )
-        .child(chunks_row)
+                .child(labels.rules_section_transform),
+        );
+
+        for &(id, label, is_on, kind) in transform_items {
+            container = container
+                .child(render_inspector_switch_row(id, label, is_on, kind, theme, on_toggle));
+        }
+
+        let chunks_row = render_chunk_size_selector(
+            self.preset.template.max_chunk_bytes,
+            labels,
+            theme,
+            self.on_select_chunk_limit.as_ref(),
+        );
+
+        container
+            .child(
+                div()
+                    .pt(px(theme.spacing.xs))
+                    .font_family(FONT_FAMILY_UI)
+                    .text_xs()
+                    .text_color(colors.text_muted)
+                    .child(labels.rules_section_volumes),
+            )
+            .child(chunks_row)
+    }
+
+    fn render_tree_view_controls_row(&self) -> impl IntoElement + use<> {
+        let theme = self.theme;
+        let labels = self.labels;
+        let is_heavy = self.sort_mode == TreeSortMode::TopHeavyFiles;
+        let sort_label = if is_heavy { labels.tree_sort_heavy } else { labels.tree_sort_az };
+        let fold_label =
+            if self.all_collapsed { labels.btn_expand_all } else { labels.btn_collapse_all };
+        let fold_icon =
+            if self.all_collapsed { UiIcon::ChevronsUpDown } else { UiIcon::ChevronsDownUp };
+
+        let mut sort_btn = UiButton::new("inspector-sort-mode-btn", sort_label)
+            .variant(ButtonVariant::FilterPill)
+            .with_theme(theme)
+            .active(is_heavy);
+        if let Some(ref cb) = self.on_toggle_sort_mode {
+            let cb_clone = Arc::clone(cb);
+            sort_btn = sort_btn.on_click(move |ev, w, c| cb_clone(ev, w, c));
+        }
+
+        let mut fold_btn = UiButton::new("inspector-fold-all-btn", fold_label)
+            .icon(fold_icon)
+            .variant(ButtonVariant::FilterPill)
+            .with_theme(theme)
+            .active(self.all_collapsed);
+        if let Some(ref cb) = self.on_toggle_expand_collapse_all {
+            let cb_clone = Arc::clone(cb);
+            fold_btn = fold_btn.on_click(move |ev, w, c| cb_clone(ev, w, c));
+        }
+
+        div()
+            .w_full()
+            .flex()
+            .flex_row()
+            .items_center()
+            .gap(px(theme.spacing.xs))
+            .child(sort_btn)
+            .child(fold_btn)
+    }
 }
 
 fn render_inspector_switch_row(
@@ -357,9 +441,9 @@ fn render_chunk_size_selector(
     let colors = &theme.colors;
     let presets: &[(&str, Option<usize>)] = &[
         (labels.chunk_single_volume, None),
-        ("512K", Some(CHUNK_PRESET_512_KB)),
-        ("1M", Some(CHUNK_PRESET_1_MB)),
-        ("2M", Some(CHUNK_PRESET_2_MB)),
+        (labels.chunk_preset_512k, Some(CHUNK_PRESET_512_KB)),
+        (labels.chunk_preset_1m, Some(CHUNK_PRESET_1_MB)),
+        (labels.chunk_preset_2m, Some(CHUNK_PRESET_2_MB)),
     ];
 
     let mut row = div()

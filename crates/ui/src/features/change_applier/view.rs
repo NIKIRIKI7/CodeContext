@@ -147,6 +147,7 @@ impl Render for ChangeApplierView {
                 is_truncated: false,
                 is_sandbox_safe: true,
                 has_conflict: false,
+                is_applied: false,
             },
             |f| DiffViewMeta {
                 file_path: f.rel_path.clone(),
@@ -156,6 +157,7 @@ impl Render for ChangeApplierView {
                 is_truncated: f.is_truncated,
                 is_sandbox_safe: f.is_sandbox_safe,
                 has_conflict: f.has_conflict,
+                is_applied: f.is_applied,
             },
         );
 
@@ -189,10 +191,12 @@ impl Render for ChangeApplierView {
         );
 
         let state_sel = self.state.clone();
+        let state_toggle_file = self.state.clone();
         let state_bak = self.state.clone();
         let state_opts = self.state.clone();
         let state_apply = self.state.clone();
         let state_undo = self.state.clone();
+        let state_apply_single = self.state.clone();
         let right_header_tabs = FileChangesListComponent::new(parsed_files, selected_idx)
             .with_backups_enabled(backups_enabled)
             .with_options_open(options_open)
@@ -201,6 +205,13 @@ impl Render for ChangeApplierView {
                 state_sel.update(cx, |s, cx| {
                     s.select_parsed_file(idx);
                     cx.notify();
+                });
+            })
+            .on_toggle_file_select(move |idx, _win, cx| {
+                state_toggle_file.update(cx, |s, cx| {
+                    if s.toggle_file_selected(idx) {
+                        cx.notify();
+                    }
                 });
             })
             .on_toggle_backup(move |_ev, _win, cx| {
@@ -217,28 +228,30 @@ impl Render for ChangeApplierView {
             })
             .with_apply_actions(
                 move |_ev, _win, cx| {
-                    let is_ok = state_apply.update(cx, |s, cx| {
-                        let res = s.apply_changes_to_disk().is_ok();
+                    state_apply.update(cx, |s, cx| {
+                        let _ = s.apply_changes_to_disk();
                         cx.notify();
-                        res
                     });
-                    if is_ok {
-                        Self::spawn_toast_auto_dismiss(state_apply.clone(), cx);
-                    }
+                    Self::spawn_toast_auto_dismiss(state_apply.clone(), cx);
                 },
                 move |_ev, _win, cx| {
-                    let is_ok = state_undo.update(cx, |s, cx| {
-                        let res = s.undo_last_apply().is_ok();
+                    state_undo.update(cx, |s, cx| {
+                        let _ = s.undo_last_apply();
                         cx.notify();
-                        res
                     });
-                    if is_ok {
-                        Self::spawn_toast_auto_dismiss(state_undo.clone(), cx);
-                    }
+                    Self::spawn_toast_auto_dismiss(state_undo.clone(), cx);
                 },
             );
 
-        let diff_view = DiffViewComponent::new(diff_meta, selected_buf).with_context(labels, theme);
+        let diff_view = DiffViewComponent::new(diff_meta, selected_buf)
+            .with_context(labels, theme)
+            .on_apply_single_file(move |_ev, _win, cx| {
+                state_apply_single.update(cx, |s, cx| {
+                    let _ = s.apply_single_file_to_disk(selected_idx);
+                    cx.notify();
+                });
+                Self::spawn_toast_auto_dismiss(state_apply_single.clone(), cx);
+            });
 
         let right_col = div()
             .size_full()

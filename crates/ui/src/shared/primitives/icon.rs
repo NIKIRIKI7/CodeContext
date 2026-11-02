@@ -21,6 +21,7 @@ pub enum UiIcon {
     ChevronsUpDown,
     ChevronsDownUp,
     Check,
+    Plus,
     Minus,
     Search,
     X,
@@ -52,6 +53,7 @@ impl UiIcon {
             Self::ChevronsUpDown => "icons/chevrons-up-down.svg",
             Self::ChevronsDownUp => "icons/chevrons-down-up.svg",
             Self::Check => "icons/check.svg",
+            Self::Plus => "icons/plus.svg",
             Self::Minus => "icons/minus.svg",
             Self::Search => "icons/search.svg",
             Self::X => "icons/x.svg",
@@ -153,6 +155,9 @@ pub fn load_icon_bytes(path: &str) -> Option<Cow<'static, [u8]>> {
         "icons/check.svg" => {
             r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>"#
         }
+        "icons/plus.svg" => {
+            r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>"#
+        }
         "icons/minus.svg" => {
             r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>"#
         }
@@ -202,6 +207,7 @@ pub fn list_icon_paths() -> Vec<SharedString> {
         SharedString::from(UiIcon::ChevronsUpDown.path()),
         SharedString::from(UiIcon::ChevronsDownUp.path()),
         SharedString::from(UiIcon::Check.path()),
+        SharedString::from(UiIcon::Plus.path()),
         SharedString::from(UiIcon::Minus.path()),
         SharedString::from(UiIcon::Search.path()),
         SharedString::from(UiIcon::X.path()),

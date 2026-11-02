@@ -8,8 +8,9 @@ use core::shared_kernel::fs::line_ending::LineEnding;
 use similar::{ChangeTag, TextDiff};
 
 use super::fuzzy_matcher::{
-    try_ellipsis_and_comment_tolerant_replace, try_syntax_normalized_replace,
-    try_trimmed_subsequence_replace, try_zed_fuzzy_similarity_replace,
+    try_ellipsis_and_comment_tolerant_replace, try_formatter_agnostic_replace,
+    try_syntax_normalized_replace, try_trimmed_subsequence_replace,
+    try_zed_fuzzy_similarity_replace,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -34,9 +35,10 @@ const SEARCH_REPLACE_MATCHER_CHAIN: &[BlockMatcherFn] = &[
     try_line_ending_normalized_replace,
     try_trimmed_subsequence_replace,
     try_syntax_normalized_replace,
+    try_formatter_agnostic_replace,
+    try_idempotent_already_applied,
     try_ellipsis_and_comment_tolerant_replace,
     try_zed_fuzzy_similarity_replace,
-    try_idempotent_already_applied,
 ];
 
 pub fn apply_operation_to_text(
@@ -457,5 +459,68 @@ mod tests {
         };
         let out = apply_operation_to_text("src/s.rs", Some(orig), &op, false);
         assert_eq!(out.status, PatchResolutionStatus::SearchBlockConflict { unmatched_count: 1 });
+    }
+
+    #[test]
+    fn formatter_agnostic_matcher_handles_rustfmt_and_prettier_line_reflows() {
+        let formatted_on_disk = concat!(
+            "fn build_popover() {\n",
+            "    let mut recent_projects =\n",
+            "        Vec::with_capacity(dto.recent_projects.len().min(MAX_RECENT_PROJECTS));\n",
+            "    let active_path = packer_snap.project_root().map(|p| {\n",
+            "        std::fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf()).display().to_string()\n",
+            "    });\n",
+            "}\n"
+        );
+        let unformatted_search = concat!(
+            "    let mut recent_projects = Vec::with_capacity(dto.recent_projects.len().min(MAX_RECENT_PROJECTS));\n",
+            "    let active_path = packer_snap.project_root().map(|p| {\n",
+            "        std::fs::canonicalize(p)\n",
+            "            .unwrap_or_else(|_| p.to_path_buf())\n",
+            "            .display()\n",
+            "            .to_string()\n",
+            "    });"
+        );
+        let op = FileOperation::SearchReplace {
+            blocks: vec![SearchReplaceBlock::new(
+                unformatted_search.to_owned(),
+                "    let active_path = None;".to_owned(),
+            )],
+        };
+        let out = apply_operation_to_text("src/view.rs", Some(formatted_on_disk), &op, false);
+        assert_eq!(out.status, PatchResolutionStatus::Ready);
+        assert_eq!(out.resolved_content, "fn build_popover() {\n    let active_path = None;\n}\n");
+    }
+
+    #[test]
+    fn reapplying_already_applied_block_never_duplicates_trailing_anchor_line() {
+        let already_patched = concat!(
+            "pub struct UiLabels {\n",
+            "    pub rules_header: &'static str,\n",
+            "    pub rules_active_suffix: &'static str,\n",
+            "    pub rules_section_tree_view: &'static str,\n",
+            "    pub rules_section_fs: &'static str,\n",
+            "}\n"
+        );
+        let op = FileOperation::SearchReplace {
+            blocks: vec![SearchReplaceBlock::new(
+                concat!(
+                    "    pub rules_header: &'static str,\n",
+                    "    pub rules_active_suffix: &'static str,\n",
+                    "    pub rules_section_fs: &'static str,"
+                )
+                .to_owned(),
+                concat!(
+                    "    pub rules_header: &'static str,\n",
+                    "    pub rules_active_suffix: &'static str,\n",
+                    "    pub rules_section_tree_view: &'static str,\n",
+                    "    pub rules_section_fs: &'static str,"
+                )
+                .to_owned(),
+            )],
+        };
+        let out = apply_operation_to_text("src/locale.rs", Some(already_patched), &op, false);
+        assert_eq!(out.status, PatchResolutionStatus::Ready);
+        assert_eq!(out.resolved_content.matches("rules_section_fs").count(), 1);
     }
 }

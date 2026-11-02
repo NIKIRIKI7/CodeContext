@@ -1,7 +1,7 @@
 use core::packing::aggregates::project::Project;
 use gpui::{
-    ClipboardItem, Context, Entity, IntoElement, ParentElement as _, Render, Styled as _,
-    UniformListScrollHandle, Window, div,
+    ClipboardItem, Context, Entity, IntoElement, ParentElement as _, Render, ScrollStrategy,
+    Styled as _, UniformListScrollHandle, Window, div,
 };
 
 use crate::features::context_packer::components::file_tree::FileTreeComponent;
@@ -68,8 +68,16 @@ impl Render for ContextPackerView {
         let theme = self.theme_variant.tokens();
         let labels = self.locale.labels();
         let snapshot = self.state.read(cx);
+        if let Some(tree_row) = snapshot.take_pending_tree_scroll() {
+            self.tree_scroll_handle.scroll_to_item(tree_row, ScrollStrategy::Top);
+        }
+        if let Some(preview_line) = snapshot.take_pending_preview_scroll() {
+            self.preview_scroll_handle.scroll_to_item_strict(preview_line, ScrollStrategy::Top);
+        }
         let banner_items = snapshot.active_banner_items_localized(self.locale);
         let tree_projection = snapshot.tree_projection().clone();
+        let focused_tree_index = snapshot.focused_tree_index();
+        let sort_mode = snapshot.sort_mode();
         let search_query = snapshot.search_query().to_owned();
         let ui_status = snapshot.ui_status();
         let all_collapsed = snapshot.are_all_dirs_collapsed();
@@ -109,11 +117,18 @@ impl Render for ContextPackerView {
         let banner = self.build_warning_banner(banner_items);
         let file_tree = self.build_file_tree(
             tree_projection,
+            focused_tree_index,
+            sort_mode,
             search_query,
             ui_status.search_focused,
             all_collapsed,
         );
-        let rules_editor = self.build_rules_editor(active_preset, ui_status.filters_popover_open);
+        let rules_editor = self.build_rules_editor(
+            active_preset,
+            sort_mode,
+            all_collapsed,
+            ui_status.filters_popover_open,
+        );
         let live_preview = self.build_live_preview(preview_props);
 
         let left_column = div()
@@ -160,6 +175,8 @@ impl ContextPackerView {
     fn build_file_tree(
         &self,
         projection: crate::features::context_packer::components::file_tree::FlatTreeProjection,
+        focused_tree_index: Option<usize>,
+        sort_mode: crate::features::context_packer::components::file_tree::TreeSortMode,
         search_query: String,
         search_focused: bool,
         all_collapsed: bool,
@@ -168,9 +185,11 @@ impl ContextPackerView {
         let theme = self.theme_variant.tokens();
         let state_check = self.state.clone();
         let state_expand = self.state.clone();
+        let state_select_file = self.state.clone();
         let state_secret = self.state.clone();
         let state_master = self.state.clone();
         let state_fold = self.state.clone();
+        let state_sort = self.state.clone();
         let state_focus_search = self.state.clone();
         let state_clear_search = self.state.clone();
         let state_open_proj = self.state.clone();
@@ -178,8 +197,16 @@ impl ContextPackerView {
 
         FileTreeComponent::new(projection, labels)
             .with_theme(theme)
+            .with_focused_index(focused_tree_index)
+            .with_sort_mode(sort_mode)
             .with_search_state(search_query, search_focused, all_collapsed)
             .track_scroll(self.tree_scroll_handle.clone())
+            .on_toggle_sort_mode(move |_ev, _win, cx| {
+                state_sort.update(cx, |s, cx| {
+                    s.toggle_tree_sort_mode();
+                    cx.notify();
+                });
+            })
             .on_open_project(move |_ev, _win, cx| {
                 let rx = cx.prompt_for_paths(gpui::PathPromptOptions {
                     files: false,
@@ -211,6 +238,13 @@ impl ContextPackerView {
                 let target_dir = dir_path.to_owned();
                 state_expand.update(cx, |s, cx| {
                     s.toggle_directory_expanded(&target_dir);
+                    cx.notify();
+                });
+            })
+            .on_select_file(move |row_idx, file_path, _win, cx| {
+                let target_file = file_path.to_owned();
+                state_select_file.update(cx, |s, cx| {
+                    s.select_file_in_tree_and_jump(row_idx, &target_file);
                     cx.notify();
                 });
             })
@@ -252,6 +286,8 @@ impl ContextPackerView {
     fn build_rules_editor(
         &self,
         preset: core::preset::models::preset::Preset,
+        sort_mode: crate::features::context_packer::components::file_tree::TreeSortMode,
+        all_collapsed: bool,
         popover_open: bool,
     ) -> RulesEditorComponent {
         let labels = self.locale.labels();
@@ -259,10 +295,27 @@ impl ContextPackerView {
         let state_rule = self.state.clone();
         let state_chunk = self.state.clone();
         let state_popover = self.state.clone();
+        let state_sort = self.state.clone();
+        let state_fold = self.state.clone();
 
         RulesEditorComponent::new(preset, labels)
             .with_theme(theme)
+            .with_tree_view_state(sort_mode, all_collapsed)
             .with_popover_open(popover_open)
+            .with_tree_view_actions(
+                move |_ev, _win, cx| {
+                    state_sort.update(cx, |s, cx| {
+                        s.toggle_tree_sort_mode();
+                        cx.notify();
+                    });
+                },
+                move |_ev, _win, cx| {
+                    state_fold.update(cx, |s, cx| {
+                        s.toggle_expand_collapse_all();
+                        cx.notify();
+                    });
+                },
+            )
             .on_toggle_rule(move |kind, _win, cx| {
                 state_rule.update(cx, |s, cx| {
                     s.toggle_rule(kind);

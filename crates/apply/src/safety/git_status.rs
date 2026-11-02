@@ -9,15 +9,24 @@ pub(crate) fn check_dirty_git_files(
         return Vec::new();
     }
 
-    let output = Command::new("git")
+    let mut cmd = Command::new("git");
+    cmd.arg("--no-optional-locks")
         .arg("-C")
         .arg(project_root)
         .arg("status")
         .arg("--porcelain")
         .arg("--untracked-files=no")
         .arg("--")
-        .args(target_rel_paths)
-        .output();
+        .args(target_rel_paths);
+
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt as _;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+
+    let output = cmd.output();
 
     let Ok(out) = output else {
         return Vec::new();

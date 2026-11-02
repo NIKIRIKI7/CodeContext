@@ -10,6 +10,90 @@ pub const DEFAULT_GLOBAL_HOTKEY: &str = "Ctrl+Shift+C";
 pub const DEFAULT_UPDATE_CHANNEL: &str = "stable";
 /// Канонический репозиторий синхронизации релизов по умолчанию.
 pub const DEFAULT_UPDATE_REPO_URL: &str = "https://github.com/NIKIRIKI7/CodeContext.git";
+/// Максимальное количество сохраняемых недавних проектов (MRU).
+pub const MAX_RECENT_PROJECTS: usize = 8;
+
+/// Действие приложения, к которому привязано сочетание клавиш.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum KeymapAction {
+    GlobalHotkey,
+    OpenProject,
+    SearchFiles,
+    RescanProject,
+    CopyContext,
+    PasteResponse,
+    ApplyChanges,
+    UndoChanges,
+}
+
+impl KeymapAction {
+    pub const ALL: [Self; 8] = [
+        Self::GlobalHotkey,
+        Self::OpenProject,
+        Self::SearchFiles,
+        Self::RescanProject,
+        Self::CopyContext,
+        Self::PasteResponse,
+        Self::ApplyChanges,
+        Self::UndoChanges,
+    ];
+}
+
+/// Пользовательская таблица горячих клавиш для основных команд приложения.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct KeymapConfig {
+    pub open_project: String,
+    pub search_files: String,
+    pub rescan_project: String,
+    pub copy_context: String,
+    pub paste_response: String,
+    pub apply_changes: String,
+    pub undo_changes: String,
+}
+
+impl Default for KeymapConfig {
+    fn default() -> Self {
+        Self {
+            open_project: "Ctrl+O".to_owned(),
+            search_files: "Ctrl+F".to_owned(),
+            rescan_project: "Ctrl+R".to_owned(),
+            copy_context: "Ctrl+C".to_owned(),
+            paste_response: "Ctrl+V".to_owned(),
+            apply_changes: "Ctrl+Enter".to_owned(),
+            undo_changes: "Ctrl+Z".to_owned(),
+        }
+    }
+}
+
+impl KeymapConfig {
+    #[inline]
+    pub fn shortcut_for<'a>(&'a self, action: KeymapAction, global_hotkey: &'a str) -> &'a str {
+        match action {
+            KeymapAction::GlobalHotkey => global_hotkey,
+            KeymapAction::OpenProject => &self.open_project,
+            KeymapAction::SearchFiles => &self.search_files,
+            KeymapAction::RescanProject => &self.rescan_project,
+            KeymapAction::CopyContext => &self.copy_context,
+            KeymapAction::PasteResponse => &self.paste_response,
+            KeymapAction::ApplyChanges => &self.apply_changes,
+            KeymapAction::UndoChanges => &self.undo_changes,
+        }
+    }
+
+    #[inline]
+    pub fn set_shortcut(&mut self, action: KeymapAction, canonical: String) {
+        match action {
+            KeymapAction::GlobalHotkey => {}
+            KeymapAction::OpenProject => self.open_project = canonical,
+            KeymapAction::SearchFiles => self.search_files = canonical,
+            KeymapAction::RescanProject => self.rescan_project = canonical,
+            KeymapAction::CopyContext => self.copy_context = canonical,
+            KeymapAction::PasteResponse => self.paste_response = canonical,
+            KeymapAction::ApplyChanges => self.apply_changes = canonical,
+            KeymapAction::UndoChanges => self.undo_changes = canonical,
+        }
+    }
+}
 
 /// Источник происхождения итогового пресета после прохождения каскада.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -75,6 +159,12 @@ pub struct GlobalConfig {
     pub update_channel: String,
     /// URL репозитория для синхронизации обновлений.
     pub update_repo_url: String,
+    /// Список недавно открытых папок проектов (MRU, до `MAX_RECENT_PROJECTS`).
+    #[serde(default)]
+    pub recent_projects: Vec<String>,
+    /// Настраиваемые горячие клавиши по действиям.
+    #[serde(default)]
+    pub keymap: KeymapConfig,
 }
 
 impl Default for GlobalConfig {
@@ -88,6 +178,8 @@ impl Default for GlobalConfig {
             create_backups_by_default: true,
             update_channel: DEFAULT_UPDATE_CHANNEL.to_owned(),
             update_repo_url: DEFAULT_UPDATE_REPO_URL.to_owned(),
+            recent_projects: Vec::new(),
+            keymap: KeymapConfig::default(),
         }
     }
 }
@@ -107,6 +199,26 @@ impl GlobalConfig {
     pub fn find_preset(&self, name: &str) -> Option<&Preset> {
         let trimmed = name.trim();
         self.presets.iter().find(|p| p.name == trimmed || p.name.eq_ignore_ascii_case(trimmed))
+    }
+
+    /// Записывает путь проекта в начало списка недавних (MRU) без дубликатов.
+    /// Возвращает `true`, если список изменился.
+    pub fn record_recent_project(&mut self, project_path: &str) -> bool {
+        let normalized = normalize_recent_project_path(project_path);
+        if normalized.is_empty() {
+            return false;
+        }
+        if self
+            .recent_projects
+            .first()
+            .is_some_and(|first| paths_are_equivalent(first, normalized) && first == normalized)
+        {
+            return false;
+        }
+        self.recent_projects.retain(|existing| !paths_are_equivalent(existing, normalized));
+        self.recent_projects.insert(0, normalized.to_owned());
+        self.recent_projects.truncate(MAX_RECENT_PROJECTS);
+        true
     }
 
     /// Добавляет новый или обновляет существующий пресет с тем же именем.
@@ -136,6 +248,39 @@ impl GlobalConfig {
             self.active_preset_name.clone_from(&first.name);
         }
         removed
+    }
+}
+
+/// Нормализует строковый путь проекта без аллокаций (убирает `\\?\` и хвостовые слэши).
+#[inline]
+pub fn normalize_recent_project_path(raw: &str) -> &str {
+    let trimmed = raw.trim();
+    let without_verbatim = trimmed.strip_prefix(r"\\?\").unwrap_or(trimmed);
+    let stripped = without_verbatim.trim_end_matches(['/', '\\']);
+    if stripped.is_empty() { without_verbatim } else { stripped }
+}
+
+/// Сравнивает два пути проекта без аллокаций с учётом префикса `\\?\`, направления слэшей и регистра ОС.
+#[inline]
+pub fn paths_are_equivalent(a: &str, b: &str) -> bool {
+    let na = normalize_recent_project_path(a);
+    let nb = normalize_recent_project_path(b);
+    let mut chars_a = na.chars();
+    let mut chars_b = nb.chars();
+    loop {
+        match (chars_a.next(), chars_b.next()) {
+            (None, None) => return true,
+            (Some(ca), Some(cb)) => {
+                if (ca == '/' || ca == '\\') && (cb == '/' || cb == '\\') {
+                    continue;
+                }
+                let same = if cfg!(windows) { ca.eq_ignore_ascii_case(&cb) } else { ca == cb };
+                if !same {
+                    return false;
+                }
+            }
+            _ => return false,
+        }
     }
 }
 

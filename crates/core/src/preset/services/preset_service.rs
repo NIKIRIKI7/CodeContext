@@ -64,6 +64,18 @@ where
         Ok(global)
     }
 
+    pub fn record_recent_project(
+        &self,
+        project_root: &Path,
+    ) -> Result<GlobalConfig, ConfigPortError> {
+        let mut global = self.load_global_config();
+        let path_str = project_root.to_string_lossy();
+        if global.record_recent_project(&path_str) {
+            self.repo.save_global(&global)?;
+        }
+        Ok(global)
+    }
+
     pub fn switch_active_preset(&self, preset_name: &str) -> Result<GlobalConfig, ConfigPortError> {
         let (mut global, _) = self.repo.load_global().unwrap_or_default();
         if let Some(found_name) = global.find_preset(preset_name).map(|f| f.name.clone()) {

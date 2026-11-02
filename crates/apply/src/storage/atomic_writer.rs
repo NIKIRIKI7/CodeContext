@@ -42,10 +42,6 @@ pub(crate) fn write_file_atomically(
             path: tmp_path.display().to_string(),
             reason: err.to_string(),
         })?;
-        tmp_file.sync_all().map_err(|err| AtomicWriteError::TempWrite {
-            path: tmp_path.display().to_string(),
-            reason: err.to_string(),
-        })?;
     }
 
     if let Err(err) = fs::rename(&tmp_path, target_path) {

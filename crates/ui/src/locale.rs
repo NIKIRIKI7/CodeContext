@@ -48,21 +48,14 @@ impl AppLocale {
     }
 
     #[inline]
-    pub const fn toggle_state_label(self, enabled: bool) -> &'static str {
-        match (self, enabled) {
-            (Self::Ru, true) => "Вкл",
-            (Self::Ru, false) => "Выкл",
-            (Self::En, true) => "On",
-            (Self::En, false) => "Off",
-        }
+    pub fn toggle_state_label(self, enabled: bool) -> &'static str {
+        let labels = self.labels();
+        if enabled { labels.applier_backup_on } else { labels.applier_backup_off }
     }
 
     #[inline]
-    pub const fn hotkey_recording_label(self) -> &'static str {
-        match self {
-            Self::Ru => "Нажмите клавиши… (Esc)",
-            Self::En => "Press keys… (Esc)",
-        }
+    pub fn hotkey_recording_label(self) -> &'static str {
+        self.labels().hotkey_recording_prompt
     }
 }
 
@@ -74,6 +67,12 @@ pub struct UiLabels {
     pub nav_pack_short: &'static str,
     pub nav_apply_short: &'static str,
     pub btn_open_folder_prompt: &'static str,
+    pub btn_projects_menu: &'static str,
+    pub menu_section_actions: &'static str,
+    pub menu_open_project: &'static str,
+    pub menu_create_new_project: &'static str,
+    pub menu_section_recent: &'static str,
+    pub menu_recent_empty: &'static str,
     pub btn_settings: &'static str,
     pub btn_close_modal: &'static str,
     pub btn_project_meta: &'static str,
@@ -95,8 +94,11 @@ pub struct UiLabels {
     pub btn_undo: &'static str,
     pub tree_header: &'static str,
     pub tree_filter_placeholder: &'static str,
+    pub tree_sort_az: &'static str,
+    pub tree_sort_heavy: &'static str,
     pub rules_header: &'static str,
     pub rules_active_suffix: &'static str,
+    pub rules_section_tree_view: &'static str,
     pub rules_section_fs: &'static str,
     pub rules_section_transform: &'static str,
     pub rules_section_volumes: &'static str,
@@ -114,12 +116,18 @@ pub struct UiLabels {
     pub rule_symlinks: &'static str,
     pub chunk_limit_label: &'static str,
     pub chunk_single_volume: &'static str,
+    pub chunk_preset_512k: &'static str,
+    pub chunk_preset_1m: &'static str,
+    pub chunk_preset_2m: &'static str,
     pub chunk_selector_prefix: &'static str,
     pub chunk_volume_prefix: &'static str,
     pub include_globs_default: &'static str,
     pub exclude_globs_default: &'static str,
     pub secret_unlocked_session: &'static str,
     pub secret_locked: &'static str,
+    pub tag_secret: &'static str,
+    pub tag_binary: &'static str,
+    pub tag_symlink: &'static str,
     pub unit_files: &'static str,
     pub unit_selected: &'static str,
     pub unit_lines: &'static str,
@@ -152,6 +160,9 @@ pub struct UiLabels {
     pub applier_status_applied_prefix: &'static str,
     pub applier_status_undone_prefix: &'static str,
     pub applier_status_error_prefix: &'static str,
+    pub applier_err_no_project_root: &'static str,
+    pub applier_err_file_not_found: &'static str,
+    pub applier_err_file_conflict_or_applied: &'static str,
     pub status_sandbox_label: &'static str,
     pub status_sandbox_on: &'static str,
     pub status_backup_label: &'static str,
@@ -163,9 +174,23 @@ pub struct UiLabels {
     pub settings_section_safety: &'static str,
     pub settings_theme_label: &'static str,
     pub settings_language_label: &'static str,
+    pub lang_name_ru: &'static str,
+    pub lang_name_en: &'static str,
     pub settings_hotkey_prefix: &'static str,
     pub settings_hotkey_conflict_prefix: &'static str,
     pub settings_hotkey_wayland_hint: &'static str,
+    pub hotkey_recording_prompt: &'static str,
+    pub btn_open_hotkeys_modal: &'static str,
+    pub hotkeys_modal_title: &'static str,
+    pub hotkey_action_global: &'static str,
+    pub hotkey_action_open_project: &'static str,
+    pub hotkey_action_search_files: &'static str,
+    pub hotkey_action_rescan: &'static str,
+    pub hotkey_action_copy_context: &'static str,
+    pub hotkey_action_paste_response: &'static str,
+    pub hotkey_action_apply_changes: &'static str,
+    pub hotkey_action_undo_changes: &'static str,
+    pub btn_reset_hotkeys: &'static str,
     pub settings_auto_clipboard: &'static str,
     pub settings_create_backups: &'static str,
     pub settings_context_menu_on: &'static str,

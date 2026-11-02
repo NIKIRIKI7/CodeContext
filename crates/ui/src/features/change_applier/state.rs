@@ -142,42 +142,119 @@ impl ChangeApplierState {
         self.options_open
     }
 
-    pub fn apply_changes_to_disk(&mut self) -> Result<usize, String> {
-        let root = self
-            .project_root
-            .clone()
-            .or_else(|| std::env::current_dir().ok())
-            .ok_or_else(|| "Project root is not set".to_owned())?;
+    pub fn toggle_file_selected(&mut self, index: usize) -> bool {
+        let Some(file) = self.parsed_files.get_mut(index) else {
+            return false;
+        };
+        if !file.is_sandbox_safe || file.has_conflict || file.is_applied {
+            return false;
+        }
+        file.is_selected = !file.is_selected;
+        true
+    }
 
-        match self.container.execute_plan_for_project(
-            &root,
-            &self.raw_response,
-            self.backups_enabled,
-        ) {
-            Ok(manifest) => {
-                let count = manifest.applied_files_count;
-                self.last_backup_manifest = Some(manifest);
+    #[inline]
+    pub fn selected_applicable_files_count(&self) -> usize {
+        self.parsed_files
+            .iter()
+            .filter(|f| f.is_selected && !f.is_applied && f.is_sandbox_safe && !f.has_conflict)
+            .count()
+    }
+
+    pub fn apply_single_file_to_disk(&mut self, index: usize) -> Result<usize, String> {
+        let labels = crate::locale::AppLocale::Ru.labels();
+        let root = self.ensure_resolved_project_root()?;
+        let Some(file) = self.parsed_files.get_mut(index) else {
+            return Err(labels.applier_err_file_not_found.to_owned());
+        };
+        if !file.is_sandbox_safe || file.has_conflict || file.is_applied {
+            return Err(labels.applier_err_file_conflict_or_applied.to_owned());
+        }
+        file.is_selected = true;
+        let single_slice = std::slice::from_ref(file);
+
+        match AppContainer::apply_response_files(&root, single_slice, self.backups_enabled) {
+            Ok(count) => {
+                if let Some(applied_file) = self.parsed_files.get_mut(index) {
+                    mark_file_as_applied(applied_file);
+                }
+                if self.selected_file_index == index
+                    && let Some(selected) = self.parsed_files.get(index)
+                {
+                    self.selected_file_buffer =
+                        VirtualTextBuffer::new(selected.diff_preview.as_str());
+                }
                 self.status_notice = Some(ApplierStatusNotice::Applied { count });
                 Ok(count)
             }
-            Err(err) => {
-                let reason = err.to_string();
+            Err(reason) => {
                 self.status_notice = Some(ApplierStatusNotice::Error { reason: reason.clone() });
                 Err(reason)
             }
         }
     }
 
-    pub fn undo_last_apply(&mut self) -> Result<usize, String> {
+    pub fn apply_changes_to_disk(&mut self) -> Result<usize, String> {
+        let root = self.ensure_resolved_project_root()?;
+
+        match AppContainer::apply_response_files(&root, &self.parsed_files, self.backups_enabled) {
+            Ok(count) => {
+                for file in &mut self.parsed_files {
+                    if file.is_selected
+                        && !file.is_applied
+                        && file.is_sandbox_safe
+                        && !file.has_conflict
+                    {
+                        mark_file_as_applied(file);
+                    }
+                }
+                if let Some(selected) = self.parsed_files.get(self.selected_file_index) {
+                    self.selected_file_buffer =
+                        VirtualTextBuffer::new(selected.diff_preview.as_str());
+                }
+                self.status_notice = Some(ApplierStatusNotice::Applied { count });
+                Ok(count)
+            }
+            Err(reason) => {
+                self.status_notice = Some(ApplierStatusNotice::Error { reason: reason.clone() });
+                Err(reason)
+            }
+        }
+    }
+
+    fn ensure_resolved_project_root(&mut self) -> Result<PathBuf, String> {
+        let labels = crate::locale::AppLocale::Ru.labels();
         let root = self
             .project_root
             .clone()
             .or_else(|| std::env::current_dir().ok())
-            .ok_or_else(|| "Project root is not set".to_owned())?;
+            .ok_or_else(|| labels.applier_err_no_project_root.to_owned())?;
+
+        if self.project_root.is_none() {
+            self.project_root = Some(root.clone());
+            if !self.raw_response.is_empty() {
+                let existing = std::mem::take(&mut self.raw_response);
+                self.apply_text_and_parse(existing);
+            }
+        }
+        Ok(root)
+    }
+
+    pub fn undo_last_apply(&mut self) -> Result<usize, String> {
+        let labels = crate::locale::AppLocale::Ru.labels();
+        let root = self
+            .project_root
+            .clone()
+            .or_else(|| std::env::current_dir().ok())
+            .ok_or_else(|| labels.applier_err_no_project_root.to_owned())?;
 
         match self.container.undo_last_for_project(&root) {
             Ok(count) => {
                 self.last_backup_manifest = None;
+                if !self.raw_response.is_empty() {
+                    let existing = std::mem::take(&mut self.raw_response);
+                    self.apply_text_and_parse(existing);
+                }
                 self.status_notice = Some(ApplierStatusNotice::Undone { count });
                 Ok(count)
             }
@@ -271,4 +348,14 @@ impl ChangeApplierState {
     pub fn formatted_status_message(&self, labels: &UiLabels) -> Option<String> {
         self.status_notice.as_ref().map(|n| n.format_with_labels(labels))
     }
+}
+
+fn mark_file_as_applied(file: &mut ParsedResponseFile) {
+    let header_open = concat!("@", "@ Без изменений (");
+    let header_close = concat!(") @", "@\n");
+    file.is_applied = true;
+    file.is_selected = false;
+    file.added_lines = 0;
+    file.removed_lines = 0;
+    file.diff_preview = format!("{header_open}{}{header_close}{}", file.rel_path, file.content);
 }

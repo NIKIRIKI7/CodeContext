@@ -119,6 +119,16 @@ fn interactive_search_master_checkbox_and_modals_work_ergonomically() {
 
     packer.clear_search_query();
     assert_eq!(packer.search_query(), "");
+    assert!(!packer.ui_status().search_focused);
+
+    assert!(packer.move_tree_focus_down());
+    assert_eq!(packer.focused_tree_index(), Some(0));
+    assert!(packer.move_tree_focus_down());
+    assert_eq!(packer.focused_tree_index(), Some(1));
+    assert!(packer.activate_focused_tree_node());
+    let beta_line = packer.jump_to_file_in_preview("src/beta.rs");
+    assert!(beta_line.is_some());
+    assert_eq!(packer.take_pending_preview_scroll(), beta_line);
 
     packer.toggle_filters_popover();
     assert!(packer.ui_status().filters_popover_open);

@@ -1,4 +1,6 @@
-use core::preset::models::resolution::GlobalConfig;
+use core::preset::models::resolution::{
+    DEFAULT_GLOBAL_HOTKEY, GlobalConfig, KeymapAction, KeymapConfig,
+};
 use core::preset::ports::config_repo::ConfigPortError;
 use core::system::ports::hotkey::{
     GlobalHotkeyPort as _, HotkeyPortError, HotkeyRegistrationStatus, HotkeyShortcut,
@@ -28,7 +30,8 @@ pub struct SettingsModalState {
     self_install_status: SelfInstallStatus,
     locale: AppLocale,
     theme_variant: ThemeVariant,
-    recording_hotkey: bool,
+    hotkeys_modal_open: bool,
+    recording_action: Option<KeymapAction>,
     close_requested: bool,
 }
 
@@ -58,24 +61,56 @@ impl SettingsModalState {
             self_install_status,
             locale: AppLocale::default(),
             theme_variant: ThemeVariant::default(),
-            recording_hotkey: false,
+            hotkeys_modal_open: false,
+            recording_action: None,
             close_requested: false,
         }
     }
 
     #[inline]
-    pub const fn is_recording_hotkey(&self) -> bool {
-        self.recording_hotkey
+    pub const fn is_hotkeys_modal_open(&self) -> bool {
+        self.hotkeys_modal_open
     }
 
     #[inline]
-    pub const fn toggle_recording_hotkey(&mut self) {
-        self.recording_hotkey = !self.recording_hotkey;
+    pub const fn open_hotkeys_modal(&mut self) {
+        self.hotkeys_modal_open = true;
+        self.recording_action = None;
+    }
+
+    #[inline]
+    pub const fn close_hotkeys_modal(&mut self) {
+        self.hotkeys_modal_open = false;
+        self.recording_action = None;
+    }
+
+    #[inline]
+    pub const fn recording_action(&self) -> Option<KeymapAction> {
+        self.recording_action
+    }
+
+    #[inline]
+    pub fn toggle_recording_action(&mut self, action: KeymapAction) {
+        if self.recording_action == Some(action) {
+            self.recording_action = None;
+        } else {
+            self.recording_action = Some(action);
+        }
+    }
+
+    #[inline]
+    pub const fn is_recording_hotkey(&self) -> bool {
+        self.recording_action.is_some()
+    }
+
+    #[inline]
+    pub fn toggle_recording_hotkey(&mut self) {
+        self.toggle_recording_action(KeymapAction::GlobalHotkey);
     }
 
     #[inline]
     pub const fn cancel_recording_hotkey(&mut self) {
-        self.recording_hotkey = false;
+        self.recording_action = None;
     }
 
     #[inline]
@@ -100,7 +135,8 @@ impl SettingsModalState {
 
     #[inline]
     pub const fn request_close(&mut self) {
-        self.recording_hotkey = false;
+        self.hotkeys_modal_open = false;
+        self.recording_action = None;
         self.close_requested = true;
     }
 
@@ -144,13 +180,37 @@ impl SettingsModalState {
         let canonical = parsed.to_canonical_string();
         let result = self.container.hotkey().rebind_str(&canonical);
         self.hotkey_status = self.container.hotkey().status();
-        self.recording_hotkey = false;
+        self.recording_action = None;
 
         if result.is_ok() {
             self.global_config.global_hotkey = canonical;
             let _ = self.container.preset_service().save_global_config(&self.global_config);
         }
         result
+    }
+
+    pub fn rebind_action_shortcut(
+        &mut self,
+        action: KeymapAction,
+        new_shortcut: &str,
+    ) -> Result<(), HotkeyPortError> {
+        if action == KeymapAction::GlobalHotkey {
+            let _ = self.rebind_global_hotkey(new_shortcut)?;
+            return Ok(());
+        }
+        let parsed = HotkeyShortcut::parse(new_shortcut)?;
+        let canonical = parsed.to_canonical_string();
+        self.global_config.keymap.set_shortcut(action, canonical);
+        self.recording_action = None;
+        let _ = self.container.preset_service().save_global_config(&self.global_config);
+        Ok(())
+    }
+
+    pub fn reset_all_shortcuts_to_default(&mut self) {
+        self.recording_action = None;
+        self.global_config.keymap = KeymapConfig::default();
+        let _ = self.rebind_global_hotkey(DEFAULT_GLOBAL_HOTKEY);
+        let _ = self.container.preset_service().save_global_config(&self.global_config);
     }
 
     pub fn cycle_hotkey_preset(&mut self) -> Result<HotkeyRegistrationStatus, HotkeyPortError> {

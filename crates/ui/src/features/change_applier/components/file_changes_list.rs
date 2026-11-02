@@ -10,10 +10,11 @@ use gpui::{
 use crate::features::change_applier::components::backup_drawer::BackupDrawerComponent;
 use crate::locale::{AppLocale, UiLabels};
 use crate::shared::primitives::button::{ButtonVariant, UiButton};
-use crate::shared::primitives::icon::UiIcon;
+use crate::shared::primitives::icon::{UiIcon, render_icon, render_vector_checkbox};
 use crate::theme::{FONT_FAMILY_MONO, ThemeTokens, active_theme};
 
 pub type SelectParsedFileCallback = Arc<dyn Fn(usize, &mut Window, &mut App) + 'static>;
+pub type ToggleFileCheckCallback = Arc<dyn Fn(usize, &mut Window, &mut App) + 'static>;
 pub type ApplyActionCallback = Arc<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>;
 
 #[derive(IntoElement)]
@@ -26,6 +27,7 @@ pub struct FileChangesListComponent {
     labels: &'static UiLabels,
     theme: &'static ThemeTokens,
     on_select: Option<SelectParsedFileCallback>,
+    on_toggle_file_select: Option<ToggleFileCheckCallback>,
     on_toggle_backup: Option<ApplyActionCallback>,
     on_toggle_options: Option<ApplyActionCallback>,
     on_apply: Option<ApplyActionCallback>,
@@ -54,6 +56,7 @@ impl FileChangesListComponent {
             labels: AppLocale::Ru.labels(),
             theme: active_theme(),
             on_select: None,
+            on_toggle_file_select: None,
             on_toggle_backup: None,
             on_toggle_options: None,
             on_apply: None,
@@ -103,6 +106,16 @@ impl FileChangesListComponent {
 
     #[must_use]
     #[inline]
+    pub fn on_toggle_file_select(
+        mut self,
+        handler: impl Fn(usize, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.on_toggle_file_select = Some(Arc::new(handler));
+        self
+    }
+
+    #[must_use]
+    #[inline]
     pub fn on_toggle_backup(
         mut self,
         handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
@@ -138,16 +151,20 @@ impl FileChangesListComponent {
 
         for (idx, file) in self.files.iter().enumerate() {
             let tab_label = format_disambiguated_tab_name(&file.rel_path, &self.files);
-
-            let dot_color = if !file.is_sandbox_safe || file.has_conflict {
-                theme.colors.danger
-            } else if file.is_truncated {
-                theme.colors.warning
-            } else {
-                theme.colors.success
-            };
+            let is_blocked = !file.is_sandbox_safe || file.has_conflict;
+            let leading_indicator = self.render_tab_leading_indicator(idx, file, is_blocked, theme);
 
             let is_active = idx == self.selected_index;
+            let text_color = if is_blocked {
+                theme.colors.danger
+            } else if !file.is_selected && !file.is_applied {
+                theme.colors.text_muted
+            } else if is_active {
+                theme.colors.text_primary
+            } else {
+                theme.colors.text_secondary
+            };
+
             let hover_bg = theme.colors.bg_hover;
             let mut tab = div()
                 .id(("parsed-file-tab", idx))
@@ -158,7 +175,7 @@ impl FileChangesListComponent {
                 .border_color(if is_active {
                     theme.colors.border_active
                 } else {
-                    theme.colors.bg_panel
+                    theme.colors.border
                 })
                 .bg(if is_active { theme.colors.bg_elevated } else { theme.colors.bg_panel })
                 .cursor_pointer()
@@ -167,20 +184,16 @@ impl FileChangesListComponent {
                 .flex_row()
                 .items_center()
                 .gap(px(theme.spacing.xs))
-                .child(div().w(px(6.0)).h(px(6.0)).rounded(px(99.0)).bg(dot_color))
+                .child(leading_indicator)
                 .child(
                     div()
                         .font_family(FONT_FAMILY_MONO)
                         .text_xs()
-                        .text_color(if is_active {
-                            theme.colors.text_primary
-                        } else {
-                            theme.colors.text_secondary
-                        })
+                        .text_color(text_color)
                         .child(SharedString::from(tab_label)),
                 );
 
-            if file.added_lines > 0 || file.removed_lines == 0 {
+            if !file.is_applied && file.added_lines > 0 {
                 tab = tab.child(
                     div()
                         .font_family(FONT_FAMILY_MONO)
@@ -190,7 +203,7 @@ impl FileChangesListComponent {
                 );
             }
 
-            if file.removed_lines > 0 {
+            if !file.is_applied && file.removed_lines > 0 {
                 tab = tab.child(
                     div()
                         .font_family(FONT_FAMILY_MONO)
@@ -208,6 +221,53 @@ impl FileChangesListComponent {
         }
 
         tabs_row
+    }
+
+    fn render_tab_leading_indicator(
+        &self,
+        idx: usize,
+        file: &ParsedResponseFile,
+        is_blocked: bool,
+        theme: &'static ThemeTokens,
+    ) -> gpui::AnyElement {
+        if is_blocked {
+            return div()
+                .w(px(6.0))
+                .h(px(6.0))
+                .rounded(px(99.0))
+                .bg(theme.colors.danger)
+                .into_any_element();
+        }
+        if file.is_applied {
+            return render_icon(UiIcon::Check, 12.0, theme.colors.text_muted).into_any_element();
+        }
+
+        let (check_background, check_border, check_foreground) = if file.is_selected {
+            (theme.colors.bg_app, theme.colors.border_active, theme.colors.text_primary)
+        } else {
+            (theme.colors.bg_app, theme.colors.border, theme.colors.text_muted)
+        };
+
+        let mut check_el = render_vector_checkbox(
+            file.is_selected,
+            false,
+            12.0,
+            check_background,
+            check_border,
+            check_foreground,
+            theme.radius.sm,
+        )
+        .id(("parsed-file-check", idx));
+
+        if let Some(ref toggle_fn) = self.on_toggle_file_select {
+            let cb_toggle = Arc::clone(toggle_fn);
+            check_el = check_el.cursor_pointer().on_click(move |_ev, win, cx| {
+                cx.stop_propagation();
+                cb_toggle(idx, win, cx);
+            });
+        }
+
+        check_el.into_any_element()
     }
 }
 
@@ -249,7 +309,11 @@ impl RenderOnce for FileChangesListComponent {
         let theme = self.theme;
         let labels = self.labels;
         let files_count = self.files.len();
-        let has_blocking = self.files.iter().any(|f| !f.is_sandbox_safe || f.has_conflict);
+        let applicable_selected_count = self
+            .files
+            .iter()
+            .filter(|f| f.is_selected && !f.is_applied && f.is_sandbox_safe && !f.has_conflict)
+            .count();
         let tabs_row = self.render_tabs(theme);
 
         let _ = &self.status_message;
@@ -277,11 +341,11 @@ impl RenderOnce for FileChangesListComponent {
 
         let mut apply_btn = UiButton::new(
             "btn-apply-changes-cta",
-            format!("{} ({files_count})", labels.btn_apply_changes),
+            format!("{} ({applicable_selected_count})", labels.btn_apply_changes),
         )
         .icon(UiIcon::Check)
         .variant(ButtonVariant::SuccessCta)
-        .disabled(files_count == 0 || has_blocking)
+        .disabled(applicable_selected_count == 0)
         .with_theme(theme);
 
         if let Some(apply_fn) = self.on_apply {
@@ -289,7 +353,7 @@ impl RenderOnce for FileChangesListComponent {
         }
         right_controls = right_controls.child(apply_btn);
 
-        let inline_tabs = files_count > 0 && files_count <= 4;
+        let inline_tabs = files_count > 0 && files_count <= 2;
         let (left_header_content, overflow_tabs_opt) = if inline_tabs {
             (
                 div().flex_1().min_w(px(0.0)).overflow_hidden().child(tabs_row).into_any_element(),
@@ -304,9 +368,16 @@ impl RenderOnce for FileChangesListComponent {
                     .whitespace_nowrap()
                     .text_xs()
                     .text_color(theme.colors.text_secondary)
-                    .child(format!("{} {files_count}", labels.applier_parsed_files_prefix))
+                    .child(if files_count == 0 {
+                        format!("{} 0", labels.applier_parsed_files_prefix)
+                    } else {
+                        format!(
+                            "{} {applicable_selected_count}/{files_count}",
+                            labels.applier_parsed_files_prefix
+                        )
+                    })
                     .into_any_element(),
-                (files_count > 4).then_some(tabs_row),
+                (files_count > 2).then_some(tabs_row),
             )
         };
 

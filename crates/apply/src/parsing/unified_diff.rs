@@ -8,10 +8,10 @@ use super::fenced_blocks::{looks_like_file_path, normalize_extracted_path};
 const CODE_FENCE: &str = "\x60\x60\x60";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ParsedUnifiedDiffFile {
-    pub rel_path: String,
-    pub is_deleted: bool,
-    pub hunks: Vec<UnifiedDiffHunk>,
+pub(crate) struct ParsedUnifiedDiffFile {
+    pub(crate) rel_path: String,
+    pub(crate) is_deleted: bool,
+    pub(crate) hunks: Vec<UnifiedDiffHunk>,
 }
 
 pub(crate) fn parse_unified_diff_blocks(
