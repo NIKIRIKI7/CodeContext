@@ -131,10 +131,7 @@ fn strip_outer_markdown_wrapper<'a>(
         return (raw, false);
     }
 
-    let cleaned = inner
-        .trim_end()
-        .strip_suffix(CODE_FENCE)
-        .map_or(inner, str::trim_end);
+    let cleaned = inner.trim_end().strip_suffix(CODE_FENCE).map_or(inner, str::trim_end);
     (cleaned, true)
 }
 
@@ -285,7 +282,8 @@ fn find_first_block_offset(
                 && (trimmed.contains('`') || trimmed.contains('/') || trimmed.contains('.')))
             || trimmed.starts_with(CODE_FENCE)
             || (!search_marker.is_empty() && trimmed.starts_with(search_marker))
-            || (enable_unified_diff && (trimmed.starts_with("--- a/") || trimmed.starts_with("--- /dev/null")))
+            || (enable_unified_diff
+                && (trimmed.starts_with("--- a/") || trimmed.starts_with("--- /dev/null")))
             || trimmed.starts_with("**`")
         {
             let leading_ws = line.len() - line.trim_start().len();

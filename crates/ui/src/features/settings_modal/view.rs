@@ -400,11 +400,8 @@ impl SettingsModalView {
                         cx.notify();
                     });
                 });
-            list_col = list_col.child(render_setting_row(
-                action_label_for(action, labels),
-                btn,
-                theme,
-            ));
+            list_col =
+                list_col.child(render_setting_row(action_label_for(action, labels), btn, theme));
         }
 
         let header = self.render_hotkeys_modal_header(labels, theme);

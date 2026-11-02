@@ -113,8 +113,12 @@ impl ApplierPort for ResponseApplier {
     ) -> ApplyPlan {
         let mut raw_ops: Vec<(String, FileOperation, bool)> = Vec::new();
 
-        let sr_files =
-            search_replace::parse_search_replace_blocks(raw_response, project_root, template, config);
+        let sr_files = search_replace::parse_search_replace_blocks(
+            raw_response,
+            project_root,
+            template,
+            config,
+        );
         for sr in sr_files {
             raw_ops.push((
                 sr.rel_path,

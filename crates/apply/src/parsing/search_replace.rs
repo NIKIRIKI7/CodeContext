@@ -145,10 +145,8 @@ fn extract_candidate_path_line(
         return Some(h_path);
     }
 
-    let comment_stripped = trimmed
-        .strip_prefix("//")
-        .or_else(|| trimmed.strip_prefix('#'))
-        .map_or(trimmed, str::trim);
+    let comment_stripped =
+        trimmed.strip_prefix("//").or_else(|| trimmed.strip_prefix('#')).map_or(trimmed, str::trim);
 
     let clean = normalize_extracted_path(comment_stripped, project_root, config);
     looks_like_file_path(&clean).then_some(clean)
