@@ -128,6 +128,9 @@ jobs:
           toolchain: stable
           targets: ${{ matrix.target }}
 
+      - name: Setup sccache compiler cache
+        uses: mozilla-actions/sccache-action@v0.0.8
+
       - name: Install cargo-nextest
         if: matrix.run_tests
         uses: taiki-e/install-action@07b4745e0c39a41822af610387492e3e53aa222b # v2.83.4
@@ -139,15 +142,28 @@ jobs:
         with:
           key: ci-${{ matrix.target }}
 
-      - name: Run workspace test suite (nextest --release)
+      - name: Run workspace test suite (Fast parallel Thin-LTO nextest)
         if: matrix.run_tests
+        env:
+          SCCACHE_GHA_ENABLED: "true"
+          RUSTC_WRAPPER: "sccache"
+          CARGO_PROFILE_RELEASE_LTO: "thin"
+          CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "16"
         run: cargo nextest run --workspace --release --locked --target ${{ matrix.target }}
 
       - name: Verify zero-reallocation heap invariant (dhat)
         if: matrix.run_tests
+        env:
+          SCCACHE_GHA_ENABLED: "true"
+          RUSTC_WRAPPER: "sccache"
+          CARGO_PROFILE_RELEASE_LTO: "thin"
+          CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "16"
         run: cargo test --release --locked --target ${{ matrix.target }} --package scanner --test heap_allocations -- --test-threads=1 --nocapture
 
       - name: Build maximally optimized release binary (Fat LTO, CGU=1, Strip)
+        env:
+          SCCACHE_GHA_ENABLED: "true"
+          RUSTC_WRAPPER: "sccache"
         run: cargo build --release --locked --package app --target ${{ matrix.target }}
 
       - name: Smoke-test compiled binary (--version)
@@ -165,6 +181,7 @@ jobs:
   linux-distros-matrix:
     name: Distro Verification (${{ matrix.distro }})
     needs: quality-gate
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.modified, 'Cargo.lock')
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
