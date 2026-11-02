@@ -25,6 +25,10 @@ tag-release ver: (set-version ver) qa
     git add VERSION Cargo.toml Cargo.lock CHANGELOG.md CHANGELOG.en.md
     git commit -m "chore(release): v{{ver}}"
     git tag -a "v{{ver}}" -m "Release v{{ver}}"
+    git push origin HEAD --follow-tags
+
+push-release:
+    git push origin HEAD --follow-tags
 
 build:
     cargo build --release

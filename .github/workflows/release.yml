@@ -9,6 +9,8 @@ on:
       - "master"
     paths:
       - "VERSION"
+      - "Cargo.toml"
+      - "CHANGELOG.md"
       - ".github/workflows/release.yml"
   workflow_dispatch:
 
