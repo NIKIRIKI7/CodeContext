@@ -57,8 +57,10 @@ jobs:
       - name: Run Clippy strict lints
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
 
-      - name: Install native cargo-deny
-        uses: taiki-e/install-action@24ed0c5eb968cfbe7e38e655979cbb4833256eb9 # cargo-deny
+      - name: Install cargo-deny
+        uses: taiki-e/install-action@07b4745e0c39a41822af610387492e3e53aa222b # v2.83.4
+        with:
+          tool: cargo-deny
 
       - name: Check licenses, bans & security advisories (cargo-deny)
         run: cargo deny check
