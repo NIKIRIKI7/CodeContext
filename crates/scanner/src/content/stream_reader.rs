@@ -19,11 +19,8 @@ pub(crate) fn read_text_file(path: &Path) -> Result<Option<String>> {
 
     let mut probe = [0_u8; BINARY_PROBE_BYTES];
     let probe_to_read = file_len.min(BINARY_PROBE_BYTES);
-    let probe_buf = probe
-        .get_mut(..probe_to_read)
-        .context("Invalid probe buffer slice")?;
-    file.read_exact(probe_buf)
-        .with_context(|| path.display().to_string())?;
+    let probe_buf = probe.get_mut(..probe_to_read).context("Invalid probe buffer slice")?;
+    file.read_exact(probe_buf).with_context(|| path.display().to_string())?;
 
     if memchr(0, probe_buf).is_some() {
         return Ok(None);
@@ -31,8 +28,7 @@ pub(crate) fn read_text_file(path: &Path) -> Result<Option<String>> {
 
     let mut bytes = Vec::with_capacity(file_len);
     bytes.extend_from_slice(probe_buf);
-    file.read_to_end(&mut bytes)
-        .with_context(|| path.display().to_string())?;
+    file.read_to_end(&mut bytes).with_context(|| path.display().to_string())?;
 
     Ok(String::from_utf8(bytes).ok())
 }
