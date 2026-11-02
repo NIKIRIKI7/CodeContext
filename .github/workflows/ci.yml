@@ -9,9 +9,14 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
+  CARGO_INCREMENTAL: "0"
 
 jobs:
   quality-gate:
@@ -52,8 +57,11 @@ jobs:
       - name: Run Clippy strict lints
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
 
+      - name: Install native cargo-deny
+        uses: taiki-e/install-action@24ed0c5eb968cfbe7e38e655979cbb4833256eb9 # cargo-deny
+
       - name: Check licenses, bans & security advisories (cargo-deny)
-        uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
+        run: cargo deny check
 
       - name: Run DDD & Ports-and-Adapters architectural fitness functions
         run: cargo test --package app --test architecture --locked -- --nocapture
@@ -67,6 +75,11 @@ jobs:
   test-and-release-build:
     name: Build & Test (${{ matrix.label }})
     needs: quality-gate
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
+      CARGO_PROFILE_RELEASE_LTO: "thin"
+      CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "16"
     strategy:
       fail-fast: false
       matrix:
@@ -144,26 +157,13 @@ jobs:
 
       - name: Run workspace test suite (Fast parallel Thin-LTO nextest)
         if: matrix.run_tests
-        env:
-          SCCACHE_GHA_ENABLED: "true"
-          RUSTC_WRAPPER: "sccache"
-          CARGO_PROFILE_RELEASE_LTO: "thin"
-          CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "16"
         run: cargo nextest run --workspace --release --locked --target ${{ matrix.target }}
 
       - name: Verify zero-reallocation heap invariant (dhat)
         if: matrix.run_tests
-        env:
-          SCCACHE_GHA_ENABLED: "true"
-          RUSTC_WRAPPER: "sccache"
-          CARGO_PROFILE_RELEASE_LTO: "thin"
-          CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "16"
         run: cargo test --release --locked --target ${{ matrix.target }} --package scanner --test heap_allocations -- --test-threads=1 --nocapture
 
-      - name: Build maximally optimized release binary (Fat LTO, CGU=1, Strip)
-        env:
-          SCCACHE_GHA_ENABLED: "true"
-          RUSTC_WRAPPER: "sccache"
+      - name: Build release binary for smoke-test
         run: cargo build --release --locked --package app --target ${{ matrix.target }}
 
       - name: Smoke-test compiled binary (--version)
