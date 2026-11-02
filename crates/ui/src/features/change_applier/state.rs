@@ -51,11 +51,10 @@ impl ChangeApplierState {
     pub fn new(container: AppContainer, project_root: Option<PathBuf>) -> Self {
         let backups_enabled =
             container.preset_service().load_global_config().create_backups_by_default;
-        let resolved_root = project_root.or_else(|| std::env::current_dir().ok());
 
         Self {
             container,
-            project_root: resolved_root,
+            project_root,
             raw_response: String::new(),
             last_clipboard_revision: None,
             response_buffer: VirtualTextBuffer::default(),
@@ -198,9 +197,6 @@ impl ChangeApplierState {
     }
 
     fn apply_text_and_parse(&mut self, text: String) {
-        if self.project_root.is_none() {
-            self.project_root = std::env::current_dir().ok();
-        }
         let mut effective_text = text;
         if !effective_text.trim().is_empty() {
             let (fixed, preamble_stripped, closed_truncated_block) = self

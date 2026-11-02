@@ -63,6 +63,7 @@ impl RenderOnce for SplitPane {
             .child(
                 div()
                     .w(relative(left_pct))
+                    .min_w(px(280.0))
                     .h_full()
                     .flex()
                     .flex_col()
@@ -78,6 +79,7 @@ impl RenderOnce for SplitPane {
             .child(
                 div()
                     .w(relative(right_pct))
+                    .min_w(px(360.0))
                     .h_full()
                     .flex()
                     .flex_col()

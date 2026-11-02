@@ -191,7 +191,7 @@ jobs:
           elif command -v pacman >/dev/null 2>&1; then
             pacman -Sy --noconfirm base-devel binutils lld curl ca-certificates pkgconf git
           elif command -v zypper >/dev/null 2>&1; then
-            zypper --non-interactive install gcc binutils lld make curl ca-certificates pkg-config git
+            zypper --non-interactive install bash tar gzip gcc gcc-c++ binutils make curl ca-certificates pkg-config git
           fi
 
       - name: Checkout repository

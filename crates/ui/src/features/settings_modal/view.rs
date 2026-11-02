@@ -610,6 +610,7 @@ impl Render for SettingsModalView {
         let system_sec = self.render_system_section(theme, cx);
         let safety_sec = self.render_safety_section(theme, cx);
         let backdrop = Rgba { r: 0.02, g: 0.03, b: 0.05, a: 0.72 };
+        let state_close_backdrop = self.state.clone();
 
         div()
             .id("settings-modal-backdrop")
@@ -622,8 +623,18 @@ impl Render for SettingsModalView {
             .items_center()
             .justify_center()
             .p(px(theme.spacing.xxl))
+            .on_click(move |_ev, _win, cx| {
+                state_close_backdrop.update(cx, |s, cx| {
+                    s.request_close();
+                    cx.notify();
+                });
+            })
             .child(
                 div()
+                    .id("settings-modal-dialog")
+                    .on_click(|_ev, _win, cx| {
+                        cx.stop_propagation();
+                    })
                     .w(px(580.0))
                     .p(px(theme.spacing.xxl))
                     .rounded(px(theme.radius.lg))

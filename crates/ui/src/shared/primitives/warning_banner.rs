@@ -32,53 +32,31 @@ impl WarningBannerItem {
     }
 
     pub fn from_config_warning_localized(warning: &ConfigWarning, locale: AppLocale) -> Self {
-        let is_en = locale == AppLocale::En;
+        let labels = locale.labels();
         match warning {
             ConfigWarning::UntrustedSecretUnlockIgnored { blocked_paths } => Self {
                 severity: BannerSeverity::SecurityCritical,
-                title: if is_en {
-                    "Blocked attempt to unlock secrets from .ctxpack.json (Scenario A3)".to_owned()
-                } else {
-                    "Заблокирована попытка раскрытия секретов из .ctxpack.json (Сценарий A3)"
-                        .to_owned()
-                },
-                detail: if is_en {
-                    format!(
-                        "Repository config attempted to expose secrets: {}. SecretGuard protection remained active.",
-                        blocked_paths.join(", ")
-                    )
-                } else {
-                    format!(
-                        "Локальный конфиг репозитория пытался разблокировать секреты: {}. Защита SecretGuard осталась включённой.",
-                        blocked_paths.join(", ")
-                    )
-                },
+                title: labels.banner_secret_unlock_blocked_title.to_owned(),
+                detail: format!(
+                    "{} {}. {}",
+                    labels.banner_secret_unlock_blocked_detail_prefix,
+                    blocked_paths.join(", "),
+                    labels.banner_secret_unlock_blocked_detail_suffix,
+                ),
             },
             ConfigWarning::CorruptedGlobalConfig { path, reason } => Self {
                 severity: BannerSeverity::Warning,
-                title: if is_en {
-                    "Corrupted global configuration file".to_owned()
-                } else {
-                    "Повреждён глобальный файл настроек".to_owned()
-                },
+                title: labels.banner_corrupted_global_cfg_title.to_owned(),
                 detail: format!("{path}: {reason}"),
             },
             ConfigWarning::CorruptedProjectConfig { path, reason } => Self {
                 severity: BannerSeverity::Warning,
-                title: if is_en {
-                    "Corrupted local .ctxpack.json".to_owned()
-                } else {
-                    "Повреждён локальный .ctxpack.json".to_owned()
-                },
+                title: labels.banner_corrupted_project_cfg_title.to_owned(),
                 detail: format!("{path}: {reason}"),
             },
             ConfigWarning::OversizedConfigFile { path, size_bytes, max_bytes } => Self {
                 severity: BannerSeverity::Warning,
-                title: if is_en {
-                    "Configuration file size limit exceeded".to_owned()
-                } else {
-                    "Превышен лимит размера конфигурационного файла".to_owned()
-                },
+                title: labels.banner_oversized_cfg_title.to_owned(),
                 detail: format!(
                     "{path}: {} > {}",
                     format_bytes_human(*size_bytes),
@@ -87,29 +65,17 @@ impl WarningBannerItem {
             },
             ConfigWarning::ParameterClamped { field, original, clamped_to } => Self {
                 severity: BannerSeverity::Warning,
-                title: if is_en {
-                    format!("Parameter `{field}` clamped to safe bounds")
-                } else {
-                    format!("Параметр `{field}` скорректирован в безопасные границы")
-                },
+                title: format!("{}: `{field}`", labels.banner_param_clamped_title),
                 detail: format!("{original} → {clamped_to}"),
             },
             ConfigWarning::UnknownBasePreset { requested, fallback } => Self {
                 severity: BannerSeverity::Warning,
-                title: if is_en {
-                    format!("Base preset `{requested}` not found")
-                } else {
-                    format!("Базовый пресет `{requested}` не найден")
-                },
+                title: format!("{}: `{requested}`", labels.banner_unknown_base_preset_title),
                 detail: format!("→ `{fallback}`"),
             },
             ConfigWarning::NewerSchemaVersion { file_version, supported_version } => Self {
                 severity: BannerSeverity::Warning,
-                title: if is_en {
-                    "Config created by a newer version".to_owned()
-                } else {
-                    "Конфигурация создана в более новой версии программы".to_owned()
-                },
+                title: labels.banner_newer_schema_title.to_owned(),
                 detail: format!("v{file_version} (v{supported_version})"),
             },
         }
@@ -121,66 +87,57 @@ impl WarningBannerItem {
     }
 
     pub fn from_anomaly_localized(anomaly: &Anomaly, locale: AppLocale) -> Self {
-        let is_en = locale == AppLocale::En;
+        let labels = locale.labels();
         match anomaly {
-            Anomaly::SecretBlocked { rel_path, reason } => Self {
-                severity: BannerSeverity::SecurityCritical,
-                title: if is_en {
-                    format!("SecretGuard blocked `{rel_path}`")
-                } else {
-                    format!("SecretGuard заблокировал `{rel_path}`")
-                },
-                detail: reason.clone(),
-            },
-            Anomaly::LargeFileWarning { rel_path, size_bytes, threshold_bytes } => Self {
-                severity: BannerSeverity::Warning,
-                title: if is_en {
-                    format!("Large file `{rel_path}`")
-                } else {
-                    format!("Крупный файл `{rel_path}`")
-                },
-                detail: format!(
-                    "{} > {}",
-                    format_bytes_human(*size_bytes),
-                    format_bytes_human(*threshold_bytes)
-                ),
-            },
-            Anomaly::MaxDepthExceeded { rel_path, depth, max_depth } => Self {
-                severity: BannerSeverity::Warning,
-                title: if is_en {
-                    format!("Max directory depth exceeded ({depth} > {max_depth})")
-                } else {
-                    format!("Превышена глубина вложенности ({depth} > {max_depth})")
-                },
-                detail: rel_path.clone(),
-            },
+            Anomaly::SecretBlocked { rel_path, reason } => {
+                let compact_path = crate::theme::format_project_path_smart(rel_path, 24);
+                Self {
+                    severity: BannerSeverity::SecurityCritical,
+                    title: format!("{} `{compact_path}`", labels.banner_secret_blocked_title),
+                    detail: reason.clone(),
+                }
+            }
+            Anomaly::LargeFileWarning { rel_path, size_bytes, threshold_bytes } => {
+                let compact_path = crate::theme::format_project_path_smart(rel_path, 24);
+                Self {
+                    severity: BannerSeverity::Warning,
+                    title: format!("{} `{compact_path}`", labels.banner_large_file_title),
+                    detail: format!(
+                        "{} > {}",
+                        format_bytes_human(*size_bytes),
+                        format_bytes_human(*threshold_bytes)
+                    ),
+                }
+            }
+            Anomaly::MaxDepthExceeded { rel_path, depth, max_depth } => {
+                let compact_path = crate::theme::format_project_path_smart(rel_path, 24);
+                Self {
+                    severity: BannerSeverity::Warning,
+                    title: format!("{} ({depth} > {max_depth})", labels.banner_max_depth_title),
+                    detail: compact_path,
+                }
+            }
             Anomaly::MaxFilesExceeded { discovered_files, max_files } => Self {
                 severity: BannerSeverity::Warning,
-                title: if is_en {
-                    "Project file count limit exceeded".to_owned()
-                } else {
-                    "Превышен лимит количества файлов в проекте".to_owned()
-                },
+                title: labels.banner_max_files_title.to_owned(),
                 detail: format!("{discovered_files} > {max_files}"),
             },
-            Anomaly::CyclicOrSkippedSymlink { rel_path } => Self {
-                severity: BannerSeverity::Warning,
-                title: if is_en {
-                    "Skipped symbolic link".to_owned()
-                } else {
-                    "Пропущена символическая ссылка".to_owned()
-                },
-                detail: rel_path.clone(),
-            },
-            Anomaly::UnreadableOrInvalidUtf8 { rel_path, reason } => Self {
-                severity: BannerSeverity::Warning,
-                title: if is_en {
-                    format!("Failed to read `{rel_path}`")
-                } else {
-                    format!("Не удалось прочитать `{rel_path}`")
-                },
-                detail: reason.clone(),
-            },
+            Anomaly::CyclicOrSkippedSymlink { rel_path } => {
+                let compact_path = crate::theme::format_project_path_smart(rel_path, 24);
+                Self {
+                    severity: BannerSeverity::Warning,
+                    title: labels.banner_symlink_skipped_title.to_owned(),
+                    detail: compact_path,
+                }
+            }
+            Anomaly::UnreadableOrInvalidUtf8 { rel_path, reason } => {
+                let compact_path = crate::theme::format_project_path_smart(rel_path, 24);
+                Self {
+                    severity: BannerSeverity::Warning,
+                    title: format!("{} `{compact_path}`", labels.banner_unreadable_file_title),
+                    detail: reason.clone(),
+                }
+            }
         }
     }
 }
@@ -250,10 +207,22 @@ impl RenderOnce for WarningBanner {
             first.map(|item| SharedString::from(item.detail.clone())).unwrap_or_default();
 
         let mut header_row = div()
+            .w_full()
             .flex()
+            .flex_row()
             .items_center()
             .justify_between()
-            .child(div().text_xs().text_color(tone.fg).child(summary_title));
+            .gap(px(self.theme.spacing.sm))
+            .child(
+                div()
+                    .flex_1()
+                    .min_w(px(0.0))
+                    .overflow_hidden()
+                    .whitespace_nowrap()
+                    .text_xs()
+                    .text_color(tone.fg)
+                    .child(summary_title),
+            );
 
         if let Some(dismiss_fn) = self.on_dismiss {
             let hover_bg = colors.bg_hover;
@@ -278,6 +247,8 @@ impl RenderOnce for WarningBanner {
             .bottom(px(self.theme.spacing.xxl))
             .right(px(self.theme.spacing.xxl))
             .w(px(400.0))
+            .max_w(px(400.0))
+            .overflow_hidden()
             .px(px(self.theme.spacing.xl))
             .py(px(self.theme.spacing.md))
             .rounded(px(self.theme.radius.lg))
@@ -288,6 +259,14 @@ impl RenderOnce for WarningBanner {
             .flex_col()
             .gap(px(self.theme.spacing.xs))
             .child(header_row)
-            .child(div().text_xs().text_color(colors.text_primary).child(summary_detail))
+            .child(
+                div()
+                    .w_full()
+                    .overflow_hidden()
+                    .whitespace_nowrap()
+                    .text_xs()
+                    .text_color(colors.text_primary)
+                    .child(summary_detail),
+            )
     }
 }

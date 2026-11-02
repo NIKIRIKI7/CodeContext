@@ -63,9 +63,8 @@ where
                 anomalies.push(anomaly);
             }
 
-            if raw.size_bytes > effective_preset.large_file_threshold_bytes
-                && kind.is_packable_by_default()
-            {
+            let is_large_file = raw.size_bytes > effective_preset.large_file_threshold_bytes;
+            if is_large_file && kind.is_packable_by_default() {
                 anomalies.push(Anomaly::LargeFileWarning {
                     rel_path: raw.rel_path.clone(),
                     size_bytes: raw.size_bytes,
@@ -73,7 +72,7 @@ where
                 });
             }
 
-            let entry = if let Some(reason) = secret_reason {
+            let mut entry = if let Some(reason) = secret_reason {
                 let mut e = FileEntry::new_blocked_secret(
                     raw.rel_path,
                     raw.size_bytes,
@@ -86,6 +85,10 @@ where
             } else {
                 FileEntry::new(raw.rel_path, raw.size_bytes, kind)
             };
+
+            if is_large_file {
+                entry.is_selected = false;
+            }
 
             entries.push(entry);
         }

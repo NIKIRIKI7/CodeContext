@@ -372,6 +372,8 @@ fn try_connect_and_send_frame(
 
     let name = build_socket_name(config).map_err(|e| IpcPortError::Transport(e.to_string()))?;
     let mut stream = Stream::connect(name).map_err(|e| IpcPortError::Transport(e.to_string()))?;
+    let _ = stream.set_recv_timeout(Some(Duration::from_millis(150)));
+    let _ = stream.set_send_timeout(Some(Duration::from_millis(150)));
 
     stream.write_all(frame_slice).map_err(|e| IpcPortError::Transport(e.to_string()))?;
 

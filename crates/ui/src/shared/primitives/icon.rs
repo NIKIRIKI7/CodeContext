@@ -4,6 +4,7 @@ use gpui::{Rgba, SharedString, Styled as _, Svg, px, svg};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum UiIcon {
+    AppLogo,
     Package,
     FileDiff,
     Settings,
@@ -34,6 +35,7 @@ impl UiIcon {
     #[inline]
     pub const fn path(self) -> &'static str {
         match self {
+            Self::AppLogo => "icons/app-icon.svg",
             Self::Package => "icons/package.svg",
             Self::FileDiff => "icons/file-diff.svg",
             Self::Settings => "icons/settings.svg",
@@ -100,6 +102,9 @@ pub fn render_vector_checkbox(
 
 pub fn load_icon_bytes(path: &str) -> Option<Cow<'static, [u8]>> {
     let svg_str = match path {
+        "icons/app-icon.svg" => {
+            r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-8 4.5v9L12 21l8-4.5v-9L12 3Z"/><path d="m8 10-2 2 2 2"/><path d="m16 10 2 2-2 2"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>"#
+        }
         "icons/package.svg" => {
             r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><path d="M12 22V12"/><path d="m3.3 7 7.703 4.734a2 2 0 0 0 1.994 0L20.7 7"/><path d="m7.5 4.27 9 5.15"/></svg>"#
         }
@@ -180,6 +185,7 @@ pub fn load_icon_bytes(path: &str) -> Option<Cow<'static, [u8]>> {
 #[inline]
 pub fn list_icon_paths() -> Vec<SharedString> {
     vec![
+        SharedString::from(UiIcon::AppLogo.path()),
         SharedString::from(UiIcon::Package.path()),
         SharedString::from(UiIcon::FileDiff.path()),
         SharedString::from(UiIcon::Settings.path()),

@@ -21,6 +21,15 @@ use ui::theme::DEFAULT_LAYOUT;
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 fn main() {
+    #[cfg(all(target_os = "windows", not(debug_assertions)))]
+    {
+        // Предотвращение блокировок вывода в закрытый дескриптор в GUI-подсистеме Windows
+        use std::fs::OpenOptions;
+        use std::os::windows::fs::OpenOptionsExt;
+        const FILE_FLAG_NO_BUFFERING: u32 = 0x2000_0000;
+        let _ = OpenOptions::new().write(true).custom_flags(FILE_FLAG_NO_BUFFERING).open("NUL");
+    }
+
     match parse_args(std::env::args()) {
         LaunchMode::Version => {
             println!("CodeContext {}", env!("CARGO_PKG_VERSION"));

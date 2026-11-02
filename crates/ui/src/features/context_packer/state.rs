@@ -111,8 +111,14 @@ impl ContextPackerState {
             let _ = indexed_project.set_file_selected(rel_path, false);
         }
 
-        let packed = self.container.pack_service().pack_project(&indexed_project, &token)?;
         self.populate_hydrated_cache_from_project(&indexed_project, &token);
+        let packed = self.container.pack_service().pack_from_hydrated_cache(
+            &indexed_project,
+            &indexed_project.preset().clone(),
+            &self.hydrated_cache,
+            0,
+            &[],
+        );
         self.project = Some(indexed_project);
         self.apply_pack_result(packed);
         self.rebuild_tree_projection();

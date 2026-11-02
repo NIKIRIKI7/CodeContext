@@ -5,7 +5,7 @@ use core::preset::models::preset::Preset;
 use core::preset::models::resolution::ConfigOrigin;
 use gpui::{
     App, ClickEvent, InteractiveElement as _, IntoElement, ParentElement as _, RenderOnce, Rgba,
-    SharedString, Styled as _, Window, div, px,
+    SharedString, StatefulInteractiveElement as _, Styled as _, Window, div, px,
 };
 
 use crate::locale::UiLabels;
@@ -126,7 +126,11 @@ impl ProjectMetaModalComponent {
     fn render_limits_box(&self, theme: &'static ThemeTokens) -> impl IntoElement + use<> {
         let colors = &theme.colors;
         let labels = self.props.labels;
-        let gitignore_status = if self.props.preset.respect_gitignore { "active" } else { "off" };
+        let gitignore_status = if self.props.preset.respect_gitignore {
+            labels.rules_active_suffix
+        } else {
+            labels.applier_backup_off
+        };
         let excludes_str = if self.props.preset.exclude_globs.is_empty() {
             labels.exclude_globs_default.to_owned()
         } else {
@@ -156,8 +160,11 @@ impl ProjectMetaModalComponent {
                     .text_xs()
                     .text_color(colors.text_primary)
                     .child(SharedString::from(format!(
-                        ".gitignore: {gitignore_status} · Depth ≤ {} · Files ≤ {}",
-                        self.props.preset.max_depth, self.props.preset.max_files
+                        ".gitignore: {gitignore_status} · {} ≤ {} · {} ≤ {}",
+                        labels.meta_rule_depth,
+                        self.props.preset.max_depth,
+                        labels.meta_rule_files,
+                        self.props.preset.max_files
                     ))),
             )
             .child(
@@ -165,7 +172,10 @@ impl ProjectMetaModalComponent {
                     .font_family(FONT_FAMILY_MONO)
                     .text_xs()
                     .text_color(colors.text_secondary)
-                    .child(SharedString::from(format!("Excludes: {excludes_str}"))),
+                    .child(SharedString::from(format!(
+                        "{}: {excludes_str}",
+                        labels.meta_rule_excludes
+                    ))),
             )
     }
 }
@@ -197,13 +207,15 @@ impl RenderOnce for ProjectMetaModalComponent {
         let mut close_btn = UiButton::icon_only("meta-close-modal-btn", UiIcon::X)
             .variant(ButtonVariant::Ghost)
             .with_theme(theme);
-        if let Some(close_fn) = self.on_close {
-            close_btn = close_btn.on_click(move |ev, w, c| close_fn(ev, w, c));
+        if let Some(ref close_fn) = self.on_close {
+            let cb = Arc::clone(close_fn);
+            close_btn = close_btn.on_click(move |ev, w, c| cb(ev, w, c));
         }
 
         let backdrop = Rgba { r: 0.02, g: 0.03, b: 0.05, a: 0.72 };
+        let state_close_backdrop = self.on_close;
 
-        div()
+        let mut backdrop_el = div()
             .id("project-meta-modal-backdrop")
             .absolute()
             .top_0()
@@ -213,54 +225,61 @@ impl RenderOnce for ProjectMetaModalComponent {
             .flex()
             .items_center()
             .justify_center()
-            .p(px(theme.spacing.xxl))
-            .child(
-                div()
-                    .w(px(580.0))
-                    .p(px(theme.spacing.xxl))
-                    .rounded(px(theme.radius.lg))
-                    .bg(colors.bg_panel)
-                    .border_1()
-                    .border_color(colors.border_active)
-                    .flex()
-                    .flex_col()
-                    .gap(px(theme.spacing.lg))
-                    .child(
-                        div()
-                            .w_full()
-                            .flex()
-                            .flex_row()
-                            .items_center()
-                            .justify_between()
-                            .child(
-                                div()
-                                    .flex()
-                                    .flex_row()
-                                    .items_center()
-                                    .gap(px(theme.spacing.sm))
-                                    .child(
-                                        div()
-                                            .font_family(FONT_FAMILY_UI)
-                                            .text_sm()
-                                            .text_color(colors.text_primary)
-                                            .child(labels.meta_modal_title),
-                                    )
-                                    .child(
-                                        Badge::new(origin_label, origin_variant).with_theme(theme),
-                                    ),
-                            )
-                            .child(close_btn),
-                    )
-                    .child(
-                        div()
-                            .font_family(FONT_FAMILY_MONO)
-                            .text_xs()
-                            .text_color(colors.text_secondary)
-                            .child(SharedString::from(self.props.project_path)),
-                    )
-                    .child(metrics_grid)
-                    .child(limits_box)
-                    .child(div().w_full().flex().flex_row().justify_end().child(save_btn)),
-            )
+            .p(px(theme.spacing.xxl));
+
+        if let Some(close_fn) = state_close_backdrop {
+            backdrop_el = backdrop_el.on_click(move |ev, w, c| close_fn(ev, w, c));
+        }
+
+        backdrop_el.child(
+            div()
+                .id("project-meta-modal-dialog")
+                .on_click(|_ev, _win, cx| {
+                    cx.stop_propagation();
+                })
+                .w(px(580.0))
+                .p(px(theme.spacing.xxl))
+                .rounded(px(theme.radius.lg))
+                .bg(colors.bg_panel)
+                .border_1()
+                .border_color(colors.border_active)
+                .flex()
+                .flex_col()
+                .gap(px(theme.spacing.lg))
+                .child(
+                    div()
+                        .w_full()
+                        .flex()
+                        .flex_row()
+                        .items_center()
+                        .justify_between()
+                        .child(
+                            div()
+                                .flex()
+                                .flex_row()
+                                .items_center()
+                                .gap(px(theme.spacing.sm))
+                                .child(
+                                    div()
+                                        .font_family(FONT_FAMILY_UI)
+                                        .text_sm()
+                                        .text_color(colors.text_primary)
+                                        .child(labels.meta_modal_title),
+                                )
+                                .child(Badge::new(origin_label, origin_variant).with_theme(theme)),
+                        )
+                        .child(close_btn),
+                )
+                .child(
+                    div()
+                        .font_family(FONT_FAMILY_MONO)
+                        .text_xs()
+                        .text_color(colors.text_secondary)
+                        .child(SharedString::from(self.props.project_path)),
+                )
+                .child(metrics_grid)
+                .child(limits_box)
+                .child(div().w_full().flex().flex_row().justify_end().child(save_btn)),
+        )
     }
 }

@@ -48,36 +48,44 @@ where
             return LaunchMode::CheckUpdate;
         }
         if arg == "--project" || arg == "-p" {
-            let path = iter.next().map(|raw| resolve_headless_target_path(&raw));
+            let path = iter
+                .next()
+                .map(|raw| resolve_headless_target_path(&raw))
+                .filter(|p| !is_root_or_system_directory(p));
             return LaunchMode::Gui { initial_project_root: path };
         }
         if !arg.starts_with('-') {
-            return LaunchMode::Gui {
-                initial_project_root: Some(resolve_headless_target_path(&arg)),
-            };
+            let path = resolve_headless_target_path(&arg);
+            let safe_path = if is_root_or_system_directory(&path) { None } else { Some(path) };
+            return LaunchMode::Gui { initial_project_root: safe_path };
         }
     }
 
-    let current_dir = std::env::current_dir().ok().map(|dir| resolve_workspace_root(&dir));
-    LaunchMode::Gui { initial_project_root: current_dir }
+    LaunchMode::Gui { initial_project_root: None }
 }
 
-fn resolve_workspace_root(start_dir: &Path) -> PathBuf {
-    let mut cursor = Some(start_dir);
-    let mut highest_cargo_root: Option<PathBuf> = None;
-
-    for _ in 0..4 {
-        let Some(dir) = cursor else {
-            break;
-        };
-        if dir.join(".git").exists() || dir.join(".ctxpack.json").exists() {
-            return dir.to_path_buf();
-        }
-        if dir.join("Cargo.toml").exists() {
-            highest_cargo_root = Some(dir.to_path_buf());
-        }
-        cursor = dir.parent();
+fn is_root_or_system_directory(path: &Path) -> bool {
+    let resolved = if path == Path::new(".") {
+        std::env::current_dir().unwrap_or_else(|_| path.to_path_buf())
+    } else {
+        path.to_path_buf()
+    };
+    if resolved.parent().is_none() {
+        return true;
     }
-
-    highest_cargo_root.unwrap_or_else(|| start_dir.to_path_buf())
+    let s = resolved.to_string_lossy();
+    let trimmed = s.trim_end_matches(['\\', '/']);
+    let bytes = trimmed.as_bytes();
+    if (bytes.len() == 2 || bytes.len() == 3)
+        && bytes.first().is_some_and(u8::is_ascii_alphabetic)
+        && bytes.get(1).copied() == Some(b':')
+    {
+        return true;
+    }
+    if let Some(home) = std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME"))
+        && resolved == Path::new(&home)
+    {
+        return true;
+    }
+    false
 }

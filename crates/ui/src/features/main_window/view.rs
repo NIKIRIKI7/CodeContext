@@ -267,6 +267,36 @@ impl MainWindowView {
             return;
         }
 
+        let is_search_focused = self.packer_state.read(cx).ui_status().search_focused;
+        if is_search_focused {
+            if key.eq_ignore_ascii_case("escape") || key.eq_ignore_ascii_case("enter") {
+                self.packer_state.update(cx, |p, cx| {
+                    p.set_search_focused(false);
+                    cx.notify();
+                });
+                return;
+            }
+            if key.eq_ignore_ascii_case("backspace") {
+                self.packer_state.update(cx, |p, cx| {
+                    if p.pop_search_char() {
+                        cx.notify();
+                    }
+                });
+                return;
+            }
+            if !primary_mod
+                && !mods.alt
+                && let Some(ch) = extract_printable_search_char(event)
+            {
+                self.packer_state.update(cx, |p, cx| {
+                    p.append_search_char(ch);
+                    cx.notify();
+                });
+                return;
+            }
+            return;
+        }
+
         if key.eq_ignore_ascii_case("escape") {
             self.handle_escape_key(cx);
             return;
@@ -290,27 +320,6 @@ impl MainWindowView {
                 cx.notify();
             });
             return;
-        }
-
-        if !primary_mod
-            && !mods.alt
-            && self.state.read(cx).active_tab() == WorkspaceTab::ContextPacker
-        {
-            if key.eq_ignore_ascii_case("backspace") {
-                self.packer_state.update(cx, |p, cx| {
-                    if p.pop_search_char() {
-                        cx.notify();
-                    }
-                });
-                return;
-            }
-            if let Some(ch) = extract_printable_search_char(event) {
-                self.packer_state.update(cx, |p, cx| {
-                    p.append_search_char(ch);
-                    cx.notify();
-                });
-                return;
-            }
         }
 
         if !primary_mod {
