@@ -18,7 +18,7 @@ changelog ver:
 
 set-version ver: (changelog ver)
     @printf "{{ver}}\n" > VERSION
-    @python3 -c 'import pathlib, re, sys; v = sys.argv[1]; p = pathlib.Path("Cargo.toml"); s = p.read_text(encoding="utf-8"); s = re.sub(r"(?m)^version = \"[^\"]+\"", f"version = \"{v}\"", s, count=1); p.write_text(s, encoding="utf-8")' {{ver}}
+    @python3 -c 'import pathlib, re, sys; v = sys.argv[1]; p = pathlib.Path("Cargo.toml"); s = p.read_text(encoding="utf-8"); s = re.sub(r"(?m)^version = \"[^\"]+\"", f"version = \"{v}\"", s, count=1); s = re.sub(r"(path = \"crates/[^\"]+\")", lambda m: m.group(0), re.sub(r"version = \"[^\"]+\"(,\s*path = \"crates/)", f"version = \"{v}\"\\1", s)); p.write_text(s, encoding="utf-8")' {{ver}}
     cargo check --workspace
 
 tag-release ver: (set-version ver) qa

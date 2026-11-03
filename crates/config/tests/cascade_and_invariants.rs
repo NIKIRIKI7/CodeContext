@@ -203,6 +203,50 @@ fn cascade_5_import_export_and_migrating_legacy_v0_preset() {
     assert_eq!(global_after.active_preset_name, "OldV0");
 }
 
+#[test]
+fn cascade_6_schema_v2_folder_filters_and_file_filters_merge_and_normalize() {
+    let temp = TempDir::new().unwrap();
+    let global_path = temp.path().join("global/config.json");
+    let project_root = temp.path().join("project_v2");
+    fs::create_dir_all(&project_root).unwrap();
+
+    let v2_json = r#"{
+        "schema_version": 2,
+        "filters": {
+            "include_extensions": [".RS", " toml ", ".rs"],
+            "exclude_extensions": [".LOCK"],
+            "exclude_regex": ".*_generated\\.rs$"
+        },
+        "folder_filters": {
+            "exclude_names": ["node_modules/", "target", "coverage"],
+            "exclude_globs": ["**/fixtures", "tests/integration/**"],
+            "only_folders": ["./crates\\core\\src/"],
+            "folder_overrides": {
+                "./crates/": "exclude",
+                "crates\\core\\src": "include",
+                "**/node_modules": "exclude"
+            }
+        }
+    }"#;
+    fs::write(project_root.join(PROJECT_CONFIG_FILE_NAME), v2_json).unwrap();
+
+    let loader = LayeredConfigLoader::with_global_config_path(global_path);
+    let resolved = loader.resolve_for_project(Some(&project_root));
+    assert!(resolved.warnings.is_empty());
+
+    let eff = &resolved.effective_preset;
+    assert_eq!(eff.filters.include_extensions, vec!["rs".to_owned(), "toml".to_owned()]);
+    assert_eq!(eff.filters.exclude_extensions, vec!["lock".to_owned()]);
+    assert_eq!(eff.filters.exclude_regex.as_deref(), Some(".*_generated\\.rs$"));
+    assert_eq!(eff.folder_filters.only_folders, vec!["crates/core/src".to_owned()]);
+    assert!(eff.folder_filters.folder_overrides.contains_key("crates"));
+    assert!(eff.folder_filters.folder_overrides.contains_key("crates/core/src"));
+    assert!(eff.folder_filters.folder_overrides.contains_key("**/node_modules"));
+    assert!(eff.is_excluded_transit_folder("crates"));
+    assert!(eff.is_excluded_transit_folder("crates/core"));
+    assert!(!eff.is_excluded_transit_folder("crates/core/src"));
+}
+
 // ============================================================================
 // ЧАСТЬ 2: PROPERTY-BASED ФАЗЗИНГ ИНВАРИАНТОВ (PROPTEST)
 // ============================================================================

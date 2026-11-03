@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use super::preset::Preset;
 
-pub const DEFAULT_GLOBAL_HOTKEY: &str = "Ctrl+Shift+C";
+pub const DEFAULT_GLOBAL_HOTKEY: &str = "Ctrl+K";
 pub const DEFAULT_UPDATE_CHANNEL: &str = "stable";
 pub const DEFAULT_UPDATE_REPO_URL: &str = "https://github.com/NIKIRIKI7/CodeContext.git";
 pub const MAX_RECENT_PROJECTS: usize = 8;

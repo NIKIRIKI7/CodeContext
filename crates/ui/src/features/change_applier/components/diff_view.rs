@@ -19,6 +19,7 @@ pub struct DiffViewMeta {
     pub is_truncated: bool,
     pub is_sandbox_safe: bool,
     pub has_conflict: bool,
+    pub is_applied: bool,
 }
 
 #[derive(Debug, Clone, IntoElement)]
@@ -93,26 +94,32 @@ impl RenderOnce for DiffViewComponent {
         let alert_strip = render_exception_alert_strip(&self.meta, labels, theme);
 
         let mut right_meta = div().flex().flex_row().items_center().gap(px(theme.spacing.sm));
-        if self.meta.line_ending == LineEnding::Crlf {
+        if self.meta.is_applied {
             right_meta = right_meta.child(
-                Badge::new(labels.applier_encoding_crlf, BadgeVariant::Neutral).with_theme(theme),
+                Badge::new(labels.applier_valid_block, BadgeVariant::Success).with_theme(theme),
             );
+        } else {
+            if self.meta.line_ending == LineEnding::Crlf {
+                right_meta = right_meta.child(
+                    Badge::new(labels.applier_encoding_crlf, BadgeVariant::Neutral).with_theme(theme),
+                );
+            }
+            right_meta = right_meta
+                .child(
+                    div()
+                        .font_family(FONT_FAMILY_MONO)
+                        .text_xs()
+                        .text_color(theme.colors.success)
+                        .child(format!("+{}", self.meta.added_lines)),
+                )
+                .child(
+                    div()
+                        .font_family(FONT_FAMILY_MONO)
+                        .text_xs()
+                        .text_color(theme.colors.danger)
+                        .child(format!("-{}", self.meta.removed_lines)),
+                );
         }
-        right_meta = right_meta
-            .child(
-                div()
-                    .font_family(FONT_FAMILY_MONO)
-                    .text_xs()
-                    .text_color(theme.colors.success)
-                    .child(format!("+{}", self.meta.added_lines)),
-            )
-            .child(
-                div()
-                    .font_family(FONT_FAMILY_MONO)
-                    .text_xs()
-                    .text_color(theme.colors.danger)
-                    .child(format!("-{}", self.meta.removed_lines)),
-            );
 
         let file_banner = div()
             .w_full()

@@ -6,7 +6,8 @@ use super::dtos::CURRENT_SCHEMA_VERSION;
 
 type MigrationStepFn = fn(&mut Map<String, Value>);
 
-const MIGRATION_PIPELINE: &[(u32, MigrationStepFn)] = &[(0, migrate_v0_to_v1)];
+const MIGRATION_PIPELINE: &[(u32, MigrationStepFn)] =
+    &[(0, migrate_v0_to_v1), (1, migrate_v1_to_v2)];
 
 pub(crate) fn parse_and_migrate_json<T>(
     raw_json: &str,
@@ -71,6 +72,10 @@ fn migrate_v0_to_v1(obj: &mut Map<String, Value>) {
             }
         }
     }
+}
+
+fn migrate_v1_to_v2(obj: &mut Map<String, Value>) {
+    obj.insert("schema_version".to_owned(), Value::from(CURRENT_SCHEMA_VERSION));
 }
 
 fn upgrade_v0_preset_fields(preset_obj: &mut Map<String, Value>) {

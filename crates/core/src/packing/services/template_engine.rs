@@ -157,7 +157,7 @@ impl TemplateEngine {
             .iter()
             .map(|(path, content)| path.as_ref().len() + content.as_ref().len() + fixed_marker_len)
             .sum();
-        template.preamble.len() + tree_len + files_len + template.postamble.len()
+        template.effective_preamble().len() + tree_len + files_len + template.postamble.len()
     }
 
     #[inline]
@@ -175,8 +175,9 @@ impl TemplateEngine {
         let capacity = Self::calculate_exact_capacity(files, template, include_tree_in_this_chunk);
         let mut output = String::with_capacity(capacity);
 
-        if !template.preamble.is_empty() {
-            output.push_str(&template.preamble);
+        let effective_preamble = template.effective_preamble();
+        if !effective_preamble.is_empty() {
+            output.push_str(effective_preamble);
         }
         if include_tree_in_this_chunk && template.include_file_tree {
             Self::append_tree_header(files, &mut output);

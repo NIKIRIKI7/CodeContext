@@ -149,21 +149,35 @@ impl ChangeApplierState {
             .or_else(|| std::env::current_dir().ok())
             .ok_or_else(|| "Project root is not set".to_owned())?;
 
-        match self.container.execute_plan_for_project(
-            &root,
-            &self.raw_response,
-            self.backups_enabled,
-        ) {
-            Ok(manifest) => {
-                let count = manifest.applied_files_count;
-                self.last_backup_manifest = Some(manifest);
+        let applicable_indices: Vec<usize> = self
+            .parsed_files
+            .iter()
+            .enumerate()
+            .filter(|(_, f)| f.is_selected && !f.is_applied && f.is_sandbox_safe && !f.has_conflict)
+            .map(|(i, _)| i)
+            .collect();
+
+        if applicable_indices.is_empty() {
+            return Err("Все изменения уже применены или не выбраны".to_owned());
+        }
+
+        match AppContainer::apply_response_files(&root, &self.parsed_files, self.backups_enabled) {
+            Ok(count) => {
+                for idx in applicable_indices {
+                    if let Some(file) = self.parsed_files.get_mut(idx) {
+                        file.is_applied = true;
+                        file.is_selected = false;
+                    }
+                }
+                if let Some(curr) = self.parsed_files.get(self.selected_file_index) {
+                    self.selected_file_buffer = VirtualTextBuffer::new(curr.diff_preview.as_str());
+                }
                 self.status_notice = Some(ApplierStatusNotice::Applied { count });
                 Ok(count)
             }
             Err(err) => {
-                let reason = err.to_string();
-                self.status_notice = Some(ApplierStatusNotice::Error { reason: reason.clone() });
-                Err(reason)
+                self.status_notice = Some(ApplierStatusNotice::Error { reason: err.clone() });
+                Err(err)
             }
         }
     }
@@ -175,16 +189,24 @@ impl ChangeApplierState {
             .or_else(|| std::env::current_dir().ok())
             .ok_or_else(|| "Project root is not set".to_owned())?;
 
-        match self.container.undo_last_for_project(&root) {
+        match AppContainer::undo_last_backup(&root) {
             Ok(count) => {
+                for file in &mut self.parsed_files {
+                    if file.is_applied {
+                        file.is_applied = false;
+                        file.is_selected = file.is_sandbox_safe && !file.has_conflict;
+                    }
+                }
+                if let Some(curr) = self.parsed_files.get(self.selected_file_index) {
+                    self.selected_file_buffer = VirtualTextBuffer::new(curr.diff_preview.as_str());
+                }
                 self.last_backup_manifest = None;
                 self.status_notice = Some(ApplierStatusNotice::Undone { count });
                 Ok(count)
             }
             Err(err) => {
-                let reason = err.to_string();
-                self.status_notice = Some(ApplierStatusNotice::Error { reason: reason.clone() });
-                Err(reason)
+                self.status_notice = Some(ApplierStatusNotice::Error { reason: err.clone() });
+                Err(err)
             }
         }
     }
@@ -193,6 +215,16 @@ impl ChangeApplierState {
         if let Some(file) = self.parsed_files.get(index) {
             self.selected_file_index = index;
             self.selected_file_buffer = VirtualTextBuffer::new(file.diff_preview.as_str());
+        }
+    }
+
+    pub fn toggle_file_selection(&mut self, index: usize) {
+        if let Some(file) = self.parsed_files.get_mut(index)
+            && !file.is_applied
+            && file.is_sandbox_safe
+            && !file.has_conflict
+        {
+            file.is_selected = !file.is_selected;
         }
     }
 

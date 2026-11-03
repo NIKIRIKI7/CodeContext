@@ -147,6 +147,7 @@ impl Render for ChangeApplierView {
                 is_truncated: false,
                 is_sandbox_safe: true,
                 has_conflict: false,
+                is_applied: false,
             },
             |f| DiffViewMeta {
                 file_path: f.rel_path.clone(),
@@ -156,6 +157,7 @@ impl Render for ChangeApplierView {
                 is_truncated: f.is_truncated,
                 is_sandbox_safe: f.is_sandbox_safe,
                 has_conflict: f.has_conflict,
+                is_applied: f.is_applied,
             },
         );
 
@@ -189,6 +191,7 @@ impl Render for ChangeApplierView {
         );
 
         let state_sel = self.state.clone();
+        let state_toggle_file = self.state.clone();
         let state_bak = self.state.clone();
         let state_opts = self.state.clone();
         let state_apply = self.state.clone();
@@ -200,6 +203,12 @@ impl Render for ChangeApplierView {
             .on_select(move |idx, _win, cx| {
                 state_sel.update(cx, |s, cx| {
                     s.select_parsed_file(idx);
+                    cx.notify();
+                });
+            })
+            .on_toggle_file_select(move |idx, _win, cx| {
+                state_toggle_file.update(cx, |s, cx| {
+                    s.toggle_file_selection(idx);
                     cx.notify();
                 });
             })

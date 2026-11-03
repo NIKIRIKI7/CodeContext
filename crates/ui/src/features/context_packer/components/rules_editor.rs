@@ -36,11 +36,13 @@ pub type PopoverToggleCallback = Arc<dyn Fn(&ClickEvent, &mut Window, &mut App) 
 pub struct RulesEditorComponent {
     preset: Preset,
     popover_open: bool,
+    active_prompts_count: usize,
     labels: &'static UiLabels,
     theme: &'static ThemeTokens,
     on_toggle_rule: Option<RuleToggleCallback>,
     on_select_chunk_limit: Option<ChunkLimitSelectCallback>,
     on_toggle_popover: Option<PopoverToggleCallback>,
+    on_open_prompts_modal: Option<PopoverToggleCallback>,
 }
 
 impl fmt::Debug for RulesEditorComponent {
@@ -58,12 +60,31 @@ impl RulesEditorComponent {
         Self {
             preset,
             popover_open: false,
+            active_prompts_count: 0,
             labels,
             theme: active_theme(),
             on_toggle_rule: None,
             on_select_chunk_limit: None,
             on_toggle_popover: None,
+            on_open_prompts_modal: None,
         }
+    }
+
+    #[must_use]
+    #[inline]
+    pub const fn with_prompts_count(mut self, active_prompts_count: usize) -> Self {
+        self.active_prompts_count = active_prompts_count;
+        self
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn on_open_prompts_modal(
+        mut self,
+        handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.on_open_prompts_modal = Some(Arc::new(handler));
+        self
     }
 
     #[must_use]
@@ -165,6 +186,33 @@ impl RenderOnce for RulesEditorComponent {
             volume_hint = volume_hint.on_click(move |ev, w, c| cb_clone(ev, w, c));
         }
 
+        let prompts_label = if self.active_prompts_count > 0 {
+            SharedString::from(format!(
+                "{} ({active_prompts_count})",
+                labels.btn_footer_prompts,
+                active_prompts_count = self.active_prompts_count
+            ))
+        } else {
+            SharedString::from(labels.btn_footer_prompts)
+        };
+        let mut prompts_btn = UiButton::new("btn-footer-open-prompts-modal", prompts_label)
+            .icon(UiIcon::FileText)
+            .variant(ButtonVariant::FilterPill)
+            .with_theme(theme)
+            .active(self.active_prompts_count > 0);
+        if let Some(ref cb) = self.on_open_prompts_modal {
+            let cb_clone = Arc::clone(cb);
+            prompts_btn = prompts_btn.on_click(move |ev, w, c| cb_clone(ev, w, c));
+        }
+
+        let left_buttons = div()
+            .flex()
+            .flex_row()
+            .items_center()
+            .gap(px(theme.spacing.xs))
+            .child(trigger_btn)
+            .child(prompts_btn);
+
         let inspector_drawer = if self.popover_open {
             self.render_categorized_filter_inspector().into_any_element()
         } else {
@@ -189,7 +237,7 @@ impl RenderOnce for RulesEditorComponent {
                     .items_center()
                     .justify_between()
                     .gap(px(theme.spacing.sm))
-                    .child(trigger_btn)
+                    .child(left_buttons)
                     .child(volume_hint),
             )
     }

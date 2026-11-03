@@ -13,6 +13,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.2.0] - 2026-11-03
+
+### Added
+- **First-Class Folder Filtering & Top-Down Pruning (`crates/core`, `crates/scanner`)**: Two-level filtering funnel (`IncludeSubtree`, `TraverseOnly`, `PruneSubtree`) that prunes excluded directories (`node_modules`, `target`, `.git`, globs, regexes) on entry without reading their subtrees.
+- **Transparent Ancestor Transit (`TraverseOnly`)**: Specific `include` rules (e.g., `crates/core/src`) transparently traverse through excluded parent folders (`crates/`) without leaking sibling directories or parent files.
+- **Configuration `Schema v2` (`crates/config`)**: Dedicated `filters` (file extensions, globs, regexes) and `folder_filters` (`exclude_names`, `exclude_globs`, `only_folders`, `include_regex_folders`, `exclude_regex_folders`, and `folder_overrides` supporting both literal paths and globs like `**/node_modules`) with seamless `v0 -> v1 -> v2` migration.
+- **Minimalist On-Demand Regex & Filter Bar (`crates/ui`)**: Filter pills remain hidden by default and only expand as a single-line capped strip (`+N` overflow counter) when the `[.*]` regex mode is toggled.
+- **Clean Tree Projection (`FlatTreeProjection`, `TemplateEngine`)**: Automatic empty-folder pruning, folders-first alphabetical ordering, and compact intermediate path collapsing (`crates/core/src`).
+
 ## [0.1.1] - 2026-11-02
 
 ### Fixed

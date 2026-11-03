@@ -17,21 +17,27 @@ use ignore::{DirEntry, Error as IgnoreError, WalkBuilder, WalkState};
 use rayon::prelude::*;
 use thiserror::Error;
 
+use core::packing::aggregates::project::compare_paths_folders_first;
+use ignore::gitignore::{Gitignore, GitignoreBuilder};
+
 use crate::content::pipeline::append_transformed_content;
 use crate::content::stream_reader::read_text_file;
 use crate::discovery::binary_detector::{is_binary_extension, is_binary_probe, is_binary_slice};
+use crate::discovery::filter_plan::{CompiledFilterPlan, FolderWalkVerdict};
 
 const FIXED_MARKER_BYTES_PER_FILE: usize =
     DEFAULT_FILE_HEADER_PREFIX.len() + DEFAULT_FILE_HEADER_SUFFIX.len() + DEFAULT_FILE_FOOTER.len();
 
 #[derive(Debug, Error)]
-pub(crate) enum ScannerError {
+pub enum ScannerError {
     #[error("Некорректный glob-паттерн `{pattern}`: {source}")]
     InvalidGlob {
         pattern: String,
         #[source]
         source: globset::Error,
     },
+    #[error("Некорректное регулярное выражение `{pattern}`: {reason}")]
+    InvalidRegex { pattern: String, reason: String },
 }
 
 struct ThreadBatchSender {
@@ -73,9 +79,8 @@ impl Drop for WorkerBatch {
 
 struct WalkFilterContext {
     root: PathBuf,
-    exclude_matcher: GlobSet,
-    include_matcher: GlobSet,
-    has_includes: bool,
+    filter_plan: CompiledFilterPlan,
+    root_gitignore: Option<Gitignore>,
     max_depth: usize,
     max_files: usize,
     follow_symlinks: bool,
@@ -255,25 +260,40 @@ impl FileScannerPort for IgnoreFileScanner {
             return Err(ScannerPortError::InvalidProjectRoot(project_root.display().to_string()));
         }
 
-        let (exclude_set, include_set) = compile_preset_globs(preset)?;
+        let filter_plan = CompiledFilterPlan::compile(preset).map_err(|err| match err {
+            ScannerError::InvalidGlob { pattern, source } => {
+                ScannerPortError::InvalidGlobPattern { pattern, reason: source.to_string() }
+            }
+            ScannerError::InvalidRegex { pattern, reason } => {
+                ScannerPortError::InvalidGlobPattern { pattern, reason }
+            }
+        })?;
+
+        let has_override_includes = filter_plan.has_custom_override_includes();
+        let root_gitignore = if preset.respect_gitignore && has_override_includes {
+            build_root_gitignore(project_root)
+        } else {
+            None
+        };
+
         let filter_ctx = WalkFilterContext {
             root: project_root.to_path_buf(),
-            exclude_matcher: exclude_set,
-            include_matcher: include_set,
-            has_includes: !preset.include_globs.is_empty(),
+            filter_plan: filter_plan.clone(),
+            root_gitignore: root_gitignore.clone(),
             max_depth: preset.max_depth,
             max_files: preset.max_files,
             follow_symlinks: preset.follow_symlinks,
         };
 
-        let preset_for_filter = preset.clone();
+        let root_for_entry = project_root.to_path_buf();
+        let use_walk_gitignore = preset.respect_gitignore && !has_override_includes;
         let walker = WalkBuilder::new(project_root)
             .hidden(false)
-            .git_ignore(preset.respect_gitignore)
+            .git_ignore(use_walk_gitignore)
             .git_global(false)
             .git_exclude(false)
             .require_git(false)
-            .ignore(preset.respect_gitignore)
+            .ignore(use_walk_gitignore)
             .parents(false)
             .follow_links(preset.follow_symlinks)
             .max_depth(Some(preset.max_depth.saturating_add(1)))
@@ -281,10 +301,14 @@ impl FileScannerPort for IgnoreFileScanner {
                 if entry.depth() == 0 {
                     return true;
                 }
-                if entry.file_type().is_some_and(|ft| ft.is_dir())
-                    && let Some(dir_name) = entry.file_name().to_str()
-                {
-                    return !preset_for_filter.should_prune_heavy_directory(dir_name);
+                if entry.file_type().is_some_and(|ft| ft.is_dir()) {
+                    let abs_p = entry.path();
+                    let rel_os = abs_p.strip_prefix(&root_for_entry).unwrap_or(abs_p);
+                    let rel_cow = rel_os.to_string_lossy();
+                    let is_gitignored = root_gitignore
+                        .as_ref()
+                        .is_some_and(|gi| gi.matched_path_or_any_parents(rel_os, true).is_ignore());
+                    return filter_plan.evaluate_folder(&rel_cow, is_gitignored).allows_descent();
                 }
                 true
             })
@@ -321,7 +345,7 @@ impl FileScannerPort for IgnoreFileScanner {
             all_entries.extend(payload.entries);
             all_anomalies.extend(payload.anomalies);
         }
-        all_entries.sort_unstable_by(|a, b| a.rel_path.cmp(&b.rel_path));
+        all_entries.sort_unstable_by(|a, b| compare_paths_folders_first(&a.rel_path, &b.rel_path));
 
         Ok(ScanWalkReport { entries: all_entries, anomalies: all_anomalies })
     }
@@ -425,11 +449,25 @@ fn process_walk_entry(
         return WalkState::Continue;
     }
 
-    if ctx.exclude_matcher.is_match(&rel_path) && !ctx.include_matcher.is_match(&rel_path) {
+    let parent_rel = match rel_path.rfind('/') {
+        Some(pos) => rel_path.get(..pos).unwrap_or(""),
+        None => "",
+    };
+    let parent_gitignored = !parent_rel.is_empty()
+        && ctx
+            .root_gitignore
+            .as_ref()
+            .is_some_and(|gi| gi.matched_path_or_any_parents(parent_rel, true).is_ignore());
+    let parent_verdict = ctx.filter_plan.evaluate_folder(parent_rel, parent_gitignored);
+    if parent_verdict != FolderWalkVerdict::IncludeSubtree {
         return WalkState::Continue;
     }
 
-    if ctx.has_includes && !ctx.include_matcher.is_match(&rel_path) {
+    let file_gitignored = ctx
+        .root_gitignore
+        .as_ref()
+        .is_some_and(|gi| gi.matched_path_or_any_parents(rel_path.as_str(), false).is_ignore());
+    if !ctx.filter_plan.evaluate_file(&rel_path, parent_verdict, file_gitignored) {
         return WalkState::Continue;
     }
 
@@ -460,22 +498,17 @@ fn is_symlink_loop_error(err: &IgnoreError) -> bool {
     }
 }
 
-fn compile_preset_globs(
-    preset: &Preset,
-) -> std::result::Result<(GlobSet, GlobSet), ScannerPortError> {
-    let exclude_refs: Vec<&str> = preset.exclude_globs.iter().map(String::as_str).collect();
-    let include_refs: Vec<&str> = preset.include_globs.iter().map(String::as_str).collect();
-    let exclude_set = build_glob_set(&exclude_refs).map_err(|err| match err {
-        ScannerError::InvalidGlob { pattern, source } => {
-            ScannerPortError::InvalidGlobPattern { pattern, reason: source.to_string() }
+fn build_root_gitignore(project_root: &Path) -> Option<Gitignore> {
+    let mut builder = GitignoreBuilder::new(project_root);
+    let mut has_any = false;
+    for file_name in [".gitignore", ".ignore"] {
+        let p = project_root.join(file_name);
+        if p.is_file() {
+            let _ = builder.add(p);
+            has_any = true;
         }
-    })?;
-    let include_set = build_glob_set(&include_refs).map_err(|err| match err {
-        ScannerError::InvalidGlob { pattern, source } => {
-            ScannerPortError::InvalidGlobPattern { pattern, reason: source.to_string() }
-        }
-    })?;
-    Ok((exclude_set, include_set))
+    }
+    has_any.then(|| builder.build().ok()).flatten()
 }
 
 #[inline]

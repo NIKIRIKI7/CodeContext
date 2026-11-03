@@ -87,7 +87,7 @@ pub struct SemanticVersion {
 
 impl Default for SemanticVersion {
     fn default() -> Self {
-        Self::new(0, 1, 1)
+        Self::new(0, 2, 0)
     }
 }
 

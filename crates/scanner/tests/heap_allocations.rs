@@ -17,11 +17,11 @@ use core::packing::ports::clipboard::{ClipboardPort, ClipboardPortError};
 use core::packing::services::chunker::Chunker;
 use core::packing::services::pack_service::PackService;
 use core::packing::services::secret_guard::SecretGuard;
-use core::preset::models::preset::Preset;
+use core::preset::models::preset::{FolderOverrideMode, Preset};
 use core::preset::models::template::OutputTemplate;
 use core::shared_kernel::execution::cancel_token::CancelToken;
 use core::shared_kernel::fs::file_kind::FileKind;
-use scanner::IgnoreFileScanner;
+use scanner::{CompiledFilterPlan, FolderWalkVerdict, IgnoreFileScanner};
 use tempfile::TempDir;
 
 #[derive(Debug, Default)]
@@ -63,18 +63,46 @@ fn test_all_allocation_invariants_and_wall_clock_budget() {
 
     let canonical_tpl = OutputTemplate::canonical();
 
+    let mut filter_preset = Preset::default();
+    filter_preset.filters.include_extensions = vec!["rs".to_owned(), "ts".to_owned()];
+    filter_preset.filters.exclude_extensions = vec!["lock".to_owned()];
+    filter_preset.folder_filters.exclude_globs = vec!["**/fixtures".to_owned()];
+    filter_preset
+        .folder_filters
+        .folder_overrides
+        .insert("crates".to_owned(), FolderOverrideMode::Exclude);
+    filter_preset
+        .folder_filters
+        .folder_overrides
+        .insert("crates/core/src".to_owned(), FolderOverrideMode::Include);
+    let compiled_plan = CompiledFilterPlan::compile(&filter_preset).unwrap();
+
     // ========================================================================
     // ЧАСТЬ 1: СТРОГИЙ КОНТРОЛЬ АЛЛОКАЦИЙ КУЧИ (DHAT)
     // ========================================================================
     {
         let _profiler = dhat::Profiler::builder().testing().build();
 
-        // 1.1. Детектор бинарников + `SecretGuard::inspect_path` + `FileKind` (РОВНО 0 аллокаций!)
+        // 1.1. Детектор бинарников + `SecretGuard` + `CompiledFilterPlan` (РОВНО 0 аллокаций!)
         assert!(!IgnoreFileScanner::is_binary(chunk_4kb.as_bytes()));
         assert!(IgnoreFileScanner::is_binary(b"PNG\r\n\x1a\n\x00binary"));
+        assert_eq!(compiled_plan.evaluate_folder("crates", false), FolderWalkVerdict::TraverseOnly);
+        assert_eq!(
+            compiled_plan.evaluate_folder("crates\\core\\src", false),
+            FolderWalkVerdict::IncludeSubtree
+        );
+        assert_eq!(
+            compiled_plan.evaluate_folder("crates/ui", false),
+            FolderWalkVerdict::PruneSubtree
+        );
+        assert_eq!(
+            compiled_plan.evaluate_folder("node_modules", false),
+            FolderWalkVerdict::PruneSubtree
+        );
         for (path, _) in &files_10000_x_400b {
             assert!(SecretGuard::inspect_path(path).is_none());
             assert!(!FileKind::is_known_binary_extension(path));
+            assert!(compiled_plan.evaluate_file(path, FolderWalkVerdict::IncludeSubtree, false));
         }
         assert!(SecretGuard::inspect_path(".env.production").is_some());
         assert!(FileKind::is_known_binary_extension("assets/icon.png"));
@@ -164,6 +192,47 @@ fn test_all_allocation_invariants_and_wall_clock_budget() {
         "Нарушен главный KPI скорости: сквозная упаковка 4 МБ через PackService заняла {} мс (лимит < 1000 мс)",
         elapsed.as_millis()
     );
+}
+
+#[test]
+fn test_first_class_folder_pruning_and_transparent_ancestor_transit_edge_cases() {
+    let temp = TempDir::new().unwrap();
+    let root = temp.path();
+
+    fs::create_dir_all(root.join("crates/core/src/services")).unwrap();
+    fs::create_dir_all(root.join("crates/core/tests")).unwrap();
+    fs::create_dir_all(root.join("crates/core_utils/src")).unwrap();
+    fs::create_dir_all(root.join("crates/ui/src")).unwrap();
+    fs::create_dir_all(root.join("packages/web/node_modules/pkg")).unwrap();
+    fs::create_dir_all(root.join("empty_after_filter/sub")).unwrap();
+
+    fs::write(root.join("crates/Cargo.toml"), "[workspace]\n").unwrap();
+    fs::write(root.join("crates/core/Cargo.toml"), "[package]\n").unwrap();
+    fs::write(root.join("crates/core/src/lib.rs"), "pub mod services;\n").unwrap();
+    fs::write(root.join("crates/core/src/services/pack.rs"), "pub fn pack() {}\n").unwrap();
+    fs::write(root.join("crates/core/tests/integration.rs"), "fn test() {}\n").unwrap();
+    fs::write(root.join("crates/core_utils/src/lib.rs"), "pub fn util() {}\n").unwrap();
+    fs::write(root.join("crates/ui/src/view.rs"), "pub fn view() {}\n").unwrap();
+    fs::write(root.join("packages/web/node_modules/pkg/index.js"), "export {};\n").unwrap();
+    fs::write(root.join("empty_after_filter/sub/notes.txt"), "text only\n").unwrap();
+
+    let mut preset = Preset::default();
+    preset.filters.include_extensions = vec!["rs".to_owned(), "toml".to_owned()];
+    preset.folder_filters.folder_overrides.insert("crates".to_owned(), FolderOverrideMode::Exclude);
+    preset
+        .folder_filters
+        .folder_overrides
+        .insert("crates/core/src".to_owned(), FolderOverrideMode::Include);
+    preset
+        .folder_filters
+        .folder_overrides
+        .insert("**/node_modules".to_owned(), FolderOverrideMode::Exclude);
+
+    let service = PackService::new(IgnoreFileScanner::new(), MockClipboard::default());
+    let project = service.index_project(root, preset, false, &CancelToken::new()).unwrap();
+
+    let paths: Vec<&str> = project.entries().iter().map(|e| e.rel_path.as_str()).collect();
+    assert_eq!(paths, vec!["crates/core/src/services/pack.rs", "crates/core/src/lib.rs"]);
 }
 
 fn assert_single_allocation(files: &[(String, String)], minify: bool, normalize_lf: bool) {

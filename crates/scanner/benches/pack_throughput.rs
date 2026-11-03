@@ -14,15 +14,17 @@ use std::path::PathBuf;
 
 use core::packing::aggregates::file_entry::FileEntry;
 use core::packing::aggregates::project::Project;
+use core::packing::ports::scanner::FileScannerPort as _;
 use core::packing::services::chunker::Chunker;
 use core::packing::services::secret_guard::SecretGuard;
+use core::preset::models::preset::FolderOverrideMode;
 use core::preset::models::preset::Preset;
 use core::preset::models::template::OutputTemplate;
 use core::shared_kernel::execution::cancel_token::CancelToken;
 use core::shared_kernel::fs::file_kind::FileKind;
 use divan::counter::{BytesCount, ItemsCount};
 use divan::{AllocProfiler, Bencher};
-use scanner::IgnoreFileScanner;
+use scanner::{CompiledFilterPlan, FolderWalkVerdict, IgnoreFileScanner};
 use tempfile::TempDir;
 
 #[global_allocator]
@@ -325,5 +327,88 @@ fn bench_5c_chunker_split_4mb_into_1mb_chunks(bencher: Bencher) {
         let chunks = Chunker::pack_into_chunks(divan::black_box(&files), &template, false, false);
         assert!(chunks.len() >= 4);
         divan::black_box(chunks)
+    });
+}
+
+/// 6A. Двухуровневая воронка `CompiledFilterPlan::evaluate_folder` + `evaluate_file` на 10 000 путях (0 аллокаций).
+#[divan::bench(sample_count = 100)]
+fn bench_6a_compiled_filter_funnel_10k_paths_zero_alloc(bencher: Bencher) {
+    let mut preset = Preset::default();
+    preset.filters.include_extensions = vec!["rs".to_owned(), "toml".to_owned()];
+    preset.filters.exclude_regex = Some(".*_generated\\.rs$".to_owned());
+    preset.folder_filters.exclude_globs = vec!["**/fixtures".to_owned()];
+    preset.folder_filters.folder_overrides.insert("crates".to_owned(), FolderOverrideMode::Exclude);
+    preset
+        .folder_filters
+        .folder_overrides
+        .insert("crates/core/src".to_owned(), FolderOverrideMode::Include);
+    preset
+        .folder_filters
+        .folder_overrides
+        .insert("**/node_modules".to_owned(), FolderOverrideMode::Exclude);
+    let plan = CompiledFilterPlan::compile(&preset).unwrap();
+
+    let dir_paths: Vec<String> = (0..5_000)
+        .map(|i| match i % 5 {
+            0 => "crates".to_owned(),
+            1 => format!("crates/core/src/mod_{}", i % 16),
+            2 => format!("crates/ui/src/comp_{}", i % 16),
+            3 => format!("packages/pkg_{}/node_modules", i % 10),
+            _ => format!("crates/core/src/fixtures/f_{i}"),
+        })
+        .collect();
+
+    let file_paths: Vec<String> = (0..5_000)
+        .map(|i| match i % 4 {
+            0 => format!("crates/core/src/service_{i}.rs"),
+            1 => format!("crates/core/src/schema_{i}_generated.rs"),
+            2 => format!("crates/core/src/readme_{i}.md"),
+            _ => format!("crates/core/src/Cargo_{i}.toml"),
+        })
+        .collect();
+
+    bencher.counter(ItemsCount::new(10_000_usize)).bench_local(|| {
+        let mut included = 0_usize;
+        for d in divan::black_box(&dir_paths) {
+            if plan.evaluate_folder(d, false) == FolderWalkVerdict::IncludeSubtree {
+                included += 1;
+            }
+        }
+        for f in divan::black_box(&file_paths) {
+            if plan.evaluate_file(f, FolderWalkVerdict::IncludeSubtree, false) {
+                included += 1;
+            }
+        }
+        assert_eq!(included, 3_500);
+        divan::black_box(included)
+    });
+}
+
+/// 6B. Top-Down Pruning и прозрачный транзит (`crates` исключена, `crates/core/src` включена).
+#[divan::bench(sample_count = 40)]
+fn bench_6b_top_down_pruning_transparent_ancestor_transit(bencher: Bencher) {
+    let repo = generate_fs_repo(500, 4_000, 3, 512);
+    fs::create_dir_all(repo.root.join("crates/core/src")).unwrap();
+    for i in 0..50 {
+        fs::write(repo.root.join(format!("crates/core/src/mod_{i}.rs")), "pub fn core_fn() {}\n")
+            .unwrap();
+    }
+
+    let mut preset = Preset::default();
+    preset.folder_filters.folder_overrides.insert("src".to_owned(), FolderOverrideMode::Exclude);
+    preset.folder_filters.folder_overrides.insert("crates".to_owned(), FolderOverrideMode::Exclude);
+    preset
+        .folder_filters
+        .folder_overrides
+        .insert("crates/core/src".to_owned(), FolderOverrideMode::Include);
+
+    let scanner = IgnoreFileScanner::new();
+    let cancel_token = CancelToken::new();
+
+    bencher.counter(ItemsCount::new(50_usize)).bench_local(|| {
+        let report =
+            scanner.scan_index(divan::black_box(&repo.root), &preset, &cancel_token).unwrap();
+        assert_eq!(report.entries.len(), 50);
+        divan::black_box(report)
     });
 }

@@ -4,7 +4,7 @@ use thiserror::Error;
 
 use crate::packing::aggregates::file_entry::FileEntry;
 use crate::packing::aggregates::pack_result::PackResult;
-use crate::packing::aggregates::project::Project;
+use crate::packing::aggregates::project::{Project, compare_paths_folders_first};
 use crate::packing::ports::clipboard::{ClipboardPort, ClipboardPortError};
 use crate::packing::ports::scanner::{FileScannerPort, HydrateReport, ScannerPortError};
 use crate::packing::services::chunker::Chunker;
@@ -114,7 +114,7 @@ where
 
         let mut pairs: Vec<(String, String)> =
             hydrate_report.files.into_iter().map(|f| (f.rel_path, f.content)).collect();
-        pairs.sort_unstable_by(|a, b| a.0.cmp(&b.0));
+        pairs.sort_unstable_by(|a, b| compare_paths_folders_first(&a.0, &b.0));
         Ok(pairs)
     }
 
@@ -146,7 +146,9 @@ where
         for (rel_path, content) in hydrated_cache {
             let is_selected = project
                 .entries()
-                .binary_search_by(|e| e.rel_path.as_str().cmp(rel_path.as_str()))
+                .binary_search_by(|e| {
+                    compare_paths_folders_first(e.rel_path.as_str(), rel_path.as_str())
+                })
                 .ok()
                 .and_then(|idx| project.entries().get(idx))
                 .is_some_and(|e| e.is_selected);

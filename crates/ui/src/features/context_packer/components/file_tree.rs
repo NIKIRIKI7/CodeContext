@@ -21,8 +21,22 @@ use crate::theme::{
 };
 
 pub const TOP_HEAVY_FILES_LIMIT: usize = 20;
+pub const MAX_VISIBLE_FILTER_CHIPS: usize = 5;
 const HEATMAP_WARN_BYTES: u64 = 15 * 1024;
 const HEATMAP_HEAVY_BYTES: u64 = 50 * 1024;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum QuickFilterChipKind {
+    Extension(String),
+    ExcludedFolder(String),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct QuickFilterChip {
+    pub label: String,
+    pub active: bool,
+    pub kind: QuickFilterChipKind,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum TreeSortMode {
@@ -206,7 +220,12 @@ impl FlatTreeProjection {
                 continue;
             }
 
-            let (file_name, depth) = extract_name_and_depth(&entry.rel_path);
+            let (file_name, raw_depth) = extract_name_and_depth(&entry.rel_path);
+            let skipped_transit = active_dir_stack
+                .iter()
+                .filter(|anc| project.preset().is_excluded_transit_folder(anc))
+                .count();
+            let depth = raw_depth.saturating_sub(u8::try_from(skipped_transit).unwrap_or(0));
             let is_secret_unlocked = entry.kind == FileKind::Secret
                 && project.preset().is_secret_explicitly_allowed(&entry.rel_path);
 
@@ -314,20 +333,35 @@ fn emit_parent_directories_for_entry<'a>(
         .count();
     active_dir_stack.truncate(common_len);
 
+    let preset = project.preset();
+    let mut skipped_transit_ancestors =
+        active_dir_stack.iter().filter(|anc| preset.is_excluded_transit_folder(anc)).count();
+
     for &dir_prefix in dir_prefixes.get(common_len..).unwrap_or(&[]) {
         active_dir_stack.push(dir_prefix.to_owned());
+        if preset.is_excluded_transit_folder(dir_prefix) {
+            skipped_transit_ancestors += 1;
+            continue;
+        }
         if !ignore_collapsed && is_parent_collapsed(dir_prefix, collapsed_dirs) {
             continue;
         }
-        let (dir_name, depth) = extract_name_and_depth(dir_prefix);
+        let (raw_dir_name, raw_depth) = extract_name_and_depth(dir_prefix);
+        let effective_depth =
+            raw_depth.saturating_sub(u8::try_from(skipped_transit_ancestors).unwrap_or(0));
+        let display_name = if skipped_transit_ancestors > 0 && effective_depth == 0 {
+            dir_prefix.to_owned()
+        } else {
+            raw_dir_name.to_owned()
+        };
         let (file_count, selected_count, size_bytes, check_state) =
             compute_directory_stats(entries, entry_idx, dir_prefix, project);
         let is_expanded = ignore_collapsed || !collapsed_dirs.contains(dir_prefix);
 
         out_nodes.push(FlatTreeNode {
             path: dir_prefix.to_owned(),
-            display_name: dir_name.to_owned(),
-            depth,
+            display_name,
+            depth: effective_depth,
             kind: TreeNodeKind::Directory { file_count, selected_count, size_bytes },
             is_expanded,
             check_state,
@@ -438,6 +472,7 @@ struct TreeCallbacks {
     master_toggle_all: Option<TreeBulkActionHandler>,
     toggle_expand_collapse_all: Option<TreeBulkActionHandler>,
     toggle_sort_mode: Option<TreeBulkActionHandler>,
+    toggle_regex_mode: Option<TreeBulkActionHandler>,
     focus_search: Option<TreeBulkActionHandler>,
     clear_search: Option<TreeBulkActionHandler>,
     open_project: Option<TreeBulkActionHandler>,
@@ -450,6 +485,8 @@ pub struct FileTreeComponent {
     sort_mode: TreeSortMode,
     search_query: String,
     search_focused: bool,
+    regex_mode_open: bool,
+    active_filters_count: usize,
     all_collapsed: bool,
     labels: &'static UiLabels,
     theme: &'static ThemeTokens,
@@ -475,6 +512,8 @@ impl FileTreeComponent {
             sort_mode: TreeSortMode::AlphabeticalTree,
             search_query: String::new(),
             search_focused: false,
+            regex_mode_open: false,
+            active_filters_count: 0,
             all_collapsed: false,
             labels,
             theme: active_theme(),
@@ -520,6 +559,28 @@ impl FileTreeComponent {
         self.search_query = query;
         self.search_focused = focused;
         self.all_collapsed = all_collapsed;
+        self
+    }
+
+    #[must_use]
+    #[inline]
+    pub const fn with_filter_modal_indicator(
+        mut self,
+        modal_open: bool,
+        active_filters_count: usize,
+    ) -> Self {
+        self.regex_mode_open = modal_open;
+        self.active_filters_count = active_filters_count;
+        self
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn on_toggle_regex_mode(
+        mut self,
+        handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.callbacks.toggle_regex_mode = Some(Arc::new(handler));
         self
     }
 
@@ -626,6 +687,8 @@ impl FileTreeComponent {
         let search_box = render_search_box(
             &self.search_query,
             self.search_focused,
+            self.regex_mode_open,
+            self.active_filters_count,
             labels,
             theme,
             &self.callbacks,
@@ -663,12 +726,6 @@ impl FileTreeComponent {
             });
         }
 
-        let counter_label = SharedString::from(format!(
-            "{}/{}",
-            self.projection.selected_files(),
-            self.projection.total_indexed_files()
-        ));
-
         div()
             .w_full()
             .h(px(theme.layout.pane_header_height))
@@ -684,14 +741,6 @@ impl FileTreeComponent {
             .child(search_box)
             .child(sort_btn)
             .child(fold_btn)
-            .child(
-                div()
-                    .flex_shrink_0()
-                    .font_family(crate::theme::FONT_FAMILY_MONO)
-                    .text_xs()
-                    .text_color(colors.text_secondary)
-                    .child(counter_label),
-            )
     }
 }
 
@@ -779,23 +828,28 @@ impl RenderOnce for FileTreeComponent {
 fn render_search_box(
     search_query: &str,
     search_focused: bool,
+    regex_mode_open: bool,
+    active_filters_count: usize,
     labels: &'static UiLabels,
     theme: &'static ThemeTokens,
     callbacks: &TreeCallbacks,
 ) -> impl IntoElement + use<> {
     let colors = &theme.colors;
     let has_query = !search_query.is_empty();
+    let placeholder = labels.tree_filter_placeholder;
     let search_display = if search_focused && has_query {
         SharedString::from(format!("{search_query}▏"))
     } else if has_query {
         SharedString::from(search_query.to_owned())
     } else if search_focused {
-        SharedString::from(format!("▏{}", labels.tree_filter_placeholder))
+        SharedString::from(format!("▏{placeholder}"))
     } else {
-        SharedString::from(labels.tree_filter_placeholder)
+        SharedString::from(placeholder)
     };
 
-    let right_search_control = if has_query || search_focused {
+    let mut right_controls = div().flex().flex_row().items_center().gap(px(theme.spacing.xs));
+
+    if has_query || search_focused {
         let mut clear_btn = div()
             .id("tree-search-clear-btn")
             .p(px(2.0))
@@ -812,10 +866,43 @@ fn render_search_box(
                 cb_clone(ev, w, c);
             });
         }
-        clear_btn.into_any_element()
+        right_controls = right_controls.child(clear_btn);
+    }
+
+    let is_regex_active = regex_mode_open || active_filters_count > 0;
+    let hover_bg = colors.bg_hover;
+    let regex_label = if active_filters_count > 0 {
+        SharedString::from(format!(".* {active_filters_count}"))
     } else {
-        div().into_any_element()
+        SharedString::from(".*")
     };
+
+    let mut regex_btn = div()
+        .id("tree-search-regex-btn")
+        .h(px(20.0))
+        .px(px(4.0))
+        .rounded(px(theme.radius.sm))
+        .border_1()
+        .border_color(if is_regex_active { colors.cyan } else { colors.border })
+        .bg(if is_regex_active { colors.badge_accent.bg } else { colors.bg_panel })
+        .cursor_pointer()
+        .hover(move |s| s.bg(hover_bg))
+        .flex()
+        .items_center()
+        .justify_center()
+        .font_family(crate::theme::FONT_FAMILY_MONO)
+        .text_xs()
+        .text_color(if is_regex_active { colors.cyan } else { colors.text_muted })
+        .child(regex_label);
+
+    if let Some(ref cb) = callbacks.toggle_regex_mode {
+        let cb_clone = Arc::clone(cb);
+        regex_btn = regex_btn.on_click(move |ev, w, c| {
+            c.stop_propagation();
+            cb_clone(ev, w, c);
+        });
+    }
+    right_controls = right_controls.child(regex_btn);
 
     let mut search_box = div()
         .id("tree-interactive-search-box")
@@ -853,7 +940,7 @@ fn render_search_box(
                 })
                 .child(search_display),
         )
-        .child(right_search_control);
+        .child(right_controls);
 
     if let Some(ref cb) = callbacks.focus_search {
         let cb_clone = Arc::clone(cb);

@@ -311,6 +311,10 @@ impl MainWindowView {
             return;
         }
 
+        if self.try_handle_packer_modals_key(event, key, primary_mod, cx) {
+            return;
+        }
+
         let is_search_focused = self.packer_state.read(cx).ui_status().search_focused;
         if is_search_focused {
             if key.eq_ignore_ascii_case("escape") || key.eq_ignore_ascii_case("enter") {
@@ -377,14 +381,7 @@ impl MainWindowView {
         }
 
         if !mods.shift && is_key_k(key) {
-            self.state.update(cx, |s, cx| {
-                s.set_settings_open(true);
-                cx.notify();
-            });
-            self.settings_state.update(cx, |s, cx| {
-                s.open_hotkeys_modal();
-                cx.notify();
-            });
+            self.copy_packed_context_to_os_clipboard(cx);
             return;
         }
 
@@ -428,6 +425,164 @@ impl MainWindowView {
                 });
             }
         }
+    }
+
+    #[allow(clippy::too_many_lines)]
+    fn try_handle_packer_modals_key(
+        &self,
+        event: &KeyDownEvent,
+        key: &str,
+        primary_mod: bool,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        let (
+            is_filter_open,
+            is_folder_focused,
+            is_ext_focused,
+            is_regex_focused,
+            is_prompt_open,
+            is_prompt_focused,
+        ) = {
+            let ps = self.packer_state.read(cx);
+            (
+                ps.ui_status().regex_filter_open,
+                ps.is_folder_input_focused(),
+                ps.is_extension_input_focused(),
+                ps.is_regex_input_focused(),
+                ps.is_prompt_modal_open(),
+                ps.is_prompt_input_focused(),
+            )
+        };
+        if is_prompt_open {
+            if key.eq_ignore_ascii_case("escape") {
+                self.packer_state.update(cx, |p, cx| {
+                    p.set_prompt_modal_open(false);
+                    cx.notify();
+                });
+                return true;
+            }
+            if is_prompt_focused {
+                if key.eq_ignore_ascii_case("enter") {
+                    self.packer_state.update(cx, |p, cx| {
+                        p.submit_manual_prompt_draft();
+                        cx.notify();
+                    });
+                    return true;
+                }
+                if key.eq_ignore_ascii_case("backspace") {
+                    self.packer_state.update(cx, |p, cx| {
+                        if p.pop_prompt_input_char() {
+                            cx.notify();
+                        }
+                    });
+                    return true;
+                }
+                let mods = event.keystroke.modifiers;
+                if !primary_mod
+                    && !mods.alt
+                    && let Some(ch) = extract_printable_search_char(event)
+                {
+                    self.packer_state.update(cx, |p, cx| {
+                        p.append_prompt_input_char(ch);
+                        cx.notify();
+                    });
+                    return true;
+                }
+            }
+        }
+        if !is_filter_open {
+            return false;
+        }
+        if key.eq_ignore_ascii_case("escape") {
+            self.packer_state.update(cx, |p, cx| {
+                p.set_regex_filter_open(false);
+                cx.notify();
+            });
+            return true;
+        }
+        let mods = event.keystroke.modifiers;
+        if is_ext_focused {
+            if key.eq_ignore_ascii_case("enter") {
+                self.packer_state.update(cx, |p, cx| {
+                    p.submit_manual_extension();
+                    cx.notify();
+                });
+                return true;
+            }
+            if key.eq_ignore_ascii_case("backspace") {
+                self.packer_state.update(cx, |p, cx| {
+                    if p.pop_extension_input_char() {
+                        cx.notify();
+                    }
+                });
+                return true;
+            }
+            if !primary_mod
+                && !mods.alt
+                && let Some(ch) = extract_printable_regex_char(event)
+            {
+                self.packer_state.update(cx, |p, cx| {
+                    p.append_extension_input_char(ch);
+                    cx.notify();
+                });
+                return true;
+            }
+        }
+        if is_folder_focused {
+            if key.eq_ignore_ascii_case("enter") {
+                self.packer_state.update(cx, |p, cx| {
+                    p.submit_manual_folder_exclusion();
+                    cx.notify();
+                });
+                return true;
+            }
+            if key.eq_ignore_ascii_case("backspace") {
+                self.packer_state.update(cx, |p, cx| {
+                    if p.pop_folder_input_char() {
+                        cx.notify();
+                    }
+                });
+                return true;
+            }
+            if !primary_mod
+                && !mods.alt
+                && let Some(ch) = extract_printable_regex_char(event)
+            {
+                self.packer_state.update(cx, |p, cx| {
+                    p.append_folder_input_char(ch);
+                    cx.notify();
+                });
+                return true;
+            }
+        }
+        if is_regex_focused {
+            if key.eq_ignore_ascii_case("enter") {
+                self.packer_state.update(cx, |p, cx| {
+                    p.set_regex_input_focused(false);
+                    cx.notify();
+                });
+                return true;
+            }
+            if key.eq_ignore_ascii_case("backspace") {
+                self.packer_state.update(cx, |p, cx| {
+                    if p.pop_regex_char() {
+                        cx.notify();
+                    }
+                });
+                return true;
+            }
+            if !primary_mod
+                && !mods.alt
+                && let Some(ch) = extract_printable_regex_char(event)
+            {
+                self.packer_state.update(cx, |p, cx| {
+                    p.append_regex_char(ch);
+                    cx.notify();
+                });
+                return true;
+            }
+        }
+        false
     }
 
     fn try_dispatch_custom_keymap(&self, pressed: &str, cx: &mut Context<Self>) -> bool {
@@ -1046,6 +1201,20 @@ fn map_cyrillic_to_qwerty_token(token: &str) -> &str {
         "ь" | "Ь" => "M",
         other => other,
     }
+}
+
+#[inline]
+fn extract_printable_regex_char(event: &KeyDownEvent) -> Option<char> {
+    if let Some(ref kc) = event.keystroke.key_char {
+        let mut chars = kc.chars();
+        if let Some(ch) = chars.next()
+            && chars.next().is_none()
+            && !ch.is_control()
+        {
+            return Some(ch);
+        }
+    }
+    extract_printable_search_char(event)
 }
 
 #[inline]

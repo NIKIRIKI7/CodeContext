@@ -17,7 +17,7 @@ use di::AppContainer;
 use crate::locale::AppLocale;
 use crate::theme::ThemeVariant;
 
-const HOTKEY_CYCLE_PRESETS: &[&str] = &["Ctrl+Shift+C", "Ctrl+Alt+C", "Ctrl+Shift+P"];
+const HOTKEY_CYCLE_PRESETS: &[&str] = &["Ctrl+K", "Ctrl+Shift+C", "Ctrl+Alt+C"];
 
 #[derive(Debug, Clone)]
 pub struct SettingsModalState {
@@ -218,7 +218,7 @@ impl SettingsModalState {
         let pos =
             HOTKEY_CYCLE_PRESETS.iter().position(|p| p.eq_ignore_ascii_case(curr)).unwrap_or(0);
         let next_idx = (pos + 1) % HOTKEY_CYCLE_PRESETS.len();
-        let next_preset = HOTKEY_CYCLE_PRESETS.get(next_idx).copied().unwrap_or("Ctrl+Shift+C");
+        let next_preset = HOTKEY_CYCLE_PRESETS.get(next_idx).copied().unwrap_or("Ctrl+K");
         self.rebind_global_hotkey(next_preset)
     }
 

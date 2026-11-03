@@ -65,7 +65,7 @@ impl Chunker {
         C: AsRef<str>,
     {
         let fixed_marker = template.fixed_marker_bytes_per_file();
-        let base_overhead = template.preamble.len() + template.postamble.len();
+        let base_overhead = template.effective_preamble().len() + template.postamble.len();
         let first_chunk_tree_overhead = if template.include_file_tree {
             TemplateEngine::calculate_tree_header_len(files)
         } else {

@@ -1,6 +1,7 @@
 use std::fmt;
 use std::sync::Arc;
 
+use core::preset::models::template::SystemPromptMode;
 use gpui::{
     App, ClickEvent, IntoElement, ParentElement as _, RenderOnce, SharedString, Styled as _,
     UniformListScrollHandle, Window, div, px,
@@ -25,6 +26,7 @@ pub struct LivePreviewProps {
     pub skipped_binary_count: usize,
     pub active_chunk_index: usize,
     pub total_chunks: usize,
+    pub system_prompt_mode: SystemPromptMode,
     pub copied_recently: bool,
     pub labels: &'static UiLabels,
     pub theme: &'static ThemeTokens,
@@ -35,6 +37,7 @@ pub struct LivePreviewComponent {
     props: LivePreviewProps,
     scroll_handle: Option<UniformListScrollHandle>,
     on_select_chunk: Option<SelectChunkCallback>,
+    on_open_prompt_modal: Option<PreviewActionCallback>,
     on_open_meta: Option<PreviewActionCallback>,
     on_copy: Option<PreviewActionCallback>,
 }
@@ -52,6 +55,7 @@ impl LivePreviewComponent {
             props,
             scroll_handle: None,
             on_select_chunk: None,
+            on_open_prompt_modal: None,
             on_open_meta: None,
             on_copy: None,
         }
@@ -71,6 +75,16 @@ impl LivePreviewComponent {
         handler: impl Fn(usize, &mut Window, &mut App) + 'static,
     ) -> Self {
         self.on_select_chunk = Some(Arc::new(handler));
+        self
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn on_open_prompt_modal(
+        mut self,
+        handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.on_open_prompt_modal = Some(Arc::new(handler));
         self
     }
 
@@ -153,6 +167,8 @@ impl RenderOnce for LivePreviewComponent {
             SharedString::from(labels.btn_copy_context)
         };
         let copy_icon = if self.props.copied_recently { UiIcon::Check } else { UiIcon::Copy };
+        let _ = (self.props.system_prompt_mode, &self.on_open_prompt_modal);
+
         let mut copy_btn = UiButton::new("btn-copy-context-main", copy_label)
             .icon(copy_icon)
             .variant(if self.props.copied_recently {

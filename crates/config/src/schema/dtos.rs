@@ -1,16 +1,20 @@
+use std::collections::BTreeMap;
+
 use core::preset::models::preset::{
-    DEFAULT_LARGE_FILE_THRESHOLD_BYTES, DEFAULT_MAX_DEPTH, DEFAULT_MAX_FILES,
+    DEFAULT_LARGE_FILE_THRESHOLD_BYTES, DEFAULT_MAX_DEPTH, DEFAULT_MAX_FILES, FolderOverrideMode,
+    default_excluded_folder_names,
 };
 use core::preset::models::resolution::{
     DEFAULT_GLOBAL_HOTKEY, DEFAULT_UPDATE_CHANNEL, DEFAULT_UPDATE_REPO_URL, KeymapConfig,
 };
 use core::preset::models::template::{
     DEFAULT_DIVIDER_MARKER, DEFAULT_FILE_FOOTER, DEFAULT_FILE_HEADER_PREFIX,
-    DEFAULT_FILE_HEADER_SUFFIX, DEFAULT_REPLACE_MARKER, DEFAULT_SEARCH_MARKER,
+    DEFAULT_FILE_HEADER_SUFFIX, DEFAULT_REPLACE_MARKER, DEFAULT_SEARCH_MARKER, PromptBlockItem,
+    SystemPromptMode, default_prompt_blocks,
 };
 use serde::{Deserialize, Serialize};
 
-pub const CURRENT_SCHEMA_VERSION: u32 = 1;
+pub const CURRENT_SCHEMA_VERSION: u32 = 2;
 
 const fn default_schema_version() -> u32 {
     CURRENT_SCHEMA_VERSION
@@ -119,6 +123,10 @@ impl Default for ParserConfigDto {
 #[serde(default)]
 pub struct OutputTemplateDto {
     pub include_file_tree: bool,
+    #[serde(default)]
+    pub system_prompt_preset: SystemPromptMode,
+    #[serde(default = "default_prompt_blocks")]
+    pub prompt_blocks: Vec<PromptBlockItem>,
     pub preamble: String,
     #[serde(default = "default_header_prefix")]
     pub file_header_prefix: String,
@@ -135,6 +143,8 @@ impl Default for OutputTemplateDto {
     fn default() -> Self {
         Self {
             include_file_tree: false,
+            system_prompt_preset: SystemPromptMode::None,
+            prompt_blocks: default_prompt_blocks(),
             preamble: String::new(),
             file_header_prefix: default_header_prefix(),
             file_header_suffix: default_header_suffix(),
@@ -143,6 +153,115 @@ impl Default for OutputTemplateDto {
             max_chunk_bytes: None,
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct FileFiltersDto {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub include_extensions: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub exclude_extensions: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub include_globs: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub exclude_globs: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub include_regex: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub exclude_regex: Option<String>,
+    #[serde(default = "default_true")]
+    pub regex_case_sensitive: bool,
+}
+
+impl Default for FileFiltersDto {
+    fn default() -> Self {
+        Self {
+            include_extensions: Vec::new(),
+            exclude_extensions: Vec::new(),
+            include_globs: Vec::new(),
+            exclude_globs: Vec::new(),
+            include_regex: None,
+            exclude_regex: None,
+            regex_case_sensitive: true,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct FolderFiltersDto {
+    #[serde(default = "default_excluded_folder_names")]
+    pub exclude_names: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub exclude_globs: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub only_folders: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub include_regex_folders: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub exclude_regex_folders: Option<String>,
+    #[serde(default)]
+    pub regex_case_sensitive: bool,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub folder_overrides: BTreeMap<String, FolderOverrideMode>,
+    #[serde(default)]
+    pub show_excluded_in_ui: bool,
+}
+
+impl Default for FolderFiltersDto {
+    fn default() -> Self {
+        Self {
+            exclude_names: default_excluded_folder_names(),
+            exclude_globs: Vec::new(),
+            only_folders: Vec::new(),
+            include_regex_folders: None,
+            exclude_regex_folders: None,
+            regex_case_sensitive: false,
+            folder_overrides: BTreeMap::new(),
+            show_excluded_in_ui: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct FileFiltersOverlayDto {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub include_extensions: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub exclude_extensions: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub include_globs: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub exclude_globs: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub include_regex: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub exclude_regex: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub regex_case_sensitive: Option<bool>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct FolderFiltersOverlayDto {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub exclude_names: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub exclude_globs: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub only_folders: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub include_regex_folders: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub exclude_regex_folders: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub regex_case_sensitive: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub folder_overrides: Option<BTreeMap<String, FolderOverrideMode>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub show_excluded_in_ui: Option<bool>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -157,6 +276,10 @@ pub struct PresetDto {
     pub normalize_line_endings: bool,
     pub include_globs: Vec<String>,
     pub exclude_globs: Vec<String>,
+    #[serde(default)]
+    pub filters: FileFiltersDto,
+    #[serde(default)]
+    pub folder_filters: FolderFiltersDto,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub explicitly_allowed_secrets: Vec<String>,
     #[serde(default = "default_max_depth")]
@@ -180,6 +303,8 @@ impl Default for PresetDto {
             normalize_line_endings: false,
             include_globs: Vec::new(),
             exclude_globs: Vec::new(),
+            filters: FileFiltersDto::default(),
+            folder_filters: FolderFiltersDto::default(),
             explicitly_allowed_secrets: Vec::new(),
             max_depth: DEFAULT_MAX_DEPTH,
             max_files: DEFAULT_MAX_FILES,
@@ -236,6 +361,10 @@ pub struct TemplateOverlayDto {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub include_file_tree: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub system_prompt_preset: Option<SystemPromptMode>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prompt_blocks: Option<Vec<PromptBlockItem>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub preamble: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub file_header_prefix: Option<String>,
@@ -270,6 +399,10 @@ pub struct ProjectOverlayDto {
     pub include_globs: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub exclude_globs: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub filters: Option<FileFiltersOverlayDto>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub folder_filters: Option<FolderFiltersOverlayDto>,
     #[serde(default, skip_serializing)]
     pub explicitly_allowed_secrets: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -296,6 +429,8 @@ impl Default for ProjectOverlayDto {
             normalize_line_endings: None,
             include_globs: None,
             exclude_globs: None,
+            filters: None,
+            folder_filters: None,
             explicitly_allowed_secrets: Vec::new(),
             max_depth: None,
             max_files: None,
