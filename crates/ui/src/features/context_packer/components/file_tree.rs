@@ -16,11 +16,31 @@ use crate::locale::UiLabels;
 use crate::shared::primitives::badge::{Badge, BadgeVariant};
 use crate::shared::primitives::button::{ButtonVariant, UiButton};
 use crate::shared::primitives::icon::{UiIcon, render_icon, render_vector_checkbox};
-use crate::theme::{ThemeTokens, active_theme, format_bytes_human};
+use crate::theme::{
+    ColorTokens, ThemeTokens, active_theme, format_bytes_human, format_project_path_smart,
+};
 
-const TAG_SECRET: &str = "SEC";
-const TAG_BINARY: &str = "BIN";
-const TAG_SYMLINK: &str = "SYM";
+pub const TOP_HEAVY_FILES_LIMIT: usize = 20;
+const HEATMAP_WARN_BYTES: u64 = 15 * 1024;
+const HEATMAP_HEAVY_BYTES: u64 = 50 * 1024;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum TreeSortMode {
+    #[default]
+    AlphabeticalTree,
+    TopHeavyFiles,
+}
+
+impl TreeSortMode {
+    #[must_use]
+    #[inline]
+    pub const fn toggle(self) -> Self {
+        match self {
+            Self::AlphabeticalTree => Self::TopHeavyFiles,
+            Self::TopHeavyFiles => Self::AlphabeticalTree,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TriState {
@@ -76,7 +96,79 @@ pub struct FlatTreeProjection {
 }
 
 impl FlatTreeProjection {
+    #[inline]
     pub fn build(project: &Project, collapsed_dirs: &HashSet<String>, search_query: &str) -> Self {
+        Self::build_with_mode(project, collapsed_dirs, search_query, TreeSortMode::AlphabeticalTree)
+    }
+
+    pub fn build_with_mode(
+        project: &Project,
+        collapsed_dirs: &HashSet<String>,
+        search_query: &str,
+        sort_mode: TreeSortMode,
+    ) -> Self {
+        if sort_mode == TreeSortMode::TopHeavyFiles {
+            return Self::build_top_heavy_files(project, search_query);
+        }
+        Self::build_hierarchical(project, collapsed_dirs, search_query)
+    }
+
+    fn build_top_heavy_files(project: &Project, search_query: &str) -> Self {
+        let entries = project.entries();
+        let clean_query = search_query.trim();
+        let has_query = !clean_query.is_empty();
+
+        let mut candidates: Vec<&FileEntry> = entries
+            .iter()
+            .filter(|e| {
+                let is_allowed_secret = e.kind == FileKind::Secret
+                    && project.preset().is_secret_explicitly_allowed(&e.rel_path);
+                e.can_select(is_allowed_secret)
+                    && (!has_query || contains_ignore_ascii_case(&e.rel_path, clean_query))
+            })
+            .collect();
+
+        candidates.sort_unstable_by(|a, b| {
+            b.size_bytes.cmp(&a.size_bytes).then_with(|| a.rel_path.cmp(&b.rel_path))
+        });
+        candidates.truncate(TOP_HEAVY_FILES_LIMIT);
+
+        let mut nodes = Vec::with_capacity(candidates.len());
+        for entry in candidates {
+            let is_secret_unlocked = entry.kind == FileKind::Secret
+                && project.preset().is_secret_explicitly_allowed(&entry.rel_path);
+            nodes.push(FlatTreeNode {
+                path: entry.rel_path.clone(),
+                display_name: format_project_path_smart(&entry.rel_path, 38),
+                depth: 0,
+                kind: TreeNodeKind::File {
+                    kind: entry.kind,
+                    size_bytes: entry.size_bytes,
+                    lock_reason: entry.lock_reason.clone(),
+                    is_secret_unlocked,
+                },
+                is_expanded: false,
+                check_state: if entry.is_selected {
+                    TriState::Checked
+                } else {
+                    TriState::Unchecked
+                },
+            });
+        }
+
+        let selectable_total = count_selectable_entries(project);
+        Self {
+            visible_nodes: Arc::from(nodes),
+            total_indexed_files: selectable_total,
+            selected_files: project.selected_files_count(),
+        }
+    }
+
+    fn build_hierarchical(
+        project: &Project,
+        collapsed_dirs: &HashSet<String>,
+        search_query: &str,
+    ) -> Self {
         let entries = project.entries();
         let clean_query = search_query.trim();
         let has_query = !clean_query.is_empty();
@@ -138,9 +230,10 @@ impl FlatTreeProjection {
             idx += 1;
         }
 
+        let selectable_total = count_selectable_entries(project);
         Self {
             visible_nodes: Arc::from(nodes),
-            total_indexed_files: entries.len(),
+            total_indexed_files: selectable_total,
             selected_files: project.selected_files_count(),
         }
     }
@@ -175,6 +268,19 @@ impl FlatTreeProjection {
             TriState::Indeterminate
         }
     }
+}
+
+fn count_selectable_entries(project: &Project) -> usize {
+    let has_allowed_secrets = !project.preset().explicitly_allowed_secrets.is_empty();
+    project
+        .entries()
+        .iter()
+        .filter(|e| {
+            let is_allowed_secret =
+                has_allowed_secrets && project.preset().is_secret_explicitly_allowed(&e.rel_path);
+            e.can_select(is_allowed_secret)
+        })
+        .count()
 }
 
 fn emit_parent_directories_for_entry<'a>(
@@ -321,14 +427,17 @@ fn extract_name_and_depth(path: &str) -> (&str, u8) {
 pub type TreeNodeActionHandler = Arc<dyn Fn(&str, bool, &mut Window, &mut App) + 'static>;
 pub type TreePathHandler = Arc<dyn Fn(&str, &mut Window, &mut App) + 'static>;
 pub type TreeBulkActionHandler = Arc<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>;
+pub type TreeFileSelectHandler = Arc<dyn Fn(usize, &str, &mut Window, &mut App) + 'static>;
 
 #[derive(Clone, Default)]
 struct TreeCallbacks {
     toggle_check: Option<TreeNodeActionHandler>,
     toggle_expand: Option<TreePathHandler>,
+    select_file: Option<TreeFileSelectHandler>,
     toggle_secret_unlock: Option<TreePathHandler>,
     master_toggle_all: Option<TreeBulkActionHandler>,
     toggle_expand_collapse_all: Option<TreeBulkActionHandler>,
+    toggle_sort_mode: Option<TreeBulkActionHandler>,
     focus_search: Option<TreeBulkActionHandler>,
     clear_search: Option<TreeBulkActionHandler>,
     open_project: Option<TreeBulkActionHandler>,
@@ -337,6 +446,8 @@ struct TreeCallbacks {
 #[derive(IntoElement)]
 pub struct FileTreeComponent {
     projection: FlatTreeProjection,
+    focused_index: Option<usize>,
+    sort_mode: TreeSortMode,
     search_query: String,
     search_focused: bool,
     all_collapsed: bool,
@@ -360,6 +471,8 @@ impl FileTreeComponent {
     pub fn new(projection: FlatTreeProjection, labels: &'static UiLabels) -> Self {
         Self {
             projection,
+            focused_index: None,
+            sort_mode: TreeSortMode::AlphabeticalTree,
             search_query: String::new(),
             search_focused: false,
             all_collapsed: false,
@@ -372,8 +485,32 @@ impl FileTreeComponent {
 
     #[must_use]
     #[inline]
+    pub const fn with_sort_mode(mut self, sort_mode: TreeSortMode) -> Self {
+        self.sort_mode = sort_mode;
+        self
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn on_toggle_sort_mode(
+        mut self,
+        handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.callbacks.toggle_sort_mode = Some(Arc::new(handler));
+        self
+    }
+
+    #[must_use]
+    #[inline]
     pub const fn with_theme(mut self, theme: &'static ThemeTokens) -> Self {
         self.theme = theme;
+        self
+    }
+
+    #[must_use]
+    #[inline]
+    pub const fn with_focused_index(mut self, focused_index: Option<usize>) -> Self {
+        self.focused_index = focused_index;
         self
     }
 
@@ -415,6 +552,16 @@ impl FileTreeComponent {
 
     #[must_use]
     #[inline]
+    pub fn on_select_file(
+        mut self,
+        handler: impl Fn(usize, &str, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.callbacks.select_file = Some(Arc::new(handler));
+        self
+    }
+
+    #[must_use]
+    #[inline]
     pub fn on_toggle_secret_unlock(
         mut self,
         handler: impl Fn(&str, &mut Window, &mut App) + 'static,
@@ -447,6 +594,105 @@ impl FileTreeComponent {
         self.callbacks.open_project = Some(Arc::new(handler));
         self
     }
+
+    fn render_compact_tree_toolbar(&self) -> impl IntoElement + use<> {
+        let theme = self.theme;
+        let labels = self.labels;
+        let colors = &theme.colors;
+        let master_state = self.projection.master_check_state();
+        let (check_background, check_border, check_foreground) = match master_state {
+            TriState::Checked => (colors.badge_accent.bg, colors.cyan, colors.cyan),
+            TriState::Indeterminate => (colors.badge_warning.bg, colors.warning, colors.warning),
+            TriState::Unchecked => (colors.bg_elevated, colors.border_active, colors.text_muted),
+        };
+
+        let mut master_check = render_vector_checkbox(
+            master_state == TriState::Checked,
+            master_state == TriState::Indeterminate,
+            16.0,
+            check_background,
+            check_border,
+            check_foreground,
+            theme.radius.sm,
+        )
+        .id("tree-master-checkbox")
+        .cursor_pointer();
+
+        if let Some(ref cb) = self.callbacks.master_toggle_all {
+            let cb_clone = Arc::clone(cb);
+            master_check = master_check.on_click(move |ev, w, c| cb_clone(ev, w, c));
+        }
+
+        let search_box = render_search_box(
+            &self.search_query,
+            self.search_focused,
+            labels,
+            theme,
+            &self.callbacks,
+        );
+
+        let is_heavy = self.sort_mode == TreeSortMode::TopHeavyFiles;
+        let sort_text = if is_heavy {
+            format!("{} ▾", labels.tree_sort_heavy)
+        } else {
+            format!("{} ▾", labels.tree_sort_az)
+        };
+        let mut sort_btn = UiButton::new("tree-sort-mode-btn", sort_text)
+            .variant(ButtonVariant::Ghost)
+            .with_theme(theme)
+            .active(is_heavy);
+        if let Some(ref cb) = self.callbacks.toggle_sort_mode {
+            let cb_clone = Arc::clone(cb);
+            sort_btn = sort_btn.on_click(move |ev, w, c| {
+                c.stop_propagation();
+                cb_clone(ev, w, c);
+            });
+        }
+
+        let fold_icon =
+            if self.all_collapsed { UiIcon::ChevronsUpDown } else { UiIcon::ChevronsDownUp };
+        let mut fold_btn = UiButton::icon_only("tree-fold-all-btn", fold_icon)
+            .variant(ButtonVariant::Ghost)
+            .with_theme(theme)
+            .active(self.all_collapsed);
+        if let Some(ref cb) = self.callbacks.toggle_expand_collapse_all {
+            let cb_clone = Arc::clone(cb);
+            fold_btn = fold_btn.on_click(move |ev, w, c| {
+                c.stop_propagation();
+                cb_clone(ev, w, c);
+            });
+        }
+
+        let counter_label = SharedString::from(format!(
+            "{}/{}",
+            self.projection.selected_files(),
+            self.projection.total_indexed_files()
+        ));
+
+        div()
+            .w_full()
+            .h(px(theme.layout.pane_header_height))
+            .px(px(theme.spacing.lg))
+            .border_b_1()
+            .border_color(colors.border)
+            .bg(colors.bg_panel)
+            .flex()
+            .flex_row()
+            .items_center()
+            .gap(px(theme.spacing.xs))
+            .child(master_check)
+            .child(search_box)
+            .child(sort_btn)
+            .child(fold_btn)
+            .child(
+                div()
+                    .flex_shrink_0()
+                    .font_family(crate::theme::FONT_FAMILY_MONO)
+                    .text_xs()
+                    .text_color(colors.text_secondary)
+                    .child(counter_label),
+            )
+    }
 }
 
 impl RenderOnce for FileTreeComponent {
@@ -456,15 +702,7 @@ impl RenderOnce for FileTreeComponent {
         let nodes = self.projection.visible_nodes_arc();
         let item_count = nodes.len();
 
-        let header = render_compact_tree_toolbar(
-            &self.projection,
-            &self.search_query,
-            self.search_focused,
-            self.all_collapsed,
-            labels,
-            theme,
-            &self.callbacks,
-        );
+        let header = self.render_compact_tree_toolbar();
 
         if item_count == 0 {
             let mut open_btn =
@@ -504,6 +742,7 @@ impl RenderOnce for FileTreeComponent {
         }
 
         let callbacks = self.callbacks;
+        let focused_index = self.focused_index;
         let list = uniform_list(
             "context-packer-file-tree",
             item_count,
@@ -511,7 +750,10 @@ impl RenderOnce for FileTreeComponent {
                 let mut rows = Vec::with_capacity(range.len());
                 for row_idx in range {
                     if let Some(node) = nodes.get(row_idx) {
-                        rows.push(render_tree_row(row_idx, node, labels, theme, &callbacks));
+                        let is_focused = focused_index == Some(row_idx);
+                        rows.push(render_tree_row(
+                            row_idx, node, is_focused, labels, theme, &callbacks,
+                        ));
                     }
                 }
                 rows
@@ -534,82 +776,6 @@ impl RenderOnce for FileTreeComponent {
     }
 }
 
-fn render_compact_tree_toolbar(
-    projection: &FlatTreeProjection,
-    search_query: &str,
-    search_focused: bool,
-    all_collapsed: bool,
-    labels: &'static UiLabels,
-    theme: &'static ThemeTokens,
-    callbacks: &TreeCallbacks,
-) -> impl IntoElement + use<> {
-    let colors = &theme.colors;
-    let master_state = projection.master_check_state();
-    let (check_background, check_border, check_foreground) = match master_state {
-        TriState::Checked => (colors.badge_accent.bg, colors.cyan, colors.cyan),
-        TriState::Indeterminate => (colors.badge_warning.bg, colors.warning, colors.warning),
-        TriState::Unchecked => (colors.bg_elevated, colors.border_active, colors.text_muted),
-    };
-
-    let mut master_check = render_vector_checkbox(
-        master_state == TriState::Checked,
-        master_state == TriState::Indeterminate,
-        16.0,
-        check_background,
-        check_border,
-        check_foreground,
-        theme.radius.sm,
-    )
-    .id("tree-master-checkbox")
-    .cursor_pointer();
-
-    if let Some(ref cb) = callbacks.master_toggle_all {
-        let cb_clone = Arc::clone(cb);
-        master_check = master_check.on_click(move |ev, w, c| cb_clone(ev, w, c));
-    }
-
-    let search_box = render_search_box(search_query, search_focused, labels, theme, callbacks);
-
-    let counter_label = SharedString::from(format!(
-        "{}/{}",
-        projection.selected_files(),
-        projection.total_indexed_files()
-    ));
-
-    let fold_icon = if all_collapsed { UiIcon::ChevronsUpDown } else { UiIcon::ChevronsDownUp };
-    let mut fold_btn = UiButton::icon_only("tree-fold-toggle-btn", fold_icon)
-        .variant(ButtonVariant::Ghost)
-        .with_theme(theme)
-        .active(all_collapsed);
-    if let Some(ref cb) = callbacks.toggle_expand_collapse_all {
-        let cb_clone = Arc::clone(cb);
-        fold_btn = fold_btn.on_click(move |ev, w, c| cb_clone(ev, w, c));
-    }
-
-    div()
-        .w_full()
-        .h(px(theme.layout.pane_header_height))
-        .px(px(theme.spacing.lg))
-        .border_b_1()
-        .border_color(colors.border)
-        .bg(colors.bg_panel)
-        .flex()
-        .flex_row()
-        .items_center()
-        .gap(px(theme.spacing.sm))
-        .child(master_check)
-        .child(search_box)
-        .child(
-            div()
-                .flex_shrink_0()
-                .font_family(crate::theme::FONT_FAMILY_MONO)
-                .text_xs()
-                .text_color(colors.text_secondary)
-                .child(counter_label),
-        )
-        .child(fold_btn)
-}
-
 fn render_search_box(
     search_query: &str,
     search_focused: bool,
@@ -619,15 +785,17 @@ fn render_search_box(
 ) -> impl IntoElement + use<> {
     let colors = &theme.colors;
     let has_query = !search_query.is_empty();
-    let search_display = if has_query {
+    let search_display = if search_focused && has_query {
         SharedString::from(format!("{search_query}▏"))
+    } else if has_query {
+        SharedString::from(search_query.to_owned())
     } else if search_focused {
         SharedString::from(format!("▏{}", labels.tree_filter_placeholder))
     } else {
         SharedString::from(labels.tree_filter_placeholder)
     };
 
-    let right_search_control = if has_query {
+    let right_search_control = if has_query || search_focused {
         let mut clear_btn = div()
             .id("tree-search-clear-btn")
             .p(px(2.0))
@@ -639,7 +807,10 @@ fn render_search_box(
             .child(render_icon(UiIcon::X, 12.0, colors.text_secondary));
         if let Some(ref cb) = callbacks.clear_search {
             let cb_clone = Arc::clone(cb);
-            clear_btn = clear_btn.on_click(move |ev, w, c| cb_clone(ev, w, c));
+            clear_btn = clear_btn.on_click(move |ev, w, c| {
+                c.stop_propagation();
+                cb_clone(ev, w, c);
+            });
         }
         clear_btn.into_any_element()
     } else {
@@ -654,11 +825,7 @@ fn render_search_box(
         .px(px(theme.spacing.md))
         .rounded(px(theme.radius.md))
         .border_1()
-        .border_color(if search_focused || has_query {
-            colors.border_active
-        } else {
-            colors.border
-        })
+        .border_color(if search_focused { colors.cyan } else { colors.border })
         .bg(colors.bg_elevated)
         .cursor_pointer()
         .flex()
@@ -666,7 +833,11 @@ fn render_search_box(
         .items_center()
         .justify_between()
         .gap(px(theme.spacing.xs))
-        .child(render_icon(UiIcon::Search, 13.0, colors.text_muted))
+        .child(render_icon(
+            UiIcon::Search,
+            13.0,
+            if search_focused { colors.cyan } else { colors.text_muted },
+        ))
         .child(
             div()
                 .flex_1()
@@ -675,14 +846,21 @@ fn render_search_box(
                 .whitespace_nowrap()
                 .font_family(crate::theme::FONT_FAMILY_MONO)
                 .text_xs()
-                .text_color(if has_query { colors.text_primary } else { colors.text_muted })
+                .text_color(if has_query || search_focused {
+                    colors.text_primary
+                } else {
+                    colors.text_muted
+                })
                 .child(search_display),
         )
         .child(right_search_control);
 
     if let Some(ref cb) = callbacks.focus_search {
         let cb_clone = Arc::clone(cb);
-        search_box = search_box.on_click(move |ev, w, c| cb_clone(ev, w, c));
+        search_box = search_box.on_click(move |ev, w, c| {
+            c.stop_propagation();
+            cb_clone(ev, w, c);
+        });
     }
 
     search_box
@@ -691,6 +869,7 @@ fn render_search_box(
 fn render_tree_row(
     row_idx: usize,
     node: &FlatTreeNode,
+    is_focused: bool,
     labels: &'static UiLabels,
     theme: &'static ThemeTokens,
     callbacks: &TreeCallbacks,
@@ -699,16 +878,18 @@ fn render_tree_row(
     let indent_px =
         f32::from(node.depth) * theme.layout.tree_indent_step + theme.layout.tree_indent_base;
     let (chevron_el, check_el, name_el) =
-        build_tree_row_interactive_cells(row_idx, node, theme, callbacks);
+        build_tree_row_interactive_cells(row_idx, node, is_focused, theme, callbacks);
     let (leading_icon, count_chip, size_label, secret_unlock_btn) =
         render_node_metadata(row_idx, node, labels, theme, callbacks.toggle_secret_unlock.clone());
     let hover_bg = colors.bg_hover;
+    let row_bg = if is_focused { colors.bg_elevated } else { colors.bg_panel };
 
     div()
         .w_full()
         .h(px(theme.layout.tree_row_height))
         .pl(px(indent_px))
         .pr(px(theme.spacing.lg))
+        .bg(row_bg)
         .flex()
         .flex_row()
         .items_center()
@@ -744,7 +925,7 @@ fn render_tree_row(
                     div()
                         .font_family(crate::theme::FONT_FAMILY_MONO)
                         .text_xs()
-                        .text_color(colors.text_muted)
+                        .text_color(node_size_heatmap_color(node, colors))
                         .child(size_label),
                 ),
         )
@@ -753,6 +934,7 @@ fn render_tree_row(
 fn build_tree_row_interactive_cells(
     row_idx: usize,
     node: &FlatTreeNode,
+    is_focused: bool,
     theme: &'static ThemeTokens,
     callbacks: &TreeCallbacks,
 ) -> (gpui::Stateful<gpui::Div>, gpui::Stateful<gpui::Div>, gpui::Stateful<gpui::Div>) {
@@ -816,7 +998,7 @@ fn build_tree_row_interactive_cells(
             crate::theme::FONT_FAMILY_MONO
         })
         .text_xs()
-        .text_color(if is_dir { colors.text_primary } else { colors.text_secondary })
+        .text_color(if is_dir || is_focused { colors.text_primary } else { colors.text_secondary })
         .child(SharedString::from(node.display_name.clone()));
 
     if is_dir {
@@ -826,6 +1008,11 @@ fn build_tree_row_interactive_cells(
                 cb(&path_for_label, win, cx);
             });
         }
+    } else if let Some(ref select_fn) = callbacks.select_file {
+        let cb = Arc::clone(select_fn);
+        name_el = name_el.on_click(move |_ev, win, cx| {
+            cb(row_idx, &path_for_label, win, cx);
+        });
     } else if let Some(ref check_fn) = callbacks.toggle_check {
         let cb = Arc::clone(check_fn);
         name_el = name_el.on_click(move |_ev, win, cx| {
@@ -876,13 +1063,13 @@ fn render_node_metadata(
             };
             let file_dot = render_icon(file_icon, 13.0, dot_color).into_any_element();
             let tag_chip = match kind {
-                FileKind::Secret => Badge::new(TAG_SECRET, BadgeVariant::Danger)
+                FileKind::Secret => Badge::new(labels.tag_secret, BadgeVariant::Danger)
                     .with_theme(theme)
                     .into_any_element(),
-                FileKind::Binary => Badge::new(TAG_BINARY, BadgeVariant::Warning)
+                FileKind::Binary => Badge::new(labels.tag_binary, BadgeVariant::Warning)
                     .with_theme(theme)
                     .into_any_element(),
-                FileKind::SymlinkSkipped => Badge::new(TAG_SYMLINK, BadgeVariant::Neutral)
+                FileKind::SymlinkSkipped => Badge::new(labels.tag_symlink, BadgeVariant::Neutral)
                     .with_theme(theme)
                     .into_any_element(),
                 FileKind::SourceCode | FileKind::Configuration | FileKind::Documentation => {
@@ -912,6 +1099,22 @@ fn render_node_metadata(
                 div().into_any_element()
             };
             (file_dot, tag_chip, size_str, secret_btn)
+        }
+    }
+}
+
+#[inline]
+const fn node_size_heatmap_color(node: &FlatTreeNode, colors: &ColorTokens) -> gpui::Rgba {
+    match node.kind {
+        TreeNodeKind::Directory { .. } => colors.text_muted,
+        TreeNodeKind::File { size_bytes, .. } => {
+            if size_bytes > HEATMAP_HEAVY_BYTES {
+                colors.kind_rust
+            } else if size_bytes >= HEATMAP_WARN_BYTES {
+                colors.warning
+            } else {
+                colors.text_muted
+            }
         }
     }
 }

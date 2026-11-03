@@ -5,7 +5,7 @@ use core::preset::models::preset::{
 };
 use core::preset::models::resolution::{
     ConfigWarning, DEFAULT_GLOBAL_HOTKEY, DEFAULT_UPDATE_CHANNEL, DEFAULT_UPDATE_REPO_URL,
-    GlobalConfig,
+    GlobalConfig, MAX_RECENT_PROJECTS, normalize_recent_project_path, paths_are_equivalent,
 };
 use core::preset::models::template::{
     DEFAULT_DIVIDER_MARKER, DEFAULT_FILE_FOOTER, DEFAULT_FILE_HEADER_PREFIX,
@@ -49,6 +49,22 @@ pub(crate) fn global_dto_to_domain(
     } else {
         dto.update_repo_url.trim().to_owned()
     };
+    let mut recent_projects: Vec<String> =
+        Vec::with_capacity(dto.recent_projects.len().min(MAX_RECENT_PROJECTS));
+    for raw_path in dto.recent_projects {
+        let normalized = normalize_recent_project_path(&raw_path);
+        if !normalized.is_empty()
+            && (normalized.contains('/') || normalized.contains('\\'))
+            && !recent_projects
+                .iter()
+                .any(|existing: &String| paths_are_equivalent(existing, normalized))
+        {
+            recent_projects.push(normalized.to_owned());
+            if recent_projects.len() >= MAX_RECENT_PROJECTS {
+                break;
+            }
+        }
+    }
     GlobalConfig {
         active_preset_name,
         presets,
@@ -57,6 +73,8 @@ pub(crate) fn global_dto_to_domain(
         create_backups_by_default: dto.create_backups_by_default,
         update_channel,
         update_repo_url,
+        recent_projects,
+        keymap: dto.keymap,
     }
 }
 
@@ -70,6 +88,8 @@ pub(crate) fn global_domain_to_dto(domain: &GlobalConfig) -> GlobalConfigDto {
         create_backups_by_default: domain.create_backups_by_default,
         update_channel: domain.update_channel.clone(),
         update_repo_url: domain.update_repo_url.clone(),
+        recent_projects: domain.recent_projects.clone(),
+        keymap: domain.keymap.clone(),
     }
 }
 

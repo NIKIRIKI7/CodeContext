@@ -387,6 +387,21 @@ impl SystemUpdater {
             guard.install_target_exe = target_exe;
         }
     }
+
+    pub fn restart_into_updated_binary(&self) -> Result<(), UpdaterPortError> {
+        let current_exe = self
+            .state
+            .lock()
+            .map_err(|e| UpdaterPortError::Storage(e.to_string()))?
+            .current_exe
+            .clone();
+        if self.mode == UpdaterBackendMode::NativeOs && current_exe.exists() {
+            Command::new(&current_exe)
+                .spawn()
+                .map_err(|e| UpdaterPortError::Storage(e.to_string()))?;
+        }
+        Ok(())
+    }
 }
 
 impl UpdaterPort for SystemUpdater {
@@ -429,7 +444,7 @@ impl UpdaterPort for SystemUpdater {
             return UpdateStage::Idle;
         };
 
-        apply_selected_release_to_state(&mut guard, &releases, channel)
+        apply_selected_release_to_state(self.mode, &mut guard, &releases, channel)
     }
 
     fn check_for_updates(
@@ -445,7 +460,15 @@ impl UpdaterPort for SystemUpdater {
                 .simulated_releases
                 .clone()
         } else {
-            fetch_remote_releases(&provider).unwrap_or_default()
+            match fetch_remote_releases(&provider) {
+                Ok(list) => list,
+                Err(err) => {
+                    if let Ok(mut guard) = self.state.lock() {
+                        guard.stage = UpdateStage::Failed { reason: err.to_string() };
+                    }
+                    return Err(err);
+                }
+            }
         };
 
         let mut guard = self.state.lock().map_err(|e| UpdaterPortError::Storage(e.to_string()))?;
@@ -453,17 +476,30 @@ impl UpdaterPort for SystemUpdater {
             guard.cached_remote_releases = Some(releases.clone());
         }
 
-        Ok(apply_selected_release_to_state(&mut guard, &releases, channel))
+        Ok(apply_selected_release_to_state(self.mode, &mut guard, &releases, channel))
     }
 
     fn apply_staged_update(&self) -> Result<UpdateStage, UpdaterPortError> {
-        let mut guard = self.state.lock().map_err(|e| UpdaterPortError::Storage(e.to_string()))?;
-        let Some((manifest, payload)) = guard.staged_update.clone() else {
-            return Ok(guard.stage.clone());
+        let (manifest, mut payload, current_exe, install_target_exe) = {
+            let guard = self.state.lock().map_err(|e| UpdaterPortError::Storage(e.to_string()))?;
+            let Some((manifest, payload)) = guard.staged_update.clone() else {
+                return Ok(guard.stage.clone());
+            };
+            (manifest, payload, guard.current_exe.clone(), guard.install_target_exe.clone())
         };
 
         let target = current_target_triple();
-        if let Some(artifact) = manifest.find_artifact_for_target(target)
+        if self.mode == UpdaterBackendMode::NativeOs && payload.is_empty() {
+            match download_native_release_binary(&manifest.version, target) {
+                Ok(downloaded) => payload = downloaded,
+                Err(err) => {
+                    if let Ok(mut guard) = self.state.lock() {
+                        guard.stage = UpdateStage::Failed { reason: err.to_string() };
+                    }
+                    return Err(err);
+                }
+            }
+        } else if let Some(artifact) = manifest.find_artifact_for_target(target)
             && let Err(err) = verify_payload_integrity(
                 &payload,
                 artifact,
@@ -471,14 +507,25 @@ impl UpdaterPort for SystemUpdater {
                 EMBEDDED_RELEASE_PUBLIC_KEY_HEX,
             )
         {
-            guard.stage = UpdateStage::Failed { reason: err.to_string() };
+            if let Ok(mut guard) = self.state.lock() {
+                guard.stage = UpdateStage::Failed { reason: err.to_string() };
+            }
             return Err(err);
         }
 
-        if self.mode == UpdaterBackendMode::NativeOs || guard.current_exe.exists() {
-            atomic_swap_executable(&guard.current_exe, &payload)?;
+        if self.mode == UpdaterBackendMode::NativeOs || current_exe.exists() {
+            if let Err(err) = atomic_swap_executable(&current_exe, &payload) {
+                if let Ok(mut guard) = self.state.lock() {
+                    guard.stage = UpdateStage::Failed { reason: err.to_string() };
+                }
+                return Err(err);
+            }
+            if install_target_exe != current_exe && install_target_exe.exists() {
+                let _ = atomic_swap_executable(&install_target_exe, &payload);
+            }
         }
 
+        let mut guard = self.state.lock().map_err(|e| UpdaterPortError::Storage(e.to_string()))?;
         let stage = UpdateStage::ReadyToRestart { version: manifest.version };
         guard.current_version = manifest.version;
         guard.stage = stage.clone();
@@ -501,14 +548,19 @@ impl UpdaterPort for SystemUpdater {
 }
 
 fn apply_selected_release_to_state(
+    mode: UpdaterBackendMode,
     guard: &mut UpdaterInnerState,
     releases: &[ReleaseManifest],
     channel: UpdateChannel,
 ) -> UpdateStage {
     let current = guard.current_version;
     let next_stage = if let Some(best) = select_best_release(releases, &current, channel) {
-        let sample_payload = format!("codecontext-binary-{}", best.version).into_bytes();
-        guard.staged_update = Some((best.clone(), sample_payload));
+        let staged_payload = if mode == UpdaterBackendMode::InMemory {
+            format!("codecontext-binary-{}", best.version).into_bytes()
+        } else {
+            Vec::new()
+        };
+        guard.staged_update = Some((best.clone(), staged_payload));
         UpdateStage::UpdateAvailable { version: best.version, channel: best.channel }
     } else {
         guard.staged_update = None;
@@ -521,34 +573,214 @@ fn apply_selected_release_to_state(
 fn fetch_remote_releases(
     provider: &ReleaseProviderSpec,
 ) -> Result<Vec<ReleaseManifest>, UpdaterPortError> {
+    let api_res = curl_fetch_text(&provider.api_releases_url, 6);
+    if let Ok(ref body) = api_res {
+        let parsed = parse_forge_releases_tags(body);
+        if !parsed.is_empty() {
+            return Ok(parsed);
+        }
+    }
+
+    let manifest_res = curl_fetch_text(&provider.manifest_url, 6);
+    if let Ok(ref body) = manifest_res {
+        let parsed = parse_forge_releases_tags(body);
+        if !parsed.is_empty() {
+            return Ok(parsed);
+        }
+    }
+
+    match (api_res, manifest_res) {
+        (Err(e), _) | (_, Err(e)) => Err(e),
+        _ => Ok(Vec::new()),
+    }
+}
+
+fn curl_fetch_text(url: &str, max_time_secs: u32) -> Result<String, UpdaterPortError> {
+    let max_time = max_time_secs.to_string();
     let mut cmd = Command::new("curl");
     cmd.args([
         "-fsSL",
         "--connect-timeout",
-        "2",
+        "4",
         "--max-time",
-        "3",
+        &max_time,
+        "-H",
+        "Accept: application/vnd.github+json",
         "-H",
         "User-Agent: CodeContext-Updater",
-        &provider.api_releases_url,
+        url,
     ]);
+    configure_hidden_command(&mut cmd);
+    let output = cmd.output().map_err(|e| UpdaterPortError::Network(e.to_string()))?;
+    if !output.status.success() {
+        return Err(UpdaterPortError::Network(format!("HTTP error fetching `{url}`")));
+    }
+    Ok(String::from_utf8_lossy(&output.stdout).into_owned())
+}
+
+fn curl_download_file(url: &str, dest: &Path) -> Result<(), UpdaterPortError> {
+    let dest_str = dest.to_string_lossy();
+    let mut cmd = Command::new("curl");
+    cmd.args([
+        "-fsSL",
+        "--connect-timeout",
+        "8",
+        "--max-time",
+        "120",
+        "-H",
+        "User-Agent: CodeContext-Updater",
+        "-o",
+        &dest_str,
+        url,
+    ]);
+    configure_hidden_command(&mut cmd);
+    let status = cmd.status().map_err(|e| UpdaterPortError::Network(e.to_string()))?;
+    if !status.success() || !dest.exists() {
+        return Err(UpdaterPortError::Network(format!("Не удалось скачать `{url}`")));
+    }
+    Ok(())
+}
+
+fn download_native_release_binary(
+    version: &SemanticVersion,
+    target: &str,
+) -> Result<Vec<u8>, UpdaterPortError> {
+    let spec = ReleaseProviderSpec::default();
+    let base_url =
+        format!("https://github.com/{}/{}/releases/download/v{version}", spec.owner, spec.repo);
+    let pid = std::process::id();
+    let stage_dir = std::env::temp_dir().join(format!("codecontext_upd_{version}_{pid}"));
+    let _ = fs::remove_dir_all(&stage_dir);
+    fs::create_dir_all(&stage_dir).map_err(|e| UpdaterPortError::Storage(e.to_string()))?;
+
+    let result = download_and_extract_for_target(&base_url, target, &stage_dir);
+    let _ = fs::remove_dir_all(&stage_dir);
+    let bytes = result?;
+
+    if bytes.len() < 65_536 {
+        return Err(UpdaterPortError::InvalidManifest(
+            "Скачанный бинарный файл повреждён или слишком мал".to_owned(),
+        ));
+    }
+    Ok(bytes)
+}
+
+fn download_and_extract_for_target(
+    base_url: &str,
+    target: &str,
+    stage_dir: &Path,
+) -> Result<Vec<u8>, UpdaterPortError> {
+    let sha_sums_opt = curl_fetch_text(&format!("{base_url}/SHA256SUMS.txt"), 8).ok();
+
+    if cfg!(target_os = "windows") {
+        let exe_name = format!("codecontext-{target}.exe");
+        let exe_path = stage_dir.join(&exe_name);
+        if curl_download_file(&format!("{base_url}/{exe_name}"), &exe_path).is_ok()
+            && let Ok(bytes) = fs::read(&exe_path)
+        {
+            verify_optional_sha256_sums(&bytes, &exe_name, sha_sums_opt.as_deref())?;
+            return Ok(bytes);
+        }
+
+        let zip_name = format!("codecontext-{target}.zip");
+        let zip_path = stage_dir.join(&zip_name);
+        curl_download_file(&format!("{base_url}/{zip_name}"), &zip_path)?;
+        if let Ok(zip_bytes) = fs::read(&zip_path) {
+            verify_optional_sha256_sums(&zip_bytes, &zip_name, sha_sums_opt.as_deref())?;
+        }
+        extract_archive_with_system_tar(&zip_path, stage_dir)?;
+        return fs::read(stage_dir.join("codecontext.exe"))
+            .map_err(|e| UpdaterPortError::Storage(e.to_string()));
+    }
+
+    let tar_name = format!("codecontext-{target}.tar.gz");
+    let tar_path = stage_dir.join(&tar_name);
+    if curl_download_file(&format!("{base_url}/{tar_name}"), &tar_path).is_ok() {
+        if let Ok(tar_bytes) = fs::read(&tar_path) {
+            verify_optional_sha256_sums(&tar_bytes, &tar_name, sha_sums_opt.as_deref())?;
+        }
+        extract_archive_with_system_tar(&tar_path, stage_dir)?;
+        return fs::read(stage_dir.join("codecontext"))
+            .map_err(|e| UpdaterPortError::Storage(e.to_string()));
+    }
+
+    let appimage_name = format!("codecontext-{target}.AppImage");
+    let appimage_path = stage_dir.join(&appimage_name);
+    curl_download_file(&format!("{base_url}/{appimage_name}"), &appimage_path)?;
+    let bytes = fs::read(&appimage_path).map_err(|e| UpdaterPortError::Storage(e.to_string()))?;
+    verify_optional_sha256_sums(&bytes, &appimage_name, sha_sums_opt.as_deref())?;
+    Ok(bytes)
+}
+
+fn verify_optional_sha256_sums(
+    bytes: &[u8],
+    asset_name: &str,
+    sha_sums_text: Option<&str>,
+) -> Result<(), UpdaterPortError> {
+    let Some(sums) = sha_sums_text else {
+        return Ok(());
+    };
+    for line in sums.lines() {
+        let mut parts = line.split_whitespace();
+        let Some(expected_hex) = parts.next() else {
+            continue;
+        };
+        let Some(file_col) = parts.next() else {
+            continue;
+        };
+        let clean_file = file_col.trim_start_matches('*');
+        if clean_file == asset_name {
+            let actual_hex = compute_sha256_hex(bytes);
+            if !actual_hex.eq_ignore_ascii_case(expected_hex) {
+                return Err(UpdaterPortError::ChecksumMismatch {
+                    expected: expected_hex.to_owned(),
+                    actual: actual_hex,
+                });
+            }
+            return Ok(());
+        }
+    }
+    Ok(())
+}
+
+fn extract_archive_with_system_tar(
+    archive_path: &Path,
+    dest_dir: &Path,
+) -> Result<(), UpdaterPortError> {
+    let mut cmd = Command::new("tar");
+    cmd.arg("-xf").arg(archive_path).arg("-C").arg(dest_dir);
+    configure_hidden_command(&mut cmd);
+    let status = cmd.status().map_err(|e| UpdaterPortError::Storage(e.to_string()))?;
+    if !status.success() {
+        return Err(UpdaterPortError::Storage("Ошибка распаковки архива обновления".to_owned()));
+    }
+    Ok(())
+}
+
+#[allow(clippy::needless_pass_by_ref_mut)]
+fn configure_hidden_command(cmd: &mut Command) {
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt as _;
         const CREATE_NO_WINDOW: u32 = 0x0800_0000;
         cmd.creation_flags(CREATE_NO_WINDOW);
     }
-    let output = cmd.output().map_err(|e| UpdaterPortError::Network(e.to_string()))?;
-    if !output.status.success() {
-        return Ok(Vec::new());
+    #[cfg(not(windows))]
+    {
+        let _ = cmd;
     }
-    let body = String::from_utf8_lossy(&output.stdout);
-    Ok(parse_forge_releases_tags(&body))
 }
 
 pub fn parse_forge_releases_tags(raw_json: &str) -> Vec<ReleaseManifest> {
-    let mut manifests = Vec::new();
-    let marker = "\"tag_name\"";
+    let mut manifests = extract_manifests_by_json_key(raw_json, "\"tag_name\"");
+    if manifests.is_empty() {
+        manifests = extract_manifests_by_json_key(raw_json, "\"version\"");
+    }
+    manifests
+}
+
+fn extract_manifests_by_json_key(raw_json: &str, marker: &str) -> Vec<ReleaseManifest> {
+    let mut manifests: Vec<ReleaseManifest> = Vec::new();
     let mut cursor = 0;
     while let Some(rel) = raw_json.get(cursor..).and_then(|s| s.find(marker)) {
         let after_key = cursor + rel + marker.len();
@@ -562,6 +794,7 @@ pub fn parse_forge_releases_tags(raw_json: &str) -> Vec<ReleaseManifest> {
             && let Some(end_q) = inside.find('"')
             && let Some(tag_str) = inside.get(..end_q)
             && let Ok(ver) = SemanticVersion::parse(tag_str)
+            && !manifests.iter().any(|m| m.version == ver)
         {
             manifests.push(ReleaseManifest {
                 version: ver,

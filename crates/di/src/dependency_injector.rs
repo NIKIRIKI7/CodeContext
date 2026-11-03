@@ -75,6 +75,8 @@ pub struct ParsedResponseFile {
     pub is_truncated: bool,
     pub is_sandbox_safe: bool,
     pub has_conflict: bool,
+    pub is_selected: bool,
+    pub is_applied: bool,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -319,6 +321,13 @@ impl AppContainer {
             .map(|item| {
                 let has_conflict =
                     matches!(item.status, PatchResolutionStatus::SearchBlockConflict { .. });
+                let exists_on_disk =
+                    project_root.is_some_and(|root| root.join(&item.rel_path).exists());
+                let has_effective_changes = !exists_on_disk
+                    || item.operation.kind() == PatchOperationKind::DeleteFile
+                    || item.added_lines > 0
+                    || item.removed_lines > 0;
+                let is_selected = item.is_sandbox_safe && !has_conflict && has_effective_changes;
                 ParsedResponseFile {
                     rel_path: item.rel_path,
                     content: item.resolved_content,
@@ -330,6 +339,8 @@ impl AppContainer {
                     is_truncated: item.is_truncated,
                     is_sandbox_safe: item.is_sandbox_safe,
                     has_conflict,
+                    is_selected,
+                    is_applied: false,
                 }
             })
             .collect()
@@ -342,7 +353,13 @@ impl AppContainer {
     ) -> Result<usize, String> {
         let files_to_write: Vec<ParsedFile> = files
             .iter()
-            .filter(|f| !f.has_conflict && f.operation_kind != PatchOperationKind::DeleteFile)
+            .filter(|f| {
+                f.is_selected
+                    && !f.is_applied
+                    && f.is_sandbox_safe
+                    && !f.has_conflict
+                    && f.operation_kind != PatchOperationKind::DeleteFile
+            })
             .map(|f| ParsedFile {
                 rel_path: f.rel_path.clone(),
                 content: f.content.clone(),
@@ -352,7 +369,13 @@ impl AppContainer {
 
         let files_to_delete: Vec<String> = files
             .iter()
-            .filter(|f| !f.has_conflict && f.operation_kind == PatchOperationKind::DeleteFile)
+            .filter(|f| {
+                f.is_selected
+                    && !f.is_applied
+                    && f.is_sandbox_safe
+                    && !f.has_conflict
+                    && f.operation_kind == PatchOperationKind::DeleteFile
+            })
             .map(|f| f.rel_path.clone())
             .collect();
 

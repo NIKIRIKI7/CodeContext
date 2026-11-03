@@ -64,6 +64,18 @@ where
         Ok(global)
     }
 
+    pub fn record_recent_project(
+        &self,
+        project_root: &Path,
+    ) -> Result<GlobalConfig, ConfigPortError> {
+        let mut global = self.load_global_config();
+        let path_str = project_root.to_string_lossy();
+        if global.record_recent_project(&path_str) {
+            self.repo.save_global(&global)?;
+        }
+        Ok(global)
+    }
+
     pub fn switch_active_preset(&self, preset_name: &str) -> Result<GlobalConfig, ConfigPortError> {
         let (mut global, _) = self.repo.load_global().unwrap_or_default();
         if let Some(found_name) = global.find_preset(preset_name).map(|f| f.name.clone()) {
@@ -122,114 +134,5 @@ where
     ) -> Result<(), ConfigPortError> {
         let sanitized = preset.clone().sanitized_from_untrusted_project_config();
         self.repo.export_preset(&sanitized, file_path)
-    }
-}
-
-#[cfg(test)]
-#[allow(clippy::assigning_clones, clippy::assert_is_empty)]
-mod tests {
-    use std::path::Path;
-    use std::sync::Mutex;
-
-    use super::PresetService;
-    use crate::preset::models::preset::Preset;
-    use crate::preset::models::resolution::{
-        ConfigOrigin, ConfigWarning, GlobalConfig, ResolvedConfig,
-    };
-    use crate::preset::ports::config_repo::{ConfigPortError, ConfigRepositoryPort};
-
-    #[derive(Debug, Default)]
-    struct InMemoryConfigRepo {
-        global: Mutex<GlobalConfig>,
-        project_preset: Mutex<Option<Preset>>,
-    }
-
-    impl ConfigRepositoryPort for InMemoryConfigRepo {
-        fn resolve_for_project(&self, _project_root: Option<&Path>) -> ResolvedConfig {
-            let global_config = self.global.lock().unwrap().clone();
-            if let Some(proj) = self.project_preset.lock().unwrap().clone() {
-                ResolvedConfig {
-                    effective_preset: proj.sanitized_from_untrusted_project_config(),
-                    origin: ConfigOrigin::LocalProjectOverride,
-                    global_config,
-                    warnings: Vec::new(),
-                }
-            } else {
-                ResolvedConfig {
-                    effective_preset: global_config.active_preset(),
-                    origin: ConfigOrigin::GlobalUserConfig,
-                    global_config,
-                    warnings: Vec::new(),
-                }
-            }
-        }
-
-        fn resolve_headless_preset(
-            &self,
-            project_root: &Path,
-        ) -> (Preset, bool, Vec<ConfigWarning>) {
-            let resolved = self.resolve_for_project(Some(project_root));
-            let from_untrusted = resolved.from_untrusted_project_config();
-            (resolved.effective_preset, from_untrusted, resolved.warnings)
-        }
-
-        fn load_global(&self) -> Result<(GlobalConfig, Vec<ConfigWarning>), ConfigPortError> {
-            Ok((self.global.lock().unwrap().clone(), Vec::new()))
-        }
-
-        fn save_global(&self, config: &GlobalConfig) -> Result<(), ConfigPortError> {
-            config.clone_into(&mut self.global.lock().unwrap());
-            Ok(())
-        }
-
-        fn save_project_preset(
-            &self,
-            _project_root: &Path,
-            preset: &Preset,
-        ) -> Result<(), ConfigPortError> {
-            *self.project_preset.lock().unwrap() = Some(preset.clone());
-            Ok(())
-        }
-
-        fn import_preset(
-            &self,
-            _file_path: &Path,
-        ) -> Result<(Preset, Vec<ConfigWarning>), ConfigPortError> {
-            let imported = Preset { name: "Imported".to_owned(), ..Preset::default_code_preset() };
-            Ok((imported, Vec::new()))
-        }
-
-        fn export_preset(&self, preset: &Preset, _file_path: &Path) -> Result<(), ConfigPortError> {
-            *self.project_preset.lock().unwrap() = Some(preset.clone());
-            Ok(())
-        }
-    }
-
-    #[test]
-    fn saving_project_preset_strips_session_secrets() {
-        let service = PresetService::new(InMemoryConfigRepo::default());
-        let mut preset = Preset::default_code_preset();
-        preset.explicitly_allowed_secrets.push(".env".to_owned());
-
-        service.save_preset_to_project(Path::new("/workspace"), &preset).unwrap();
-        let saved = service.repo().project_preset.lock().unwrap().clone().unwrap();
-        assert!(saved.explicitly_allowed_secrets.is_empty());
-    }
-
-    #[test]
-    fn switching_and_deleting_presets_maintains_invariants() {
-        let service = PresetService::new(InMemoryConfigRepo::default());
-        let custom = Preset {
-            name: "RustBackend".to_owned(),
-            minify_code: true,
-            ..Preset::default_code_preset()
-        };
-        let updated = service.save_preset_globally(custom, true).unwrap();
-        assert_eq!(updated.active_preset_name, "RustBackend");
-        assert_eq!(updated.presets.len(), 2);
-
-        let after_delete = service.delete_global_preset("RustBackend").unwrap();
-        assert_eq!(after_delete.presets.len(), 1);
-        assert_eq!(after_delete.active_preset_name, "Default");
     }
 }

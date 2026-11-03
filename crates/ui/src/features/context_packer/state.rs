@@ -1,3 +1,4 @@
+use std::cell::Cell;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
@@ -11,7 +12,9 @@ use core::preset::ports::config_repo::ConfigPortError;
 use core::shared_kernel::execution::cancel_token::CancelToken;
 use di::AppContainer;
 
-use crate::features::context_packer::components::file_tree::{FlatTreeProjection, TriState};
+use crate::features::context_packer::components::file_tree::{
+    FlatTreeProjection, TreeSortMode, TriState,
+};
 use crate::features::context_packer::components::rules_editor::RuleToggleKind;
 use crate::locale::AppLocale;
 use crate::shared::containers::virtual_text::VirtualTextBuffer;
@@ -35,6 +38,10 @@ pub struct ContextPackerState {
     hydrated_cache: Vec<(String, String)>,
     pack_result: Option<PackResult>,
     tree_projection: FlatTreeProjection,
+    focused_tree_index: Option<usize>,
+    sort_mode: TreeSortMode,
+    pending_tree_scroll: Cell<Option<usize>>,
+    pending_preview_scroll: Cell<Option<usize>>,
     collapsed_dirs: HashSet<String>,
     search_query: String,
     preview_buffer: VirtualTextBuffer,
@@ -56,6 +63,10 @@ impl ContextPackerState {
             hydrated_cache: Vec::new(),
             pack_result: None,
             tree_projection: FlatTreeProjection::default(),
+            focused_tree_index: None,
+            sort_mode: TreeSortMode::default(),
+            pending_tree_scroll: Cell::new(None),
+            pending_preview_scroll: Cell::new(None),
             collapsed_dirs: HashSet::new(),
             search_query: String::new(),
             preview_buffer: VirtualTextBuffer::default(),
@@ -75,6 +86,9 @@ impl ContextPackerState {
         self.cancel_token = CancelToken::new();
         self.scan_generation = self.scan_generation.wrapping_add(1);
         self.ui_status = PackerUiStatus::default();
+        self.focused_tree_index = None;
+        self.pending_tree_scroll.set(Some(0));
+        self.pending_preview_scroll.set(Some(0));
         self.search_query.clear();
         self.collapsed_dirs.clear();
         self.resolved_config =
@@ -305,6 +319,170 @@ impl ContextPackerState {
         requested
     }
 
+    #[inline]
+    pub const fn focused_tree_index(&self) -> Option<usize> {
+        self.focused_tree_index
+    }
+
+    #[inline]
+    pub const fn sort_mode(&self) -> TreeSortMode {
+        self.sort_mode
+    }
+
+    #[inline]
+    pub fn take_pending_tree_scroll(&self) -> Option<usize> {
+        self.pending_tree_scroll.take()
+    }
+
+    #[inline]
+    pub fn take_pending_preview_scroll(&self) -> Option<usize> {
+        self.pending_preview_scroll.take()
+    }
+
+    pub fn toggle_tree_sort_mode(&mut self) {
+        self.sort_mode = self.sort_mode.toggle();
+        self.focused_tree_index = None;
+        self.pending_tree_scroll.set(Some(0));
+        self.rebuild_tree_projection();
+    }
+
+    pub fn select_file_in_tree_and_jump(&mut self, row_idx: usize, rel_path: &str) {
+        self.focused_tree_index = Some(row_idx);
+        let prefix = self.resolved_config.effective_preset.template.file_header_prefix.clone();
+        let suffix = self.resolved_config.effective_preset.template.file_header_suffix.clone();
+
+        if let Some(line_idx) =
+            self.preview_buffer.find_file_header_line(rel_path, &prefix, &suffix)
+        {
+            self.pending_preview_scroll.set(Some(line_idx));
+            return;
+        }
+
+        if let Some(ref pack_res) = self.pack_result
+            && pack_res.chunks.len() > 1
+        {
+            let target_chunk = pack_res.chunks.iter().enumerate().find_map(|(c_idx, chunk)| {
+                if c_idx == self.active_chunk_index {
+                    return None;
+                }
+                let buf = VirtualTextBuffer::new(chunk.content.as_str());
+                buf.find_file_header_line(rel_path, &prefix, &suffix).map(|line| (c_idx, buf, line))
+            });
+            if let Some((c_idx, buf, line_idx)) = target_chunk {
+                self.active_chunk_index = c_idx;
+                self.ui_status.copied_recently = false;
+                self.preview_buffer = buf;
+                self.pending_preview_scroll.set(Some(line_idx));
+            }
+        }
+    }
+
+    pub fn move_tree_focus_down(&mut self) -> bool {
+        let len = self.tree_projection.visible_nodes().len();
+        if len == 0 {
+            return false;
+        }
+        let next_idx =
+            self.focused_tree_index.map_or(0, |curr| curr.saturating_add(1).min(len - 1));
+        if self.focused_tree_index == Some(next_idx) {
+            return false;
+        }
+        self.focused_tree_index = Some(next_idx);
+        self.pending_tree_scroll.set(Some(next_idx));
+        true
+    }
+
+    pub fn move_tree_focus_up(&mut self) -> bool {
+        let len = self.tree_projection.visible_nodes().len();
+        if len == 0 {
+            return false;
+        }
+        let prev_idx = self.focused_tree_index.map_or(0, |curr| curr.saturating_sub(1));
+        if self.focused_tree_index == Some(prev_idx) {
+            return false;
+        }
+        self.focused_tree_index = Some(prev_idx);
+        self.pending_tree_scroll.set(Some(prev_idx));
+        true
+    }
+
+    pub fn toggle_focused_tree_node_checkbox(&mut self) -> usize {
+        let Some(idx) = self.focused_tree_index else {
+            return 0;
+        };
+        let Some(node) = self.tree_projection.visible_nodes().get(idx) else {
+            return 0;
+        };
+        let path = node.path.clone();
+        let is_dir = node.is_dir();
+        self.toggle_tree_node_checkbox(&path, is_dir)
+    }
+
+    pub fn expand_or_step_into_focused_tree_node(&mut self) -> bool {
+        let Some(idx) = self.focused_tree_index else {
+            return false;
+        };
+        let Some(node) = self.tree_projection.visible_nodes().get(idx) else {
+            return false;
+        };
+        if node.is_dir() {
+            if !node.is_expanded {
+                let dir_path = node.path.clone();
+                self.toggle_directory_expanded(&dir_path);
+                return true;
+            }
+            return self.move_tree_focus_down();
+        }
+        let file_path = node.path.clone();
+        self.select_file_in_tree_and_jump(idx, &file_path);
+        true
+    }
+
+    pub fn collapse_or_step_out_focused_tree_node(&mut self) -> bool {
+        let Some(idx) = self.focused_tree_index else {
+            return false;
+        };
+        let Some(node) = self.tree_projection.visible_nodes().get(idx) else {
+            return false;
+        };
+        if node.is_dir() && node.is_expanded {
+            let dir_path = node.path.clone();
+            self.toggle_directory_expanded(&dir_path);
+            return true;
+        }
+        let Some((parent_dir, _)) = node.path.rsplit_once('/') else {
+            return false;
+        };
+        if let Some(parent_idx) = self
+            .tree_projection
+            .visible_nodes()
+            .iter()
+            .position(|n| n.is_dir() && n.path == parent_dir)
+        {
+            self.focused_tree_index = Some(parent_idx);
+            self.pending_tree_scroll.set(Some(parent_idx));
+            return true;
+        }
+        false
+    }
+
+    pub fn activate_focused_tree_node(&mut self) -> bool {
+        let Some(idx) = self.focused_tree_index else {
+            return false;
+        };
+        let Some(node) = self.tree_projection.visible_nodes().get(idx) else {
+            return false;
+        };
+        if node.is_dir() {
+            let dir_path = node.path.clone();
+            self.toggle_directory_expanded(&dir_path);
+        } else {
+            let file_path = node.path.clone();
+            self.select_file_in_tree_and_jump(idx, &file_path);
+        }
+        true
+    }
+
     pub fn toggle_secret_unlock_in_session(&mut self, rel_path: &str) {
         let is_currently_unlocked =
             self.resolved_config.effective_preset.is_secret_explicitly_allowed(rel_path);
@@ -513,10 +691,22 @@ impl ContextPackerState {
 
     fn rebuild_tree_projection(&mut self) {
         if let Some(ref proj) = self.project {
-            self.tree_projection =
-                FlatTreeProjection::build(proj, &self.collapsed_dirs, &self.search_query);
+            self.tree_projection = FlatTreeProjection::build_with_mode(
+                proj,
+                &self.collapsed_dirs,
+                &self.search_query,
+                self.sort_mode,
+            );
         } else {
             self.tree_projection = FlatTreeProjection::default();
+        }
+        let len = self.tree_projection.visible_nodes().len();
+        if len == 0 {
+            self.focused_tree_index = None;
+        } else if let Some(idx) = self.focused_tree_index
+            && idx >= len
+        {
+            self.focused_tree_index = Some(len - 1);
         }
     }
 

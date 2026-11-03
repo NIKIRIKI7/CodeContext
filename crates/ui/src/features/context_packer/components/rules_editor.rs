@@ -10,7 +10,7 @@ use gpui::{
 use crate::locale::UiLabels;
 use crate::shared::primitives::badge::{Badge, BadgeVariant};
 use crate::shared::primitives::button::{ButtonVariant, UiButton};
-use crate::shared::primitives::icon::{UiIcon, render_vector_checkbox};
+use crate::shared::primitives::icon::{UiIcon, render_icon, render_vector_checkbox};
 use crate::theme::{
     FONT_FAMILY_MONO, FONT_FAMILY_UI, ThemeTokens, active_theme, format_bytes_human,
 };
@@ -137,15 +137,18 @@ impl RenderOnce for RulesEditorComponent {
 
         let volume_summary = match self.preset.template.max_chunk_bytes {
             None => SharedString::from(labels.chunk_single_volume),
-            Some(CHUNK_PRESET_512_KB) => {
-                SharedString::from(format!("{}: 512K", labels.chunk_selector_prefix))
-            }
-            Some(CHUNK_PRESET_1_MB) => {
-                SharedString::from(format!("{}: 1M", labels.chunk_selector_prefix))
-            }
-            Some(CHUNK_PRESET_2_MB) => {
-                SharedString::from(format!("{}: 2M", labels.chunk_selector_prefix))
-            }
+            Some(CHUNK_PRESET_512_KB) => SharedString::from(format!(
+                "{}: {}",
+                labels.chunk_selector_prefix, labels.chunk_preset_512k
+            )),
+            Some(CHUNK_PRESET_1_MB) => SharedString::from(format!(
+                "{}: {}",
+                labels.chunk_selector_prefix, labels.chunk_preset_1m
+            )),
+            Some(CHUNK_PRESET_2_MB) => SharedString::from(format!(
+                "{}: {}",
+                labels.chunk_selector_prefix, labels.chunk_preset_2m
+            )),
             Some(custom) => SharedString::from(format_bytes_human(custom as u64)),
         };
 
@@ -157,19 +160,13 @@ impl RenderOnce for RulesEditorComponent {
             .text_color(theme.colors.text_muted)
             .child(volume_summary);
 
-        if let Some(cb) = self.on_toggle_popover {
-            volume_hint = volume_hint.on_click(move |ev, w, c| cb(ev, w, c));
+        if let Some(ref cb) = self.on_toggle_popover {
+            let cb_clone = Arc::clone(cb);
+            volume_hint = volume_hint.on_click(move |ev, w, c| cb_clone(ev, w, c));
         }
 
         let inspector_drawer = if self.popover_open {
-            render_categorized_filter_inspector(
-                &self.preset,
-                labels,
-                theme,
-                self.on_toggle_rule.as_ref(),
-                self.on_select_chunk_limit.as_ref(),
-            )
-            .into_any_element()
+            self.render_categorized_filter_inspector().into_any_element()
         } else {
             div().into_any_element()
         };
@@ -198,99 +195,120 @@ impl RenderOnce for RulesEditorComponent {
     }
 }
 
-fn render_categorized_filter_inspector(
-    preset: &Preset,
-    labels: &'static UiLabels,
-    theme: &'static ThemeTokens,
-    on_toggle: Option<&RuleToggleCallback>,
-    on_select_chunk_limit: Option<&ChunkLimitSelectCallback>,
-) -> impl IntoElement + use<> {
-    let colors = &theme.colors;
-    let fs_items: &[(&str, &str, bool, RuleToggleKind)] = &[
-        (
-            "rule-gitignore",
-            labels.rule_gitignore,
-            preset.respect_gitignore,
-            RuleToggleKind::RespectGitignore,
-        ),
-        (
-            "rule-symlinks",
-            labels.rule_symlinks,
-            preset.follow_symlinks,
-            RuleToggleKind::FollowSymlinks,
-        ),
-    ];
+impl RulesEditorComponent {
+    fn render_categorized_filter_inspector(&self) -> impl IntoElement + use<> {
+        let theme = self.theme;
+        let labels = self.labels;
+        let colors = &theme.colors;
+        let on_toggle = self.on_toggle_rule.as_ref();
 
-    let transform_items: &[(&str, &str, bool, RuleToggleKind)] = &[
-        ("rule-minify", labels.rule_minify, preset.minify_code, RuleToggleKind::MinifyCode),
-        (
-            "rule-crlf",
-            labels.rule_crlf_to_lf,
-            preset.normalize_line_endings,
-            RuleToggleKind::NormalizeLineEndings,
-        ),
-        (
-            "rule-tree",
-            labels.rule_ascii_tree,
-            preset.template.include_file_tree,
-            RuleToggleKind::IncludeFileTree,
-        ),
-    ];
+        let fs_items: &[(&str, &str, bool, RuleToggleKind)] = &[
+            (
+                "rule-gitignore",
+                labels.rule_gitignore,
+                self.preset.respect_gitignore,
+                RuleToggleKind::RespectGitignore,
+            ),
+            (
+                "rule-symlinks",
+                labels.rule_symlinks,
+                self.preset.follow_symlinks,
+                RuleToggleKind::FollowSymlinks,
+            ),
+        ];
 
-    let mut container = div()
-        .w_full()
-        .px(px(theme.spacing.lg))
-        .py(px(theme.spacing.md))
-        .bg(colors.bg_elevated)
-        .border_b_1()
-        .border_color(colors.border)
-        .flex()
-        .flex_col()
-        .gap(px(theme.spacing.xs))
-        .child(
-            div()
-                .font_family(FONT_FAMILY_UI)
-                .text_xs()
-                .text_color(colors.text_muted)
-                .child(labels.rules_section_fs),
-        );
+        let transform_items: &[(&str, &str, bool, RuleToggleKind)] = &[
+            (
+                "rule-minify",
+                labels.rule_minify,
+                self.preset.minify_code,
+                RuleToggleKind::MinifyCode,
+            ),
+            (
+                "rule-crlf",
+                labels.rule_crlf_to_lf,
+                self.preset.normalize_line_endings,
+                RuleToggleKind::NormalizeLineEndings,
+            ),
+            (
+                "rule-tree",
+                labels.rule_ascii_tree,
+                self.preset.template.include_file_tree,
+                RuleToggleKind::IncludeFileTree,
+            ),
+        ];
 
-    for &(id, label, is_on, kind) in fs_items {
-        container =
-            container.child(render_inspector_switch_row(id, label, is_on, kind, theme, on_toggle));
-    }
+        let mut container = div()
+            .w_full()
+            .px(px(theme.spacing.lg))
+            .py(px(theme.spacing.md))
+            .bg(colors.bg_elevated)
+            .border_b_1()
+            .border_color(colors.border)
+            .flex()
+            .flex_col()
+            .gap(px(theme.spacing.xs))
+            .child(
+                div()
+                    .pb(px(theme.spacing.xxs))
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .gap(px(theme.spacing.xs))
+                    .child(render_icon(UiIcon::Settings, 13.0, colors.text_secondary))
+                    .child(
+                        div()
+                            .font_family(FONT_FAMILY_UI)
+                            .text_xs()
+                            .text_color(colors.text_primary)
+                            .child(labels.rules_header),
+                    ),
+            )
+            .child(
+                div()
+                    .font_family(FONT_FAMILY_UI)
+                    .text_xs()
+                    .text_color(colors.text_muted)
+                    .child(labels.rules_section_fs),
+            );
 
-    container = container.child(
-        div()
-            .pt(px(theme.spacing.xs))
-            .font_family(FONT_FAMILY_UI)
-            .text_xs()
-            .text_color(colors.text_muted)
-            .child(labels.rules_section_transform),
-    );
+        for &(id, label, is_on, kind) in fs_items {
+            container = container
+                .child(render_inspector_switch_row(id, label, is_on, kind, theme, on_toggle));
+        }
 
-    for &(id, label, is_on, kind) in transform_items {
-        container =
-            container.child(render_inspector_switch_row(id, label, is_on, kind, theme, on_toggle));
-    }
-
-    let chunks_row = render_chunk_size_selector(
-        preset.template.max_chunk_bytes,
-        labels,
-        theme,
-        on_select_chunk_limit,
-    );
-
-    container
-        .child(
+        container = container.child(
             div()
                 .pt(px(theme.spacing.xs))
                 .font_family(FONT_FAMILY_UI)
                 .text_xs()
                 .text_color(colors.text_muted)
-                .child(labels.rules_section_volumes),
-        )
-        .child(chunks_row)
+                .child(labels.rules_section_transform),
+        );
+
+        for &(id, label, is_on, kind) in transform_items {
+            container = container
+                .child(render_inspector_switch_row(id, label, is_on, kind, theme, on_toggle));
+        }
+
+        let chunks_row = render_chunk_size_selector(
+            self.preset.template.max_chunk_bytes,
+            labels,
+            theme,
+            self.on_select_chunk_limit.as_ref(),
+        );
+
+        container
+            .child(
+                div()
+                    .pt(px(theme.spacing.xs))
+                    .font_family(FONT_FAMILY_UI)
+                    .text_xs()
+                    .text_color(colors.text_muted)
+                    .child(labels.rules_section_volumes),
+            )
+            .child(chunks_row)
+    }
 }
 
 fn render_inspector_switch_row(
@@ -357,9 +375,9 @@ fn render_chunk_size_selector(
     let colors = &theme.colors;
     let presets: &[(&str, Option<usize>)] = &[
         (labels.chunk_single_volume, None),
-        ("512K", Some(CHUNK_PRESET_512_KB)),
-        ("1M", Some(CHUNK_PRESET_1_MB)),
-        ("2M", Some(CHUNK_PRESET_2_MB)),
+        (labels.chunk_preset_512k, Some(CHUNK_PRESET_512_KB)),
+        (labels.chunk_preset_1m, Some(CHUNK_PRESET_1_MB)),
+        (labels.chunk_preset_2m, Some(CHUNK_PRESET_2_MB)),
     ];
 
     let mut row = div()

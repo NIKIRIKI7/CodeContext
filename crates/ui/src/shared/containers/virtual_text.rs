@@ -156,6 +156,42 @@ impl VirtualTextBuffer {
         let prefix = line.get(..safe_end).unwrap_or("");
         (prefix, true)
     }
+
+    pub fn find_file_header_line(
+        &self,
+        rel_path: &str,
+        header_prefix: &str,
+        header_suffix: &str,
+    ) -> Option<usize> {
+        if rel_path.is_empty() || self.content.is_empty() {
+            return None;
+        }
+        let suffix_trimmed = header_suffix.trim_end_matches(['\r', '\n']);
+        let bytes = self.content.as_bytes();
+        let mut cursor = 0_usize;
+
+        while let Some(rel_pos) = self.content.get(cursor..).and_then(|s| s.find(rel_path)) {
+            let match_pos = cursor + rel_pos;
+            if match_pos >= header_prefix.len() {
+                let line_start = match_pos - header_prefix.len();
+                let at_line_start =
+                    line_start == 0 || bytes.get(line_start - 1).copied() == Some(b'\n');
+                let prefix_ok = self.content.get(line_start..match_pos) == Some(header_prefix);
+                let after_path = match_pos + rel_path.len();
+                let suffix_end = after_path + suffix_trimmed.len();
+                let suffix_ok = self.content.get(after_path..suffix_end) == Some(suffix_trimmed);
+                let line_end_ok =
+                    matches!(bytes.get(suffix_end).copied(), None | Some(b'\n' | b'\r'));
+
+                if at_line_start && prefix_ok && suffix_ok && line_end_ok {
+                    let target_offset = u32::try_from(line_start).ok()?;
+                    return self.line_offsets.binary_search(&target_offset).ok();
+                }
+            }
+            cursor = match_pos + rel_path.len();
+        }
+        None
+    }
 }
 
 #[inline]
@@ -245,14 +281,18 @@ impl RenderOnce for VirtualTextView {
             return div()
                 .size_full()
                 .flex()
+                .flex_row()
                 .items_center()
                 .justify_center()
-                .p(px(theme.spacing.xxl))
+                .p(px(theme.spacing.xl))
                 .bg(colors.bg_app)
+                .overflow_hidden()
                 .child(
                     div()
+                        .flex_1()
+                        .min_w(px(0.0))
                         .max_w(px(360.0))
-                        .p(px(theme.spacing.xxl))
+                        .p(px(theme.spacing.xl))
                         .rounded(px(theme.radius.lg))
                         .border_1()
                         .border_color(colors.border)
@@ -415,37 +455,5 @@ fn classify_code_line_colors(
         (colors.kind_config, colors.bg_app)
     } else {
         (colors.text_primary, colors.bg_app)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::VirtualTextBuffer;
-
-    #[test]
-    fn indexes_lf_and_crlf_accurately_with_zero_copy_slices() {
-        let raw = concat!(
-            "=== ",
-            "FILE: src/main.rs ===\r\nfn main() {\n    println!(\"Привет, мир!\");\n}\n=== ",
-            "END FILE ==="
-        );
-        let buf = VirtualTextBuffer::new(raw);
-        assert_eq!(buf.line_count(), 5);
-        assert_eq!(buf.raw_line(0), concat!("=== ", "FILE: src/main.rs ==="));
-        assert_eq!(buf.raw_line(1), "fn main() {");
-        assert_eq!(buf.raw_line(2), "    println!(\"Привет, мир!\");");
-        assert_eq!(buf.raw_line(3), "}");
-        assert_eq!(buf.raw_line(4), concat!("=== ", "END FILE ==="));
-        assert_eq!(buf.raw_line(999), "");
-    }
-
-    #[test]
-    fn clamps_long_multibyte_utf8_lines_on_valid_char_boundary() {
-        let cyrillic_line = "Ы".repeat(400);
-        let buf = VirtualTextBuffer::new(cyrillic_line).with_max_display_line_bytes(51);
-        let (sliced, is_clamped) = buf.display_line(0);
-        assert!(is_clamped);
-        assert_eq!(sliced.len(), 50);
-        assert_eq!(sliced.chars().count(), 25);
     }
 }

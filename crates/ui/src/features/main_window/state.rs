@@ -16,6 +16,14 @@ pub enum WorkspaceTab {
     ChangeApplier,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ProjectsMenuState {
+    #[default]
+    Closed,
+    OpenMain,
+    OpenWithRecentSubmenu,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct StatusBarSummary {
     pub files_count: usize,
@@ -28,6 +36,7 @@ pub struct MainWindowState {
     active_tab: WorkspaceTab,
     settings_open: bool,
     project_meta_open: bool,
+    projects_menu: ProjectsMenuState,
     update_modal_open: bool,
     available_update: Option<(SemanticVersion, UpdateChannel)>,
     dismissed_update_version: Option<SemanticVersion>,
@@ -46,6 +55,7 @@ impl MainWindowState {
         self.active_tab = tab;
         self.settings_open = false;
         self.project_meta_open = false;
+        self.projects_menu = ProjectsMenuState::Closed;
     }
 
     #[inline]
@@ -57,6 +67,7 @@ impl MainWindowState {
         self.active_tab = tab;
         self.settings_open = false;
         self.project_meta_open = false;
+        self.projects_menu = ProjectsMenuState::Closed;
         matches!(tab, WorkspaceTab::ChangeApplier) && auto_read_clipboard_on_apply
     }
 
@@ -70,6 +81,7 @@ impl MainWindowState {
         self.settings_open = !self.settings_open;
         if self.settings_open {
             self.project_meta_open = false;
+            self.projects_menu = ProjectsMenuState::Closed;
         }
     }
 
@@ -88,6 +100,7 @@ impl MainWindowState {
         self.project_meta_open = !self.project_meta_open;
         if self.project_meta_open {
             self.settings_open = false;
+            self.projects_menu = ProjectsMenuState::Closed;
         }
     }
 
@@ -96,12 +109,60 @@ impl MainWindowState {
         self.project_meta_open = open;
         if open {
             self.settings_open = false;
+            self.projects_menu = ProjectsMenuState::Closed;
         }
     }
 
     #[inline]
     pub const fn is_project_meta_open(&self) -> bool {
         self.project_meta_open
+    }
+
+    #[inline]
+    pub const fn toggle_recent_projects(&mut self) {
+        self.projects_menu = match self.projects_menu {
+            ProjectsMenuState::Closed => {
+                self.settings_open = false;
+                self.project_meta_open = false;
+                ProjectsMenuState::OpenMain
+            }
+            ProjectsMenuState::OpenMain | ProjectsMenuState::OpenWithRecentSubmenu => {
+                ProjectsMenuState::Closed
+            }
+        };
+    }
+
+    #[inline]
+    pub const fn set_recent_projects_open(&mut self, open: bool) {
+        self.projects_menu =
+            if open { ProjectsMenuState::OpenMain } else { ProjectsMenuState::Closed };
+    }
+
+    #[inline]
+    pub fn set_recent_submenu_open(&mut self, submenu_open: bool) -> bool {
+        if matches!(self.projects_menu, ProjectsMenuState::Closed) {
+            return false;
+        }
+        let next = if submenu_open {
+            ProjectsMenuState::OpenWithRecentSubmenu
+        } else {
+            ProjectsMenuState::OpenMain
+        };
+        if self.projects_menu == next {
+            return false;
+        }
+        self.projects_menu = next;
+        true
+    }
+
+    #[inline]
+    pub const fn is_recent_projects_open(&self) -> bool {
+        !matches!(self.projects_menu, ProjectsMenuState::Closed)
+    }
+
+    #[inline]
+    pub const fn is_recent_submenu_open(&self) -> bool {
+        matches!(self.projects_menu, ProjectsMenuState::OpenWithRecentSubmenu)
     }
 
     pub fn notify_update_available(&mut self, version: SemanticVersion, channel: UpdateChannel) {
