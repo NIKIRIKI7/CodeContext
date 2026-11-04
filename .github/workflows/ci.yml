@@ -55,7 +55,7 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Run Clippy strict lints
-        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+        run: cargo clippy --workspace --all-targets -- -D warnings
 
       - name: Install cargo-deny
         uses: taiki-e/install-action@07b4745e0c39a41822af610387492e3e53aa222b # v2.83.4
@@ -66,13 +66,13 @@ jobs:
         run: cargo deny check
 
       - name: Run DDD & Ports-and-Adapters architectural fitness functions
-        run: cargo test --package app --test architecture --locked -- --nocapture
+        run: cargo test --package app --test architecture -- --nocapture
 
       - name: Verify FreeBSD & Linux musl target compatibility
         run: |
           rustup target add x86_64-unknown-freebsd x86_64-unknown-linux-musl
-          cargo check --locked --target x86_64-unknown-freebsd -p core -p config -p scanner -p apply
-          cargo check --locked --target x86_64-unknown-linux-musl -p core -p config -p scanner -p apply
+          cargo check --target x86_64-unknown-freebsd -p core -p config -p scanner -p apply
+          cargo check --target x86_64-unknown-linux-musl -p core -p config -p scanner -p apply
 
   test-and-release-build:
     name: Build & Test (${{ matrix.label }})
@@ -159,14 +159,14 @@ jobs:
 
       - name: Run workspace test suite (Fast parallel Thin-LTO nextest)
         if: matrix.run_tests
-        run: cargo nextest run --workspace --release --locked --target ${{ matrix.target }}
+        run: cargo nextest run --workspace --release --target ${{ matrix.target }}
 
       - name: Verify zero-reallocation heap invariant (dhat)
         if: matrix.run_tests
-        run: cargo test --release --locked --target ${{ matrix.target }} --package scanner --test heap_allocations -- --test-threads=1 --nocapture
+        run: cargo test --release --target ${{ matrix.target }} --package scanner --test heap_allocations -- --test-threads=1 --nocapture
 
       - name: Build release binary for smoke-test
-        run: cargo build --release --locked --package app --target ${{ matrix.target }}
+        run: cargo build --release --package app --target ${{ matrix.target }}
 
       - name: Smoke-test compiled binary (--version)
         if: matrix.run_tests
@@ -226,4 +226,4 @@ jobs:
 
       - name: Verify Core, Config, Scanner & Apply Subdomains
         shell: sh
-        run: cargo test --locked -p core -p config -p scanner -p apply
+        run: cargo test -p core -p config -p scanner -p apply

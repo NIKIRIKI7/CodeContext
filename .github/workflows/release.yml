@@ -146,9 +146,9 @@ jobs:
       - name: Run full release test suite & allocation invariants
         if: matrix.enable_pgo
         run: |
-          cargo test --package app --test architecture --locked --target ${{ matrix.target }}
-          cargo nextest run --workspace --release --locked --target ${{ matrix.target }}
-          cargo test --release --locked --target ${{ matrix.target }} --package scanner --test heap_allocations -- --test-threads=1
+          cargo test --package app --test architecture --target ${{ matrix.target }}
+          cargo nextest run --workspace --release --target ${{ matrix.target }}
+          cargo test --release --target ${{ matrix.target }} --package scanner --test heap_allocations -- --test-threads=1
 
       - name: Compile maximally optimized release binary (PGO + Fat LTO + CGU=1)
         shell: bash
@@ -160,7 +160,7 @@ jobs:
 
             echo "=== [PGO 1/3] Building instrumented binary ==="
             RUSTFLAGS="${{ matrix.rustflags }} -C profile-generate=${PGO_DIR}" \
-              cargo build --release --locked --package app --target ${{ matrix.target }}
+              cargo build --release --package app --target ${{ matrix.target }}
 
             echo "=== [PGO 2/3] Training profile on real repository workload ==="
             for _ in 1 2 3 4 5; do
@@ -172,16 +172,16 @@ jobs:
               echo "=== [PGO 3/3] Recompiling with PGO + Fat LTO + CGU=1 ==="
               cargo clean --release --package app --package scanner --package apply --package config --package core
               RUSTFLAGS="${{ matrix.rustflags }} -C profile-use=${PGO_DIR}/merged.profdata -C llvm-args=-pgo-warn-missing-function" \
-                cargo build --release --locked --package app --target ${{ matrix.target }}
+                cargo build --release --package app --target ${{ matrix.target }}
             else
               echo "=== PGO profile merge skipped: building clean Fat LTO release binary ==="
               cargo clean --release --package app --package scanner --package apply --package config --package core
               RUSTFLAGS="${{ matrix.rustflags }}" \
-                cargo build --release --locked --package app --target ${{ matrix.target }}
+                cargo build --release --package app --target ${{ matrix.target }}
             fi
           else
             RUSTFLAGS="${{ matrix.rustflags }}" \
-              cargo build --release --locked --package app --target ${{ matrix.target }}
+              cargo build --release --package app --target ${{ matrix.target }}
           fi
 
       - name: Package Windows artifacts (.zip, .7z, standalone .exe, WiX .msi installer)

@@ -45,3 +45,4 @@ srcipts/
 .ctxpack.json
 app.exe
 Текстовый документ.txt
+Cargo.lock
