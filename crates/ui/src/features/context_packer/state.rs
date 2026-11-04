@@ -364,6 +364,7 @@ impl ContextPackerState {
     }
 
     pub fn clear_search_query(&mut self) {
+        self.ui_status.search_focused = false;
         if !self.search_query.is_empty() {
             self.search_query.clear();
             self.rebuild_tree_projection();
@@ -1116,11 +1117,13 @@ impl ContextPackerState {
     }
 
     pub fn select_file_in_tree_and_jump(&mut self, row_idx: usize, rel_path: &str) {
+        self.ui_status.search_focused = false;
         self.focused_tree_index = Some(row_idx);
         let _ = self.jump_to_file_in_preview(rel_path);
     }
 
     pub fn jump_to_file_in_preview(&mut self, rel_path: &str) -> Option<usize> {
+        self.ui_status.search_focused = false;
         let prefix = self.resolved_config.effective_preset.template.file_header_prefix.clone();
         let suffix = self.resolved_config.effective_preset.template.file_header_suffix.clone();
 
