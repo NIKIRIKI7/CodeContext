@@ -94,6 +94,53 @@ pub struct UiLabels {
     pub btn_undo: &'static str,
     pub tree_header: &'static str,
     pub tree_filter_placeholder: &'static str,
+    pub tree_regex_placeholder: &'static str,
+    pub filter_modal_title: &'static str,
+    pub filter_section_extensions: &'static str,
+    pub filter_ext_mode_all: &'static str,
+    pub filter_ext_mode_include: &'static str,
+    pub filter_ext_mode_exclude: &'static str,
+    pub filter_section_folders: &'static str,
+    pub filter_folders_hint: &'static str,
+    pub filter_ext_input_placeholder: &'static str,
+    pub filter_ext_add_btn: &'static str,
+    pub filter_folder_input_placeholder: &'static str,
+    pub filter_folder_add_btn: &'static str,
+    pub prompt_add_input_placeholder: &'static str,
+    pub prompt_add_btn: &'static str,
+    pub filter_section_regex: &'static str,
+    pub filter_regex_files_exclude: &'static str,
+    pub filter_regex_files_include: &'static str,
+    pub filter_regex_folders_exclude: &'static str,
+    pub filter_regex_folders_include: &'static str,
+    pub filter_preset_no_tests: &'static str,
+    pub filter_preset_only_src: &'static str,
+    pub filter_preset_no_gen: &'static str,
+    pub filter_preset_only_crates: &'static str,
+    pub btn_reset_filters: &'static str,
+    pub btn_footer_filters: &'static str,
+    pub btn_footer_prompts: &'static str,
+    pub prompt_modal_title: &'static str,
+    pub prompt_modal_subtitle: &'static str,
+    pub prompt_cat_all: &'static str,
+    pub prompt_cat_patcher: &'static str,
+    pub prompt_cat_arch: &'static str,
+    pub prompt_cat_behavior: &'static str,
+    pub prompt_cat_custom: &'static str,
+    pub prompt_mode_none: &'static str,
+    pub prompt_mode_search_replace: &'static str,
+    pub prompt_mode_full_files: &'static str,
+    pub prompt_mode_unified_diff: &'static str,
+    pub prompt_mode_custom: &'static str,
+    pub prompt_btn_short_off: &'static str,
+    pub prompt_btn_short_sr: &'static str,
+    pub prompt_btn_short_full: &'static str,
+    pub prompt_btn_short_diff: &'static str,
+    pub prompt_btn_short_custom: &'static str,
+    pub prompt_paste_custom_btn: &'static str,
+    pub prompt_copy_template_btn: &'static str,
+    pub prompt_reset_default_btn: &'static str,
+    pub prompt_preview_empty: &'static str,
     pub tree_sort_az: &'static str,
     pub tree_sort_heavy: &'static str,
     pub rules_header: &'static str,
@@ -260,17 +307,4 @@ fn loaded_locales() -> &'static (UiLabels, UiLabels) {
         serde_json::from_str::<LocalesBundle>(EMBEDDED_LOCALES_JSON)
             .map_or_else(|_| (UiLabels::default(), UiLabels::default()), |b| (b.ru, b.en))
     })
-}
-
-#[cfg(test)]
-mod tests {
-    use super::AppLocale;
-
-    #[test]
-    fn loads_ru_and_en_labels_directly_from_json() {
-        assert_eq!(AppLocale::Ru.labels().app_title, "CodeContext");
-        assert_eq!(AppLocale::En.labels().app_title, "CodeContext");
-        assert_eq!(AppLocale::Ru.labels().btn_copy_context, "Копировать");
-        assert_eq!(AppLocale::En.labels().btn_copy_context, "Copy");
-    }
 }

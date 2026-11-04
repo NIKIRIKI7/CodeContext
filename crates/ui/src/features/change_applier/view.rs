@@ -172,7 +172,10 @@ impl Render for ChangeApplierView {
         .with_context(labels, theme)
         .with_actions(
             move |_ev, _win, cx| {
-                let clip_str = cx.read_from_clipboard().and_then(|item| item.text());
+                let clip_str = cx
+                    .read_from_clipboard()
+                    .and_then(|item| item.text())
+                    .filter(|t| !t.is_empty());
                 state_paste.update(cx, |s, cx| {
                     if let Some(text) = clip_str {
                         s.set_response_text(text);
@@ -196,7 +199,6 @@ impl Render for ChangeApplierView {
         let state_opts = self.state.clone();
         let state_apply = self.state.clone();
         let state_undo = self.state.clone();
-        let state_apply_single = self.state.clone();
         let right_header_tabs = FileChangesListComponent::new(parsed_files, selected_idx)
             .with_backups_enabled(backups_enabled)
             .with_options_open(options_open)
@@ -209,9 +211,8 @@ impl Render for ChangeApplierView {
             })
             .on_toggle_file_select(move |idx, _win, cx| {
                 state_toggle_file.update(cx, |s, cx| {
-                    if s.toggle_file_selected(idx) {
-                        cx.notify();
-                    }
+                    s.toggle_file_selection(idx);
+                    cx.notify();
                 });
             })
             .on_toggle_backup(move |_ev, _win, cx| {
@@ -228,30 +229,28 @@ impl Render for ChangeApplierView {
             })
             .with_apply_actions(
                 move |_ev, _win, cx| {
-                    state_apply.update(cx, |s, cx| {
-                        let _ = s.apply_changes_to_disk();
+                    let is_ok = state_apply.update(cx, |s, cx| {
+                        let res = s.apply_changes_to_disk().is_ok();
                         cx.notify();
+                        res
                     });
-                    Self::spawn_toast_auto_dismiss(state_apply.clone(), cx);
+                    if is_ok {
+                        Self::spawn_toast_auto_dismiss(state_apply.clone(), cx);
+                    }
                 },
                 move |_ev, _win, cx| {
-                    state_undo.update(cx, |s, cx| {
-                        let _ = s.undo_last_apply();
+                    let is_ok = state_undo.update(cx, |s, cx| {
+                        let res = s.undo_last_apply().is_ok();
                         cx.notify();
+                        res
                     });
-                    Self::spawn_toast_auto_dismiss(state_undo.clone(), cx);
+                    if is_ok {
+                        Self::spawn_toast_auto_dismiss(state_undo.clone(), cx);
+                    }
                 },
             );
 
-        let diff_view = DiffViewComponent::new(diff_meta, selected_buf)
-            .with_context(labels, theme)
-            .on_apply_single_file(move |_ev, _win, cx| {
-                state_apply_single.update(cx, |s, cx| {
-                    let _ = s.apply_single_file_to_disk(selected_idx);
-                    cx.notify();
-                });
-                Self::spawn_toast_auto_dismiss(state_apply_single.clone(), cx);
-            });
+        let diff_view = DiffViewComponent::new(diff_meta, selected_buf).with_context(labels, theme);
 
         let right_col = div()
             .size_full()

@@ -17,7 +17,7 @@ use platform::{
     InMemoryClipboard, SystemClipboard, SystemGlobalHotkey, SystemShellIntegration,
     SystemSingleInstanceIpc, SystemUpdater,
 };
-use scanner::IgnoreFileScanner;
+use scanner::{IgnoreFileScanner, is_valid_regex_pattern};
 
 #[derive(Debug, Clone)]
 pub enum ClipboardAdapter {
@@ -295,6 +295,11 @@ impl AppContainer {
     }
 
     #[inline]
+    pub fn is_valid_regex(pattern: &str, case_sensitive: bool) -> bool {
+        is_valid_regex_pattern(pattern, case_sensitive)
+    }
+
+    #[inline]
     pub fn autofix_response(raw_response: &str) -> (String, bool, bool) {
         let AutofixResult { fixed_text, preamble_stripped, closed_truncated_block } =
             ResponseApplier::autofix(raw_response);
@@ -321,7 +326,13 @@ impl AppContainer {
             .map(|item| {
                 let has_conflict =
                     matches!(item.status, PatchResolutionStatus::SearchBlockConflict { .. });
-                let is_selected = item.is_sandbox_safe && !has_conflict;
+                let exists_on_disk =
+                    project_root.is_some_and(|root| root.join(&item.rel_path).exists());
+                let has_effective_changes = !exists_on_disk
+                    || item.operation.kind() == PatchOperationKind::DeleteFile
+                    || item.added_lines > 0
+                    || item.removed_lines > 0;
+                let is_selected = item.is_sandbox_safe && !has_conflict && has_effective_changes;
                 ParsedResponseFile {
                     rel_path: item.rel_path,
                     content: item.resolved_content,

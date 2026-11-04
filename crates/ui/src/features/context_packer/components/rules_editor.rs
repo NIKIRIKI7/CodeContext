@@ -7,11 +7,10 @@ use gpui::{
     SharedString, StatefulInteractiveElement as _, Styled as _, Window, div, px,
 };
 
-use crate::features::context_packer::components::file_tree::TreeSortMode;
 use crate::locale::UiLabels;
 use crate::shared::primitives::badge::{Badge, BadgeVariant};
 use crate::shared::primitives::button::{ButtonVariant, UiButton};
-use crate::shared::primitives::icon::{UiIcon, render_vector_checkbox};
+use crate::shared::primitives::icon::{UiIcon, render_icon, render_vector_checkbox};
 use crate::theme::{
     FONT_FAMILY_MONO, FONT_FAMILY_UI, ThemeTokens, active_theme, format_bytes_human,
 };
@@ -36,16 +35,14 @@ pub type PopoverToggleCallback = Arc<dyn Fn(&ClickEvent, &mut Window, &mut App) 
 #[derive(IntoElement)]
 pub struct RulesEditorComponent {
     preset: Preset,
-    sort_mode: TreeSortMode,
-    all_collapsed: bool,
     popover_open: bool,
+    active_prompts_count: usize,
     labels: &'static UiLabels,
     theme: &'static ThemeTokens,
     on_toggle_rule: Option<RuleToggleCallback>,
     on_select_chunk_limit: Option<ChunkLimitSelectCallback>,
     on_toggle_popover: Option<PopoverToggleCallback>,
-    on_toggle_sort_mode: Option<PopoverToggleCallback>,
-    on_toggle_expand_collapse_all: Option<PopoverToggleCallback>,
+    on_open_prompts_modal: Option<PopoverToggleCallback>,
 }
 
 impl fmt::Debug for RulesEditorComponent {
@@ -62,35 +59,38 @@ impl RulesEditorComponent {
     pub const fn new(preset: Preset, labels: &'static UiLabels) -> Self {
         Self {
             preset,
-            sort_mode: TreeSortMode::AlphabeticalTree,
-            all_collapsed: false,
             popover_open: false,
+            active_prompts_count: 0,
             labels,
             theme: active_theme(),
             on_toggle_rule: None,
             on_select_chunk_limit: None,
             on_toggle_popover: None,
-            on_toggle_sort_mode: None,
-            on_toggle_expand_collapse_all: None,
+            on_open_prompts_modal: None,
         }
+    }
+
+    #[must_use]
+    #[inline]
+    pub const fn with_prompts_count(mut self, active_prompts_count: usize) -> Self {
+        self.active_prompts_count = active_prompts_count;
+        self
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn on_open_prompts_modal(
+        mut self,
+        handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.on_open_prompts_modal = Some(Arc::new(handler));
+        self
     }
 
     #[must_use]
     #[inline]
     pub const fn with_theme(mut self, theme: &'static ThemeTokens) -> Self {
         self.theme = theme;
-        self
-    }
-
-    #[must_use]
-    #[inline]
-    pub const fn with_tree_view_state(
-        mut self,
-        sort_mode: TreeSortMode,
-        all_collapsed: bool,
-    ) -> Self {
-        self.sort_mode = sort_mode;
-        self.all_collapsed = all_collapsed;
         self
     }
 
@@ -128,17 +128,6 @@ impl RulesEditorComponent {
         handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
     ) -> Self {
         self.on_toggle_popover = Some(Arc::new(handler));
-        self
-    }
-
-    #[must_use]
-    pub fn with_tree_view_actions(
-        mut self,
-        on_toggle_sort_mode: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
-        on_toggle_expand_collapse_all: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
-    ) -> Self {
-        self.on_toggle_sort_mode = Some(Arc::new(on_toggle_sort_mode));
-        self.on_toggle_expand_collapse_all = Some(Arc::new(on_toggle_expand_collapse_all));
         self
     }
 }
@@ -197,6 +186,33 @@ impl RenderOnce for RulesEditorComponent {
             volume_hint = volume_hint.on_click(move |ev, w, c| cb_clone(ev, w, c));
         }
 
+        let prompts_label = if self.active_prompts_count > 0 {
+            SharedString::from(format!(
+                "{} ({active_prompts_count})",
+                labels.btn_footer_prompts,
+                active_prompts_count = self.active_prompts_count
+            ))
+        } else {
+            SharedString::from(labels.btn_footer_prompts)
+        };
+        let mut prompts_btn = UiButton::new("btn-footer-open-prompts-modal", prompts_label)
+            .icon(UiIcon::FileText)
+            .variant(ButtonVariant::FilterPill)
+            .with_theme(theme)
+            .active(self.active_prompts_count > 0);
+        if let Some(ref cb) = self.on_open_prompts_modal {
+            let cb_clone = Arc::clone(cb);
+            prompts_btn = prompts_btn.on_click(move |ev, w, c| cb_clone(ev, w, c));
+        }
+
+        let left_buttons = div()
+            .flex()
+            .flex_row()
+            .items_center()
+            .gap(px(theme.spacing.xs))
+            .child(trigger_btn)
+            .child(prompts_btn);
+
         let inspector_drawer = if self.popover_open {
             self.render_categorized_filter_inspector().into_any_element()
         } else {
@@ -221,7 +237,7 @@ impl RenderOnce for RulesEditorComponent {
                     .items_center()
                     .justify_between()
                     .gap(px(theme.spacing.sm))
-                    .child(trigger_btn)
+                    .child(left_buttons)
                     .child(volume_hint),
             )
     }
@@ -233,8 +249,6 @@ impl RulesEditorComponent {
         let labels = self.labels;
         let colors = &theme.colors;
         let on_toggle = self.on_toggle_rule.as_ref();
-
-        let tree_controls_row = self.render_tree_view_controls_row();
 
         let fs_items: &[(&str, &str, bool, RuleToggleKind)] = &[
             (
@@ -284,15 +298,22 @@ impl RulesEditorComponent {
             .gap(px(theme.spacing.xs))
             .child(
                 div()
-                    .font_family(FONT_FAMILY_UI)
-                    .text_xs()
-                    .text_color(colors.text_muted)
-                    .child(labels.rules_section_tree_view),
+                    .pb(px(theme.spacing.xxs))
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .gap(px(theme.spacing.xs))
+                    .child(render_icon(UiIcon::Settings, 13.0, colors.text_secondary))
+                    .child(
+                        div()
+                            .font_family(FONT_FAMILY_UI)
+                            .text_xs()
+                            .text_color(colors.text_primary)
+                            .child(labels.rules_header),
+                    ),
             )
-            .child(tree_controls_row)
             .child(
                 div()
-                    .pt(px(theme.spacing.xs))
                     .font_family(FONT_FAMILY_UI)
                     .text_xs()
                     .text_color(colors.text_muted)
@@ -335,45 +356,6 @@ impl RulesEditorComponent {
                     .child(labels.rules_section_volumes),
             )
             .child(chunks_row)
-    }
-
-    fn render_tree_view_controls_row(&self) -> impl IntoElement + use<> {
-        let theme = self.theme;
-        let labels = self.labels;
-        let is_heavy = self.sort_mode == TreeSortMode::TopHeavyFiles;
-        let sort_label = if is_heavy { labels.tree_sort_heavy } else { labels.tree_sort_az };
-        let fold_label =
-            if self.all_collapsed { labels.btn_expand_all } else { labels.btn_collapse_all };
-        let fold_icon =
-            if self.all_collapsed { UiIcon::ChevronsUpDown } else { UiIcon::ChevronsDownUp };
-
-        let mut sort_btn = UiButton::new("inspector-sort-mode-btn", sort_label)
-            .variant(ButtonVariant::FilterPill)
-            .with_theme(theme)
-            .active(is_heavy);
-        if let Some(ref cb) = self.on_toggle_sort_mode {
-            let cb_clone = Arc::clone(cb);
-            sort_btn = sort_btn.on_click(move |ev, w, c| cb_clone(ev, w, c));
-        }
-
-        let mut fold_btn = UiButton::new("inspector-fold-all-btn", fold_label)
-            .icon(fold_icon)
-            .variant(ButtonVariant::FilterPill)
-            .with_theme(theme)
-            .active(self.all_collapsed);
-        if let Some(ref cb) = self.on_toggle_expand_collapse_all {
-            let cb_clone = Arc::clone(cb);
-            fold_btn = fold_btn.on_click(move |ev, w, c| cb_clone(ev, w, c));
-        }
-
-        div()
-            .w_full()
-            .flex()
-            .flex_row()
-            .items_center()
-            .gap(px(theme.spacing.xs))
-            .child(sort_btn)
-            .child(fold_btn)
     }
 }
 

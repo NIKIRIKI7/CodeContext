@@ -40,42 +40,60 @@ pub(crate) fn validate_sandbox_path_with_fs_check(
         return Err(SandboxError::DriveOrAdsForbidden(candidate_rel_path.to_owned()));
     }
 
-    let normalized: Cow<'_, str> = if trimmed.contains('\\') {
-        Cow::Owned(trimmed.replace('\\', "/"))
-    } else {
-        Cow::Borrowed(trimmed)
-    };
-
-    let path = Path::new(normalized.as_ref());
-    if path.is_absolute() {
-        return Err(SandboxError::AbsoluteOrUncPath(candidate_rel_path.to_owned()));
-    }
-
-    let mut clean_rel = PathBuf::with_capacity(
-        project_root.as_os_str().len().saturating_add(normalized.len()).saturating_add(16),
-    );
-    clean_rel.push(project_root);
-
     let mut has_normal_segment = false;
-    for component in path.components() {
-        match component {
-            Component::Normal(part) => {
-                if part.is_empty() || part.to_str().is_some_and(|s| s.trim().is_empty()) {
-                    return Err(SandboxError::EmptyOrNulPath);
-                }
-                clean_rel.push(part);
-                has_normal_segment = true;
-            }
-            Component::CurDir => {}
-            Component::ParentDir | Component::RootDir | Component::Prefix(_) => {
-                return Err(SandboxError::PathTraversalDetected(candidate_rel_path.to_owned()));
-            }
+    let mut has_cur_dir_or_empty = false;
+    for seg in trimmed.split(['/', '\\']) {
+        if seg.is_empty() || seg == "." {
+            has_cur_dir_or_empty = true;
+            continue;
         }
+        if seg == ".." {
+            return Err(SandboxError::PathTraversalDetected(candidate_rel_path.to_owned()));
+        }
+        if seg.trim().is_empty() {
+            return Err(SandboxError::EmptyOrNulPath);
+        }
+        has_normal_segment = true;
     }
-
     if !has_normal_segment {
         return Err(SandboxError::EmptyOrNulPath);
     }
+    let clean_rel = if !has_cur_dir_or_empty && !trimmed.contains('\\') {
+        let path = Path::new(trimmed);
+        if path.is_absolute() {
+            return Err(SandboxError::AbsoluteOrUncPath(candidate_rel_path.to_owned()));
+        }
+        let mut buf = PathBuf::with_capacity(
+            project_root.as_os_str().len().saturating_add(trimmed.len()).saturating_add(2),
+        );
+        buf.push(project_root);
+        buf.push(trimmed);
+        buf
+    } else {
+        let normalized: Cow<'_, str> = if trimmed.contains('\\') {
+            Cow::Owned(trimmed.replace('\\', "/"))
+        } else {
+            Cow::Borrowed(trimmed)
+        };
+        let path = Path::new(normalized.as_ref());
+        if path.is_absolute() {
+            return Err(SandboxError::AbsoluteOrUncPath(candidate_rel_path.to_owned()));
+        }
+        let mut buf = PathBuf::with_capacity(
+            project_root.as_os_str().len().saturating_add(normalized.len()).saturating_add(16),
+        );
+        buf.push(project_root);
+        for component in path.components() {
+            match component {
+                Component::Normal(part) => buf.push(part),
+                Component::CurDir => {}
+                Component::ParentDir | Component::RootDir | Component::Prefix(_) => {
+                    return Err(SandboxError::PathTraversalDetected(candidate_rel_path.to_owned()));
+                }
+            }
+        }
+        buf
+    };
 
     let is_synthetic_unix_root_on_windows =
         cfg!(windows) && project_root.as_os_str().as_encoded_bytes().first().copied() == Some(b'/');

@@ -244,6 +244,100 @@ pub fn canonical_install_binary_path() -> PathBuf {
     }
 }
 
+#[inline]
+pub fn is_valid_native_executable_bytes(bytes: &[u8]) -> bool {
+    if bytes.len() < 65_536 {
+        return false;
+    }
+    if cfg!(target_os = "windows") {
+        bytes.starts_with(b"MZ")
+    } else if cfg!(target_os = "linux") || cfg!(target_os = "freebsd") {
+        bytes.starts_with(b"\x7fELF")
+    } else if cfg!(target_os = "macos") {
+        matches!(
+            bytes.get(..4),
+            Some(
+                [0xcf | 0xce, 0xfa, 0xed, 0xfe]
+                    | [0xfe, 0xed, 0xfa, 0xcf | 0xce]
+                    | [0xca, 0xfe, 0xba, 0xbe]
+            )
+        )
+    } else {
+        true
+    }
+}
+
+pub fn repair_corrupted_canonical_binary_if_needed() {
+    let canonical = canonical_install_binary_path();
+    let Ok(meta) = fs::metadata(&canonical) else {
+        return;
+    };
+    if !meta.is_file() {
+        return;
+    }
+    let is_corrupted = if meta.len() < 65_536 {
+        true
+    } else if let Ok(existing_bytes) = fs::read(&canonical) {
+        !is_valid_native_executable_bytes(&existing_bytes)
+    } else {
+        false
+    };
+    if !is_corrupted {
+        return;
+    }
+    if let Some(valid_bytes) = find_recovery_binary_bytes(&canonical) {
+        let _ = atomic_swap_executable(&canonical, &valid_bytes);
+        let backup_old = canonical.with_extension("old");
+        if backup_old.exists() {
+            let _ = fs::remove_file(backup_old);
+        }
+    }
+}
+
+fn find_recovery_binary_bytes(canonical: &Path) -> Option<Vec<u8>> {
+    let backup_old = canonical.with_extension("old");
+    if let Ok(bytes) = fs::read(&backup_old)
+        && is_valid_native_executable_bytes(&bytes)
+    {
+        return Some(bytes);
+    }
+    if let Ok(curr_exe) = std::env::current_exe()
+        && curr_exe != canonical
+        && curr_exe.file_stem().and_then(|s| s.to_str()).is_some_and(|stem| {
+            stem.eq_ignore_ascii_case("app") || stem.eq_ignore_ascii_case("codecontext")
+        })
+        && let Ok(bytes) = fs::read(&curr_exe)
+        && is_valid_native_executable_bytes(&bytes)
+    {
+        return Some(bytes);
+    }
+    let bin_name = if cfg!(windows) { "app.exe" } else { "app" };
+    let mut roots = Vec::with_capacity(3);
+    if let Ok(cwd) = std::env::current_dir() {
+        roots.push(cwd);
+    }
+    if let Some(manifest_root) =
+        Path::new(env!("CARGO_MANIFEST_DIR")).parent().and_then(Path::parent)
+    {
+        roots.push(manifest_root.to_path_buf());
+    }
+    for root in roots {
+        for rel in [
+            format!("target/release/{bin_name}"),
+            format!("target/{}/release/{bin_name}", current_target_triple()),
+            format!("target/debug/{bin_name}"),
+        ] {
+            let candidate = root.join(rel);
+            if let Ok(bytes) = fs::read(&candidate)
+                && is_valid_native_executable_bytes(&bytes)
+            {
+                return Some(bytes);
+            }
+        }
+    }
+    None
+}
+
 pub fn atomic_swap_executable(
     target_exe: &Path,
     new_binary_bytes: &[u8],
@@ -320,9 +414,12 @@ impl Default for SystemUpdater {
 impl SystemUpdater {
     #[inline]
     pub fn new() -> Self {
+        repair_corrupted_canonical_binary_if_needed();
         let current_exe = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("codecontext"));
         let old_artifact = current_exe.with_extension("old");
-        if old_artifact.exists() {
+        if old_artifact.exists()
+            && fs::read(&current_exe).is_ok_and(|b| is_valid_native_executable_bytes(&b))
+        {
             let _ = fs::remove_file(old_artifact);
         }
         Self::with_paths(
@@ -335,7 +432,8 @@ impl SystemUpdater {
 
     #[inline]
     pub fn new_in_memory() -> Self {
-        let target = canonical_install_binary_path();
+        repair_corrupted_canonical_binary_if_needed();
+        let target = PathBuf::from("/virtual/in_memory/CodeContext/codecontext");
         Self::with_paths(
             UpdaterBackendMode::InMemory,
             SemanticVersion::new(0, 1, 0),
@@ -513,7 +611,17 @@ impl UpdaterPort for SystemUpdater {
             return Err(err);
         }
 
-        if self.mode == UpdaterBackendMode::NativeOs || current_exe.exists() {
+        if self.mode == UpdaterBackendMode::NativeOs {
+            if !is_valid_native_executable_bytes(&payload) {
+                let err = UpdaterPortError::InvalidManifest(
+                    "Скачанный бинарный файл не прошёл проверку заголовка исполняемого файла ОС"
+                        .to_owned(),
+                );
+                if let Ok(mut guard) = self.state.lock() {
+                    guard.stage = UpdateStage::Failed { reason: err.to_string() };
+                }
+                return Err(err);
+            }
             if let Err(err) = atomic_swap_executable(&current_exe, &payload) {
                 if let Ok(mut guard) = self.state.lock() {
                     guard.stage = UpdateStage::Failed { reason: err.to_string() };
@@ -656,10 +764,9 @@ fn download_native_release_binary(
     let result = download_and_extract_for_target(&base_url, target, &stage_dir);
     let _ = fs::remove_dir_all(&stage_dir);
     let bytes = result?;
-
-    if bytes.len() < 65_536 {
+    if !is_valid_native_executable_bytes(&bytes) {
         return Err(UpdaterPortError::InvalidManifest(
-            "Скачанный бинарный файл повреждён или слишком мал".to_owned(),
+            "Скачанный бинарный файл повреждён, слишком мал или не имеет заголовка ОС".to_owned(),
         ));
     }
     Ok(bytes)

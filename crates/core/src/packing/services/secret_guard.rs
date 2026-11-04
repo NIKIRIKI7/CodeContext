@@ -139,10 +139,14 @@ impl SecretGuard {
         rel_path: &str,
         chain: &[PathSecretRuleFn],
     ) -> Option<SecretMatchReason> {
-        if rule_sensitive_directory_raw(rel_path) {
+        let candidate = PathCandidate::parse(rel_path)?;
+        let dir_len = rel_path.len().saturating_sub(candidate.file_name.len());
+        if dir_len > 0
+            && let Some(dir_part) = rel_path.get(..dir_len)
+            && rule_sensitive_directory_raw(dir_part)
+        {
             return Some(SecretMatchReason::SensitiveDirectory);
         }
-        let candidate = PathCandidate::parse(rel_path)?;
         for &rule in chain {
             match rule(&candidate) {
                 SecretRuleVerdict::PassToNext => {}
@@ -300,6 +304,9 @@ fn rule_secret_keyword_in_data_config(candidate: &PathCandidate<'_>) -> SecretRu
 
 #[inline]
 fn rule_private_key_header_in_content(prefix: &str) -> Option<SecretMatchReason> {
+    if !prefix.contains("-----BEGIN ") {
+        return None;
+    }
     for line in prefix.lines() {
         let trimmed = line.trim();
         if trimmed.starts_with("-----BEGIN ") && trimmed.ends_with("PRIVATE KEY-----") {

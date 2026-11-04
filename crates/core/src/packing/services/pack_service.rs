@@ -4,7 +4,7 @@ use thiserror::Error;
 
 use crate::packing::aggregates::file_entry::FileEntry;
 use crate::packing::aggregates::pack_result::PackResult;
-use crate::packing::aggregates::project::Project;
+use crate::packing::aggregates::project::{Project, compare_paths_folders_first};
 use crate::packing::ports::clipboard::{ClipboardPort, ClipboardPortError};
 use crate::packing::ports::scanner::{FileScannerPort, HydrateReport, ScannerPortError};
 use crate::packing::services::chunker::Chunker;
@@ -114,7 +114,7 @@ where
 
         let mut pairs: Vec<(String, String)> =
             hydrate_report.files.into_iter().map(|f| (f.rel_path, f.content)).collect();
-        pairs.sort_unstable_by(|a, b| a.0.cmp(&b.0));
+        pairs.sort_unstable_by(|a, b| compare_paths_folders_first(&a.0, &b.0));
         Ok(pairs)
     }
 
@@ -140,24 +140,38 @@ where
             project.entries().iter().filter(|e| e.kind == FileKind::Binary).count()
                 + extra_skipped_binaries;
 
+        let entries = project.entries();
+        let has_allowed_secrets = !preset.explicitly_allowed_secrets.is_empty();
+        let mut entry_cursor = 0_usize;
         let mut selected_slices: Vec<(&str, &str)> =
             Vec::with_capacity(project.selected_files_count());
-
         for (rel_path, content) in hydrated_cache {
-            let is_selected = project
-                .entries()
-                .binary_search_by(|e| e.rel_path.as_str().cmp(rel_path.as_str()))
-                .ok()
-                .and_then(|idx| project.entries().get(idx))
-                .is_some_and(|e| e.is_selected);
-
+            while let Some(e) = entries.get(entry_cursor) {
+                if compare_paths_folders_first(e.rel_path.as_str(), rel_path.as_str()).is_lt() {
+                    entry_cursor += 1;
+                } else {
+                    break;
+                }
+            }
+            let is_selected = if let Some(e) = entries.get(entry_cursor)
+                && e.rel_path == *rel_path
+            {
+                e.is_selected
+            } else {
+                entries
+                    .binary_search_by(|e| {
+                        compare_paths_folders_first(e.rel_path.as_str(), rel_path.as_str())
+                    })
+                    .ok()
+                    .and_then(|idx| entries.get(idx))
+                    .is_some_and(|e| e.is_selected)
+            };
             if !is_selected {
                 continue;
             }
-
-            if !preset.is_secret_explicitly_allowed(rel_path)
-                && let Some(reason) = SecretGuard::inspect_content_prefix(content)
-            {
+            let secret_allowed =
+                has_allowed_secrets && preset.is_secret_explicitly_allowed(rel_path);
+            if !secret_allowed && let Some(reason) = SecretGuard::inspect_content_prefix(content) {
                 blocked_secrets_count += 1;
                 anomalies.push(Anomaly::SecretBlocked {
                     rel_path: rel_path.clone(),
@@ -165,7 +179,6 @@ where
                 });
                 continue;
             }
-
             selected_slices.push((rel_path.as_str(), content.as_str()));
         }
 

@@ -1,10 +1,6 @@
-use std::fmt;
-use std::sync::Arc;
-
 use core::shared_kernel::fs::line_ending::LineEnding;
 use gpui::{
-    App, ClickEvent, IntoElement, ParentElement as _, RenderOnce, SharedString, Styled as _,
-    Window, div, px,
+    App, IntoElement, ParentElement as _, RenderOnce, SharedString, Styled as _, Window, div, px,
 };
 
 use crate::locale::{AppLocale, UiLabels};
@@ -12,11 +8,7 @@ use crate::shared::containers::virtual_text::{
     LineHighlightMode, VirtualTextBuffer, VirtualTextView,
 };
 use crate::shared::primitives::badge::{Badge, BadgeVariant};
-use crate::shared::primitives::button::{ButtonVariant, UiButton};
-use crate::shared::primitives::icon::UiIcon;
 use crate::theme::{FONT_FAMILY_MONO, FONT_FAMILY_UI, ThemeTokens, active_theme};
-
-pub type ApplySingleFileCallback = Arc<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>;
 
 #[derive(Debug, Clone)]
 pub struct DiffViewMeta {
@@ -30,31 +22,18 @@ pub struct DiffViewMeta {
     pub is_applied: bool,
 }
 
-#[derive(Clone, IntoElement)]
+#[derive(Debug, Clone, IntoElement)]
 pub struct DiffViewComponent {
     meta: DiffViewMeta,
     buffer: VirtualTextBuffer,
     labels: &'static UiLabels,
     theme: &'static ThemeTokens,
-    on_apply_single_file: Option<ApplySingleFileCallback>,
-}
-
-impl fmt::Debug for DiffViewComponent {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("DiffViewComponent").field("meta", &self.meta).finish_non_exhaustive()
-    }
 }
 
 impl DiffViewComponent {
     #[inline]
     pub fn new(meta: DiffViewMeta, buffer: VirtualTextBuffer) -> Self {
-        Self {
-            meta,
-            buffer,
-            labels: AppLocale::Ru.labels(),
-            theme: active_theme(),
-            on_apply_single_file: None,
-        }
+        Self { meta, buffer, labels: AppLocale::Ru.labels(), theme: active_theme() }
     }
 
     #[must_use]
@@ -68,16 +47,6 @@ impl DiffViewComponent {
         self.theme = theme;
         self
     }
-
-    #[must_use]
-    #[inline]
-    pub fn on_apply_single_file(
-        mut self,
-        handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
-    ) -> Self {
-        self.on_apply_single_file = Some(Arc::new(handler));
-        self
-    }
 }
 
 impl RenderOnce for DiffViewComponent {
@@ -86,57 +55,76 @@ impl RenderOnce for DiffViewComponent {
         let labels = self.labels;
 
         if self.buffer.is_empty() {
-            return render_empty_diff_placeholder(labels, theme);
+            return div()
+                .size_full()
+                .flex()
+                .items_center()
+                .justify_center()
+                .p(px(theme.spacing.xxl))
+                .bg(theme.colors.bg_app)
+                .child(
+                    div()
+                        .max_w(px(380.0))
+                        .p(px(theme.spacing.xxl))
+                        .rounded(px(theme.radius.lg))
+                        .border_1()
+                        .border_color(theme.colors.border)
+                        .bg(theme.colors.bg_panel)
+                        .flex()
+                        .flex_col()
+                        .gap(px(theme.spacing.sm))
+                        .child(
+                            div()
+                                .font_family(FONT_FAMILY_UI)
+                                .text_xs()
+                                .text_color(theme.colors.text_primary)
+                                .child(labels.applier_no_parsed_files),
+                        )
+                        .child(
+                            div()
+                                .font_family(FONT_FAMILY_UI)
+                                .text_xs()
+                                .text_color(theme.colors.text_muted)
+                                .child(labels.applier_empty_diff_hint),
+                        ),
+                )
+                .into_any_element();
         }
 
         let alert_strip = render_exception_alert_strip(&self.meta, labels, theme);
 
-        let mut right_meta =
-            div().flex_shrink_0().flex().flex_row().items_center().gap(px(theme.spacing.sm));
-        if self.meta.line_ending == LineEnding::Crlf {
-            right_meta = right_meta.child(
-                Badge::new(labels.applier_encoding_crlf, BadgeVariant::Neutral).with_theme(theme),
-            );
-        }
-        if !self.meta.is_applied && self.meta.added_lines > 0 {
-            right_meta = right_meta.child(
-                div()
-                    .font_family(FONT_FAMILY_MONO)
-                    .text_xs()
-                    .text_color(theme.colors.success)
-                    .child(format!("+{}", self.meta.added_lines)),
-            );
-        }
-        if !self.meta.is_applied && self.meta.removed_lines > 0 {
-            right_meta = right_meta.child(
-                div()
-                    .font_family(FONT_FAMILY_MONO)
-                    .text_xs()
-                    .text_color(theme.colors.danger)
-                    .child(format!("-{}", self.meta.removed_lines)),
-            );
-        }
-
+        let mut right_meta = div().flex().flex_row().items_center().gap(px(theme.spacing.sm));
         if self.meta.is_applied {
             right_meta = right_meta.child(
-                Badge::new(labels.applier_valid_block, BadgeVariant::Neutral).with_theme(theme),
+                Badge::new(labels.applier_valid_block, BadgeVariant::Success).with_theme(theme),
             );
-        } else if self.meta.is_sandbox_safe
-            && !self.meta.has_conflict
-            && let Some(apply_single_fn) = self.on_apply_single_file
-        {
-            right_meta = right_meta.child(
-                UiButton::new("btn-apply-single-file", labels.btn_apply_changes)
-                    .icon(UiIcon::Check)
-                    .variant(ButtonVariant::Ghost)
-                    .with_theme(theme)
-                    .on_click(move |ev, w, c| apply_single_fn(ev, w, c)),
-            );
+        } else {
+            if self.meta.line_ending == LineEnding::Crlf {
+                right_meta = right_meta.child(
+                    Badge::new(labels.applier_encoding_crlf, BadgeVariant::Neutral)
+                        .with_theme(theme),
+                );
+            }
+            right_meta = right_meta
+                .child(
+                    div()
+                        .font_family(FONT_FAMILY_MONO)
+                        .text_xs()
+                        .text_color(theme.colors.success)
+                        .child(format!("+{}", self.meta.added_lines)),
+                )
+                .child(
+                    div()
+                        .font_family(FONT_FAMILY_MONO)
+                        .text_xs()
+                        .text_color(theme.colors.danger)
+                        .child(format!("-{}", self.meta.removed_lines)),
+                );
         }
 
         let file_banner = div()
             .w_full()
-            .h(px(32.0))
+            .h(px(28.0))
             .px(px(theme.spacing.xl))
             .bg(theme.colors.bg_panel)
             .border_b_1()
@@ -145,13 +133,8 @@ impl RenderOnce for DiffViewComponent {
             .flex_row()
             .items_center()
             .justify_between()
-            .gap(px(theme.spacing.md))
             .child(
                 div()
-                    .flex_1()
-                    .min_w(px(0.0))
-                    .overflow_hidden()
-                    .whitespace_nowrap()
                     .font_family(FONT_FAMILY_MONO)
                     .text_xs()
                     .text_color(theme.colors.text_secondary)
@@ -176,50 +159,6 @@ impl RenderOnce for DiffViewComponent {
             )
             .into_any_element()
     }
-}
-
-fn render_empty_diff_placeholder(
-    labels: &'static UiLabels,
-    theme: &'static ThemeTokens,
-) -> gpui::AnyElement {
-    div()
-        .size_full()
-        .flex()
-        .flex_row()
-        .items_center()
-        .justify_center()
-        .p(px(theme.spacing.xl))
-        .bg(theme.colors.bg_app)
-        .overflow_hidden()
-        .child(
-            div()
-                .flex_1()
-                .min_w(px(0.0))
-                .max_w(px(380.0))
-                .p(px(theme.spacing.xl))
-                .rounded(px(theme.radius.lg))
-                .border_1()
-                .border_color(theme.colors.border)
-                .bg(theme.colors.bg_panel)
-                .flex()
-                .flex_col()
-                .gap(px(theme.spacing.sm))
-                .child(
-                    div()
-                        .font_family(FONT_FAMILY_UI)
-                        .text_xs()
-                        .text_color(theme.colors.text_primary)
-                        .child(labels.applier_no_parsed_files),
-                )
-                .child(
-                    div()
-                        .font_family(FONT_FAMILY_UI)
-                        .text_xs()
-                        .text_color(theme.colors.text_muted)
-                        .child(labels.applier_empty_diff_hint),
-                ),
-        )
-        .into_any_element()
 }
 
 fn render_exception_alert_strip(

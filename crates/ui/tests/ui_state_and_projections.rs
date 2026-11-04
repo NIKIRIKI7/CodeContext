@@ -18,7 +18,8 @@ use std::time::Instant;
 use core::packing::aggregates::file_entry::FileEntry;
 use core::packing::aggregates::project::Project;
 use core::packing::ports::clipboard::ClipboardPort as _;
-use core::preset::models::preset::{PROJECT_CONFIG_FILE_NAME, Preset};
+use core::preset::models::preset::{FolderOverrideMode, PROJECT_CONFIG_FILE_NAME, Preset};
+use core::preset::models::template::SystemPromptMode;
 use core::shared_kernel::fs::file_kind::FileKind;
 use core::system::ports::hotkey::HotkeyShortcut;
 use core::system::ports::ipc::{IpcCommand, MAX_IPC_FRAME_BYTES, encode_ipc_frame};
@@ -26,11 +27,14 @@ use di::AppContainer;
 use proptest::prelude::*;
 use tempfile::TempDir;
 use ui::features::change_applier::state::ChangeApplierState;
-use ui::features::context_packer::components::file_tree::{FlatTreeProjection, TriState};
+use ui::features::context_packer::components::file_tree::{
+    FlatTreeProjection, MAX_VISIBLE_FILTER_CHIPS, QuickFilterChipKind, TriState,
+};
 use ui::features::context_packer::components::rules_editor::RuleToggleKind;
 use ui::features::context_packer::state::ContextPackerState;
 use ui::features::main_window::state::{MainWindowState, WorkspaceTab};
 use ui::features::settings_modal::state::SettingsModalState;
+use ui::locale::AppLocale;
 use ui::shared::containers::virtual_text::VirtualTextBuffer;
 use ui::shared::primitives::warning_banner::BannerSeverity;
 
@@ -130,6 +134,28 @@ fn interactive_search_master_checkbox_and_modals_work_ergonomically() {
     assert!(beta_line.is_some());
     assert_eq!(packer.take_pending_preview_scroll(), beta_line);
 
+    // Пилюли быстрых фильтров скрыты по умолчанию и открываются только по кнопке `[.*]`
+    assert!(!packer.ui_status().regex_filter_open);
+    packer.toggle_regex_filter_panel();
+    assert!(packer.ui_status().regex_filter_open);
+    let chips = packer.build_quick_filter_chips();
+    assert_eq!(chips.len(), 4);
+    const { assert!(MAX_VISIBLE_FILTER_CHIPS <= 5) };
+    packer.toggle_quick_filter_chip(&QuickFilterChipKind::Extension("rs".to_owned()));
+    assert_eq!(packer.effective_preset().filters.include_extensions, vec!["rs".to_owned()]);
+    packer.toggle_quick_filter_chip(&QuickFilterChipKind::Extension("rs".to_owned()));
+    assert_eq!(packer.effective_preset().filters.include_extensions.len(), 0);
+
+    assert_eq!(AppLocale::Ru.labels().app_title, "CodeContext");
+    assert_eq!(AppLocale::En.labels().app_title, "CodeContext");
+    assert_eq!(AppLocale::Ru.labels().btn_copy_context, "Копировать");
+    assert_eq!(AppLocale::En.labels().btn_copy_context, "Copy");
+
+    packer.select_system_prompt_mode(SystemPromptMode::SearchReplacePatch);
+    assert!(packer.preview_buffer().as_str().contains("<<<<<<< SEARCH"));
+    packer.select_system_prompt_mode(SystemPromptMode::None);
+    assert!(!packer.preview_buffer().as_str().contains("<<<<<<< SEARCH"));
+
     packer.toggle_filters_popover();
     assert!(packer.ui_status().filters_popover_open);
 
@@ -182,6 +208,37 @@ fn scenario_a3_untrusted_project_config_raises_security_banner_and_blocks_secret
 
     let reloaded_state = ContextPackerState::new(container, Some(root));
     assert!(!reloaded_state.preview_buffer().as_str().contains("super_secret_123"));
+}
+
+#[test]
+fn folders_first_sorting_empty_folders_hidden_and_transit_ancestors_collapsed() {
+    let entries = vec![
+        FileEntry::new("crates/core/src/z_root_file.rs".to_owned(), 100, FileKind::SourceCode),
+        FileEntry::new(
+            "crates/core/src/applying/apply_service.rs".to_owned(),
+            200,
+            FileKind::SourceCode,
+        ),
+    ];
+    let mut preset = Preset::default();
+    preset.folder_filters.folder_overrides.insert("crates".to_owned(), FolderOverrideMode::Exclude);
+    preset
+        .folder_filters
+        .folder_overrides
+        .insert("crates/core/src".to_owned(), FolderOverrideMode::Include);
+
+    let project = Project::new(PathBuf::from("/workspace"), entries, preset, Vec::new());
+    let proj = FlatTreeProjection::build(&project, &HashSet::new(), "");
+    let nodes = proj.visible_nodes();
+
+    assert_eq!(nodes.len(), 4);
+    assert_eq!(nodes[0].path, "crates/core/src");
+    assert_eq!(nodes[0].display_name, "crates/core/src");
+    assert_eq!(nodes[0].depth, 0);
+    assert_eq!(nodes[1].path, "crates/core/src/applying");
+    assert_eq!(nodes[1].depth, 1);
+    assert_eq!(nodes[2].path, "crates/core/src/applying/apply_service.rs");
+    assert_eq!(nodes[3].path, "crates/core/src/z_root_file.rs");
 }
 
 #[test]

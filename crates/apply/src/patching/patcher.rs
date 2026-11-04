@@ -33,10 +33,10 @@ type BlockMatcherFn = fn(&str, &str, &str, LineEnding) -> Option<String>;
 const SEARCH_REPLACE_MATCHER_CHAIN: &[BlockMatcherFn] = &[
     try_exact_replace,
     try_line_ending_normalized_replace,
+    try_idempotent_already_applied,
     try_trimmed_subsequence_replace,
     try_syntax_normalized_replace,
     try_formatter_agnostic_replace,
-    try_idempotent_already_applied,
     try_ellipsis_and_comment_tolerant_replace,
     try_zed_fuzzy_similarity_replace,
 ];
@@ -119,14 +119,27 @@ fn normalize_overwrite_for_existing(
         return content.to_owned();
     };
 
-    let mut out = if target_ending == LineEnding::Lf && content.contains('\r') {
-        content.replace("\r\n", "\n")
+    let lf_normalized =
+        if content.contains('\r') { content.replace("\r\n", "\n") } else { content.to_owned() };
+
+    let mut out = if target_ending == LineEnding::Crlf {
+        lf_normalized.replace('\n', "\r\n")
     } else {
-        content.to_owned()
+        lf_normalized
     };
 
-    if existing.ends_with('\n') && !out.is_empty() && !out.ends_with('\n') {
-        out.push_str(target_ending.as_str());
+    if !existing.is_empty() {
+        if existing.ends_with('\n') && !out.is_empty() && !out.ends_with('\n') {
+            out.push_str(target_ending.as_str());
+        } else if !existing.ends_with('\n') {
+            if target_ending == LineEnding::Crlf {
+                if let Some(stripped) = out.strip_suffix("\r\n") {
+                    out.truncate(stripped.len());
+                }
+            } else if let Some(stripped) = out.strip_suffix('\n') {
+                out.truncate(stripped.len());
+            }
+        }
     }
 
     out
@@ -522,5 +535,17 @@ mod tests {
         let out = apply_operation_to_text("src/locale.rs", Some(already_patched), &op, false);
         assert_eq!(out.status, PatchResolutionStatus::Ready);
         assert_eq!(out.resolved_content.matches("rules_section_fs").count(), 1);
+    }
+
+    #[test]
+    fn overwrite_full_preserves_existing_crlf_without_false_positive_diff() {
+        let existing_crlf = "[build]\r\nrustflags = [\r\n    \"-C\",\r\n]\r\n";
+        let incoming_lf = "[build]\nrustflags = [\n    \"-C\",\n]";
+        let op = FileOperation::OverwriteFull { content: incoming_lf.to_owned() };
+        let out = apply_operation_to_text(".cargo/config.toml", Some(existing_crlf), &op, false);
+        assert_eq!(out.status, PatchResolutionStatus::Ready);
+        assert_eq!(out.diff.added_lines, 0);
+        assert_eq!(out.diff.removed_lines, 0);
+        assert_eq!(out.resolved_content, existing_crlf);
     }
 }

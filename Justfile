@@ -18,7 +18,7 @@ changelog ver:
 
 set-version ver: (changelog ver)
     @printf "{{ver}}\n" > VERSION
-    @python3 -c 'import pathlib, re, sys; v = sys.argv[1]; p = pathlib.Path("Cargo.toml"); s = p.read_text(encoding="utf-8"); s = re.sub(r"(?m)^version = \"[^\"]+\"", f"version = \"{v}\"", s, count=1); p.write_text(s, encoding="utf-8")' {{ver}}
+    @python3 -c 'import pathlib, re, sys; v = sys.argv[1]; p = pathlib.Path("Cargo.toml"); s = p.read_text(encoding="utf-8"); s = re.sub(r"(?m)^version = \"[^\"]+\"", f"version = \"{v}\"", s, count=1); s = re.sub(r"(path = \"crates/[^\"]+\")", lambda m: m.group(0), re.sub(r"version = \"[^\"]+\"(,\s*path = \"crates/)", f"version = \"{v}\"\\1", s)); p.write_text(s, encoding="utf-8")' {{ver}}
     cargo check --workspace
 
 tag-release ver: (set-version ver) qa
@@ -40,8 +40,65 @@ build-pgo:
 
 test:
     cargo nextest run --workspace --release
-    cargo test --package app --test architecture -- --nocapture
-    cargo test --package scanner --test heap_allocations -- --test-threads=1 --nocapture
+    cargo test --package app --test architecture --release -- --nocapture
+    cargo test --package scanner --test heap_allocations --release -- --test-threads=1 --nocapture
+
+test-all:
+    cargo nextest run --workspace --release
+    cargo test --package app --test architecture --release -- --nocapture
+    cargo test --package scanner --test heap_allocations --release -- --test-threads=1 --nocapture
+    cargo test --doc --workspace --release
+
+test-cargo:
+    cargo test --workspace --release
+
+test-dev:
+    cargo test --workspace
+
+test-unit:
+    cargo test --workspace --lib --release -- --nocapture
+
+test-doc:
+    cargo test --doc --workspace
+
+test-arch:
+    cargo test --package app --test architecture --release -- --nocapture
+
+test-alloc:
+    cargo test --package scanner --test heap_allocations --release -- --test-threads=1 --nocapture
+
+test-core:
+    cargo test --package core --release -- --nocapture
+
+test-scanner:
+    cargo test --package scanner --release -- --nocapture
+
+test-apply:
+    cargo test --package apply --release -- --nocapture
+
+test-config:
+    cargo test --package config --release -- --nocapture
+
+test-platform:
+    cargo test --package platform --release -- --nocapture
+
+test-ui:
+    cargo test --package ui --release -- --nocapture
+
+test-app:
+    cargo test --package app --release -- --nocapture
+
+test-proptest:
+    cargo test --package apply --test proptest_invariants --release -- --nocapture
+
+test-cascade:
+    cargo test --package config --test cascade_and_invariants --release -- --nocapture
+
+test-shell:
+    cargo test --package platform --test shell_and_headless --release -- --nocapture
+
+test-ui-projections:
+    cargo test --package ui --test ui_state_and_projections --release -- --nocapture
 
 test-hotkey:
     cargo nextest run --release --package core -- system::ports::hotkey
@@ -49,16 +106,66 @@ test-hotkey:
     cargo nextest run --release --package ui --test ui_state_and_projections
 
 bench:
-    cargo bench --package scanner
-    cargo bench --package config
-    cargo bench --package apply
-    cargo bench --package platform
-    cargo bench --package ui
+    cargo bench --package scanner --bench pack_throughput
+    cargo bench --package config --bench config_throughput
+    cargo bench --package apply --bench apply_throughput
+    cargo bench --package platform --bench platform_throughput
+    cargo bench --package ui --bench ui_projections
+
+bench-scanner:
+    cargo bench --package scanner --bench pack_throughput
+
+bench-config:
+    cargo bench --package config --bench config_throughput
+
+bench-apply:
+    cargo bench --package apply --bench apply_throughput
+
+bench-platform:
+    cargo bench --package platform --bench platform_throughput
+
+bench-ui:
+    cargo bench --package ui --bench ui_projections
+
+bench-pack:
+    cargo bench --package scanner --bench pack_throughput -- bench_1
+
+bench-simd:
+    cargo bench --package scanner --bench pack_throughput -- bench_2
+
+bench-scaling:
+    cargo bench --package scanner --bench pack_throughput -- bench_3
+
+bench-regex:
+    cargo bench --package scanner --bench pack_throughput -- bench_6
+    cargo bench --package ui --bench ui_projections -- bench_7_interactive_tree_search_and_regex_validation
+
+bench-parser:
+    cargo bench --package apply --bench apply_throughput -- bench_1
+
+bench-fuzzy:
+    cargo bench --package apply --bench apply_throughput -- bench_3_patcher_search_replace_exact_vs_fuzzy
+
+bench-diff:
+    cargo bench --package apply --bench apply_throughput -- bench_4_similar_diff_calculation
+
+bench-sandbox:
+    cargo bench --package apply --bench apply_throughput -- bench_5_sandbox_validation_10k_paths
 
 bench-hotkey:
     cargo bench --package platform --bench platform_throughput -- hotkey
+
+bench-ipc:
     cargo bench --package platform --bench platform_throughput -- ipc
-    cargo bench --package ui --bench ui_projections -- bench_6_external_ipc_and_hotkey_state_dispatch
+
+bench-tree:
+    cargo bench --package ui --bench ui_projections -- bench_1_build_flat_tree_50k_files
+
+bench-virtual-text:
+    cargo bench --package ui --bench ui_projections -- virtual_text
+
+bench-all:
+    cargo bench --workspace
 
 qa:
     cargo fmt --all -- --check

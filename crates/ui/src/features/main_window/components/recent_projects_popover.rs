@@ -27,7 +27,6 @@ pub struct RecentProjectsPopover {
     theme: &'static ThemeTokens,
     on_select_project: Option<SelectRecentProjectCallback>,
     on_browse_folder: Option<RecentPopoverActionCallback>,
-    on_create_project: Option<RecentPopoverActionCallback>,
     on_set_submenu_open: Option<SubmenuHoverCallback>,
     on_close: Option<RecentPopoverActionCallback>,
 }
@@ -56,7 +55,6 @@ impl RecentProjectsPopover {
             theme,
             on_select_project: None,
             on_browse_folder: None,
-            on_create_project: None,
             on_set_submenu_open: None,
             on_close: None,
         }
@@ -84,12 +82,10 @@ impl RecentProjectsPopover {
         mut self,
         on_select_project: impl Fn(PathBuf, &mut Window, &mut App) + 'static,
         on_browse_folder: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
-        on_create_project: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
         on_close: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
     ) -> Self {
         self.on_select_project = Some(Arc::new(on_select_project));
         self.on_browse_folder = Some(Arc::new(on_browse_folder));
-        self.on_create_project = Some(Arc::new(on_create_project));
         self.on_close = Some(Arc::new(on_close));
         self
     }
@@ -105,7 +101,6 @@ impl RenderOnce for RecentProjectsPopover {
             labels,
             theme,
             self.on_browse_folder.as_ref(),
-            self.on_create_project.as_ref(),
             self.on_set_submenu_open.as_ref(),
         );
 
@@ -167,7 +162,6 @@ fn render_actions_section(
     labels: &'static UiLabels,
     theme: &'static ThemeTokens,
     on_browse: Option<&RecentPopoverActionCallback>,
-    on_create: Option<&RecentPopoverActionCallback>,
     on_set_submenu_open: Option<&SubmenuHoverCallback>,
 ) -> impl IntoElement + use<> {
     let colors = &theme.colors;
@@ -225,44 +219,7 @@ fn render_actions_section(
         });
     }
 
-    let mut create_row = div()
-        .id("recent-projects-create-btn")
-        .w_full()
-        .h(px(28.0))
-        .px(px(theme.spacing.md))
-        .rounded(px(theme.radius.sm))
-        .cursor_pointer()
-        .hover(move |s| s.bg(hover_bg))
-        .flex()
-        .flex_row()
-        .items_center()
-        .gap(px(theme.spacing.sm))
-        .child(render_icon(UiIcon::Plus, 13.0, colors.text_secondary))
-        .child(
-            div()
-                .font_family(FONT_FAMILY_UI)
-                .text_xs()
-                .text_color(colors.text_primary)
-                .child(labels.menu_create_new_project),
-        );
-
-    if let Some(hover_fn) = on_set_submenu_open {
-        let cb_hover = Arc::clone(hover_fn);
-        create_row = create_row.on_hover(move |&entered, win, cx| {
-            if entered {
-                cb_hover(false, win, cx);
-            }
-        });
-    }
-    if let Some(create_fn) = on_create {
-        let cb = Arc::clone(create_fn);
-        create_row = create_row.on_click(move |ev, win, cx| {
-            cx.stop_propagation();
-            cb(ev, win, cx);
-        });
-    }
-
-    div().w_full().flex().flex_col().p(px(theme.spacing.xs)).child(open_row).child(create_row)
+    div().w_full().flex().flex_col().p(px(theme.spacing.xs)).child(open_row)
 }
 
 fn render_recent_submenu_trigger(

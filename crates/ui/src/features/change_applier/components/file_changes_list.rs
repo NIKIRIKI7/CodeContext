@@ -410,7 +410,10 @@ impl RenderOnce for FileChangesListComponent {
         if let Some(overflow_tabs) = overflow_tabs_opt {
             container = container.child(
                 div()
+                    .id("parsed-files-overflow-scroll")
                     .w_full()
+                    .max_h(px(112.0))
+                    .overflow_y_scroll()
                     .px(px(theme.spacing.lg))
                     .py(px(theme.spacing.xs))
                     .border_b_1()

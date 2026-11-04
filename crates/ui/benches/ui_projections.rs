@@ -172,3 +172,35 @@ fn bench_6_external_ipc_and_hotkey_state_dispatch(bencher: Bencher, event_kind: 
         divan::black_box(applier.parsed_files().len())
     });
 }
+
+#[divan::bench(args = ["search_query_50k", "live_regex_validation_100"], sample_count = 60)]
+fn bench_7_interactive_tree_search_and_regex_validation(bencher: Bencher, mode: &str) {
+    let project = generate_50k_project();
+    let collapsed = HashSet::new();
+    bencher.bench_local(|| {
+        if mode == "search_query_50k" {
+            let proj = FlatTreeProjection::build(
+                divan::black_box(&project),
+                divan::black_box(&collapsed),
+                divan::black_box("crate_07/src/mod_07"),
+            );
+            assert!(proj.visible_nodes().len() >= 1_000);
+            divan::black_box(proj.visible_nodes().len())
+        } else {
+            let mut valid = 0_usize;
+            for pat in [
+                "(^|/)tests?/|(_test|[.]test|[.]spec)[.]",
+                "(^|/)src/",
+                "(generated|[.]gen[.])",
+                "^crates/(core|ui)/.*\\.rs$",
+                "^crates/(unclosed_group",
+            ] {
+                if AppContainer::is_valid_regex(divan::black_box(pat), true) {
+                    valid += 1;
+                }
+            }
+            assert_eq!(valid, 4);
+            divan::black_box(valid)
+        }
+    });
+}

@@ -265,38 +265,6 @@ impl MainWindowView {
         .detach();
     }
 
-    fn prompt_and_create_new_project(
-        packer_state: Entity<ContextPackerState>,
-        applier_state: Entity<ChangeApplierState>,
-        prompt_label: &'static str,
-        cx: &mut App,
-    ) {
-        let rx = cx.prompt_for_paths(PathPromptOptions {
-            files: false,
-            directories: true,
-            multiple: false,
-            prompt: Some(SharedString::from(prompt_label)),
-        });
-
-        cx.spawn(async move |cx| {
-            if let Ok(Ok(Some(paths))) = rx.await
-                && let Some(chosen_dir) = paths.into_iter().next()
-            {
-                let applier_dir = chosen_dir.clone();
-                let _ = packer_state.update(cx, |s, cx| {
-                    let _ = s.open_project(chosen_dir);
-                    let _ = s.save_current_preset_to_project();
-                    cx.notify();
-                });
-                let _ = applier_state.update(cx, |a, cx| {
-                    a.set_project_root(Some(applier_dir));
-                    cx.notify();
-                });
-            }
-        })
-        .detach();
-    }
-
     #[allow(clippy::too_many_lines)]
     fn handle_key_down(
         &mut self,
@@ -340,6 +308,10 @@ impl MainWindowView {
         if let Some(pressed_shortcut) = build_recorded_hotkey_string(event)
             && self.try_dispatch_custom_keymap(&pressed_shortcut, cx)
         {
+            return;
+        }
+
+        if self.try_handle_packer_modals_key(event, key, primary_mod, cx) {
             return;
         }
 
@@ -409,26 +381,7 @@ impl MainWindowView {
         }
 
         if !mods.shift && is_key_k(key) {
-            self.state.update(cx, |s, cx| {
-                s.set_settings_open(true);
-                cx.notify();
-            });
-            self.settings_state.update(cx, |s, cx| {
-                s.open_hotkeys_modal();
-                cx.notify();
-            });
-            return;
-        }
-
-        if !mods.shift && is_key_o(key) {
-            self.state.update(cx, |s, cx| {
-                s.set_settings_open(true);
-                cx.notify();
-            });
-            self.settings_state.update(cx, |s, cx| {
-                s.open_hotkeys_modal();
-                cx.notify();
-            });
+            self.copy_packed_context_to_os_clipboard(cx);
             return;
         }
 
@@ -472,6 +425,164 @@ impl MainWindowView {
                 });
             }
         }
+    }
+
+    #[allow(clippy::too_many_lines)]
+    fn try_handle_packer_modals_key(
+        &self,
+        event: &KeyDownEvent,
+        key: &str,
+        primary_mod: bool,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        let (
+            is_filter_open,
+            is_folder_focused,
+            is_ext_focused,
+            is_regex_focused,
+            is_prompt_open,
+            is_prompt_focused,
+        ) = {
+            let ps = self.packer_state.read(cx);
+            (
+                ps.ui_status().regex_filter_open,
+                ps.is_folder_input_focused(),
+                ps.is_extension_input_focused(),
+                ps.is_regex_input_focused(),
+                ps.is_prompt_modal_open(),
+                ps.is_prompt_input_focused(),
+            )
+        };
+        if is_prompt_open {
+            if key.eq_ignore_ascii_case("escape") {
+                self.packer_state.update(cx, |p, cx| {
+                    p.set_prompt_modal_open(false);
+                    cx.notify();
+                });
+                return true;
+            }
+            if is_prompt_focused {
+                if key.eq_ignore_ascii_case("enter") {
+                    self.packer_state.update(cx, |p, cx| {
+                        p.submit_manual_prompt_draft();
+                        cx.notify();
+                    });
+                    return true;
+                }
+                if key.eq_ignore_ascii_case("backspace") {
+                    self.packer_state.update(cx, |p, cx| {
+                        if p.pop_prompt_input_char() {
+                            cx.notify();
+                        }
+                    });
+                    return true;
+                }
+                let mods = event.keystroke.modifiers;
+                if !primary_mod
+                    && !mods.alt
+                    && let Some(ch) = extract_printable_search_char(event)
+                {
+                    self.packer_state.update(cx, |p, cx| {
+                        p.append_prompt_input_char(ch);
+                        cx.notify();
+                    });
+                    return true;
+                }
+            }
+        }
+        if !is_filter_open {
+            return false;
+        }
+        if key.eq_ignore_ascii_case("escape") {
+            self.packer_state.update(cx, |p, cx| {
+                p.set_regex_filter_open(false);
+                cx.notify();
+            });
+            return true;
+        }
+        let mods = event.keystroke.modifiers;
+        if is_ext_focused {
+            if key.eq_ignore_ascii_case("enter") {
+                self.packer_state.update(cx, |p, cx| {
+                    p.submit_manual_extension();
+                    cx.notify();
+                });
+                return true;
+            }
+            if key.eq_ignore_ascii_case("backspace") {
+                self.packer_state.update(cx, |p, cx| {
+                    if p.pop_extension_input_char() {
+                        cx.notify();
+                    }
+                });
+                return true;
+            }
+            if !primary_mod
+                && !mods.alt
+                && let Some(ch) = extract_printable_regex_char(event)
+            {
+                self.packer_state.update(cx, |p, cx| {
+                    p.append_extension_input_char(ch);
+                    cx.notify();
+                });
+                return true;
+            }
+        }
+        if is_folder_focused {
+            if key.eq_ignore_ascii_case("enter") {
+                self.packer_state.update(cx, |p, cx| {
+                    p.submit_manual_folder_exclusion();
+                    cx.notify();
+                });
+                return true;
+            }
+            if key.eq_ignore_ascii_case("backspace") {
+                self.packer_state.update(cx, |p, cx| {
+                    if p.pop_folder_input_char() {
+                        cx.notify();
+                    }
+                });
+                return true;
+            }
+            if !primary_mod
+                && !mods.alt
+                && let Some(ch) = extract_printable_regex_char(event)
+            {
+                self.packer_state.update(cx, |p, cx| {
+                    p.append_folder_input_char(ch);
+                    cx.notify();
+                });
+                return true;
+            }
+        }
+        if is_regex_focused {
+            if key.eq_ignore_ascii_case("enter") {
+                self.packer_state.update(cx, |p, cx| {
+                    p.set_regex_input_focused(false);
+                    cx.notify();
+                });
+                return true;
+            }
+            if key.eq_ignore_ascii_case("backspace") {
+                self.packer_state.update(cx, |p, cx| {
+                    if p.pop_regex_char() {
+                        cx.notify();
+                    }
+                });
+                return true;
+            }
+            if !primary_mod
+                && !mods.alt
+                && let Some(ch) = extract_printable_regex_char(event)
+            {
+                self.packer_state.update(cx, |p, cx| {
+                    p.append_regex_char(ch);
+                    cx.notify();
+                });
+                return true;
+            }
+        }
+        false
     }
 
     fn try_dispatch_custom_keymap(&self, pressed: &str, cx: &mut Context<Self>) -> bool {
@@ -635,7 +746,10 @@ impl MainWindowView {
     }
 
     fn paste_clipboard_into_applier(&self, cx: &mut Context<Self>) {
-        let clip_str = cx.read_from_clipboard().and_then(|item| item.text());
+        let clip_str = cx
+            .read_from_clipboard()
+            .and_then(|item| item.text())
+            .filter(|t| !t.is_empty());
         self.state.update(cx, |s, cx| {
             s.set_active_tab(WorkspaceTab::ChangeApplier);
             cx.notify();
@@ -769,24 +883,17 @@ impl MainWindowView {
         let state_browse = self.state.clone();
         let prompt_open_label = labels.btn_open_folder_prompt;
 
-        let packer_create = self.packer_state.clone();
-        let applier_create = self.applier_state.clone();
-        let state_create = self.state.clone();
-        let prompt_create_label = labels.menu_create_new_project;
-
         let state_submenu = self.state.clone();
         let state_close = self.state.clone();
 
         RecentProjectsPopover::new(recent_paths, active_path, labels, theme)
             .with_submenu_open(submenu_open)
-            .on_set_submenu_open(move |open, _win, cx| {
-                if state_submenu.read(cx).is_recent_submenu_open() != open {
-                    state_submenu.update(cx, |s, cx| {
-                        if s.set_recent_submenu_open(open) {
-                            cx.notify();
-                        }
-                    });
-                }
+            .on_set_submenu_open(move |open, _win, cx: &mut App| {
+                state_submenu.update(cx, |s, cx| {
+                    if s.set_recent_submenu_open(open) {
+                        cx.notify();
+                    }
+                });
             })
             .with_actions(
                 move |chosen_dir, _win, cx| {
@@ -813,18 +920,6 @@ impl MainWindowView {
                         packer_browse.clone(),
                         applier_browse.clone(),
                         prompt_open_label,
-                        cx,
-                    );
-                },
-                move |_ev, _win, cx| {
-                    state_create.update(cx, |s, cx| {
-                        s.set_recent_projects_open(false);
-                        cx.notify();
-                    });
-                    Self::prompt_and_create_new_project(
-                        packer_create.clone(),
-                        applier_create.clone(),
-                        prompt_create_label,
                         cx,
                     );
                 },
@@ -1112,6 +1207,23 @@ fn map_cyrillic_to_qwerty_token(token: &str) -> &str {
 }
 
 #[inline]
+fn extract_printable_regex_char(event: &KeyDownEvent) -> Option<char> {
+    if let Some(ref kc) = event.keystroke.key_char {
+        let mut chars = kc.chars();
+        if let Some(ch) = chars.next()
+            && chars.next().is_none()
+            && !ch.is_control()
+        {
+            return Some(ch);
+        }
+    }
+    let key = event.keystroke.key.as_str();
+    let mut chars = key.chars();
+    let ch = chars.next()?;
+    if chars.next().is_none() && !ch.is_control() { Some(ch) } else { None }
+}
+
+#[inline]
 fn extract_printable_search_char(event: &KeyDownEvent) -> Option<char> {
     if let Some(ref kc) = event.keystroke.key_char {
         let mut chars = kc.chars();
@@ -1203,7 +1315,7 @@ impl Render for MainWindowView {
 
         let rail = ActivityRailComponent::new(active_tab, settings_open, labels, theme)
             .with_actions(
-                move |tab, _win, cx| {
+                move |tab, _win, cx: &mut App| {
                     let auto_clip =
                         settings_for_auto.read(cx).global_config().auto_read_clipboard_on_apply;
                     let mut should_load_clip = false;
@@ -1224,7 +1336,7 @@ impl Render for MainWindowView {
                         });
                     }
                 },
-                move |_ev, _win, cx| {
+                move |_ev, _win, cx: &mut App| {
                     state_rail_settings.update(cx, |s, cx| {
                         s.toggle_settings();
                         cx.notify();
@@ -1243,13 +1355,13 @@ impl Render for MainWindowView {
         let mut root = div()
             .id("main-window-root")
             .track_focus(&self.focus_handle)
-            .on_click(move |_ev, _win, cx| {
-                if packer_unfocus_search.read(cx).ui_status().search_focused {
-                    packer_unfocus_search.update(cx, |p, cx| {
+            .on_click(move |_ev, _win, cx: &mut App| {
+                packer_unfocus_search.update(cx, |p, cx| {
+                    if p.ui_status().search_focused {
                         p.set_search_focused(false);
                         cx.notify();
-                    });
-                }
+                    }
+                });
             })
             .on_key_down(cx.listener(Self::handle_key_down))
             .relative()

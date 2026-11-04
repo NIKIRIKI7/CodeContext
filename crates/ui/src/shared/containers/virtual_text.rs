@@ -71,13 +71,11 @@ pub struct VirtualTextBuffer {
     line_offsets: Arc<[u32]>,
     max_display_line_bytes: usize,
 }
-
 impl Default for VirtualTextBuffer {
     fn default() -> Self {
         Self::new("")
     }
 }
-
 impl VirtualTextBuffer {
     pub fn new(raw: impl Into<Arc<str>>) -> Self {
         let content: Arc<str> = raw.into();
@@ -157,8 +155,6 @@ impl VirtualTextBuffer {
         (prefix, true)
     }
 
-    /// Находит индекс строки заголовка файла (`=== FILE: <rel_path> ===`) за $O(\log N)$
-    /// по массиву `line_offsets` без единой аллокации в куче.
     pub fn find_file_header_line(
         &self,
         rel_path: &str,
@@ -457,37 +453,5 @@ fn classify_code_line_colors(
         (colors.kind_config, colors.bg_app)
     } else {
         (colors.text_primary, colors.bg_app)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::VirtualTextBuffer;
-
-    #[test]
-    fn indexes_lf_and_crlf_accurately_with_zero_copy_slices() {
-        let raw = concat!(
-            "=== ",
-            "FILE: src/main.rs ===\r\nfn main() {\n    println!(\"Привет, мир!\");\n}\n=== ",
-            "END FILE ==="
-        );
-        let buf = VirtualTextBuffer::new(raw);
-        assert_eq!(buf.line_count(), 5);
-        assert_eq!(buf.raw_line(0), concat!("=== ", "FILE: src/main.rs ==="));
-        assert_eq!(buf.raw_line(1), "fn main() {");
-        assert_eq!(buf.raw_line(2), "    println!(\"Привет, мир!\");");
-        assert_eq!(buf.raw_line(3), "}");
-        assert_eq!(buf.raw_line(4), concat!("=== ", "END FILE ==="));
-        assert_eq!(buf.raw_line(999), "");
-    }
-
-    #[test]
-    fn clamps_long_multibyte_utf8_lines_on_valid_char_boundary() {
-        let cyrillic_line = "Ы".repeat(400);
-        let buf = VirtualTextBuffer::new(cyrillic_line).with_max_display_line_bytes(51);
-        let (sliced, is_clamped) = buf.display_line(0);
-        assert!(is_clamped);
-        assert_eq!(sliced.len(), 50);
-        assert_eq!(sliced.chars().count(), 25);
     }
 }

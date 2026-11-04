@@ -1,7 +1,9 @@
+use std::collections::BTreeMap;
+
 use core::preset::models::preset::{
-    MAX_ALLOWED_MAX_DEPTH, MAX_ALLOWED_MAX_FILES, MAX_LARGE_FILE_THRESHOLD_BYTES,
-    MIN_ALLOWED_CHUNK_BYTES, MIN_ALLOWED_MAX_DEPTH, MIN_ALLOWED_MAX_FILES,
-    MIN_LARGE_FILE_THRESHOLD_BYTES, Preset,
+    FileFilters, FolderFilters, FolderOverrideMode, MAX_ALLOWED_MAX_DEPTH, MAX_ALLOWED_MAX_FILES,
+    MAX_LARGE_FILE_THRESHOLD_BYTES, MIN_ALLOWED_CHUNK_BYTES, MIN_ALLOWED_MAX_DEPTH,
+    MIN_ALLOWED_MAX_FILES, MIN_LARGE_FILE_THRESHOLD_BYTES, Preset,
 };
 use core::preset::models::resolution::{
     ConfigWarning, DEFAULT_GLOBAL_HOTKEY, DEFAULT_UPDATE_CHANNEL, DEFAULT_UPDATE_REPO_URL,
@@ -14,7 +16,8 @@ use core::preset::models::template::{
 };
 
 use super::dtos::{
-    CURRENT_SCHEMA_VERSION, GlobalConfigDto, OutputTemplateDto, ParserConfigDto, PresetDto,
+    CURRENT_SCHEMA_VERSION, FileFiltersDto, FileFiltersOverlayDto, FolderFiltersDto,
+    FolderFiltersOverlayDto, GlobalConfigDto, OutputTemplateDto, ParserConfigDto, PresetDto,
     ProjectOverlayDto, TemplateOverlayDto,
 };
 
@@ -144,12 +147,37 @@ pub(crate) fn preset_dto_to_domain(
         normalize_line_endings: dto.normalize_line_endings,
         include_globs: dto.include_globs,
         exclude_globs: dto.exclude_globs,
+        filters: FileFilters {
+            include_extensions: dto.filters.include_extensions,
+            exclude_extensions: dto.filters.exclude_extensions,
+            include_globs: dto.filters.include_globs,
+            exclude_globs: dto.filters.exclude_globs,
+            include_regex: dto.filters.include_regex,
+            exclude_regex: dto.filters.exclude_regex,
+            regex_case_sensitive: dto.filters.regex_case_sensitive,
+        },
+        folder_filters: FolderFilters {
+            exclude_names: dto.folder_filters.exclude_names,
+            exclude_globs: dto.folder_filters.exclude_globs,
+            only_folders: dto.folder_filters.only_folders,
+            include_regex_folders: dto.folder_filters.include_regex_folders,
+            exclude_regex_folders: dto.folder_filters.exclude_regex_folders,
+            regex_case_sensitive: dto.folder_filters.regex_case_sensitive,
+            folder_overrides: dto.folder_filters.folder_overrides,
+            show_excluded_in_ui: dto.folder_filters.show_excluded_in_ui,
+        },
         explicitly_allowed_secrets: dto.explicitly_allowed_secrets,
         max_depth: dto.max_depth,
         max_files: dto.max_files,
         large_file_threshold_bytes: dto.large_file_threshold_bytes,
         template: OutputTemplate {
             include_file_tree: dto.template.include_file_tree,
+            system_prompt_preset: dto.template.system_prompt_preset,
+            prompt_blocks: if dto.template.prompt_blocks.is_empty() {
+                core::preset::models::template::default_prompt_blocks()
+            } else {
+                dto.template.prompt_blocks
+            },
             preamble: dto.template.preamble,
             file_header_prefix: dto.template.file_header_prefix,
             file_header_suffix: dto.template.file_header_suffix,
@@ -171,12 +199,33 @@ pub(crate) fn preset_domain_to_dto(preset: &Preset) -> PresetDto {
         normalize_line_endings: preset.normalize_line_endings,
         include_globs: preset.include_globs.clone(),
         exclude_globs: preset.exclude_globs.clone(),
+        filters: FileFiltersDto {
+            include_extensions: preset.filters.include_extensions.clone(),
+            exclude_extensions: preset.filters.exclude_extensions.clone(),
+            include_globs: preset.filters.include_globs.clone(),
+            exclude_globs: preset.filters.exclude_globs.clone(),
+            include_regex: preset.filters.include_regex.clone(),
+            exclude_regex: preset.filters.exclude_regex.clone(),
+            regex_case_sensitive: preset.filters.regex_case_sensitive,
+        },
+        folder_filters: FolderFiltersDto {
+            exclude_names: preset.folder_filters.exclude_names.clone(),
+            exclude_globs: preset.folder_filters.exclude_globs.clone(),
+            only_folders: preset.folder_filters.only_folders.clone(),
+            include_regex_folders: preset.folder_filters.include_regex_folders.clone(),
+            exclude_regex_folders: preset.folder_filters.exclude_regex_folders.clone(),
+            regex_case_sensitive: preset.folder_filters.regex_case_sensitive,
+            folder_overrides: preset.folder_filters.folder_overrides.clone(),
+            show_excluded_in_ui: preset.folder_filters.show_excluded_in_ui,
+        },
         explicitly_allowed_secrets: Vec::new(),
         max_depth: preset.max_depth,
         max_files: preset.max_files,
         large_file_threshold_bytes: preset.large_file_threshold_bytes,
         template: OutputTemplateDto {
             include_file_tree: preset.template.include_file_tree,
+            system_prompt_preset: preset.template.system_prompt_preset,
+            prompt_blocks: preset.template.prompt_blocks.clone(),
             preamble: preset.template.preamble.clone(),
             file_header_prefix: preset.template.file_header_prefix.clone(),
             file_header_suffix: preset.template.file_header_suffix.clone(),
@@ -194,6 +243,33 @@ pub(crate) fn preset_domain_to_project_overlay_dto(preset: &Preset) -> ProjectOv
     } else {
         Some(parser_domain_to_dto(&preset.parser))
     };
+    let filters_ov = if preset.filters == FileFilters::default() {
+        None
+    } else {
+        Some(FileFiltersOverlayDto {
+            include_extensions: Some(preset.filters.include_extensions.clone()),
+            exclude_extensions: Some(preset.filters.exclude_extensions.clone()),
+            include_globs: Some(preset.filters.include_globs.clone()),
+            exclude_globs: Some(preset.filters.exclude_globs.clone()),
+            include_regex: preset.filters.include_regex.clone(),
+            exclude_regex: preset.filters.exclude_regex.clone(),
+            regex_case_sensitive: Some(preset.filters.regex_case_sensitive),
+        })
+    };
+    let folder_filters_ov = if preset.folder_filters == FolderFilters::default() {
+        None
+    } else {
+        Some(FolderFiltersOverlayDto {
+            exclude_names: Some(preset.folder_filters.exclude_names.clone()),
+            exclude_globs: Some(preset.folder_filters.exclude_globs.clone()),
+            only_folders: Some(preset.folder_filters.only_folders.clone()),
+            include_regex_folders: preset.folder_filters.include_regex_folders.clone(),
+            exclude_regex_folders: preset.folder_filters.exclude_regex_folders.clone(),
+            regex_case_sensitive: Some(preset.folder_filters.regex_case_sensitive),
+            folder_overrides: Some(preset.folder_filters.folder_overrides.clone()),
+            show_excluded_in_ui: Some(preset.folder_filters.show_excluded_in_ui),
+        })
+    };
     ProjectOverlayDto {
         schema_version: CURRENT_SCHEMA_VERSION,
         name: Some(preset.name.clone()),
@@ -204,12 +280,16 @@ pub(crate) fn preset_domain_to_project_overlay_dto(preset: &Preset) -> ProjectOv
         normalize_line_endings: Some(preset.normalize_line_endings),
         include_globs: Some(preset.include_globs.clone()),
         exclude_globs: Some(preset.exclude_globs.clone()),
+        filters: filters_ov,
+        folder_filters: folder_filters_ov,
         explicitly_allowed_secrets: Vec::new(),
         max_depth: Some(preset.max_depth),
         max_files: Some(preset.max_files),
         large_file_threshold_bytes: Some(preset.large_file_threshold_bytes),
         template: Some(TemplateOverlayDto {
             include_file_tree: Some(preset.template.include_file_tree),
+            system_prompt_preset: Some(preset.template.system_prompt_preset),
+            prompt_blocks: Some(preset.template.prompt_blocks.clone()),
             preamble: Some(preset.template.preamble.clone()),
             file_header_prefix: Some(preset.template.file_header_prefix.clone()),
             file_header_suffix: Some(preset.template.file_header_suffix.clone()),
@@ -253,6 +333,12 @@ pub(crate) fn apply_project_overlay(
     if let Some(local_excludes) = overlay.exclude_globs {
         merged.exclude_globs.extend(local_excludes);
     }
+    if let Some(f_ov) = overlay.filters {
+        apply_file_filters_overlay(&mut merged.filters, f_ov);
+    }
+    if let Some(ff_ov) = overlay.folder_filters {
+        apply_folder_filters_overlay(&mut merged.folder_filters, ff_ov);
+    }
     if let Some(max_depth) = overlay.max_depth {
         merged.max_depth = max_depth;
     }
@@ -274,6 +360,14 @@ pub(crate) fn apply_project_overlay(
 fn apply_template_overlay(target: &mut OutputTemplate, overlay: TemplateOverlayDto) {
     if let Some(include_file_tree) = overlay.include_file_tree {
         target.include_file_tree = include_file_tree;
+    }
+    if let Some(system_prompt_preset) = overlay.system_prompt_preset {
+        target.system_prompt_preset = system_prompt_preset;
+    }
+    if let Some(prompt_blocks) = overlay.prompt_blocks
+        && !prompt_blocks.is_empty()
+    {
+        target.prompt_blocks = prompt_blocks;
     }
     if let Some(preamble) = overlay.preamble {
         target.preamble = preamble;
@@ -339,11 +433,74 @@ pub(crate) fn sanitize_and_clamp_preset(
     sanitize_template(&mut preset.template, warnings);
     normalize_glob_list(&mut preset.include_globs);
     normalize_glob_list(&mut preset.exclude_globs);
+    normalize_extensions_list(&mut preset.filters.include_extensions);
+    normalize_extensions_list(&mut preset.filters.exclude_extensions);
+    normalize_glob_list(&mut preset.filters.include_globs);
+    normalize_glob_list(&mut preset.filters.exclude_globs);
+    normalize_optional_regex(&mut preset.filters.include_regex);
+    normalize_optional_regex(&mut preset.filters.exclude_regex);
+    normalize_folder_names_list(&mut preset.folder_filters.exclude_names);
+    normalize_glob_list(&mut preset.folder_filters.exclude_globs);
+    normalize_folder_paths_list(&mut preset.folder_filters.only_folders);
+    normalize_optional_regex(&mut preset.folder_filters.include_regex_folders);
+    normalize_optional_regex(&mut preset.folder_filters.exclude_regex_folders);
+    normalize_folder_overrides(&mut preset.folder_filters.folder_overrides);
     if !allow_secrets && !preset.explicitly_allowed_secrets.is_empty() {
         let blocked = std::mem::take(&mut preset.explicitly_allowed_secrets);
         warnings.push(ConfigWarning::UntrustedSecretUnlockIgnored { blocked_paths: blocked });
     }
     preset
+}
+
+fn apply_file_filters_overlay(target: &mut FileFilters, overlay: FileFiltersOverlayDto) {
+    if let Some(inc_ext) = overlay.include_extensions {
+        target.include_extensions = inc_ext;
+    }
+    if let Some(exc_ext) = overlay.exclude_extensions {
+        target.exclude_extensions.extend(exc_ext);
+    }
+    if let Some(inc_globs) = overlay.include_globs {
+        target.include_globs = inc_globs;
+    }
+    if let Some(exc_globs) = overlay.exclude_globs {
+        target.exclude_globs.extend(exc_globs);
+    }
+    if let Some(inc_re) = overlay.include_regex {
+        target.include_regex = (!inc_re.trim().is_empty()).then_some(inc_re);
+    }
+    if let Some(exc_re) = overlay.exclude_regex {
+        target.exclude_regex = (!exc_re.trim().is_empty()).then_some(exc_re);
+    }
+    if let Some(cs) = overlay.regex_case_sensitive {
+        target.regex_case_sensitive = cs;
+    }
+}
+
+fn apply_folder_filters_overlay(target: &mut FolderFilters, overlay: FolderFiltersOverlayDto) {
+    if let Some(exc_names) = overlay.exclude_names {
+        target.exclude_names = exc_names;
+    }
+    if let Some(exc_globs) = overlay.exclude_globs {
+        target.exclude_globs.extend(exc_globs);
+    }
+    if let Some(only) = overlay.only_folders {
+        target.only_folders = only;
+    }
+    if let Some(inc_re) = overlay.include_regex_folders {
+        target.include_regex_folders = (!inc_re.trim().is_empty()).then_some(inc_re);
+    }
+    if let Some(exc_re) = overlay.exclude_regex_folders {
+        target.exclude_regex_folders = (!exc_re.trim().is_empty()).then_some(exc_re);
+    }
+    if let Some(cs) = overlay.regex_case_sensitive {
+        target.regex_case_sensitive = cs;
+    }
+    if let Some(overrides) = overlay.folder_overrides {
+        target.folder_overrides.extend(overrides);
+    }
+    if let Some(show_ex) = overlay.show_excluded_in_ui {
+        target.show_excluded_in_ui = show_ex;
+    }
 }
 
 fn sanitize_template(template: &mut OutputTemplate, warnings: &mut Vec<ConfigWarning>) {
@@ -379,4 +536,68 @@ fn normalize_glob_list(globs: &mut Vec<String>) {
         }
     }
     *globs = clean;
+}
+
+fn normalize_extensions_list(exts: &mut Vec<String>) {
+    let mut clean: Vec<String> = Vec::with_capacity(exts.len());
+    for item in exts.drain(..) {
+        let normalized = item.trim().trim_start_matches('.').to_ascii_lowercase();
+        if !normalized.is_empty() && !clean.iter().any(|existing| existing == &normalized) {
+            clean.push(normalized);
+        }
+    }
+    *exts = clean;
+}
+
+fn normalize_folder_names_list(names: &mut Vec<String>) {
+    let mut clean: Vec<String> = Vec::with_capacity(names.len());
+    for item in names.drain(..) {
+        let trimmed = item.trim().trim_matches(['/', '\\']);
+        if !trimmed.is_empty() && !clean.iter().any(|existing| existing == trimmed) {
+            clean.push(trimmed.to_owned());
+        }
+    }
+    *names = clean;
+}
+
+fn normalize_folder_paths_list(paths: &mut Vec<String>) {
+    let mut clean: Vec<String> = Vec::with_capacity(paths.len());
+    for item in paths.drain(..) {
+        let norm = normalize_rel_folder_pattern(&item);
+        if !norm.is_empty() && !clean.iter().any(|existing| existing == &norm) {
+            clean.push(norm);
+        }
+    }
+    *paths = clean;
+}
+
+fn normalize_folder_overrides(overrides: &mut BTreeMap<String, FolderOverrideMode>) {
+    let old = std::mem::take(overrides);
+    for (raw_key, mode) in old {
+        let clean_key = normalize_rel_folder_pattern(&raw_key);
+        if !clean_key.is_empty() {
+            overrides.insert(clean_key, mode);
+        }
+    }
+}
+
+fn normalize_rel_folder_pattern(raw: &str) -> String {
+    let replaced = raw.trim().replace('\\', "/");
+    let mut s = replaced.as_str();
+    while let Some(stripped) = s.strip_prefix("./") {
+        s = stripped;
+    }
+    s = s.trim_matches('/');
+    s.to_owned()
+}
+
+fn normalize_optional_regex(opt: &mut Option<String>) {
+    if let Some(val) = opt {
+        let trimmed = val.trim();
+        if trimmed.is_empty() {
+            *opt = None;
+        } else if trimmed.len() != val.len() {
+            *opt = Some(trimmed.to_owned());
+        }
+    }
 }

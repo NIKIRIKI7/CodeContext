@@ -5,6 +5,9 @@ use gpui::{
 };
 
 use crate::features::context_packer::components::file_tree::FileTreeComponent;
+use crate::features::context_packer::components::filter_modal::{
+    FilterModalComponent, SystemPromptModalComponent,
+};
 use crate::features::context_packer::components::live_preview::{
     LivePreviewComponent, LivePreviewProps,
 };
@@ -109,10 +112,19 @@ impl Render for ContextPackerView {
             skipped_binary_count: skipped_binaries,
             active_chunk_index: snapshot.active_chunk_index(),
             total_chunks,
+            system_prompt_mode: active_preset.template.system_prompt_preset,
             copied_recently: ui_status.copied_recently,
             labels,
             theme,
         };
+
+        let active_filters_count = snapshot.active_custom_filter_rules_count();
+        let active_prompts_count = active_preset.template.active_prompt_blocks_count();
+        let filter_modal_props_opt =
+            ui_status.regex_filter_open.then(|| snapshot.build_filter_modal_props(labels, theme));
+        let prompt_modal_props_opt = snapshot
+            .is_prompt_modal_open()
+            .then(|| snapshot.build_system_prompt_modal_props(labels, theme));
 
         let banner = self.build_warning_banner(banner_items);
         let file_tree = self.build_file_tree(
@@ -120,14 +132,14 @@ impl Render for ContextPackerView {
             focused_tree_index,
             sort_mode,
             search_query,
-            ui_status.search_focused,
+            ui_status,
+            active_filters_count,
             all_collapsed,
         );
         let rules_editor = self.build_rules_editor(
             active_preset,
-            sort_mode,
-            all_collapsed,
             ui_status.filters_popover_open,
+            active_prompts_count,
         );
         let live_preview = self.build_live_preview(preview_props);
 
@@ -139,7 +151,7 @@ impl Render for ContextPackerView {
             .child(div().flex_1().overflow_hidden().child(file_tree))
             .child(rules_editor);
 
-        div()
+        let mut root = div()
             .relative()
             .size_full()
             .flex()
@@ -152,7 +164,17 @@ impl Render for ContextPackerView {
                         .with_theme(theme),
                 ),
             )
-            .child(banner)
+            .child(banner);
+
+        if let Some(modal_props) = filter_modal_props_opt {
+            root = root.child(self.build_filter_modal(modal_props));
+        }
+
+        if let Some(prompt_props) = prompt_modal_props_opt {
+            root = root.child(self.build_system_prompt_modal(prompt_props));
+        }
+
+        root
     }
 }
 
@@ -172,13 +194,15 @@ impl ContextPackerView {
             })
     }
 
+    #[allow(clippy::too_many_arguments, clippy::too_many_lines)]
     fn build_file_tree(
         &self,
         projection: crate::features::context_packer::components::file_tree::FlatTreeProjection,
         focused_tree_index: Option<usize>,
         sort_mode: crate::features::context_packer::components::file_tree::TreeSortMode,
         search_query: String,
-        search_focused: bool,
+        ui_status: crate::features::context_packer::state::PackerUiStatus,
+        active_filters_count: usize,
         all_collapsed: bool,
     ) -> FileTreeComponent {
         let labels = self.locale.labels();
@@ -190,6 +214,7 @@ impl ContextPackerView {
         let state_master = self.state.clone();
         let state_fold = self.state.clone();
         let state_sort = self.state.clone();
+        let state_regex_toggle = self.state.clone();
         let state_focus_search = self.state.clone();
         let state_clear_search = self.state.clone();
         let state_open_proj = self.state.clone();
@@ -199,8 +224,15 @@ impl ContextPackerView {
             .with_theme(theme)
             .with_focused_index(focused_tree_index)
             .with_sort_mode(sort_mode)
-            .with_search_state(search_query, search_focused, all_collapsed)
+            .with_search_state(search_query, ui_status.search_focused, all_collapsed)
+            .with_filter_modal_indicator(ui_status.regex_filter_open, active_filters_count)
             .track_scroll(self.tree_scroll_handle.clone())
+            .on_toggle_regex_mode(move |_ev, _win, cx| {
+                state_regex_toggle.update(cx, |s, cx| {
+                    s.toggle_regex_filter_panel();
+                    cx.notify();
+                });
+            })
             .on_toggle_sort_mode(move |_ev, _win, cx| {
                 state_sort.update(cx, |s, cx| {
                     s.toggle_tree_sort_mode();
@@ -286,36 +318,20 @@ impl ContextPackerView {
     fn build_rules_editor(
         &self,
         preset: core::preset::models::preset::Preset,
-        sort_mode: crate::features::context_packer::components::file_tree::TreeSortMode,
-        all_collapsed: bool,
         popover_open: bool,
+        active_prompts_count: usize,
     ) -> RulesEditorComponent {
         let labels = self.locale.labels();
         let theme = self.theme_variant.tokens();
         let state_rule = self.state.clone();
         let state_chunk = self.state.clone();
         let state_popover = self.state.clone();
-        let state_sort = self.state.clone();
-        let state_fold = self.state.clone();
+        let state_open_prompts = self.state.clone();
 
         RulesEditorComponent::new(preset, labels)
             .with_theme(theme)
-            .with_tree_view_state(sort_mode, all_collapsed)
             .with_popover_open(popover_open)
-            .with_tree_view_actions(
-                move |_ev, _win, cx| {
-                    state_sort.update(cx, |s, cx| {
-                        s.toggle_tree_sort_mode();
-                        cx.notify();
-                    });
-                },
-                move |_ev, _win, cx| {
-                    state_fold.update(cx, |s, cx| {
-                        s.toggle_expand_collapse_all();
-                        cx.notify();
-                    });
-                },
-            )
+            .with_prompts_count(active_prompts_count)
             .on_toggle_rule(move |kind, _win, cx| {
                 state_rule.update(cx, |s, cx| {
                     s.toggle_rule(kind);
@@ -334,10 +350,229 @@ impl ContextPackerView {
                     cx.notify();
                 });
             })
+            .on_open_prompts_modal(move |_ev, _win, cx| {
+                state_open_prompts.update(cx, |s, cx| {
+                    s.set_prompt_modal_open(true);
+                    cx.notify();
+                });
+            })
+    }
+
+    #[allow(clippy::too_many_lines)]
+    fn build_filter_modal(
+        &self,
+        props: crate::features::context_packer::components::filter_modal::FilterModalProps,
+    ) -> FilterModalComponent {
+        let state_close = self.state.clone();
+        let state_reset = self.state.clone();
+        let state_ext_mode = self.state.clone();
+        let state_toggle_ext = self.state.clone();
+        let state_focus_ext = self.state.clone();
+        let state_submit_ext = self.state.clone();
+        let state_toggle_folder = self.state.clone();
+        let state_focus_folder = self.state.clone();
+        let state_submit_folder = self.state.clone();
+        let state_re_scope = self.state.clone();
+        let state_re_focus = self.state.clone();
+        let state_re_clear = self.state.clone();
+        let state_re_case = self.state.clone();
+        let state_re_preset = self.state.clone();
+
+        FilterModalComponent::new(props)
+            .on_close(move |_ev, _win, cx| {
+                state_close.update(cx, |s, cx| {
+                    s.set_regex_filter_open(false);
+                    cx.notify();
+                });
+            })
+            .on_reset_all(move |_ev, _win, cx| {
+                state_reset.update(cx, |s, cx| {
+                    s.reset_all_filters();
+                    cx.notify();
+                });
+            })
+            .on_select_ext_mode(move |mode, _win, cx| {
+                state_ext_mode.update(cx, |s, cx| {
+                    s.set_extension_filter_mode(mode);
+                    cx.notify();
+                });
+            })
+            .on_toggle_extension(move |ext, _win, cx| {
+                let ext_owned = ext.to_owned();
+                state_toggle_ext.update(cx, |s, cx| {
+                    s.toggle_extension_in_modal(&ext_owned);
+                    cx.notify();
+                });
+            })
+            .on_focus_extension_input(move |_ev, _win, cx| {
+                state_focus_ext.update(cx, |s, cx| {
+                    s.set_extension_input_focused(true);
+                    cx.notify();
+                });
+            })
+            .on_submit_extension_input(move |_ev, _win, cx| {
+                state_submit_ext.update(cx, |s, cx| {
+                    s.submit_manual_extension();
+                    cx.notify();
+                });
+            })
+            .on_toggle_folder(move |folder, _win, cx| {
+                let folder_owned = folder.to_owned();
+                state_toggle_folder.update(cx, |s, cx| {
+                    s.toggle_quick_filter_chip(
+                        &crate::features::context_packer::components::file_tree::QuickFilterChipKind::ExcludedFolder(
+                            folder_owned,
+                        ),
+                    );
+                    cx.notify();
+                });
+            })
+            .on_focus_folder_input(move |_ev, _win, cx| {
+                state_focus_folder.update(cx, |s, cx| {
+                    s.set_folder_input_focused(true);
+                    cx.notify();
+                });
+            })
+            .on_submit_folder_input(move |_ev, _win, cx| {
+                state_submit_folder.update(cx, |s, cx| {
+                    s.submit_manual_folder_exclusion();
+                    cx.notify();
+                });
+            })
+            .on_select_regex_scope(move |scope, _win, cx| {
+                state_re_scope.update(cx, |s, cx| {
+                    s.select_regex_scope(scope);
+                    cx.notify();
+                });
+            })
+            .on_focus_regex_input(move |_ev, _win, cx| {
+                state_re_focus.update(cx, |s, cx| {
+                    s.set_regex_input_focused(true);
+                    cx.notify();
+                });
+            })
+            .on_clear_regex_input(move |_ev, _win, cx| {
+                state_re_clear.update(cx, |s, cx| {
+                    s.clear_regex_draft();
+                    cx.notify();
+                });
+            })
+            .on_toggle_regex_case(move |_ev, _win, cx| {
+                state_re_case.update(cx, |s, cx| {
+                    s.toggle_regex_case_sensitive();
+                    cx.notify();
+                });
+            })
+            .on_apply_regex_preset(move |pattern, _win, cx| {
+                let pat_owned = pattern.to_owned();
+                state_re_preset.update(cx, |s, cx| {
+                    s.apply_regex_preset_pattern(&pat_owned);
+                    cx.notify();
+                });
+            })
+    }
+
+    fn build_system_prompt_modal(
+        &self,
+        props: crate::features::context_packer::components::filter_modal::SystemPromptModalProps,
+    ) -> SystemPromptModalComponent {
+        let state_cat = self.state.clone();
+        let state_toggle = self.state.clone();
+        let state_up = self.state.clone();
+        let state_down = self.state.clone();
+        let state_del = self.state.clone();
+        let state_focus_p = self.state.clone();
+        let state_submit_p = self.state.clone();
+        let state_paste = self.state.clone();
+        let state_copy = self.state.clone();
+        let state_reset = self.state.clone();
+        let state_close = self.state.clone();
+
+        SystemPromptModalComponent::new(props)
+            .on_select_category(move |cat_opt, _win, cx| {
+                state_cat.update(cx, |s, cx| {
+                    s.set_prompt_category_filter(cat_opt);
+                    cx.notify();
+                });
+            })
+            .on_toggle_block(move |idx, _win, cx| {
+                state_toggle.update(cx, |s, cx| {
+                    s.toggle_prompt_block(idx);
+                    cx.notify();
+                });
+            })
+            .on_move_up(move |idx, _win, cx| {
+                state_up.update(cx, |s, cx| {
+                    s.move_prompt_block_up(idx);
+                    cx.notify();
+                });
+            })
+            .on_move_down(move |idx, _win, cx| {
+                state_down.update(cx, |s, cx| {
+                    s.move_prompt_block_down(idx);
+                    cx.notify();
+                });
+            })
+            .on_delete_block(move |idx, _win, cx| {
+                state_del.update(cx, |s, cx| {
+                    s.delete_prompt_block(idx);
+                    cx.notify();
+                });
+            })
+            .on_focus_prompt_input(move |_ev, _win, cx| {
+                state_focus_p.update(cx, |s, cx| {
+                    s.set_prompt_input_focused(true);
+                    cx.notify();
+                });
+            })
+            .on_submit_prompt_input(move |_ev, _win, cx| {
+                state_submit_p.update(cx, |s, cx| {
+                    s.submit_manual_prompt_draft();
+                    cx.notify();
+                });
+            })
+            .with_actions(
+                move |_ev, _win, cx| {
+                    let clip_opt = cx.read_from_clipboard().and_then(|i| i.text());
+                    if let Some(text) = clip_opt {
+                        state_paste.update(cx, |s, cx| {
+                            let cat = s
+                                .prompt_category_filter()
+                                .unwrap_or(core::preset::models::template::PromptCategory::Custom);
+                            s.add_custom_prompt_block(cat, text.as_str());
+                            cx.notify();
+                        });
+                    }
+                },
+                move |_ev, _win, cx| {
+                    let text = state_copy
+                        .read(cx)
+                        .effective_preset()
+                        .template
+                        .effective_preamble()
+                        .to_owned();
+                    if !text.is_empty() {
+                        cx.write_to_clipboard(ClipboardItem::new_string(text));
+                    }
+                },
+                move |_ev, _win, cx| {
+                    state_reset.update(cx, |s, cx| {
+                        s.reset_system_prompt_to_builtin();
+                        cx.notify();
+                    });
+                },
+                move |_ev, _win, cx| {
+                    state_close.update(cx, |s, cx| {
+                        s.set_prompt_modal_open(false);
+                        cx.notify();
+                    });
+                },
+            )
     }
 
     fn build_live_preview(&self, props: LivePreviewProps) -> LivePreviewComponent {
         let state_chunk = self.state.clone();
+        let state_prompt = self.state.clone();
         let state_open_meta = self.state.clone();
         let state_copy = self.state.clone();
 
@@ -346,6 +581,12 @@ impl ContextPackerView {
             .on_select_chunk(move |idx, _win, cx| {
                 state_chunk.update(cx, |s, cx| {
                     s.select_chunk(idx);
+                    cx.notify();
+                });
+            })
+            .on_open_prompt_modal(move |_ev, _win, cx| {
+                state_prompt.update(cx, |s, cx| {
+                    s.set_prompt_modal_open(true);
                     cx.notify();
                 });
             })

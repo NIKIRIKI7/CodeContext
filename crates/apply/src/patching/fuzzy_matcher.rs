@@ -2,6 +2,13 @@ use core::shared_kernel::fs::line_ending::LineEnding;
 
 const MAX_STACK_BIGRAMS: usize = 256;
 
+#[derive(Debug, Clone, Copy)]
+struct TrimmedLine<'a> {
+    raw_idx: usize,
+    trimmed: &'a str,
+    indent_cols: usize,
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct NonEmptyLine<'a> {
     pub raw_idx: usize,
@@ -117,10 +124,14 @@ fn compute_auto_indent_delta(
 
 pub(crate) fn normalize_loose_code_line(line: &str) -> String {
     let trimmed = line.trim().trim_end_matches([',', ';']);
-    let replaced = trimmed.replace("Option::None", "None");
-    let mut out = String::with_capacity(replaced.len());
+    let cow: std::borrow::Cow<'_, str> = if trimmed.contains("Option::None") {
+        std::borrow::Cow::Owned(trimmed.replace("Option::None", "None"))
+    } else {
+        std::borrow::Cow::Borrowed(trimmed)
+    };
+    let mut out = String::with_capacity(cow.len());
     let mut prev_space = false;
-    for ch in replaced.chars() {
+    for ch in cow.chars() {
         if ch == '"' || ch == '\'' || ch == '`' {
             continue;
         }
@@ -190,9 +201,74 @@ pub(crate) fn try_trimmed_subsequence_replace(
     replace: &str,
     target_ending: LineEnding,
 ) -> Option<String> {
-    try_subsequence_replace_by(working, search, replace, target_ending, |w, s| {
-        w.trimmed == s.trimmed
-    })
+    let mut search_ne = Vec::new();
+    let mut search_raw_count = 0_usize;
+    for (raw_idx, line) in search.lines().enumerate() {
+        search_raw_count += 1;
+        let trimmed = line.trim();
+        if !trimmed.is_empty() {
+            search_ne.push(TrimmedLine {
+                raw_idx,
+                trimmed,
+                indent_cols: count_leading_indent_cols(line),
+            });
+        }
+    }
+    let s_len = search_ne.len();
+    if s_len == 0 {
+        return None;
+    }
+    let raw_lines: Vec<&str> = working.lines().collect();
+    let mut work_ne = Vec::with_capacity(raw_lines.len());
+    for (raw_idx, &line) in raw_lines.iter().enumerate() {
+        let trimmed = line.trim();
+        if !trimmed.is_empty() {
+            work_ne.push(TrimmedLine {
+                raw_idx,
+                trimmed,
+                indent_cols: count_leading_indent_cols(line),
+            });
+        }
+    }
+    if work_ne.len() < s_len {
+        return None;
+    }
+    let first_s = search_ne.first()?;
+    let last_s = search_ne.last()?;
+    let max_raw_span = search_raw_count.saturating_add(12);
+    let mut matched_span: Option<(usize, usize)> = None;
+    for start_ne in 0..=(work_ne.len() - s_len) {
+        let end_ne = start_ne + s_len - 1;
+        let w_first = work_ne.get(start_ne)?;
+        let w_last = work_ne.get(end_ne)?;
+        if w_first.trimmed != first_s.trimmed || w_last.trimmed != last_s.trimmed {
+            continue;
+        }
+        let raw_span = w_last.raw_idx.saturating_sub(w_first.raw_idx).saturating_add(1);
+        if raw_span > max_raw_span {
+            continue;
+        }
+        let window = work_ne.get(start_ne..=end_ne)?;
+        if window.iter().zip(search_ne.iter()).all(|(w, s)| w.trimmed == s.trimmed) {
+            if matched_span.is_some() {
+                return None;
+            }
+            matched_span = Some((start_ne, end_ne));
+        }
+    }
+    let (first_ne, last_ne) = matched_span?;
+    let first_work = work_ne.get(first_ne)?;
+    let last_work = work_ne.get(last_ne)?;
+    let indent_delta =
+        compute_auto_indent_delta(first_work.indent_cols, first_s.indent_cols, replace);
+    let idx_view = IndexedText { raw_text: working, raw_lines, non_empty: Vec::new() };
+    Some(idx_view.replace_raw_line_range(
+        first_work.raw_idx,
+        last_work.raw_idx + 1,
+        replace,
+        indent_delta,
+        target_ending,
+    ))
 }
 
 /// Этап 4: Сопоставление по синтаксически нормализованным строкам.
@@ -746,15 +822,21 @@ fn score_equal_length_window(window: &[NonEmptyLine<'_>], search_ne: &[NonEmptyL
     if window.is_empty() || window.len() != search_ne.len() {
         return 0;
     }
+    let len_u32 = u32::try_from(window.len()).unwrap_or(1);
+    let max_deficit = 180_u32.saturating_mul(len_u32);
+    let mut deficit = 0_u32;
     let mut sum = 0_u32;
     for (w, s) in window.iter().zip(search_ne.iter()) {
         let line_sim = dice_similarity_permille(&w.syntax_norm, &s.syntax_norm);
         if window.len() <= 3 && line_sim < 600 {
             return 0;
         }
+        deficit += 1000_u32.saturating_sub(line_sim);
+        if deficit > max_deficit {
+            return 0;
+        }
         sum += line_sim;
     }
-    let len_u32 = u32::try_from(window.len()).unwrap_or(1);
     sum / len_u32
 }
 
