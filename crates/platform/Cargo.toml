@@ -13,6 +13,7 @@ arboard.workspace = true
 interprocess.workspace = true
 global-hotkey.workspace = true
 dirs.workspace = true
+libc.workspace = true
 thiserror.workspace = true
 anyhow.workspace = true
 
@@ -37,6 +38,7 @@ ignored = [
     "interprocess",
     "global-hotkey",
     "dirs",
+    "libc",
     "winreg",
     "thiserror",
     "anyhow",

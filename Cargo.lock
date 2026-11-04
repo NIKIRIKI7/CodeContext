@@ -4724,6 +4724,7 @@ dependencies = [
  "divan",
  "global-hotkey",
  "interprocess",
+ "libc",
  "proptest",
  "scanner",
  "tempfile",

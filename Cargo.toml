@@ -47,6 +47,7 @@ arboard = "3.4"
 interprocess = "2.2"
 global-hotkey = "0.6"
 dirs = "6.0"
+libc = "=0.2.189"
 winreg = "0.56"
 mimalloc = { version = "0.1", default-features = false }
 cargo_metadata = "0.19"
@@ -102,7 +103,7 @@ unic-langid = "unic_langid"
 global-hotkey = "global_hotkey"
 
 [workspace.metadata.cargo-udeps.ignore]
-normal = []
+normal = ["libc"]
 development = ["cargo_metadata"]
 build = []
 
