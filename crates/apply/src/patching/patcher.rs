@@ -33,10 +33,10 @@ type BlockMatcherFn = fn(&str, &str, &str, LineEnding) -> Option<String>;
 const SEARCH_REPLACE_MATCHER_CHAIN: &[BlockMatcherFn] = &[
     try_exact_replace,
     try_line_ending_normalized_replace,
+    try_idempotent_already_applied,
     try_trimmed_subsequence_replace,
     try_syntax_normalized_replace,
     try_formatter_agnostic_replace,
-    try_idempotent_already_applied,
     try_ellipsis_and_comment_tolerant_replace,
     try_zed_fuzzy_similarity_replace,
 ];

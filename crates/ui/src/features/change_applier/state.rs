@@ -35,6 +35,7 @@ pub struct ChangeApplierState {
     container: AppContainer,
     project_root: Option<PathBuf>,
     raw_response: String,
+    last_raw_clipboard_text: String,
     last_clipboard_revision: Option<u64>,
     response_buffer: VirtualTextBuffer,
     parsed_files: Vec<ParsedResponseFile>,
@@ -56,6 +57,7 @@ impl ChangeApplierState {
             container,
             project_root,
             raw_response: String::new(),
+            last_raw_clipboard_text: String::new(),
             last_clipboard_revision: None,
             response_buffer: VirtualTextBuffer::default(),
             parsed_files: Vec::new(),
@@ -83,15 +85,19 @@ impl ChangeApplierState {
     }
 
     pub fn set_response_text(&mut self, text: String) {
+        self.last_raw_clipboard_text.clone_from(&text);
         self.autofix_flags = AutofixFlags::default();
         self.status_notice = None;
         self.apply_text_and_parse(text);
     }
-
     pub fn load_response_from_clipboard(&mut self) {
-        let _ = self.load_response_from_clipboard_if_changed();
+        if let Ok(clip_text) = self.container.clipboard().read_text()
+            && !clip_text.is_empty()
+        {
+            self.last_clipboard_revision = self.container.clipboard().revision();
+            self.set_response_text(clip_text);
+        }
     }
-
     pub fn load_response_from_clipboard_if_changed(&mut self) -> bool {
         let current_rev = self.container.clipboard().revision();
         if let (Some(curr), Some(prev)) = (current_rev, self.last_clipboard_revision)
@@ -100,13 +106,15 @@ impl ChangeApplierState {
         {
             return false;
         }
-
         let Ok(clip_text) = self.container.clipboard().read_text() else {
             return false;
         };
         self.last_clipboard_revision = current_rev;
-
-        if clip_text.is_empty() || clip_text == self.raw_response {
+        if clip_text.is_empty()
+            || clip_text == self.last_raw_clipboard_text
+            || clip_text == self.raw_response
+            || clip_text.contains(concat!("=== ", "PROJECT TREE ==="))
+        {
             return false;
         }
         self.set_response_text(clip_text);

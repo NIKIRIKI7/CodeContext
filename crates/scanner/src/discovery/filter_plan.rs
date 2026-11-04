@@ -31,61 +31,62 @@ impl FolderWalkVerdict {
     }
 }
 
-struct StackNormalizedPath<'a> {
-    borrowed: Option<&'a str>,
-    buf: [u8; MAX_STACK_PATH_BYTES],
-    len: usize,
-    heap_fallback: Option<String>,
+#[allow(clippy::large_enum_variant)]
+enum StackNormalizedPath<'a> {
+    Borrowed(&'a str),
+    Stack { buf: [u8; MAX_STACK_PATH_BYTES], len: usize },
+    Heap(String),
 }
-
 impl<'a> StackNormalizedPath<'a> {
     #[inline]
     fn new(raw: &'a str) -> Self {
+        let bytes = raw.as_bytes();
+        if let (Some(&first), Some(&last)) = (bytes.first(), bytes.last())
+            && !first.is_ascii_whitespace()
+            && first != b'.'
+            && first != b'/'
+            && first != b'\\'
+            && !last.is_ascii_whitespace()
+            && last != b'/'
+            && last != b'\\'
+            && memchr::memchr(b'\\', bytes).is_none()
+        {
+            return Self::Borrowed(raw);
+        }
         let trimmed =
             raw.trim().trim_start_matches("./").trim_start_matches(".\\").trim_matches(['/', '\\']);
-        if !trimmed.contains('\\') {
-            return Self {
-                borrowed: Some(trimmed),
-                buf: [0_u8; MAX_STACK_PATH_BYTES],
-                len: 0,
-                heap_fallback: None,
-            };
+        if memchr::memchr(b'\\', trimmed.as_bytes()).is_none() {
+            return Self::Borrowed(trimmed);
         }
-        let bytes = trimmed.as_bytes();
-        if bytes.len() <= MAX_STACK_PATH_BYTES {
+        let t_bytes = trimmed.as_bytes();
+        if t_bytes.len() <= MAX_STACK_PATH_BYTES {
             let mut buf = [0_u8; MAX_STACK_PATH_BYTES];
-            for (idx, &b) in bytes.iter().enumerate() {
+            for (idx, &b) in t_bytes.iter().enumerate() {
                 if let Some(slot) = buf.get_mut(idx) {
                     *slot = if b == b'\\' { b'/' } else { b };
                 }
             }
-            Self { borrowed: None, buf, len: bytes.len(), heap_fallback: None }
+            Self::Stack { buf, len: t_bytes.len() }
         } else {
-            Self {
-                borrowed: None,
-                buf: [0_u8; MAX_STACK_PATH_BYTES],
-                len: 0,
-                heap_fallback: Some(trimmed.replace('\\', "/")),
-            }
+            Self::Heap(trimmed.replace('\\', "/"))
         }
     }
-
     #[inline]
     fn as_str(&self) -> &str {
-        if let Some(b) = self.borrowed {
-            return b;
+        match self {
+            Self::Borrowed(s) => s,
+            Self::Stack { buf, len } => {
+                std::str::from_utf8(buf.get(..*len).unwrap_or(&[])).unwrap_or("")
+            }
+            Self::Heap(s) => s.as_str(),
         }
-        if let Some(ref h) = self.heap_fallback {
-            return h.as_str();
-        }
-        std::str::from_utf8(self.buf.get(..self.len).unwrap_or(&[])).unwrap_or("")
     }
 }
-
 #[derive(Debug, Clone)]
 struct GlobOverrideRule {
     matcher: GlobMatcher,
     root_prefix: Option<Box<str>>,
+    any_segment_name: Option<Box<str>>,
     specificity_segments: usize,
     specificity_chars: usize,
     mode: FolderOverrideMode,
@@ -104,6 +105,8 @@ struct LiteralOverrideRule {
 pub struct CompiledFilterPlan {
     exclude_folder_names: Vec<Box<str>>,
     folder_exclude_globs: GlobSet,
+    has_folder_exclude_globs: bool,
+    folder_exclude_segments: Vec<Box<str>>,
     folder_exclude_roots: Vec<Box<str>>,
     only_folders: Vec<Box<str>>,
     ancestor_prefixes: Vec<Box<str>>,
@@ -117,6 +120,7 @@ pub struct CompiledFilterPlan {
     file_include_globs: GlobSet,
     file_exclude_globs: GlobSet,
     has_file_include_globs: bool,
+    has_file_exclude_globs: bool,
     file_include_regex: Option<Regex>,
     file_exclude_regex: Option<Regex>,
 }
@@ -133,8 +137,12 @@ impl CompiledFilterPlan {
             .filter(|s| !s.is_empty())
             .collect();
 
-        let (folder_exclude_globs, folder_exclude_roots) =
-            compile_folder_exclude_globs(&ff.exclude_globs)?;
+        let (
+            folder_exclude_globs,
+            has_folder_exclude_globs,
+            folder_exclude_segments,
+            folder_exclude_roots,
+        ) = compile_folder_exclude_globs(&ff.exclude_globs)?;
 
         let only_folders: Vec<Box<str>> = ff
             .only_folders
@@ -177,17 +185,17 @@ impl CompiledFilterPlan {
                 push_unique_boxed(&mut ancestor_prefixes, &static_prefix);
             }
         }
-        let (file_exclude_globs, _) =
+        let (file_exclude_globs, has_file_exclude_globs) =
             compile_combined_globs(&preset.exclude_globs, &f.exclude_globs)?;
-
         let file_include_regex =
             compile_optional_regex(f.include_regex.as_deref(), f.regex_case_sensitive)?;
         let file_exclude_regex =
             compile_optional_regex(f.exclude_regex.as_deref(), f.regex_case_sensitive)?;
-
         Ok(Self {
             exclude_folder_names,
             folder_exclude_globs,
+            has_folder_exclude_globs,
+            folder_exclude_segments,
             folder_exclude_roots,
             only_folders,
             ancestor_prefixes,
@@ -201,6 +209,7 @@ impl CompiledFilterPlan {
             file_include_globs,
             file_exclude_globs,
             has_file_include_globs,
+            has_file_exclude_globs,
             file_include_regex,
             file_exclude_regex,
         })
@@ -243,42 +252,32 @@ impl CompiledFilterPlan {
         if revived_by_override && is_exact_override {
             return FolderWalkVerdict::IncludeSubtree;
         }
-
         if is_gitignored && !revived_by_override {
             return fallback_if_excluded;
         }
-
-        if !revived_by_override
-            && self.is_in_excluded_folder_names(dir_name)
-            && !self.is_in_only_folders(rel_path)
-        {
+        if self.is_in_excluded_folder_names(dir_name) && !self.is_in_only_folders(rel_path) {
             return fallback_if_excluded;
         }
-
-        if !revived_by_override && self.matches_folder_exclude_glob(rel_path) {
+        if self.matches_folder_exclude_glob(rel_path) {
             return fallback_if_excluded;
         }
-
         if !self.only_folders.is_empty()
             && !revived_by_override
             && !self.is_in_only_folders(rel_path)
         {
             return fallback_if_excluded;
         }
-
-        if !revived_by_override {
-            if let Some(ref exc_re) = self.folder_exclude_regex
-                && exc_re.is_match(rel_path)
-            {
-                return fallback_if_excluded;
-            }
-            if let Some(ref inc_re) = self.folder_include_regex
-                && !inc_re.is_match(rel_path)
-            {
-                return fallback_if_excluded;
-            }
+        if let Some(ref exc_re) = self.folder_exclude_regex
+            && exc_re.is_match(rel_path)
+        {
+            return fallback_if_excluded;
         }
-
+        if !revived_by_override
+            && let Some(ref inc_re) = self.folder_include_regex
+            && !inc_re.is_match(rel_path)
+        {
+            return fallback_if_excluded;
+        }
         FolderWalkVerdict::IncludeSubtree
     }
 
@@ -300,27 +299,30 @@ impl CompiledFilterPlan {
             return false;
         }
 
-        let (_, ext_opt) = split_file_name_and_ext(rel_path);
-
-        if !self.exclude_extensions.is_empty()
-            && let Some(ext) = ext_opt
-            && self.exclude_extensions.iter().any(|e| e.eq_ignore_ascii_case(ext))
-        {
-            return false;
-        }
-
-        if !self.include_extensions.is_empty() {
-            let Some(ext) = ext_opt else {
+        if !self.exclude_extensions.is_empty() || !self.include_extensions.is_empty() {
+            let (_, ext_opt) = split_file_name_and_ext(rel_path);
+            if !self.exclude_extensions.is_empty()
+                && let Some(ext) = ext_opt
+                && self.exclude_extensions.iter().any(|e| e.eq_ignore_ascii_case(ext))
+            {
                 return false;
-            };
-            if !self.include_extensions.iter().any(|e| e.eq_ignore_ascii_case(ext)) {
-                return false;
+            }
+            if !self.include_extensions.is_empty() {
+                let Some(ext) = ext_opt else {
+                    return false;
+                };
+                if !self.include_extensions.iter().any(|e| e.eq_ignore_ascii_case(ext)) {
+                    return false;
+                }
             }
         }
 
         let matches_inc_glob =
             self.has_file_include_globs && self.file_include_globs.is_match(rel_path);
-        if self.file_exclude_globs.is_match(rel_path) && !matches_inc_glob {
+        if self.has_file_exclude_globs
+            && self.file_exclude_globs.is_match(rel_path)
+            && !matches_inc_glob
+        {
             return false;
         }
         if self.has_file_include_globs && !matches_inc_glob {
@@ -364,16 +366,16 @@ impl CompiledFilterPlan {
 
     #[inline]
     fn matches_folder_exclude_glob(&self, rel_path: &str) -> bool {
-        if self.folder_exclude_globs.is_match(rel_path) {
+        if self.folder_exclude_segments.iter().any(|seg| path_contains_segment(rel_path, seg)) {
             return true;
         }
-        self.folder_exclude_roots.iter().any(|root| is_same_or_subpath(rel_path, root))
+        if self.folder_exclude_roots.iter().any(|root| is_same_or_subpath(rel_path, root)) {
+            return true;
+        }
+        self.has_folder_exclude_globs && self.folder_exclude_globs.is_match(rel_path)
     }
-
-    /// Разрешает точечные и glob-правила `folder_overrides` по принципу максимальной специфичности.
     fn resolve_folder_override(&self, rel_path: &str) -> (Option<FolderOverrideMode>, bool) {
         let mut best_score: Option<((usize, u8, usize), FolderOverrideMode, bool)> = None;
-
         for rule in &self.literal_overrides {
             if is_same_or_subpath(rel_path, &rule.path) {
                 let is_exact = rel_path.len() == rule.path.len();
@@ -383,20 +385,21 @@ impl CompiledFilterPlan {
                 }
             }
         }
-
         for rule in &self.glob_overrides {
-            let direct_match = rule.matcher.is_match(rel_path)
-                || rule
-                    .root_prefix
-                    .as_deref()
-                    .is_some_and(|prefix| is_same_or_subpath(rel_path, prefix));
-
-            let matched_depth = if direct_match {
-                Some((count_segments(rel_path), true))
+            let matched_depth = if let Some(ref seg_name) = rule.any_segment_name {
+                find_segment_match_depth(rel_path, seg_name)
             } else {
-                find_matching_ancestor_depth(rel_path, &rule.matcher).map(|d| (d, false))
+                let direct_match = rule.matcher.is_match(rel_path)
+                    || rule
+                        .root_prefix
+                        .as_deref()
+                        .is_some_and(|prefix| is_same_or_subpath(rel_path, prefix));
+                if direct_match {
+                    Some((count_segments(rel_path), true))
+                } else {
+                    find_matching_ancestor_depth(rel_path, &rule.matcher).map(|d| (d, false))
+                }
             };
-
             if let Some((depth, is_exact)) = matched_depth {
                 let effective_segments = rule.specificity_segments.max(depth);
                 let score = (effective_segments, 1_u8, rule.specificity_chars);
@@ -405,7 +408,6 @@ impl CompiledFilterPlan {
                 }
             }
         }
-
         match best_score {
             Some((_, mode, is_exact)) => (Some(mode), is_exact),
             None => (None, false),
@@ -443,12 +445,17 @@ fn compile_folder_overrides(
                 .or_else(|| clean.strip_suffix("/*"))
                 .filter(|s| !is_glob_syntax(s))
                 .map(|s| s.to_owned().into_boxed_str());
+            let any_segment_name = clean
+                .strip_prefix("**/")
+                .filter(|s| !s.is_empty() && !s.contains('/') && !is_glob_syntax(s))
+                .map(|s| s.to_owned().into_boxed_str());
             let specificity_segments = count_segments(&clean);
             let specificity_chars =
                 clean.bytes().filter(|&b| b != b'*' && b != b'?' && b != b'/').count();
             glob_overrides.push(GlobOverrideRule {
                 matcher: glob.compile_matcher(),
                 root_prefix,
+                any_segment_name,
                 specificity_segments,
                 specificity_chars,
                 mode,
@@ -478,6 +485,59 @@ fn is_same_or_subpath(candidate: &str, prefix: &str) -> bool {
     candidate.starts_with(prefix)
         && (candidate.len() == prefix.len()
             || candidate.as_bytes().get(prefix.len()).copied() == Some(b'/'))
+}
+
+#[inline]
+fn path_contains_segment(rel_path: &str, seg: &str) -> bool {
+    if seg.is_empty() || rel_path.len() < seg.len() {
+        return false;
+    }
+    if rel_path == seg {
+        return true;
+    }
+    let bytes = rel_path.as_bytes();
+    let mut start = 0_usize;
+    while let Some(pos) = rel_path.get(start..).and_then(|s| s.find(seg)) {
+        let abs = start + pos;
+        let end = abs + seg.len();
+        let left_ok = abs == 0 || bytes.get(abs - 1).copied() == Some(b'/');
+        let right_ok = end == bytes.len() || bytes.get(end).copied() == Some(b'/');
+        if left_ok && right_ok {
+            return true;
+        }
+        start = abs + 1;
+    }
+    false
+}
+
+#[inline]
+fn find_segment_match_depth(rel_path: &str, seg: &str) -> Option<(usize, bool)> {
+    if seg.is_empty() || rel_path.len() < seg.len() {
+        return None;
+    }
+    if rel_path == seg {
+        return Some((1, true));
+    }
+    let bytes = rel_path.as_bytes();
+    if rel_path.ends_with(seg) && bytes.get(rel_path.len() - seg.len() - 1).copied() == Some(b'/') {
+        return Some((count_segments(rel_path), true));
+    }
+    let mut best_depth = None;
+    let mut start = 0_usize;
+    while let Some(pos) = rel_path.get(start..).and_then(|s| s.find(seg)) {
+        let abs = start + pos;
+        let end = abs + seg.len();
+        let left_ok = abs == 0 || bytes.get(abs - 1).copied() == Some(b'/');
+        let right_ok = end == bytes.len() || bytes.get(end).copied() == Some(b'/');
+        if left_ok
+            && right_ok
+            && let Some(prefix) = rel_path.get(..end)
+        {
+            best_depth = Some(count_segments(prefix));
+        }
+        start = abs + 1;
+    }
+    best_depth.map(|d| (d, false))
 }
 
 fn find_matching_ancestor_depth(rel_path: &str, matcher: &GlobMatcher) -> Option<usize> {
@@ -553,14 +613,26 @@ fn normalize_clean_path(raw: &str) -> String {
     s.trim_matches('/').to_owned()
 }
 
+type CompiledFolderExcludeGlobs = (GlobSet, bool, Vec<Box<str>>, Vec<Box<str>>);
+
 fn compile_folder_exclude_globs(
     patterns: &[String],
-) -> Result<(GlobSet, Vec<Box<str>>), ScannerError> {
+) -> Result<CompiledFolderExcludeGlobs, ScannerError> {
     let mut builder = GlobSetBuilder::new();
+    let mut segments = Vec::new();
     let mut roots = Vec::new();
+    let mut glob_count = 0_usize;
     for raw in patterns {
         let clean = normalize_clean_path(raw);
         if clean.is_empty() {
+            continue;
+        }
+        if let Some(seg) = clean.strip_prefix("**/")
+            && !seg.is_empty()
+            && !seg.contains('/')
+            && !is_glob_syntax(seg)
+        {
+            push_unique_boxed(&mut segments, seg);
             continue;
         }
         if let Some(prefix) = clean.strip_suffix("/**").or_else(|| clean.strip_suffix("/*"))
@@ -568,19 +640,31 @@ fn compile_folder_exclude_globs(
             && !prefix.is_empty()
         {
             push_unique_boxed(&mut roots, prefix);
-        } else if !is_glob_syntax(&clean) {
+            continue;
+        }
+        if !is_glob_syntax(&clean) {
             push_unique_boxed(&mut roots, &clean);
+            continue;
+        }
+        if !clean.ends_with("/**") && !clean.ends_with("/*") {
+            let subtree_pat = format!("{clean}/**");
+            let subtree_glob = Glob::new(&subtree_pat)
+                .map_err(|source| ScannerError::InvalidGlob { pattern: subtree_pat, source })?;
+            builder.add(subtree_glob);
         }
         let glob = Glob::new(&clean)
             .map_err(|source| ScannerError::InvalidGlob { pattern: clean, source })?;
         builder.add(glob);
+        glob_count += 1;
     }
     let set = builder
         .build()
         .map_err(|source| ScannerError::InvalidGlob { pattern: "*".to_owned(), source })?;
-    Ok((set, roots))
+    if glob_count > 0 {
+        let _ = set.is_match("");
+    }
+    Ok((set, glob_count > 0, segments, roots))
 }
-
 fn compile_combined_globs(
     legacy: &[String],
     v2: &[String],
@@ -600,7 +684,122 @@ fn compile_combined_globs(
     let set = builder
         .build()
         .map_err(|source| ScannerError::InvalidGlob { pattern: "*".to_owned(), source })?;
+    if count > 0 {
+        let _ = set.is_match("");
+    }
     Ok((set, count > 0))
+}
+
+const REGEX_VALIDATION_CACHE_SLOTS: usize = 8;
+
+struct RegexValidationCache {
+    entries: [(String, bool, bool); REGEX_VALIDATION_CACHE_SLOTS],
+    next_idx: usize,
+}
+
+impl RegexValidationCache {
+    const fn new() -> Self {
+        Self {
+            entries: [
+                (String::new(), true, true),
+                (String::new(), true, true),
+                (String::new(), true, true),
+                (String::new(), true, true),
+                (String::new(), true, true),
+                (String::new(), true, true),
+                (String::new(), true, true),
+                (String::new(), true, true),
+            ],
+            next_idx: 0,
+        }
+    }
+
+    #[inline]
+    fn get(&self, pattern: &str, case_sensitive: bool) -> Option<bool> {
+        self.entries
+            .iter()
+            .find(|(pat, cs, _)| !pat.is_empty() && *cs == case_sensitive && pat == pattern)
+            .map(|(_, _, valid)| *valid)
+    }
+
+    #[inline]
+    fn insert(&mut self, pattern: &str, case_sensitive: bool, is_valid: bool) {
+        if let Some(slot) = self.entries.get_mut(self.next_idx) {
+            pattern.clone_into(&mut slot.0);
+            slot.1 = case_sensitive;
+            slot.2 = is_valid;
+        }
+        self.next_idx = (self.next_idx + 1) % REGEX_VALIDATION_CACHE_SLOTS;
+    }
+}
+
+thread_local! {
+    static LAST_VALIDATED_REGEX: std::cell::RefCell<RegexValidationCache> =
+        const { std::cell::RefCell::new(RegexValidationCache::new()) };
+}
+
+#[inline]
+fn has_balanced_regex_delimiters(trimmed: &str) -> bool {
+    let bytes = trimmed.as_bytes();
+    if matches!(bytes.first().copied(), Some(b'*' | b'+' | b'?')) {
+        return false;
+    }
+    let mut escaped = false;
+    let mut in_char_class = false;
+    let mut paren_depth = 0_i32;
+    for &b in bytes {
+        if escaped {
+            escaped = false;
+            continue;
+        }
+        if b == b'\\' {
+            escaped = true;
+            continue;
+        }
+        if in_char_class {
+            if b == b']' {
+                in_char_class = false;
+            }
+            continue;
+        }
+        match b {
+            b'[' => in_char_class = true,
+            b'(' => paren_depth += 1,
+            b')' => {
+                paren_depth -= 1;
+                if paren_depth < 0 {
+                    return false;
+                }
+            }
+            _ => {}
+        }
+    }
+    !escaped && !in_char_class && paren_depth == 0
+}
+
+#[inline]
+pub fn is_valid_regex_pattern(pattern: &str, case_sensitive: bool) -> bool {
+    let trimmed = pattern.trim();
+    if trimmed.is_empty() {
+        return true;
+    }
+    if !has_balanced_regex_delimiters(trimmed) {
+        return false;
+    }
+    if let Some(cached) =
+        LAST_VALIDATED_REGEX.with(|slot| slot.borrow().get(trimmed, case_sensitive))
+    {
+        return cached;
+    }
+    let is_valid = RegexBuilder::new(trimmed)
+        .case_insensitive(!case_sensitive)
+        .dfa_size_limit(REGEX_DFA_SIZE_LIMIT)
+        .build()
+        .is_ok();
+    LAST_VALIDATED_REGEX.with(|slot| {
+        slot.borrow_mut().insert(trimmed, case_sensitive, is_valid);
+    });
+    is_valid
 }
 
 fn compile_optional_regex(
@@ -618,5 +817,6 @@ fn compile_optional_regex(
             pattern: raw.to_owned(),
             reason: err.to_string(),
         })?;
+    let _ = regex.is_match("");
     Ok(Some(regex))
 }

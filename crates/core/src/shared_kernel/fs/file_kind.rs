@@ -374,10 +374,21 @@ pub fn ends_with_ignore_ascii_case(haystack: &str, suffix: &str) -> bool {
 #[inline]
 pub fn contains_ignore_ascii_case(haystack: &str, needle: &str) -> bool {
     let n_bytes = needle.as_bytes();
-    if n_bytes.is_empty() {
+    let Some(&first_n) = n_bytes.first() else {
         return true;
-    }
-    haystack.as_bytes().windows(n_bytes.len()).any(|window| window.eq_ignore_ascii_case(n_bytes))
+    };
+    let last_n = n_bytes.last().copied().unwrap_or(first_n);
+    let first_lo = first_n.to_ascii_lowercase();
+    let first_hi = first_n.to_ascii_uppercase();
+    let last_lo = last_n.to_ascii_lowercase();
+    let last_hi = last_n.to_ascii_uppercase();
+    haystack.as_bytes().windows(n_bytes.len()).any(|window| {
+        let b0 = window.first().copied().unwrap_or(0);
+        let bl = window.last().copied().unwrap_or(0);
+        (b0 == first_lo || b0 == first_hi)
+            && (bl == last_lo || bl == last_hi)
+            && window.eq_ignore_ascii_case(n_bytes)
+    })
 }
 
 #[cfg(test)]

@@ -746,7 +746,10 @@ impl MainWindowView {
     }
 
     fn paste_clipboard_into_applier(&self, cx: &mut Context<Self>) {
-        let clip_str = cx.read_from_clipboard().and_then(|item| item.text());
+        let clip_str = cx
+            .read_from_clipboard()
+            .and_then(|item| item.text())
+            .filter(|t| !t.is_empty());
         self.state.update(cx, |s, cx| {
             s.set_active_tab(WorkspaceTab::ChangeApplier);
             cx.notify();
@@ -1214,7 +1217,10 @@ fn extract_printable_regex_char(event: &KeyDownEvent) -> Option<char> {
             return Some(ch);
         }
     }
-    extract_printable_search_char(event)
+    let key = event.keystroke.key.as_str();
+    let mut chars = key.chars();
+    let ch = chars.next()?;
+    if chars.next().is_none() && !ch.is_control() { Some(ch) } else { None }
 }
 
 #[inline]

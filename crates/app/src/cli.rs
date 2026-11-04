@@ -55,8 +55,15 @@ where
             return LaunchMode::Gui { initial_project_root: path };
         }
         if !arg.starts_with('-') {
+            if arg == "app" && !Path::new("app").exists() {
+                continue;
+            }
             let path = resolve_headless_target_path(&arg);
-            let safe_path = if is_root_or_system_directory(&path) { None } else { Some(path) };
+            let safe_path = if is_root_or_system_directory(&path) || !path.exists() {
+                None
+            } else {
+                Some(path)
+            };
             return LaunchMode::Gui { initial_project_root: safe_path };
         }
     }

@@ -69,6 +69,7 @@ pub struct ContextPackerState {
     folder_input_draft: String,
     prompt_input_draft: String,
     regex_draft: String,
+    regex_is_valid: bool,
     modal_input_focus: ModalInputFocus,
     prompt_modal_open: bool,
     prompt_category_filter: Option<PromptCategory>,
@@ -105,6 +106,7 @@ impl ContextPackerState {
             folder_input_draft: String::new(),
             prompt_input_draft: String::new(),
             regex_draft: String::new(),
+            regex_is_valid: true,
             modal_input_focus: ModalInputFocus::None,
             prompt_modal_open: false,
             prompt_category_filter: None,
@@ -832,6 +834,7 @@ impl ContextPackerState {
         self.ext_filter_mode = ExtensionFilterMode::All;
         self.regex_scope = RegexTargetScope::FilesExclude;
         self.regex_draft.clear();
+        self.regex_is_valid = true;
         let _ = self.rescan_current_project();
     }
 
@@ -952,7 +955,7 @@ impl ContextPackerState {
             regex_pattern: self.regex_draft.clone(),
             regex_focused: self.is_regex_input_focused(),
             regex_case_sensitive,
-            regex_is_valid: true,
+            regex_is_valid: self.regex_is_valid,
             active_rules_count: self.active_custom_filter_rules_count(),
             selected_files_count: self.tree_projection.selected_files(),
             total_files_count: self.tree_projection.total_indexed_files(),
@@ -990,12 +993,23 @@ impl ContextPackerState {
 
     fn apply_regex_draft_to_preset(&mut self) {
         let preset = &mut self.resolved_config.effective_preset;
+        let case_sensitive = match self.regex_scope {
+            RegexTargetScope::FilesExclude | RegexTargetScope::FilesInclude => {
+                preset.filters.regex_case_sensitive
+            }
+            RegexTargetScope::FoldersExclude | RegexTargetScope::FoldersInclude => {
+                preset.folder_filters.regex_case_sensitive
+            }
+        };
+        let trimmed = self.regex_draft.trim();
+        self.regex_is_valid = AppContainer::is_valid_regex(trimmed, case_sensitive);
+        if !self.regex_is_valid {
+            return;
+        }
         preset.filters.include_regex = None;
         preset.filters.exclude_regex = None;
         preset.folder_filters.include_regex_folders = None;
         preset.folder_filters.exclude_regex_folders = None;
-
-        let trimmed = self.regex_draft.trim();
         if !trimmed.is_empty() {
             let owned = Some(trimmed.to_owned());
             match self.regex_scope {

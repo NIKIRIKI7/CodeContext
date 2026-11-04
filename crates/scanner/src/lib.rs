@@ -5,4 +5,5 @@ mod discovery;
 
 pub use discovery::{
     CompiledFilterPlan, FolderWalkVerdict, IgnoreFileScanner, ScannedFile, ScannerError,
+    is_valid_regex_pattern,
 };

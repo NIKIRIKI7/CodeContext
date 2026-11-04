@@ -101,7 +101,8 @@ impl RenderOnce for DiffViewComponent {
         } else {
             if self.meta.line_ending == LineEnding::Crlf {
                 right_meta = right_meta.child(
-                    Badge::new(labels.applier_encoding_crlf, BadgeVariant::Neutral).with_theme(theme),
+                    Badge::new(labels.applier_encoding_crlf, BadgeVariant::Neutral)
+                        .with_theme(theme),
                 );
             }
             right_meta = right_meta

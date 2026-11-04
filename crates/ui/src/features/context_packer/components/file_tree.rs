@@ -184,12 +184,22 @@ impl FlatTreeProjection {
         search_query: &str,
     ) -> Self {
         let entries = project.entries();
+        let preset = project.preset();
         let clean_query = search_query.trim();
         let has_query = !clean_query.is_empty();
-        let mut nodes = Vec::with_capacity(entries.len() + (entries.len() / 8) + 8);
-        let mut active_dir_stack: Vec<String> = Vec::with_capacity(16);
+        let has_transit_rules = !preset.folder_filters.only_folders.is_empty()
+            || !preset.folder_filters.folder_overrides.is_empty();
+        let has_allowed_secrets = !preset.explicitly_allowed_secrets.is_empty();
+        let initial_cap = if has_query {
+            (entries.len() / 32).clamp(64, 2048)
+        } else if !collapsed_dirs.is_empty() {
+            (entries.len() / 8).clamp(128, 8192)
+        } else {
+            entries.len() + (entries.len() / 8) + 8
+        };
+        let mut nodes = Vec::with_capacity(initial_cap);
+        let mut active_dir_stack: Vec<&str> = Vec::with_capacity(16);
         let mut dir_prefixes_buf: Vec<&str> = Vec::with_capacity(16);
-
         let mut idx = 0;
         while idx < entries.len() {
             let Some(entry) = entries.get(idx) else {
@@ -199,36 +209,40 @@ impl FlatTreeProjection {
                 idx += 1;
                 continue;
             }
-
             let skipped_children = emit_parent_directories_for_entry(
                 idx,
                 project,
                 collapsed_dirs,
                 has_query,
+                has_transit_rules,
                 &mut active_dir_stack,
                 &mut dir_prefixes_buf,
                 &mut nodes,
             );
-
             if !has_query && skipped_children > 0 {
                 idx += skipped_children;
                 continue;
             }
-
             if !has_query && is_under_collapsed_dir(&entry.rel_path, collapsed_dirs) {
                 idx += 1;
                 continue;
             }
-
-            let (file_name, raw_depth) = extract_name_and_depth(&entry.rel_path);
-            let skipped_transit = active_dir_stack
-                .iter()
-                .filter(|anc| project.preset().is_excluded_transit_folder(anc))
-                .count();
+            let raw_depth = u8::try_from(dir_prefixes_buf.len()).unwrap_or(u8::MAX);
+            let file_name = match dir_prefixes_buf.last() {
+                Some(last_dir) => {
+                    entry.rel_path.get(last_dir.len() + 1..).unwrap_or(&entry.rel_path)
+                }
+                None => entry.rel_path.as_str(),
+            };
+            let skipped_transit = if has_transit_rules {
+                active_dir_stack.iter().filter(|anc| preset.is_excluded_transit_folder(anc)).count()
+            } else {
+                0
+            };
             let depth = raw_depth.saturating_sub(u8::try_from(skipped_transit).unwrap_or(0));
-            let is_secret_unlocked = entry.kind == FileKind::Secret
-                && project.preset().is_secret_explicitly_allowed(&entry.rel_path);
-
+            let is_secret_unlocked = has_allowed_secrets
+                && entry.kind == FileKind::Secret
+                && preset.is_secret_explicitly_allowed(&entry.rel_path);
             nodes.push(FlatTreeNode {
                 path: entry.rel_path.clone(),
                 display_name: file_name.to_owned(),
@@ -248,7 +262,6 @@ impl FlatTreeProjection {
             });
             idx += 1;
         }
-
         let selectable_total = count_selectable_entries(project);
         Self {
             visible_nodes: Arc::from(nodes),
@@ -302,12 +315,14 @@ fn count_selectable_entries(project: &Project) -> usize {
         .count()
 }
 
+#[allow(clippy::too_many_arguments)]
 fn emit_parent_directories_for_entry<'a>(
     entry_idx: usize,
     project: &'a Project,
     collapsed_dirs: &HashSet<String>,
     ignore_collapsed: bool,
-    active_dir_stack: &mut Vec<String>,
+    has_transit_rules: bool,
+    active_dir_stack: &mut Vec<&'a str>,
     dir_prefixes: &mut Vec<&'a str>,
     out_nodes: &mut Vec<FlatTreeNode>,
 ) -> usize {
@@ -317,29 +332,26 @@ fn emit_parent_directories_for_entry<'a>(
     };
     let rel_path = entry.rel_path.as_str();
     dir_prefixes.clear();
-    for (byte_pos, ch) in rel_path.char_indices() {
-        if ch == '/'
+    for (byte_pos, b) in rel_path.bytes().enumerate() {
+        if b == b'/'
             && byte_pos > 0
             && let Some(prefix) = rel_path.get(..byte_pos)
         {
             dir_prefixes.push(prefix);
         }
     }
-
-    let common_len = active_dir_stack
-        .iter()
-        .zip(dir_prefixes.iter())
-        .take_while(|(a, b)| a.as_str() == **b)
-        .count();
+    let common_len =
+        active_dir_stack.iter().zip(dir_prefixes.iter()).take_while(|(a, b)| **a == **b).count();
     active_dir_stack.truncate(common_len);
-
     let preset = project.preset();
-    let mut skipped_transit_ancestors =
-        active_dir_stack.iter().filter(|anc| preset.is_excluded_transit_folder(anc)).count();
-
+    let mut skipped_transit_ancestors = if has_transit_rules {
+        active_dir_stack.iter().filter(|anc| preset.is_excluded_transit_folder(anc)).count()
+    } else {
+        0
+    };
     for &dir_prefix in dir_prefixes.get(common_len..).unwrap_or(&[]) {
-        active_dir_stack.push(dir_prefix.to_owned());
-        if preset.is_excluded_transit_folder(dir_prefix) {
+        active_dir_stack.push(dir_prefix);
+        if has_transit_rules && preset.is_excluded_transit_folder(dir_prefix) {
             skipped_transit_ancestors += 1;
             continue;
         }

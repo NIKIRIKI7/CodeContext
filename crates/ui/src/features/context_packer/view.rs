@@ -536,7 +536,9 @@ impl ContextPackerView {
                     let clip_opt = cx.read_from_clipboard().and_then(|i| i.text());
                     if let Some(text) = clip_opt {
                         state_paste.update(cx, |s, cx| {
-                            let cat = s.prompt_category_filter().unwrap_or(core::preset::models::template::PromptCategory::Custom);
+                            let cat = s
+                                .prompt_category_filter()
+                                .unwrap_or(core::preset::models::template::PromptCategory::Custom);
                             s.add_custom_prompt_block(cat, text.as_str());
                             cx.notify();
                         });

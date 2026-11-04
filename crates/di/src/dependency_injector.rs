@@ -17,7 +17,7 @@ use platform::{
     InMemoryClipboard, SystemClipboard, SystemGlobalHotkey, SystemShellIntegration,
     SystemSingleInstanceIpc, SystemUpdater,
 };
-use scanner::IgnoreFileScanner;
+use scanner::{IgnoreFileScanner, is_valid_regex_pattern};
 
 #[derive(Debug, Clone)]
 pub enum ClipboardAdapter {
@@ -292,6 +292,11 @@ impl AppContainer {
     #[inline]
     pub fn undo_last_for_project(&self, project_root: &Path) -> Result<usize, ApplierPortError> {
         self.apply_service.undo_last(project_root)
+    }
+
+    #[inline]
+    pub fn is_valid_regex(pattern: &str, case_sensitive: bool) -> bool {
+        is_valid_regex_pattern(pattern, case_sensitive)
     }
 
     #[inline]

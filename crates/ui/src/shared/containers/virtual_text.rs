@@ -71,13 +71,11 @@ pub struct VirtualTextBuffer {
     line_offsets: Arc<[u32]>,
     max_display_line_bytes: usize,
 }
-
 impl Default for VirtualTextBuffer {
     fn default() -> Self {
         Self::new("")
     }
 }
-
 impl VirtualTextBuffer {
     pub fn new(raw: impl Into<Arc<str>>) -> Self {
         let content: Arc<str> = raw.into();

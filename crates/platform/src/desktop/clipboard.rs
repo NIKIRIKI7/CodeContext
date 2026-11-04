@@ -3,37 +3,39 @@ use std::sync::{Arc, Mutex};
 
 use core::packing::ports::clipboard::{ClipboardPort, ClipboardPortError};
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct SystemClipboard {
-    os_clipboard: Arc<Mutex<Option<arboard::Clipboard>>>,
     fallback_buffer: Arc<Mutex<Option<String>>>,
+    revision: Arc<AtomicU64>,
 }
-
+impl Default for SystemClipboard {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 impl std::fmt::Debug for SystemClipboard {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SystemClipboard").finish_non_exhaustive()
     }
 }
-
 impl SystemClipboard {
     #[inline]
     pub fn new() -> Self {
         Self {
-            os_clipboard: Arc::new(Mutex::new(arboard::Clipboard::new().ok())),
             fallback_buffer: Arc::new(Mutex::new(None)),
+            revision: Arc::new(AtomicU64::new(1)),
         }
     }
-
+    #[inline]
+    pub fn revision(&self) -> u64 {
+        self.revision.load(Ordering::Relaxed)
+    }
     pub fn read_text(&self) -> Result<String, ClipboardPortError> {
-        if let Ok(mut guard) = self.os_clipboard.lock() {
-            if guard.is_none() {
-                *guard = arboard::Clipboard::new().ok();
-            }
-            if let Some(ref mut cb) = *guard
-                && let Ok(text) = cb.get_text()
-            {
-                return Ok(text);
-            }
+        if let Ok(mut cb) = arboard::Clipboard::new()
+            && let Ok(text) = cb.get_text()
+            && !text.is_empty()
+        {
+            return Ok(text);
         }
         let guard = self
             .fallback_buffer
@@ -42,24 +44,18 @@ impl SystemClipboard {
         Ok(guard.clone().unwrap_or_default())
     }
 }
-
 impl ClipboardPort for SystemClipboard {
     fn copy_text(&self, text: &str) -> Result<(), ClipboardPortError> {
         if let Ok(mut guard) = self.fallback_buffer.lock() {
             *guard = Some(text.to_owned());
         }
-        if let Ok(mut guard) = self.os_clipboard.lock() {
-            if guard.is_none() {
-                *guard = arboard::Clipboard::new().ok();
-            }
-            if let Some(ref mut cb) = *guard {
-                cb.set_text(text.to_owned())
-                    .map_err(|err| ClipboardPortError::WriteFailed(err.to_string()))?;
-            }
+        self.revision.fetch_add(1, Ordering::Relaxed);
+        if let Ok(mut cb) = arboard::Clipboard::new() {
+            cb.set_text(text.to_owned())
+                .map_err(|err| ClipboardPortError::WriteFailed(err.to_string()))?;
         }
         Ok(())
     }
-
     fn read_text(&self) -> Result<String, ClipboardPortError> {
         Self::read_text(self)
     }

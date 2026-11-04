@@ -24,7 +24,7 @@ use core::shared_kernel::execution::cancel_token::CancelToken;
 use core::shared_kernel::fs::file_kind::FileKind;
 use divan::counter::{BytesCount, ItemsCount};
 use divan::{AllocProfiler, Bencher};
-use scanner::{CompiledFilterPlan, FolderWalkVerdict, IgnoreFileScanner};
+use scanner::{CompiledFilterPlan, FolderWalkVerdict, IgnoreFileScanner, is_valid_regex_pattern};
 use tempfile::TempDir;
 
 #[global_allocator]
@@ -393,7 +393,6 @@ fn bench_6b_top_down_pruning_transparent_ancestor_transit(bencher: Bencher) {
         fs::write(repo.root.join(format!("crates/core/src/mod_{i}.rs")), "pub fn core_fn() {}\n")
             .unwrap();
     }
-
     let mut preset = Preset::default();
     preset.folder_filters.folder_overrides.insert("src".to_owned(), FolderOverrideMode::Exclude);
     preset.folder_filters.folder_overrides.insert("crates".to_owned(), FolderOverrideMode::Exclude);
@@ -401,14 +400,134 @@ fn bench_6b_top_down_pruning_transparent_ancestor_transit(bencher: Bencher) {
         .folder_filters
         .folder_overrides
         .insert("crates/core/src".to_owned(), FolderOverrideMode::Include);
-
     let scanner = IgnoreFileScanner::new();
     let cancel_token = CancelToken::new();
-
     bencher.counter(ItemsCount::new(50_usize)).bench_local(|| {
         let report =
             scanner.scan_index(divan::black_box(&repo.root), &preset, &cancel_token).unwrap();
         assert_eq!(report.entries.len(), 50);
         divan::black_box(report)
+    });
+}
+
+#[divan::bench(
+    args = [
+        "file_exclude_regex",
+        "file_include_regex",
+        "folder_regex_case_insensitive",
+        "combined_ext_glob_regex"
+    ],
+    sample_count = 100
+)]
+fn bench_6c_regex_file_and_folder_filters_matrix(bencher: Bencher, mode: &str) {
+    let mut preset = Preset::default();
+    match mode {
+        "file_exclude_regex" => {
+            preset.filters.exclude_regex =
+                Some("(^|/)tests?/|(_test|_spec|_generated)\\.(rs|ts)$".to_owned());
+        }
+        "file_include_regex" => {
+            preset.filters.include_regex =
+                Some("^crates/(core|scanner|apply)/src/.*\\.rs$".to_owned());
+        }
+        "folder_regex_case_insensitive" => {
+            preset.folder_filters.exclude_regex_folders =
+                Some("^crates/(ui|platform)(/|$)".to_owned());
+            preset.folder_filters.regex_case_sensitive = false;
+        }
+        _ => {
+            preset.filters.include_extensions = vec!["rs".to_owned(), "toml".to_owned()];
+            preset.filters.exclude_extensions = vec!["lock".to_owned()];
+            preset.filters.include_regex = Some("^crates/(core|scanner)/".to_owned());
+            preset.filters.exclude_regex = Some(".*_generated\\.rs$".to_owned());
+            preset.folder_filters.exclude_globs = vec!["**/fixtures".to_owned()];
+        }
+    }
+    let plan = CompiledFilterPlan::compile(&preset).unwrap();
+    let paths: Vec<String> = (0..10_000)
+        .map(|i| match i % 5 {
+            0 => format!("crates/core/src/service_{i}.rs"),
+            1 => format!("crates/scanner/src/schema_{i}_generated.rs"),
+            2 => format!("crates/ui/src/view_{i}_test.rs"),
+            3 => format!("crates/apply/src/patcher_{i}.rs"),
+            _ => format!("crates/core/Cargo_{i}.lock"),
+        })
+        .collect();
+    let folders: Vec<String> = (0..2_000)
+        .map(|i| match i % 4 {
+            0 => format!("crates/core/src/mod_{}", i % 16),
+            1 => format!("crates/UI/src/comp_{}", i % 16),
+            2 => format!("crates/platform/src/sys_{}", i % 16),
+            _ => format!("crates/scanner/src/fixtures/f_{i}"),
+        })
+        .collect();
+    bencher.counter(ItemsCount::new(paths.len() + folders.len())).bench_local(|| {
+        let mut matched = 0_usize;
+        for dir in divan::black_box(&folders) {
+            if plan.evaluate_folder(dir, false) == FolderWalkVerdict::IncludeSubtree {
+                matched += 1;
+            }
+        }
+        for file in divan::black_box(&paths) {
+            if plan.evaluate_file(file, FolderWalkVerdict::IncludeSubtree, false) {
+                matched += 1;
+            }
+        }
+        assert!(matched > 0);
+        divan::black_box(matched)
+    });
+}
+
+#[divan::bench(args = ["valid_complex_regex", "invalid_unclosed_draft"], sample_count = 100)]
+fn bench_6d_regex_compilation_and_live_validation(bencher: Bencher, kind: &str) {
+    let pattern = if kind == "valid_complex_regex" {
+        "^crates/(core|scanner|apply|ui)/src/[a-z0-9_]+\\.(rs|toml)$"
+    } else {
+        "^crates/(core|scanner/src/[a-z0-9_+"
+    };
+    bencher.counter(ItemsCount::new(100_usize)).bench_local(|| {
+        let mut ok_count = 0_usize;
+        for _ in 0..100 {
+            if is_valid_regex_pattern(divan::black_box(pattern), true) {
+                ok_count += 1;
+            }
+        }
+        divan::black_box(ok_count)
+    });
+}
+
+#[divan::bench(args = ["all_files", "include_only_3_exts", "exclude_4_exts"], sample_count = 100)]
+fn bench_6e_extension_whitelist_vs_blacklist_10k(bencher: Bencher, mode: &str) {
+    let mut preset = Preset::default();
+    match mode {
+        "include_only_3_exts" => {
+            preset.filters.include_extensions =
+                vec!["rs".to_owned(), "toml".to_owned(), "md".to_owned()];
+        }
+        "exclude_4_exts" => {
+            preset.filters.exclude_extensions =
+                vec!["lock".to_owned(), "log".to_owned(), "bak".to_owned(), "tmp".to_owned()];
+        }
+        _ => {}
+    }
+    let plan = CompiledFilterPlan::compile(&preset).unwrap();
+    let files: Vec<String> = (0..10_000)
+        .map(|i| match i % 5 {
+            0 => format!("crates/core/src/mod_{i}.rs"),
+            1 => format!("crates/core/Cargo_{i}.toml"),
+            2 => format!("docs/guide_{i}.md"),
+            3 => format!("logs/debug_{i}.log"),
+            _ => format!("Cargo_{i}.lock"),
+        })
+        .collect();
+    bencher.counter(ItemsCount::new(files.len())).bench_local(|| {
+        let mut allowed = 0_usize;
+        for f in divan::black_box(&files) {
+            if plan.evaluate_file(f, FolderWalkVerdict::IncludeSubtree, false) {
+                allowed += 1;
+            }
+        }
+        assert!(allowed >= 6_000);
+        divan::black_box(allowed)
     });
 }
