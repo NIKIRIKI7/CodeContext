@@ -1117,6 +1117,10 @@ impl ContextPackerState {
 
     pub fn select_file_in_tree_and_jump(&mut self, row_idx: usize, rel_path: &str) {
         self.focused_tree_index = Some(row_idx);
+        let _ = self.jump_to_file_in_preview(rel_path);
+    }
+
+    pub fn jump_to_file_in_preview(&mut self, rel_path: &str) -> Option<usize> {
         let prefix = self.resolved_config.effective_preset.template.file_header_prefix.clone();
         let suffix = self.resolved_config.effective_preset.template.file_header_suffix.clone();
 
@@ -1124,7 +1128,7 @@ impl ContextPackerState {
             self.preview_buffer.find_file_header_line(rel_path, &prefix, &suffix)
         {
             self.pending_preview_scroll.set(Some(line_idx));
-            return;
+            return Some(line_idx);
         }
 
         if let Some(ref pack_res) = self.pack_result
@@ -1142,8 +1146,10 @@ impl ContextPackerState {
                 self.ui_status.copied_recently = false;
                 self.preview_buffer = buf;
                 self.pending_preview_scroll.set(Some(line_idx));
+                return Some(line_idx);
             }
         }
+        None
     }
 
     pub fn move_tree_focus_down(&mut self) -> bool {

@@ -746,10 +746,8 @@ impl MainWindowView {
     }
 
     fn paste_clipboard_into_applier(&self, cx: &mut Context<Self>) {
-        let clip_str = cx
-            .read_from_clipboard()
-            .and_then(|item| item.text())
-            .filter(|t| !t.is_empty());
+        let clip_str =
+            cx.read_from_clipboard().and_then(|item| item.text()).filter(|t| !t.is_empty());
         self.state.update(cx, |s, cx| {
             s.set_active_tab(WorkspaceTab::ChangeApplier);
             cx.notify();

@@ -172,10 +172,8 @@ impl Render for ChangeApplierView {
         .with_context(labels, theme)
         .with_actions(
             move |_ev, _win, cx| {
-                let clip_str = cx
-                    .read_from_clipboard()
-                    .and_then(|item| item.text())
-                    .filter(|t| !t.is_empty());
+                let clip_str =
+                    cx.read_from_clipboard().and_then(|item| item.text()).filter(|t| !t.is_empty());
                 state_paste.update(cx, |s, cx| {
                     if let Some(text) = clip_str {
                         s.set_response_text(text);

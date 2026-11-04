@@ -21,10 +21,7 @@ impl std::fmt::Debug for SystemClipboard {
 impl SystemClipboard {
     #[inline]
     pub fn new() -> Self {
-        Self {
-            fallback_buffer: Arc::new(Mutex::new(None)),
-            revision: Arc::new(AtomicU64::new(1)),
-        }
+        Self { fallback_buffer: Arc::new(Mutex::new(None)), revision: Arc::new(AtomicU64::new(1)) }
     }
     #[inline]
     pub fn revision(&self) -> u64 {
