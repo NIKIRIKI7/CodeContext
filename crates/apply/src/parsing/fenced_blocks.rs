@@ -397,8 +397,10 @@ fn parse_canonical_blocks(
                 raw_body = stripped;
             }
             let cleaned_body = strip_redundant_inner_code_fence(raw_body);
-            let is_sr_body = (cleaned_body.contains(&config.search_replace_markers.search_header)
-                || cleaned_body.contains("<<<<<"))
+            let is_create_directive = CREATE_HEADER_PREFIXES.contains(&matched_prefix);
+            let is_sr_body = !is_create_directive
+                && (cleaned_body.contains(&config.search_replace_markers.search_header)
+                    || cleaned_body.contains("<<<<<"))
                 && cleaned_body.contains(&config.search_replace_markers.divider);
             if !rel_path.is_empty() && !is_sr_body {
                 files.push(ParsedFile {

@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::time::Instant;
 
 use apply::{AutofixResult, ParsedFile, ResponseApplier};
 use config::LayeredConfigLoader;
@@ -11,6 +12,7 @@ use core::packing::ports::clipboard::{ClipboardPort, ClipboardPortError};
 use core::packing::services::pack_service::PackService;
 use core::preset::models::preset::Preset;
 use core::preset::services::preset_service::PresetService;
+use core::shared_kernel::execution::telemetry::TelemetryLog;
 use core::shared_kernel::fs::line_ending::LineEnding;
 use gpui::Global;
 use platform::{
@@ -148,11 +150,14 @@ impl AppContainerBuilder {
         let updater = self.updater.unwrap_or_default();
         let scanner = IgnoreFileScanner::new();
         let applier = ResponseApplier::new();
+        let telemetry = Arc::new(TelemetryLog::new());
+        telemetry.record_info("system", "init_container", "DI container initialized");
 
         AppContainer {
             pack_service: Arc::new(PackService::new(scanner, clipboard.clone())),
             preset_service: Arc::new(PresetService::new(config_loader)),
             apply_service: Arc::new(ApplyService::new(applier)),
+            telemetry,
             clipboard,
             shell_integration,
             hotkey,
@@ -167,6 +172,7 @@ pub struct AppContainer {
     pack_service: Arc<PackService<IgnoreFileScanner, ClipboardAdapter>>,
     preset_service: Arc<PresetService<LayeredConfigLoader>>,
     apply_service: Arc<ApplyService<ResponseApplier>>,
+    telemetry: Arc<TelemetryLog>,
     clipboard: ClipboardAdapter,
     shell_integration: SystemShellIntegration,
     hotkey: SystemGlobalHotkey,
@@ -251,13 +257,32 @@ impl AppContainer {
     }
 
     #[inline]
+    pub const fn telemetry(&self) -> &Arc<TelemetryLog> {
+        &self.telemetry
+    }
+
+    #[inline]
     pub fn autofix_response_for_project(
         &self,
         raw_response: &str,
         project_root: Option<&Path>,
     ) -> (String, bool, bool) {
+        let t0 = Instant::now();
         let resolved = self.preset_service.resolve_project_config(project_root);
-        self.apply_service.autofix_response(raw_response, &resolved.effective_preset)
+        let res = self.apply_service.autofix_response(raw_response, &resolved.effective_preset);
+        self.telemetry.record_timed(
+            "apply",
+            "autofix_stream",
+            t0.elapsed(),
+            format!(
+                "{} B -> {} B · preamble={} · closed={}",
+                raw_response.len(),
+                res.0.len(),
+                res.1,
+                res.2
+            ),
+        );
+        res
     }
 
     pub fn parse_and_validate_for_project(
@@ -265,13 +290,31 @@ impl AppContainer {
         raw_response: &str,
         project_root: Option<&Path>,
     ) -> Vec<ParsedResponseFile> {
+        let t0 = Instant::now();
         let resolved = self.preset_service.resolve_project_config(project_root);
-        Self::plan_to_parsed_files(
+        let files = Self::plan_to_parsed_files(
             &self.apply_service,
             raw_response,
             project_root,
             &resolved.effective_preset,
-        )
+        );
+        let conflicts = files.iter().filter(|f| f.has_conflict || !f.is_sandbox_safe).count();
+        if conflicts > 0 {
+            self.telemetry.record_warn(
+                "apply",
+                "parse_and_diff",
+                Some(t0.elapsed()),
+                format!("{} files parsed · {} conflicts/blocked", files.len(), conflicts),
+            );
+        } else {
+            self.telemetry.record_timed(
+                "apply",
+                "parse_and_diff",
+                t0.elapsed(),
+                format!("{} files parsed · 0 conflicts", files.len()),
+            );
+        }
+        files
     }
 
     pub fn execute_plan_for_project(

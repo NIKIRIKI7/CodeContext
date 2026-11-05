@@ -1,4 +1,6 @@
 use core::packing::aggregates::project::Project;
+use core::preset::models::resolution::TerminalTaskCategory;
+use core::shared_kernel::execution::telemetry::LogFilterMode;
 use core::system::ports::hotkey::GlobalHotkeyPort as _;
 use core::system::ports::ipc::{IpcCommand, SingleInstanceIpcPort as _, SystemActivationEvent};
 use core::system::ports::updater::{SemanticVersion, UpdateChannel};
@@ -6,6 +8,9 @@ use di::AppContainer;
 
 use crate::features::change_applier::state::ChangeApplierState;
 use crate::features::context_packer::state::ContextPackerState;
+use crate::features::main_window::components::diagnostics_dock::{
+    DockToolTab, TerminalCommandEntry,
+};
 use crate::locale::AppLocale;
 use crate::theme::ThemeVariant;
 
@@ -32,10 +37,24 @@ pub struct StatusBarSummary {
 }
 
 #[derive(Debug, Clone, Default)]
+pub struct BottomDockState {
+    pub is_open: bool,
+    pub is_tall: bool,
+    pub active_tab: DockToolTab,
+    pub log_filter_mode: LogFilterMode,
+    pub task_category: Option<TerminalTaskCategory>,
+    pub terminal_input: String,
+    pub terminal_focused: bool,
+    pub terminal_running: bool,
+    pub terminal_history: Vec<TerminalCommandEntry>,
+}
+
+#[derive(Debug, Clone, Default)]
 pub struct MainWindowState {
     active_tab: WorkspaceTab,
     settings_open: bool,
     project_meta_open: bool,
+    bottom_dock: BottomDockState,
     projects_menu: ProjectsMenuState,
     update_modal_open: bool,
     available_update: Option<(SemanticVersion, UpdateChannel)>,
@@ -93,6 +112,74 @@ impl MainWindowState {
     #[inline]
     pub const fn is_settings_open(&self) -> bool {
         self.settings_open
+    }
+
+    #[inline]
+    pub const fn toggle_logs_dock(&mut self) {
+        self.bottom_dock.is_open = !self.bottom_dock.is_open;
+        if !self.bottom_dock.is_open {
+            self.bottom_dock.terminal_focused = false;
+        }
+    }
+
+    #[inline]
+    pub const fn toggle_dock_tall_height(&mut self) {
+        self.bottom_dock.is_tall = !self.bottom_dock.is_tall;
+    }
+
+    #[inline]
+    pub fn open_or_toggle_dock_tab(&mut self, tab: DockToolTab) {
+        if self.bottom_dock.is_open && self.bottom_dock.active_tab == tab {
+            self.bottom_dock.is_open = false;
+            self.bottom_dock.terminal_focused = false;
+        } else {
+            self.bottom_dock.is_open = true;
+            self.bottom_dock.active_tab = tab;
+        }
+    }
+
+    #[inline]
+    pub const fn set_dock_tab(&mut self, tab: DockToolTab) {
+        self.bottom_dock.active_tab = tab;
+        self.bottom_dock.is_open = true;
+    }
+
+    #[inline]
+    pub const fn dock_active_tab(&self) -> DockToolTab {
+        self.bottom_dock.active_tab
+    }
+
+    #[inline]
+    pub const fn bottom_dock(&self) -> &BottomDockState {
+        &self.bottom_dock
+    }
+
+    #[inline]
+    pub const fn bottom_dock_mut(&mut self) -> &mut BottomDockState {
+        &mut self.bottom_dock
+    }
+
+    #[inline]
+    pub const fn set_logs_dock_open(&mut self, open: bool) {
+        self.bottom_dock.is_open = open;
+        if !open {
+            self.bottom_dock.terminal_focused = false;
+        }
+    }
+
+    #[inline]
+    pub const fn is_logs_dock_open(&self) -> bool {
+        self.bottom_dock.is_open
+    }
+
+    #[inline]
+    pub const fn set_log_filter_mode(&mut self, mode: LogFilterMode) {
+        self.bottom_dock.log_filter_mode = mode;
+    }
+
+    #[inline]
+    pub const fn log_filter_mode(&self) -> LogFilterMode {
+        self.bottom_dock.log_filter_mode
     }
 
     #[inline]

@@ -1,0 +1,86 @@
+{
+  "default_excluded_folder_names": [
+    ".git",
+    "node_modules",
+    "target",
+    "dist",
+    "build",
+    ".ctxpack",
+    ".next",
+    ".nuxt",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "vendor"
+  ],
+  "quick_folder_chips": [
+    "target",
+    "node_modules",
+    "dist",
+    "build",
+    "tests",
+    "benches",
+    "docs",
+    "assets",
+    ".venv",
+    "vendor"
+  ],
+  "extension_groups": {
+    "rust": ["rs", "toml"],
+    "web": ["ts", "tsx", "js", "jsx", "css", "scss", "html", "vue", "svelte"],
+    "python": ["py", "pyi", "ipynb"],
+    "systems": ["c", "cpp", "cc", "h", "hpp", "go", "zig"],
+    "configs": ["json", "yaml", "yml", "toml", "ini", "cfg", "conf"],
+    "docs": ["md", "mdx", "txt", "rst", "adoc"]
+  },
+  "regex_templates": [
+    {
+      "id": "no_tests",
+      "name": "Без тестов",
+      "name_en": "No tests",
+      "pattern": "(^|/)tests?/|(_test|[.]test|[.]spec)[.]",
+      "scope": "files_exclude",
+      "is_custom": false
+    },
+    {
+      "id": "only_src",
+      "name": "Только src/",
+      "name_en": "Only src/",
+      "pattern": "(^|/)src/",
+      "scope": "files_include",
+      "is_custom": false
+    },
+    {
+      "id": "no_gen",
+      "name": "Без generated",
+      "name_en": "No generated",
+      "pattern": "(generated|[.]gen[.])",
+      "scope": "files_exclude",
+      "is_custom": false
+    },
+    {
+      "id": "only_crates",
+      "name": "Только crates/",
+      "name_en": "Only crates/",
+      "pattern": "^crates/",
+      "scope": "files_include",
+      "is_custom": false
+    },
+    {
+      "id": "no_benches",
+      "name": "Без бенчмарков",
+      "name_en": "No benches",
+      "pattern": "(^|/)benches/|(_bench|[.]bench)[.]",
+      "scope": "files_exclude",
+      "is_custom": false
+    },
+    {
+      "id": "only_configs",
+      "name": "Только конфиги",
+      "name_en": "Only configs",
+      "pattern": "[.](json|toml|ya?ml|ini|cfg|conf)$",
+      "scope": "files_include",
+      "is_custom": false
+    }
+  ]
+}

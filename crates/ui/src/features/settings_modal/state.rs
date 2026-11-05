@@ -1,5 +1,6 @@
 use core::preset::models::resolution::{
-    DEFAULT_GLOBAL_HOTKEY, GlobalConfig, KeymapAction, KeymapConfig,
+    DEFAULT_GLOBAL_HOTKEY, GlobalConfig, KeymapAction, KeymapConfig, TerminalCommandPreset,
+    UiChromeSetting,
 };
 use core::preset::ports::config_repo::ConfigPortError;
 use core::system::ports::hotkey::{
@@ -155,6 +156,31 @@ impl SettingsModalState {
 
     pub fn toggle_create_backups_by_default(&mut self) -> Result<(), ConfigPortError> {
         let updated = self.container.preset_service().toggle_create_backups_by_default()?;
+        self.global_config = updated;
+        Ok(())
+    }
+
+    pub fn toggle_show_bottom_bar(&mut self) -> Result<(), ConfigPortError> {
+        self.toggle_ui_chrome(UiChromeSetting::BottomBar)
+    }
+
+    pub fn toggle_ui_chrome(&mut self, setting: UiChromeSetting) -> Result<(), ConfigPortError> {
+        let updated = self.container.preset_service().toggle_ui_chrome(setting)?;
+        self.global_config = updated;
+        Ok(())
+    }
+
+    pub fn add_terminal_preset(
+        &mut self,
+        preset: TerminalCommandPreset,
+    ) -> Result<(), ConfigPortError> {
+        let updated = self.container.preset_service().add_terminal_preset(preset)?;
+        self.global_config = updated;
+        Ok(())
+    }
+
+    pub fn remove_terminal_preset(&mut self, index: usize) -> Result<(), ConfigPortError> {
+        let updated = self.container.preset_service().remove_terminal_preset(index)?;
         self.global_config = updated;
         Ok(())
     }

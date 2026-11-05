@@ -1,6 +1,7 @@
 use std::fmt;
 use std::sync::Arc;
 
+pub use core::preset::models::preset::{RegexTargetScope, RegexTemplateItem};
 use core::preset::models::template::{PromptBlockItem, PromptCategory};
 use gpui::{
     App, ClickEvent, InteractiveElement as _, IntoElement, ParentElement as _, RenderOnce, Rgba,
@@ -19,15 +20,6 @@ pub enum ExtensionFilterMode {
     All,
     IncludeOnly,
     ExcludeSelected,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum RegexTargetScope {
-    #[default]
-    FilesExclude,
-    FilesInclude,
-    FoldersExclude,
-    FoldersInclude,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -56,8 +48,11 @@ pub struct FilterModalProps {
     pub regex_scope: RegexTargetScope,
     pub regex_pattern: String,
     pub regex_focused: bool,
+    pub regex_name_draft: String,
+    pub regex_name_focused: bool,
     pub regex_case_sensitive: bool,
     pub regex_is_valid: bool,
+    pub regex_templates: Vec<RegexTemplateItem>,
     pub active_rules_count: usize,
     pub selected_files_count: usize,
     pub total_files_count: usize,
@@ -69,6 +64,7 @@ pub type FilterModalActionCallback = Arc<dyn Fn(&ClickEvent, &mut Window, &mut A
 pub type ExtModeSelectCallback = Arc<dyn Fn(ExtensionFilterMode, &mut Window, &mut App) + 'static>;
 pub type StringSelectCallback = Arc<dyn Fn(&str, &mut Window, &mut App) + 'static>;
 pub type RegexScopeSelectCallback = Arc<dyn Fn(RegexTargetScope, &mut Window, &mut App) + 'static>;
+pub type RegexTemplateIndexCallback = Arc<dyn Fn(usize, &mut Window, &mut App) + 'static>;
 
 #[derive(Clone, Default)]
 struct FilterModalCallbacks {
@@ -83,9 +79,13 @@ struct FilterModalCallbacks {
     submit_folder_input: Option<FilterModalActionCallback>,
     select_regex_scope: Option<RegexScopeSelectCallback>,
     focus_regex_input: Option<FilterModalActionCallback>,
+    focus_regex_name_input: Option<FilterModalActionCallback>,
+    submit_regex_template: Option<FilterModalActionCallback>,
     clear_regex_input: Option<FilterModalActionCallback>,
     toggle_regex_case: Option<FilterModalActionCallback>,
     apply_regex_preset: Option<StringSelectCallback>,
+    apply_regex_template_idx: Option<RegexTemplateIndexCallback>,
+    delete_regex_template_idx: Option<RegexTemplateIndexCallback>,
 }
 
 #[derive(IntoElement)]
@@ -240,11 +240,51 @@ impl FilterModalComponent {
 
     #[must_use]
     #[inline]
+    pub fn on_focus_regex_name_input(
+        mut self,
+        handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.callbacks.focus_regex_name_input = Some(Arc::new(handler));
+        self
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn on_submit_regex_template(
+        mut self,
+        handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.callbacks.submit_regex_template = Some(Arc::new(handler));
+        self
+    }
+
+    #[must_use]
+    #[inline]
     pub fn on_apply_regex_preset(
         mut self,
         handler: impl Fn(&str, &mut Window, &mut App) + 'static,
     ) -> Self {
         self.callbacks.apply_regex_preset = Some(Arc::new(handler));
+        self
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn on_apply_regex_template_idx(
+        mut self,
+        handler: impl Fn(usize, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.callbacks.apply_regex_template_idx = Some(Arc::new(handler));
+        self
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn on_delete_regex_template_idx(
+        mut self,
+        handler: impl Fn(usize, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.callbacks.delete_regex_template_idx = Some(Arc::new(handler));
         self
     }
 }
@@ -875,6 +915,36 @@ fn render_regex_input_row(
     callbacks: &FilterModalCallbacks,
 ) -> impl IntoElement + use<> {
     let theme = props.theme;
+    let labels = props.labels;
+    let input_box = render_regex_pattern_box(props, callbacks);
+    let name_box = render_regex_template_name_box(props, callbacks);
+    let can_save = !props.regex_pattern.is_empty() && props.regex_is_valid;
+
+    let mut add_btn = UiButton::new("filter-modal-add-regex-btn", labels.filter_regex_add_btn)
+        .variant(if can_save { ButtonVariant::Primary } else { ButtonVariant::Secondary })
+        .disabled(!can_save)
+        .with_theme(theme);
+    if let Some(ref cb) = callbacks.submit_regex_template {
+        let cb_clone = Arc::clone(cb);
+        add_btn = add_btn.on_click(move |ev, w, c| cb_clone(ev, w, c));
+    }
+
+    div()
+        .w_full()
+        .flex()
+        .flex_row()
+        .items_center()
+        .gap(px(theme.spacing.xs))
+        .child(input_box)
+        .child(name_box)
+        .child(add_btn)
+}
+
+fn render_regex_pattern_box(
+    props: &FilterModalProps,
+    callbacks: &FilterModalCallbacks,
+) -> impl IntoElement + use<> {
+    let theme = props.theme;
     let colors = &theme.colors;
     let labels = props.labels;
     let has_pattern = !props.regex_pattern.is_empty();
@@ -947,8 +1017,9 @@ fn render_regex_input_row(
 
     let mut input_box = div()
         .id("filter-modal-regex-input")
-        .w_full()
-        .h(px(32.0))
+        .flex_1()
+        .min_w(px(0.0))
+        .h(px(28.0))
         .px(px(theme.spacing.md))
         .rounded(px(theme.radius.md))
         .border_1()
@@ -987,57 +1058,144 @@ fn render_regex_input_row(
     input_box
 }
 
-fn render_regex_presets_row(
+fn render_regex_template_name_box(
     props: &FilterModalProps,
     callbacks: &FilterModalCallbacks,
 ) -> impl IntoElement + use<> {
     let theme = props.theme;
     let colors = &theme.colors;
     let labels = props.labels;
+    let has_name = !props.regex_name_draft.is_empty();
 
-    let presets: &[(&str, &str, &str)] = &[
-        (
-            "re-preset-no-tests",
-            labels.filter_preset_no_tests,
-            "(^|/)tests?/|(_test|[.]test|[.]spec)[.]",
-        ),
-        ("re-preset-only-src", labels.filter_preset_only_src, "(^|/)src/"),
-        ("re-preset-no-gen", labels.filter_preset_no_gen, "(generated|[.]gen[.])"),
-        ("re-preset-crates", labels.filter_preset_only_crates, "^crates/"),
-    ];
+    let name_display = if props.regex_name_focused && has_name {
+        SharedString::from(format!("{}▏", props.regex_name_draft))
+    } else if has_name {
+        SharedString::from(props.regex_name_draft.clone())
+    } else if props.regex_name_focused {
+        SharedString::from(format!("▏{}", labels.filter_regex_name_placeholder))
+    } else {
+        SharedString::from(labels.filter_regex_name_placeholder)
+    };
 
-    let mut row =
-        div().w_full().flex().flex_row().flex_wrap().items_center().gap(px(theme.spacing.xs));
+    let mut name_box = div()
+        .id("filter-modal-regex-name-input")
+        .w(px(148.0))
+        .h(px(28.0))
+        .px(px(theme.spacing.md))
+        .rounded(px(theme.radius.md))
+        .border_1()
+        .border_color(if props.regex_name_focused { colors.cyan } else { colors.border })
+        .bg(colors.bg_app)
+        .cursor_pointer()
+        .flex()
+        .flex_row()
+        .items_center()
+        .overflow_hidden()
+        .whitespace_nowrap()
+        .font_family(FONT_FAMILY_UI)
+        .text_xs()
+        .text_color(if has_name || props.regex_name_focused {
+            colors.text_primary
+        } else {
+            colors.text_muted
+        })
+        .child(name_display);
 
-    for &(id, title, pattern) in presets {
-        let is_current = props.regex_pattern == pattern;
-        let hover_bg = colors.bg_hover;
-        let mut pill = div()
-            .id(id)
-            .h(px(22.0))
-            .px(px(theme.spacing.sm))
-            .rounded(px(theme.radius.sm))
-            .border_1()
-            .border_color(if is_current { colors.cyan } else { colors.border })
-            .bg(if is_current { colors.badge_accent.bg } else { colors.bg_panel })
-            .cursor_pointer()
-            .hover(move |s| s.bg(hover_bg))
-            .flex()
-            .items_center()
-            .justify_center()
-            .font_family(FONT_FAMILY_UI)
-            .text_xs()
-            .text_color(if is_current { colors.cyan } else { colors.text_secondary })
-            .child(title);
+    if let Some(ref cb) = callbacks.focus_regex_name_input {
+        let cb_clone = Arc::clone(cb);
+        name_box = name_box.on_click(move |ev, w, c| cb_clone(ev, w, c));
+    }
 
-        if let Some(ref cb) = callbacks.apply_regex_preset {
-            let cb_clone = Arc::clone(cb);
-            pill = pill.on_click(move |_ev, w, c| cb_clone(pattern, w, c));
-        }
-        row = row.child(pill);
+    name_box
+}
+
+fn render_regex_presets_row(
+    props: &FilterModalProps,
+    callbacks: &FilterModalCallbacks,
+) -> impl IntoElement + use<> {
+    let theme = props.theme;
+    let is_english = props.labels.btn_copy_context == "Copy";
+
+    let mut row = div()
+        .id("filter-modal-regex-presets-scroll")
+        .w_full()
+        .max_h(px(64.0))
+        .overflow_y_scroll()
+        .flex()
+        .flex_row()
+        .flex_wrap()
+        .items_center()
+        .gap(px(theme.spacing.xs));
+
+    for (idx, item) in props.regex_templates.iter().enumerate() {
+        row = row.child(render_regex_template_chip(idx, item, is_english, props, theme, callbacks));
     }
 
     row
+}
+
+fn render_regex_template_chip(
+    idx: usize,
+    item: &RegexTemplateItem,
+    is_english: bool,
+    props: &FilterModalProps,
+    theme: &'static ThemeTokens,
+    callbacks: &FilterModalCallbacks,
+) -> impl IntoElement + use<> {
+    let colors = &theme.colors;
+    let is_current = props.regex_pattern == item.pattern && props.regex_scope == item.scope;
+    let hover_bg = colors.bg_hover;
+    let title = SharedString::from(item.display_name(is_english).to_owned());
+
+    let mut pill = div()
+        .id(("re-preset-chip", idx))
+        .h(px(24.0))
+        .px(px(theme.spacing.sm))
+        .rounded(px(theme.radius.sm))
+        .border_1()
+        .border_color(if is_current { colors.cyan } else { colors.border })
+        .bg(if is_current { colors.badge_accent.bg } else { colors.bg_panel })
+        .cursor_pointer()
+        .hover(move |s| s.bg(hover_bg))
+        .flex()
+        .flex_row()
+        .items_center()
+        .gap(px(theme.spacing.xxs))
+        .font_family(FONT_FAMILY_UI)
+        .text_xs()
+        .text_color(if is_current { colors.cyan } else { colors.text_secondary })
+        .child(title);
+
+    if let Some(ref cb) = callbacks.apply_regex_template_idx {
+        let cb_clone = Arc::clone(cb);
+        pill = pill.on_click(move |_ev, w, c| cb_clone(idx, w, c));
+    } else if let Some(ref cb) = callbacks.apply_regex_preset {
+        let cb_clone = Arc::clone(cb);
+        let pat_owned = item.pattern.clone();
+        pill = pill.on_click(move |_ev, w, c| cb_clone(&pat_owned, w, c));
+    }
+
+    if item.is_custom
+        && let Some(ref del_cb) = callbacks.delete_regex_template_idx
+    {
+        let cb_del = Arc::clone(del_cb);
+        let del_btn = div()
+            .id(("re-preset-del", idx))
+            .p(px(2.0))
+            .rounded(px(theme.radius.sm))
+            .cursor_pointer()
+            .flex()
+            .items_center()
+            .justify_center()
+            .on_click(move |_ev, w, c| {
+                c.stop_propagation();
+                cb_del(idx, w, c);
+            })
+            .child(render_icon(UiIcon::X, 10.0, colors.text_muted));
+        pill = pill.child(del_btn);
+    }
+
+    pill
 }
 
 fn render_modal_footer(

@@ -146,6 +146,18 @@ fn interactive_search_master_checkbox_and_modals_work_ergonomically() {
     packer.toggle_quick_filter_chip(&QuickFilterChipKind::Extension("rs".to_owned()));
     assert_eq!(packer.effective_preset().filters.include_extensions.len(), 0);
 
+    let initial_tpl_count = packer.effective_preset().filters.regex_templates.len();
+    for ch in "^src/alpha\\.rs$".chars() {
+        packer.append_regex_char(ch);
+    }
+    for ch in "Только Alpha".chars() {
+        packer.append_regex_name_char(ch);
+    }
+    assert!(packer.submit_manual_regex_template());
+    assert_eq!(packer.effective_preset().filters.regex_templates.len(), initial_tpl_count + 1);
+    assert!(packer.delete_regex_template(initial_tpl_count));
+    assert_eq!(packer.effective_preset().filters.regex_templates.len(), initial_tpl_count);
+
     assert_eq!(AppLocale::Ru.labels().app_title, "CodeContext");
     assert_eq!(AppLocale::En.labels().app_title, "CodeContext");
     assert_eq!(AppLocale::Ru.labels().btn_copy_context, "Копировать");
@@ -167,6 +179,16 @@ fn interactive_search_master_checkbox_and_modals_work_ergonomically() {
     assert!(!main_win.is_project_meta_open());
     main_win.set_active_tab(WorkspaceTab::ChangeApplier);
     assert_eq!(main_win.active_tab(), WorkspaceTab::ChangeApplier);
+    assert!(!main_win.is_logs_dock_open());
+    main_win.toggle_logs_dock();
+    assert!(main_win.is_logs_dock_open());
+    main_win.open_or_toggle_dock_tab(
+        ui::features::main_window::components::diagnostics_dock::DockToolTab::Terminal,
+    );
+    assert_eq!(
+        main_win.dock_active_tab(),
+        ui::features::main_window::components::diagnostics_dock::DockToolTab::Terminal
+    );
 }
 
 #[test]

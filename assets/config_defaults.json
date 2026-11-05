@@ -1,0 +1,140 @@
+{
+  "schema_version": 2,
+  "active_preset_name": "Default",
+  "global_hotkey": "Ctrl+K",
+  "hotkey_cycle_presets": [
+    "Ctrl+K",
+    "Ctrl+Shift+C",
+    "Ctrl+Alt+C"
+  ],
+  "auto_read_clipboard_on_apply": false,
+  "create_backups_by_default": true,
+  "show_bottom_bar": true,
+  "ui_chrome": {
+    "show_bottom_bar": true,
+    "show_terminal_button": true,
+    "show_logs_button": true,
+    "show_status_metrics": true,
+    "show_terminal_presets": true
+  },
+  "update_channel": "stable",
+  "update_repo_url": "https://github.com/NIKIRIKI7/CodeContext.git",
+  "keymap": {
+    "open_project": "Ctrl+O",
+    "search_files": "Ctrl+F",
+    "rescan_project": "Ctrl+R",
+    "copy_context": "Ctrl+C",
+    "paste_response": "Ctrl+V",
+    "apply_changes": "Ctrl+Enter",
+    "undo_changes": "Ctrl+Z",
+    "toggle_terminal": "Ctrl+Backquote"
+  },
+  "terminal_presets": [
+    {
+      "id": "git_status",
+      "name": "git status -s",
+      "command": "git status -s",
+      "category": "git",
+      "is_custom": false
+    },
+    {
+      "id": "git_diff_stat",
+      "name": "git diff --stat",
+      "command": "git diff --stat",
+      "category": "git",
+      "is_custom": false
+    },
+    {
+      "id": "git_log_5",
+      "name": "git log -n 5",
+      "command": "git log -n 5 --oneline",
+      "category": "git",
+      "is_custom": false
+    },
+    {
+      "id": "cargo_check",
+      "name": "cargo check",
+      "command": "cargo check --workspace",
+      "category": "build",
+      "is_custom": false
+    },
+    {
+      "id": "cargo_build_rel",
+      "name": "cargo build --release",
+      "command": "cargo build --release",
+      "category": "build",
+      "is_custom": false
+    },
+    {
+      "id": "cargo_clippy",
+      "name": "cargo clippy",
+      "command": "cargo clippy --workspace --all-targets -- -D warnings",
+      "category": "test",
+      "is_custom": false
+    },
+    {
+      "id": "cargo_test",
+      "name": "cargo test",
+      "command": "cargo test --workspace",
+      "category": "test",
+      "is_custom": false
+    },
+    {
+      "id": "cargo_fmt_check",
+      "name": "cargo fmt --check",
+      "command": "cargo fmt --all -- --check",
+      "category": "test",
+      "is_custom": false
+    }
+  ],
+  "limits": {
+    "max_config_file_bytes": 1048576,
+    "default_max_depth": 32,
+    "min_allowed_max_depth": 1,
+    "max_allowed_max_depth": 128,
+    "default_max_files": 50000,
+    "min_allowed_max_files": 1,
+    "max_allowed_max_files": 500000,
+    "default_large_file_threshold_bytes": 1048576,
+    "min_large_file_threshold_bytes": 1024,
+    "max_large_file_threshold_bytes": 104857600,
+    "min_allowed_chunk_bytes": 4096,
+    "chunk_presets_bytes": [
+      524288,
+      1048576,
+      2097152
+    ]
+  },
+  "preset_templates": [
+    {
+      "name": "Default",
+      "respect_gitignore": true,
+      "follow_symlinks": false,
+      "minify_code": false,
+      "normalize_line_endings": false,
+      "max_depth": 32,
+      "max_files": 50000,
+      "large_file_threshold_bytes": 1048576
+    },
+    {
+      "name": "Backend-Rust",
+      "respect_gitignore": true,
+      "follow_symlinks": false,
+      "minify_code": false,
+      "normalize_line_endings": true,
+      "max_depth": 32,
+      "max_files": 50000,
+      "large_file_threshold_bytes": 1048576
+    },
+    {
+      "name": "Frontend-Web",
+      "respect_gitignore": true,
+      "follow_symlinks": false,
+      "minify_code": false,
+      "normalize_line_endings": true,
+      "max_depth": 24,
+      "max_files": 50000,
+      "large_file_threshold_bytes": 524288
+    }
+  ]
+}

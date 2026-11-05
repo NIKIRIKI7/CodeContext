@@ -3,11 +3,12 @@ use std::collections::BTreeMap;
 use core::preset::models::preset::{
     FileFilters, FolderFilters, FolderOverrideMode, MAX_ALLOWED_MAX_DEPTH, MAX_ALLOWED_MAX_FILES,
     MAX_LARGE_FILE_THRESHOLD_BYTES, MIN_ALLOWED_CHUNK_BYTES, MIN_ALLOWED_MAX_DEPTH,
-    MIN_ALLOWED_MAX_FILES, MIN_LARGE_FILE_THRESHOLD_BYTES, Preset,
+    MIN_ALLOWED_MAX_FILES, MIN_LARGE_FILE_THRESHOLD_BYTES, Preset, default_regex_templates,
 };
 use core::preset::models::resolution::{
     ConfigWarning, DEFAULT_GLOBAL_HOTKEY, DEFAULT_UPDATE_CHANNEL, DEFAULT_UPDATE_REPO_URL,
-    GlobalConfig, MAX_RECENT_PROJECTS, normalize_recent_project_path, paths_are_equivalent,
+    GlobalConfig, MAX_RECENT_PROJECTS, default_terminal_command_presets,
+    normalize_recent_project_path, paths_are_equivalent,
 };
 use core::preset::models::template::{
     DEFAULT_DIVIDER_MARKER, DEFAULT_FILE_FOOTER, DEFAULT_FILE_HEADER_PREFIX,
@@ -68,12 +69,24 @@ pub(crate) fn global_dto_to_domain(
             }
         }
     }
+    let mut ui_chrome = dto.ui_chrome;
+    if !dto.show_bottom_bar {
+        ui_chrome.show_bottom_bar = false;
+    }
+    let terminal_presets = if dto.terminal_presets.is_empty() {
+        default_terminal_command_presets()
+    } else {
+        dto.terminal_presets
+    };
     GlobalConfig {
         active_preset_name,
         presets,
         global_hotkey,
         auto_read_clipboard_on_apply: dto.auto_read_clipboard_on_apply,
         create_backups_by_default: dto.create_backups_by_default,
+        show_bottom_bar: ui_chrome.show_bottom_bar,
+        ui_chrome,
+        terminal_presets,
         update_channel,
         update_repo_url,
         recent_projects,
@@ -89,6 +102,9 @@ pub(crate) fn global_domain_to_dto(domain: &GlobalConfig) -> GlobalConfigDto {
         global_hotkey: domain.global_hotkey.clone(),
         auto_read_clipboard_on_apply: domain.auto_read_clipboard_on_apply,
         create_backups_by_default: domain.create_backups_by_default,
+        show_bottom_bar: domain.ui_chrome.show_bottom_bar,
+        ui_chrome: domain.ui_chrome.clone(),
+        terminal_presets: domain.terminal_presets.clone(),
         update_channel: domain.update_channel.clone(),
         update_repo_url: domain.update_repo_url.clone(),
         recent_projects: domain.recent_projects.clone(),
@@ -155,6 +171,11 @@ pub(crate) fn preset_dto_to_domain(
             include_regex: dto.filters.include_regex,
             exclude_regex: dto.filters.exclude_regex,
             regex_case_sensitive: dto.filters.regex_case_sensitive,
+            regex_templates: if dto.filters.regex_templates.is_empty() {
+                default_regex_templates()
+            } else {
+                dto.filters.regex_templates
+            },
         },
         folder_filters: FolderFilters {
             exclude_names: dto.folder_filters.exclude_names,
@@ -207,6 +228,7 @@ pub(crate) fn preset_domain_to_dto(preset: &Preset) -> PresetDto {
             include_regex: preset.filters.include_regex.clone(),
             exclude_regex: preset.filters.exclude_regex.clone(),
             regex_case_sensitive: preset.filters.regex_case_sensitive,
+            regex_templates: preset.filters.regex_templates.clone(),
         },
         folder_filters: FolderFiltersDto {
             exclude_names: preset.folder_filters.exclude_names.clone(),
@@ -254,6 +276,8 @@ pub(crate) fn preset_domain_to_project_overlay_dto(preset: &Preset) -> ProjectOv
             include_regex: preset.filters.include_regex.clone(),
             exclude_regex: preset.filters.exclude_regex.clone(),
             regex_case_sensitive: Some(preset.filters.regex_case_sensitive),
+            regex_templates: (preset.filters.regex_templates != default_regex_templates())
+                .then(|| preset.filters.regex_templates.clone()),
         })
     };
     let folder_filters_ov = if preset.folder_filters == FolderFilters::default() {
@@ -473,6 +497,11 @@ fn apply_file_filters_overlay(target: &mut FileFilters, overlay: FileFiltersOver
     }
     if let Some(cs) = overlay.regex_case_sensitive {
         target.regex_case_sensitive = cs;
+    }
+    if let Some(templates) = overlay.regex_templates
+        && !templates.is_empty()
+    {
+        target.regex_templates = templates;
     }
 }
 

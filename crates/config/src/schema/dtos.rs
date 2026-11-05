@@ -2,17 +2,15 @@ use std::collections::BTreeMap;
 
 use core::preset::models::preset::{
     DEFAULT_LARGE_FILE_THRESHOLD_BYTES, DEFAULT_MAX_DEPTH, DEFAULT_MAX_FILES, FolderOverrideMode,
-    default_excluded_folder_names,
+    RegexTemplateItem,
 };
 use core::preset::models::resolution::{
-    DEFAULT_GLOBAL_HOTKEY, DEFAULT_UPDATE_CHANNEL, DEFAULT_UPDATE_REPO_URL, KeymapConfig,
+    KeymapConfig, TerminalCommandPreset, UiChromeConfig, default_terminal_command_presets,
 };
-use core::preset::models::template::{
-    DEFAULT_DIVIDER_MARKER, DEFAULT_FILE_FOOTER, DEFAULT_FILE_HEADER_PREFIX,
-    DEFAULT_FILE_HEADER_SUFFIX, DEFAULT_REPLACE_MARKER, DEFAULT_SEARCH_MARKER, PromptBlockItem,
-    SystemPromptMode, default_prompt_blocks,
-};
+use core::preset::models::template::{PromptBlockItem, SystemPromptMode};
 use serde::{Deserialize, Serialize};
+
+use super::templates::{config_defaults_bundle, filter_templates_bundle, prompt_templates_bundle};
 
 pub const CURRENT_SCHEMA_VERSION: u32 = 2;
 
@@ -25,19 +23,19 @@ const fn default_true() -> bool {
 }
 
 fn default_preset_name() -> String {
-    "Default".to_owned()
+    config_defaults_bundle().active_preset_name.clone()
 }
 
 fn default_hotkey() -> String {
-    DEFAULT_GLOBAL_HOTKEY.to_owned()
+    config_defaults_bundle().global_hotkey.clone()
 }
 
 fn default_update_channel() -> String {
-    DEFAULT_UPDATE_CHANNEL.to_owned()
+    config_defaults_bundle().update_channel.clone()
 }
 
 fn default_update_repo_url() -> String {
-    DEFAULT_UPDATE_REPO_URL.to_owned()
+    config_defaults_bundle().update_repo_url.clone()
 }
 
 const fn default_max_depth() -> usize {
@@ -53,31 +51,43 @@ const fn default_large_file_threshold() -> u64 {
 }
 
 fn default_header_prefix() -> String {
-    DEFAULT_FILE_HEADER_PREFIX.to_owned()
+    prompt_templates_bundle().output_template.file_header_prefix.clone()
 }
 
 fn default_header_suffix() -> String {
-    DEFAULT_FILE_HEADER_SUFFIX.to_owned()
+    prompt_templates_bundle().output_template.file_header_suffix.clone()
 }
 
 fn default_file_footer() -> String {
-    DEFAULT_FILE_FOOTER.to_owned()
+    prompt_templates_bundle().output_template.file_footer.clone()
 }
 
 fn default_search_marker() -> String {
-    DEFAULT_SEARCH_MARKER.to_owned()
+    prompt_templates_bundle().parser_config.search_replace_markers.search_header.clone()
 }
 
 fn default_divider_marker() -> String {
-    DEFAULT_DIVIDER_MARKER.to_owned()
+    prompt_templates_bundle().parser_config.search_replace_markers.divider.clone()
 }
 
 fn default_replace_marker() -> String {
-    DEFAULT_REPLACE_MARKER.to_owned()
+    prompt_templates_bundle().parser_config.search_replace_markers.replace_footer.clone()
 }
 
 fn default_comment_prefixes() -> Vec<String> {
-    vec!["filepath:".to_owned(), "file:".to_owned(), "path:".to_owned(), "файл:".to_owned()]
+    prompt_templates_bundle().parser_config.comment_path_prefixes.clone()
+}
+
+fn default_prompt_blocks_dto() -> Vec<PromptBlockItem> {
+    prompt_templates_bundle().prompt_blocks.clone()
+}
+
+fn default_excluded_folder_names_dto() -> Vec<String> {
+    filter_templates_bundle().default_excluded_folder_names.clone()
+}
+
+fn default_regex_templates_dto() -> Vec<RegexTemplateItem> {
+    filter_templates_bundle().regex_templates.clone()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -125,7 +135,7 @@ pub struct OutputTemplateDto {
     pub include_file_tree: bool,
     #[serde(default)]
     pub system_prompt_preset: SystemPromptMode,
-    #[serde(default = "default_prompt_blocks")]
+    #[serde(default = "default_prompt_blocks_dto")]
     pub prompt_blocks: Vec<PromptBlockItem>,
     pub preamble: String,
     #[serde(default = "default_header_prefix")]
@@ -144,7 +154,7 @@ impl Default for OutputTemplateDto {
         Self {
             include_file_tree: false,
             system_prompt_preset: SystemPromptMode::None,
-            prompt_blocks: default_prompt_blocks(),
+            prompt_blocks: default_prompt_blocks_dto(),
             preamble: String::new(),
             file_header_prefix: default_header_prefix(),
             file_header_suffix: default_header_suffix(),
@@ -172,6 +182,8 @@ pub struct FileFiltersDto {
     pub exclude_regex: Option<String>,
     #[serde(default = "default_true")]
     pub regex_case_sensitive: bool,
+    #[serde(default = "default_regex_templates_dto", skip_serializing_if = "Vec::is_empty")]
+    pub regex_templates: Vec<RegexTemplateItem>,
 }
 
 impl Default for FileFiltersDto {
@@ -184,6 +196,7 @@ impl Default for FileFiltersDto {
             include_regex: None,
             exclude_regex: None,
             regex_case_sensitive: true,
+            regex_templates: default_regex_templates_dto(),
         }
     }
 }
@@ -191,7 +204,7 @@ impl Default for FileFiltersDto {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct FolderFiltersDto {
-    #[serde(default = "default_excluded_folder_names")]
+    #[serde(default = "default_excluded_folder_names_dto")]
     pub exclude_names: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub exclude_globs: Vec<String>,
@@ -212,7 +225,7 @@ pub struct FolderFiltersDto {
 impl Default for FolderFiltersDto {
     fn default() -> Self {
         Self {
-            exclude_names: default_excluded_folder_names(),
+            exclude_names: default_excluded_folder_names_dto(),
             exclude_globs: Vec::new(),
             only_folders: Vec::new(),
             include_regex_folders: None,
@@ -241,6 +254,8 @@ pub struct FileFiltersOverlayDto {
     pub exclude_regex: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub regex_case_sensitive: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub regex_templates: Option<Vec<RegexTemplateItem>>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -328,6 +343,12 @@ pub struct GlobalConfigDto {
     pub auto_read_clipboard_on_apply: bool,
     #[serde(default = "default_true")]
     pub create_backups_by_default: bool,
+    #[serde(default = "default_true")]
+    pub show_bottom_bar: bool,
+    #[serde(default)]
+    pub ui_chrome: UiChromeConfig,
+    #[serde(default = "default_terminal_command_presets")]
+    pub terminal_presets: Vec<TerminalCommandPreset>,
     #[serde(default = "default_update_channel")]
     pub update_channel: String,
     #[serde(default = "default_update_repo_url")]
@@ -347,6 +368,9 @@ impl Default for GlobalConfigDto {
             global_hotkey: default_hotkey(),
             auto_read_clipboard_on_apply: false,
             create_backups_by_default: true,
+            show_bottom_bar: true,
+            ui_chrome: UiChromeConfig::default(),
+            terminal_presets: default_terminal_command_presets(),
             update_channel: default_update_channel(),
             update_repo_url: default_update_repo_url(),
             recent_projects: Vec::new(),

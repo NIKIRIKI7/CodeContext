@@ -374,9 +374,13 @@ impl ContextPackerView {
         let state_submit_folder = self.state.clone();
         let state_re_scope = self.state.clone();
         let state_re_focus = self.state.clone();
+        let state_re_name_focus = self.state.clone();
+        let state_re_submit_tpl = self.state.clone();
         let state_re_clear = self.state.clone();
         let state_re_case = self.state.clone();
         let state_re_preset = self.state.clone();
+        let state_re_tpl_idx = self.state.clone();
+        let state_re_del_idx = self.state.clone();
 
         FilterModalComponent::new(props)
             .on_close(move |_ev, _win, cx| {
@@ -451,6 +455,19 @@ impl ContextPackerView {
                     cx.notify();
                 });
             })
+            .on_focus_regex_name_input(move |_ev, _win, cx| {
+                state_re_name_focus.update(cx, |s, cx| {
+                    s.set_regex_name_input_focused(true);
+                    cx.notify();
+                });
+            })
+            .on_submit_regex_template(move |_ev, _win, cx| {
+                state_re_submit_tpl.update(cx, |s, cx| {
+                    if s.submit_manual_regex_template() {
+                        cx.notify();
+                    }
+                });
+            })
             .on_clear_regex_input(move |_ev, _win, cx| {
                 state_re_clear.update(cx, |s, cx| {
                     s.clear_regex_draft();
@@ -468,6 +485,19 @@ impl ContextPackerView {
                 state_re_preset.update(cx, |s, cx| {
                     s.apply_regex_preset_pattern(&pat_owned);
                     cx.notify();
+                });
+            })
+            .on_apply_regex_template_idx(move |idx, _win, cx| {
+                state_re_tpl_idx.update(cx, |s, cx| {
+                    s.apply_regex_template_by_index(idx);
+                    cx.notify();
+                });
+            })
+            .on_delete_regex_template_idx(move |idx, _win, cx| {
+                state_re_del_idx.update(cx, |s, cx| {
+                    if s.delete_regex_template(idx) {
+                        cx.notify();
+                    }
                 });
             })
     }

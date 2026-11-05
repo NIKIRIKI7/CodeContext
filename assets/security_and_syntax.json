@@ -1,0 +1,102 @@
+{
+  "secret_guard": {
+    "sensitive_dirs": [".ssh", ".aws", ".gnupg", ".kube", ".docker"],
+    "safe_code_extensions": [
+      "rs", "ts", "tsx", "js", "jsx", "py", "go", "c", "cpp", "cc", "h", "hpp",
+      "java", "kt", "swift", "cs", "rb", "php", "html", "css", "scss", "sql",
+      "md", "mdx", "lock"
+    ],
+    "exact_secret_filenames": [
+      ".env", "id_rsa", "id_ed25519", "id_ecdsa", "id_dsa", "id_xmss",
+      ".npmrc", ".pypirc", ".netrc", ".htpasswd", "credentials",
+      "credentials.json", "client_secret.json", "secrets.json",
+      "secrets.yaml", "secrets.yml", "secrets.toml", "secrets.ini", "master.key"
+    ],
+    "safe_dotenv_templates": [
+      ".env.example", ".env.sample", ".env.template", ".env.dist", ".env.schema", ".env.defaults"
+    ],
+    "secret_extensions": [
+      "pem", "key", "pfx", "p12", "kdbx", "jks", "keystore", "ovpn", "asc", "der", "csr"
+    ],
+    "data_extensions_for_secret_substring": [
+      "json", "yaml", "yml", "toml", "ini", "cfg", "conf", "env", "txt", "properties", "xml"
+    ]
+  },
+  "binary_extensions": [
+    "png", "jpg", "jpeg", "gif", "webp", "bmp", "ico", "tiff", "avif", "pdf",
+    "zip", "tar", "gz", "tgz", "bz2", "xz", "7z", "rar", "zst", "exe", "dll",
+    "so", "dylib", "lib", "a", "o", "obj", "rlib", "rmeta", "pdb", "wasm",
+    "class", "jar", "pyc", "pyd", "ttf", "otf", "woff", "woff2", "eot", "mp3",
+    "wav", "ogg", "flac", "mp4", "avi", "mov", "mkv", "webm", "sqlite",
+    "sqlite3", "db", "mdb", "lockb", "bin", "dat", "iso", "dmg", "pptx",
+    "docx", "xlsx", "doc", "ppt", "xls", "odt", "ods", "odp", "epub", "djvu",
+    "psd", "ai", "sketch", "fig", "msi", "pkg", "deb", "rpm", "cab", "apk",
+    "ipa", "img", "vmdk", "qcow2", "gguf", "safetensors", "onnx", "parquet", "arrow"
+  ],
+  "language_syntax_rules": [
+    {
+      "group_name": "CStyleSource",
+      "extensions": ["rs", "ts", "tsx", "js", "jsx", "go", "c", "cpp", "cc", "h", "hpp", "java", "kt", "swift", "cs", "php", "css", "scss", "zig", "dart", "scala", "wgsl", "glsl", "proto", "groovy"],
+      "exact_filenames": [],
+      "file_kind": "SourceCode",
+      "comment_style": "CStyle",
+      "minify_style": "SingleLineCStyle"
+    },
+    {
+      "group_name": "IndentationHashSource",
+      "extensions": ["py", "pyi", "pyw", "pyx", "pxd", "sh", "bash", "zsh", "ps1", "rb", "pl", "r", "ex", "exs", "nix", "tf", "hcl", "graphql", "gql"],
+      "exact_filenames": [],
+      "file_kind": "SourceCode",
+      "comment_style": "Hash",
+      "minify_style": "IndentationPreserving"
+    },
+    {
+      "group_name": "MarkupXmlSource",
+      "extensions": ["html", "htm", "xml", "svg", "vue", "svelte"],
+      "exact_filenames": [],
+      "file_kind": "SourceCode",
+      "comment_style": "Xml",
+      "minify_style": "SingleLineCStyle"
+    },
+    {
+      "group_name": "DashCommentSource",
+      "extensions": ["sql", "lua", "hs", "erl", "ml", "elm"],
+      "exact_filenames": [],
+      "file_kind": "SourceCode",
+      "comment_style": "SqlDash",
+      "minify_style": "IndentationPreserving"
+    },
+    {
+      "group_name": "SemicolonCommentSource",
+      "extensions": ["clj", "cljs", "edn", "lisp", "scm", "asm", "s"],
+      "exact_filenames": [],
+      "file_kind": "SourceCode",
+      "comment_style": "Semicolon",
+      "minify_style": "IndentationPreserving"
+    },
+    {
+      "group_name": "HashCommentConfiguration",
+      "extensions": ["toml", "yaml", "yml", "ini", "cfg", "conf", "properties"],
+      "exact_filenames": ["justfile", "makefile", "dockerfile", "cmakelists.txt"],
+      "file_kind": "Configuration",
+      "comment_style": "Hash",
+      "minify_style": "IndentationPreserving"
+    },
+    {
+      "group_name": "StrictConfiguration",
+      "extensions": ["json", "lock"],
+      "exact_filenames": [],
+      "file_kind": "Configuration",
+      "comment_style": "None",
+      "minify_style": "IndentationPreserving"
+    },
+    {
+      "group_name": "Documentation",
+      "extensions": ["md", "mdx", "txt", "rst", "adoc"],
+      "exact_filenames": ["readme", "license", "changelog", "notice", "contributing"],
+      "file_kind": "Documentation",
+      "comment_style": "None",
+      "minify_style": "IndentationPreserving"
+    }
+  ]
+}

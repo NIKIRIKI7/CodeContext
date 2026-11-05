@@ -245,6 +245,16 @@ fn cascade_6_schema_v2_folder_filters_and_file_filters_merge_and_normalize() {
     assert!(eff.is_excluded_transit_folder("crates"));
     assert!(eff.is_excluded_transit_folder("crates/core"));
     assert!(!eff.is_excluded_transit_folder("crates/core/src"));
+    assert!(eff.filters.regex_templates.len() >= 4);
+
+    let cfg_tpl = config::config_defaults_bundle();
+    let flt_tpl = config::filter_templates_bundle();
+    let prm_tpl = config::prompt_templates_bundle();
+    let sec_tpl = config::security_and_syntax_bundle();
+    assert_eq!(cfg_tpl.schema_version, CURRENT_SCHEMA_VERSION);
+    assert!(!flt_tpl.regex_templates.is_empty());
+    assert!(!prm_tpl.prompt_blocks.is_empty());
+    assert!(!sec_tpl.binary_extensions.is_empty());
 }
 
 // ============================================================================

@@ -52,6 +52,89 @@ pub enum FolderOverrideMode {
     Exclude,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RegexTargetScope {
+    #[default]
+    FilesExclude,
+    FilesInclude,
+    FoldersExclude,
+    FoldersInclude,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RegexTemplateItem {
+    pub id: String,
+    pub name: String,
+    #[serde(default)]
+    pub name_en: String,
+    pub pattern: String,
+    #[serde(default)]
+    pub scope: RegexTargetScope,
+    #[serde(default)]
+    pub is_custom: bool,
+}
+
+impl RegexTemplateItem {
+    #[inline]
+    pub fn display_name(&self, is_english: bool) -> &str {
+        if is_english && !self.name_en.is_empty() { &self.name_en } else { &self.name }
+    }
+}
+
+pub fn default_regex_templates() -> Vec<RegexTemplateItem> {
+    vec![
+        RegexTemplateItem {
+            id: "no_tests".to_owned(),
+            name: "Без тестов".to_owned(),
+            name_en: "No tests".to_owned(),
+            pattern: "(^|/)tests?/|(_test|[.]test|[.]spec)[.]".to_owned(),
+            scope: RegexTargetScope::FilesExclude,
+            is_custom: false,
+        },
+        RegexTemplateItem {
+            id: "only_src".to_owned(),
+            name: "Только src/".to_owned(),
+            name_en: "Only src/".to_owned(),
+            pattern: "(^|/)src/".to_owned(),
+            scope: RegexTargetScope::FilesInclude,
+            is_custom: false,
+        },
+        RegexTemplateItem {
+            id: "no_gen".to_owned(),
+            name: "Без generated".to_owned(),
+            name_en: "No generated".to_owned(),
+            pattern: "(generated|[.]gen[.])".to_owned(),
+            scope: RegexTargetScope::FilesExclude,
+            is_custom: false,
+        },
+        RegexTemplateItem {
+            id: "only_crates".to_owned(),
+            name: "Только crates/".to_owned(),
+            name_en: "Only crates/".to_owned(),
+            pattern: "^crates/".to_owned(),
+            scope: RegexTargetScope::FilesInclude,
+            is_custom: false,
+        },
+        RegexTemplateItem {
+            id: "no_benches".to_owned(),
+            name: "Без бенчмарков".to_owned(),
+            name_en: "No benches".to_owned(),
+            pattern: "(^|/)benches/|(_bench|[.]bench)[.]".to_owned(),
+            scope: RegexTargetScope::FilesExclude,
+            is_custom: false,
+        },
+        RegexTemplateItem {
+            id: "only_configs".to_owned(),
+            name: "Только конфиги".to_owned(),
+            name_en: "Only configs".to_owned(),
+            pattern: "[.](json|toml|ya?ml|ini|cfg|conf)$".to_owned(),
+            scope: RegexTargetScope::FilesInclude,
+            is_custom: false,
+        },
+    ]
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FileFilters {
     #[serde(default)]
@@ -68,6 +151,8 @@ pub struct FileFilters {
     pub exclude_regex: Option<String>,
     #[serde(default = "default_true")]
     pub regex_case_sensitive: bool,
+    #[serde(default = "default_regex_templates")]
+    pub regex_templates: Vec<RegexTemplateItem>,
 }
 
 impl Default for FileFilters {
@@ -80,6 +165,7 @@ impl Default for FileFilters {
             include_regex: None,
             exclude_regex: None,
             regex_case_sensitive: true,
+            regex_templates: default_regex_templates(),
         }
     }
 }

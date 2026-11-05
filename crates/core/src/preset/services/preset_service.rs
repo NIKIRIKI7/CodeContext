@@ -1,7 +1,9 @@
 use std::path::Path;
 
 use crate::preset::models::preset::Preset;
-use crate::preset::models::resolution::{ConfigWarning, GlobalConfig, ResolvedConfig};
+use crate::preset::models::resolution::{
+    ConfigWarning, GlobalConfig, ResolvedConfig, TerminalCommandPreset, UiChromeSetting,
+};
 use crate::preset::ports::config_repo::{ConfigPortError, ConfigRepositoryPort};
 
 #[derive(Debug, Clone)]
@@ -54,6 +56,50 @@ where
         let mut global = self.load_global_config();
         global.create_backups_by_default = !global.create_backups_by_default;
         self.repo.save_global(&global)?;
+        Ok(global)
+    }
+
+    pub fn toggle_show_bottom_bar(&self) -> Result<GlobalConfig, ConfigPortError> {
+        self.toggle_ui_chrome(UiChromeSetting::BottomBar)
+    }
+
+    pub fn toggle_ui_chrome(
+        &self,
+        setting: UiChromeSetting,
+    ) -> Result<GlobalConfig, ConfigPortError> {
+        let mut global = self.load_global_config();
+        let new_val = global.ui_chrome.toggle(setting);
+        if setting == UiChromeSetting::BottomBar {
+            global.show_bottom_bar = new_val;
+        }
+        self.repo.save_global(&global)?;
+        Ok(global)
+    }
+
+    pub fn add_terminal_preset(
+        &self,
+        preset: TerminalCommandPreset,
+    ) -> Result<GlobalConfig, ConfigPortError> {
+        let mut global = self.load_global_config();
+        if let Some(existing) = global
+            .terminal_presets
+            .iter_mut()
+            .find(|p| p.command == preset.command && p.category == preset.category)
+        {
+            existing.name = preset.name;
+        } else {
+            global.terminal_presets.push(preset);
+        }
+        self.repo.save_global(&global)?;
+        Ok(global)
+    }
+
+    pub fn remove_terminal_preset(&self, index: usize) -> Result<GlobalConfig, ConfigPortError> {
+        let mut global = self.load_global_config();
+        if index < global.terminal_presets.len() {
+            global.terminal_presets.remove(index);
+            self.repo.save_global(&global)?;
+        }
         Ok(global)
     }
 

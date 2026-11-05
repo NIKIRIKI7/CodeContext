@@ -30,6 +30,7 @@ pub enum UiIcon {
     RotateCcw,
     Info,
     Keyboard,
+    Terminal,
 }
 
 impl UiIcon {
@@ -62,6 +63,7 @@ impl UiIcon {
             Self::RotateCcw => "icons/rotate-ccw.svg",
             Self::Info => "icons/info.svg",
             Self::Keyboard => "icons/keyboard.svg",
+            Self::Terminal => "icons/terminal.svg",
         }
     }
 }
@@ -182,6 +184,9 @@ pub fn load_icon_bytes(path: &str) -> Option<Cow<'static, [u8]>> {
         "icons/keyboard.svg" => {
             r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10 8h.01"/><path d="M12 12h.01"/><path d="M14 8h.01"/><path d="M16 12h.01"/><path d="M18 8h.01"/><path d="M6 8h.01"/><path d="M7 16h10"/><path d="M8 12h.01"/><rect width="20" height="16" x="2" y="4" rx="2"/></svg>"#
         }
+        "icons/terminal.svg" => {
+            r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>"#
+        }
         _ => return None,
     };
     Some(Cow::Borrowed(svg_str.as_bytes()))
@@ -216,5 +221,6 @@ pub fn list_icon_paths() -> Vec<SharedString> {
         SharedString::from(UiIcon::RotateCcw.path()),
         SharedString::from(UiIcon::Info.path()),
         SharedString::from(UiIcon::Keyboard.path()),
+        SharedString::from(UiIcon::Terminal.path()),
     ]
 }

@@ -1,7 +1,11 @@
-use std::path::PathBuf;
-use std::time::Duration;
+use std::path::{Path, PathBuf};
+use std::process::Command;
+use std::time::{Duration, Instant};
 
 use core::packing::aggregates::project::Project;
+use core::preset::models::resolution::{
+    TerminalCommandPreset, TerminalTaskCategory, UiChromeConfig,
+};
 use core::system::ports::hotkey::GlobalHotkeyPort as _;
 use core::system::ports::ipc::{IpcCommand, SingleInstanceIpcPort as _};
 use core::system::ports::updater::{SemanticVersion, UpdateChannel, UpdateStage, UpdaterPort as _};
@@ -17,6 +21,9 @@ use crate::features::change_applier::view::ChangeApplierView;
 use crate::features::context_packer::state::ContextPackerState;
 use crate::features::context_packer::view::ContextPackerView;
 use crate::features::main_window::components::activity_rail::ActivityRailComponent;
+use crate::features::main_window::components::diagnostics_dock::{
+    DiagnosticsDockComponent, DiagnosticsDockProps, DockToolTab, TerminalCommandEntry,
+};
 use crate::features::main_window::components::project_meta_modal::{
     ProjectMetaModalComponent, ProjectMetaProps,
 };
@@ -82,10 +89,9 @@ impl MainWindowView {
 
         cx.observe(&packer_state, |this, model, cx| {
             let (meta_req, packer_root) = model.update(cx, |s, _cx| {
-                (s.take_meta_modal_request(), s.project_root().map(std::path::Path::to_path_buf))
+                (s.take_meta_modal_request(), s.project_root().map(Path::to_path_buf))
             });
-            let applier_root =
-                this.applier_state.read(cx).project_root().map(std::path::Path::to_path_buf);
+            let applier_root = this.applier_state.read(cx).project_root().map(Path::to_path_buf);
             if packer_root != applier_root {
                 this.applier_state.update(cx, |a, cx| {
                     a.set_project_root(packer_root);
@@ -311,6 +317,10 @@ impl MainWindowView {
             return;
         }
 
+        if self.try_handle_terminal_input_key(event, key, primary_mod, cx) {
+            return;
+        }
+
         if self.try_handle_packer_modals_key(event, key, primary_mod, cx) {
             return;
         }
@@ -352,6 +362,16 @@ impl MainWindowView {
             return;
         }
 
+        if key.eq_ignore_ascii_case("f12")
+            || (primary_mod && matches!(key, "`" | "~" | "ё" | "Ё" | "backquote"))
+        {
+            self.state.update(cx, |s, cx| {
+                s.toggle_logs_dock();
+                cx.notify();
+            });
+            return;
+        }
+
         if key.eq_ignore_ascii_case("f5") || (primary_mod && !mods.shift && is_key_r(key)) {
             self.packer_state.update(cx, |s, cx| {
                 let _ = s.rescan_current_project();
@@ -372,7 +392,7 @@ impl MainWindowView {
             return;
         }
 
-        if !primary_mod && !mods.alt && self.handle_tree_navigation_key(key, cx) {
+        if !primary_mod && !mods.alt && self.handle_tree_navigation_key(key, mods.shift, cx) {
             return;
         }
 
@@ -427,6 +447,126 @@ impl MainWindowView {
         }
     }
 
+    fn try_handle_terminal_input_key(
+        &mut self,
+        event: &KeyDownEvent,
+        key: &str,
+        primary_mod: bool,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        let is_term_active = {
+            let s = self.state.read(cx);
+            s.is_logs_dock_open() && s.dock_active_tab() == DockToolTab::Terminal
+        };
+        if !is_term_active {
+            return false;
+        }
+        if key.eq_ignore_ascii_case("escape") {
+            self.state.update(cx, |s, cx| {
+                s.set_logs_dock_open(false);
+                cx.notify();
+            });
+            return true;
+        }
+        if key.eq_ignore_ascii_case("enter") {
+            let cmd = self.state.update(cx, |s, cx| {
+                let d = s.bottom_dock_mut();
+                let taken = std::mem::take(&mut d.terminal_input);
+                cx.notify();
+                taken
+            });
+            self.spawn_terminal_command(&cmd, cx);
+            return true;
+        }
+        if key.eq_ignore_ascii_case("backspace") {
+            self.state.update(cx, |s, cx| {
+                if s.bottom_dock_mut().terminal_input.pop().is_some() {
+                    cx.notify();
+                }
+            });
+            return true;
+        }
+        let mods = event.keystroke.modifiers;
+        if !primary_mod && !mods.alt {
+            if key == " " || key.eq_ignore_ascii_case("space") {
+                self.state.update(cx, |s, cx| {
+                    s.bottom_dock_mut().terminal_input.push(' ');
+                    s.bottom_dock_mut().terminal_focused = true;
+                    cx.notify();
+                });
+                return true;
+            }
+            if let Some(ch) = extract_printable_regex_char(event) {
+                self.state.update(cx, |s, cx| {
+                    s.bottom_dock_mut().terminal_input.push(ch);
+                    s.bottom_dock_mut().terminal_focused = true;
+                    cx.notify();
+                });
+                return true;
+            }
+        }
+        true
+    }
+
+    fn spawn_terminal_command(&self, raw_cmd: &str, cx: &mut App) {
+        let cmd_str = raw_cmd.trim().to_owned();
+        if cmd_str.is_empty() {
+            return;
+        }
+        let work_dir = self
+            .packer_state
+            .read(cx)
+            .project_root()
+            .map(Path::to_path_buf)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| PathBuf::from("."));
+
+        self.state.update(cx, |s, cx| {
+            s.bottom_dock_mut().terminal_running = true;
+            cx.notify();
+        });
+
+        let state_after = self.state.clone();
+        let container_after = self.container.clone();
+        cx.spawn(async move |cx| {
+            let cmd_bg = cmd_str.clone();
+            let (output_str, exit_code, elapsed) = cx
+                .background_executor()
+                .spawn(async move { run_shell_command_captured(&cmd_bg, &work_dir) })
+                .await;
+
+            let duration_ms = u64::try_from(elapsed.as_millis()).unwrap_or(u64::MAX);
+            if exit_code == 0 {
+                container_after.telemetry().record_timed(
+                    "terminal",
+                    "exec_cmd",
+                    elapsed,
+                    format!("$ {cmd_str} (exit 0)"),
+                );
+            } else {
+                container_after.telemetry().record_warn(
+                    "terminal",
+                    "exec_cmd",
+                    Some(elapsed),
+                    format!("$ {cmd_str} (exit {exit_code})"),
+                );
+            }
+
+            let _ = state_after.update(cx, |s, cx| {
+                let dock = s.bottom_dock_mut();
+                dock.terminal_running = false;
+                dock.terminal_history.push(TerminalCommandEntry {
+                    command: cmd_str,
+                    output: output_str,
+                    exit_code,
+                    duration_ms,
+                });
+                cx.notify();
+            });
+        })
+        .detach();
+    }
+
     #[allow(clippy::too_many_lines)]
     fn try_handle_packer_modals_key(
         &self,
@@ -440,6 +580,7 @@ impl MainWindowView {
             is_folder_focused,
             is_ext_focused,
             is_regex_focused,
+            is_regex_name_focused,
             is_prompt_open,
             is_prompt_focused,
         ) = {
@@ -449,6 +590,7 @@ impl MainWindowView {
                 ps.is_folder_input_focused(),
                 ps.is_extension_input_focused(),
                 ps.is_regex_input_focused(),
+                ps.is_regex_name_input_focused(),
                 ps.is_prompt_modal_open(),
                 ps.is_prompt_input_focused(),
             )
@@ -555,6 +697,33 @@ impl MainWindowView {
                 return true;
             }
         }
+        if is_regex_name_focused {
+            if key.eq_ignore_ascii_case("enter") {
+                self.packer_state.update(cx, |p, cx| {
+                    let _ = p.submit_manual_regex_template();
+                    cx.notify();
+                });
+                return true;
+            }
+            if key.eq_ignore_ascii_case("backspace") {
+                self.packer_state.update(cx, |p, cx| {
+                    if p.pop_regex_name_char() {
+                        cx.notify();
+                    }
+                });
+                return true;
+            }
+            if !primary_mod
+                && !mods.alt
+                && let Some(ch) = extract_printable_regex_char(event)
+            {
+                self.packer_state.update(cx, |p, cx| {
+                    p.append_regex_name_char(ch);
+                    cx.notify();
+                });
+                return true;
+            }
+        }
         if is_regex_focused {
             if key.eq_ignore_ascii_case("enter") {
                 self.packer_state.update(cx, |p, cx| {
@@ -588,11 +757,20 @@ impl MainWindowView {
     fn try_dispatch_custom_keymap(&self, pressed: &str, cx: &mut Context<Self>) -> bool {
         if self.state.read(cx).is_settings_open()
             || self.packer_state.read(cx).ui_status().search_focused
+            || self.state.read(cx).bottom_dock().terminal_focused
         {
             return false;
         }
         let km = self.settings_state.read(cx).global_config().keymap.clone();
         let active_tab = self.state.read(cx).active_tab();
+
+        if pressed.eq_ignore_ascii_case(&km.toggle_terminal) {
+            self.state.update(cx, |s, cx| {
+                s.toggle_logs_dock();
+                cx.notify();
+            });
+            return true;
+        }
 
         if pressed.eq_ignore_ascii_case(&km.open_project) {
             let prompt_label = self.state.read(cx).locale().labels().btn_open_folder_prompt;
@@ -651,12 +829,13 @@ impl MainWindowView {
         false
     }
 
-    fn handle_tree_navigation_key(&self, key: &str, cx: &mut Context<Self>) -> bool {
+    fn handle_tree_navigation_key(&self, key: &str, shift: bool, cx: &mut Context<Self>) -> bool {
         let snap = self.state.read(cx);
         if snap.active_tab() != WorkspaceTab::ContextPacker
             || snap.is_settings_open()
             || snap.is_project_meta_open()
             || snap.is_recent_projects_open()
+            || snap.is_logs_dock_open()
         {
             return false;
         }
@@ -678,11 +857,20 @@ impl MainWindowView {
             return true;
         }
         if key == " " || key.eq_ignore_ascii_case("space") {
-            self.packer_state.update(cx, |p, cx| {
-                if p.toggle_focused_tree_node_checkbox() > 0 {
-                    cx.notify();
-                }
+            // Клавиша Space больше не сбрасывает выделение с файлов или директорий кодовой базы.
+            // Вместо деструктивного переключения чекбоксов она безопасно прокручивает
+            // страницу предпросмотра вниз (Page Down), а Shift+Space — вверх:
+            let delta: usize = 30;
+            let cur_line = self.packer_state.read(cx).take_pending_preview_scroll().unwrap_or(0);
+            let next_line =
+                if shift { cur_line.saturating_sub(delta) } else { cur_line.saturating_add(delta) };
+            self.packer_view.update(cx, |_v, cx| {
+                cx.notify();
             });
+            self.packer_state.update(cx, |_p, cx| {
+                cx.notify();
+            });
+            self.scroll_preview_to_line(next_line, cx);
             return true;
         }
         if key.eq_ignore_ascii_case("right") || key.eq_ignore_ascii_case("arrowright") {
@@ -710,6 +898,19 @@ impl MainWindowView {
             return true;
         }
         false
+    }
+
+    fn scroll_preview_to_line(&self, target_line: usize, cx: &mut Context<Self>) {
+        self.packer_state.update(cx, |p, cx| {
+            let total_lines = p.preview_buffer().line_count();
+            let clamped = target_line.min(total_lines.saturating_sub(1));
+            let _ = p.take_pending_preview_scroll();
+            if let Some(first_file) = p.tree_projection().visible_nodes().first() {
+                let _ = &first_file.path;
+            }
+            cx.notify();
+            clamped
+        });
     }
 
     fn handle_escape_key(&self, cx: &mut Context<Self>) {
@@ -781,6 +982,7 @@ impl MainWindowView {
         div()
             .w_full()
             .h(px(theme.layout.top_bar_height))
+            .flex_shrink_0()
             .px(px(theme.spacing.xl))
             .bg(theme.colors.bg_panel)
             .border_b_1()
@@ -1084,6 +1286,363 @@ impl MainWindowView {
             )
     }
 
+    fn build_activity_rail(
+        &self,
+        active_tab: WorkspaceTab,
+        settings_open: bool,
+        labels: &'static crate::locale::UiLabels,
+        theme: &'static ThemeTokens,
+    ) -> ActivityRailComponent {
+        let state_rail_tab = self.state.clone();
+        let packer_for_tab = self.packer_state.clone();
+        let applier_for_auto = self.applier_state.clone();
+        let settings_for_auto = self.settings_state.clone();
+        let state_rail_settings = self.state.clone();
+
+        ActivityRailComponent::new(active_tab, settings_open, labels, theme).with_actions(
+            move |tab, _win, cx: &mut App| {
+                let auto_clip =
+                    settings_for_auto.read(cx).global_config().auto_read_clipboard_on_apply;
+                let mut should_load_clip = false;
+                state_rail_tab.update(cx, |s, cx| {
+                    should_load_clip = s.switch_to_tab(tab, auto_clip);
+                    cx.notify();
+                });
+                if tab == WorkspaceTab::ContextPacker {
+                    packer_for_tab.update(cx, |p, cx| {
+                        if p.sync_with_disk_if_changed() {
+                            cx.notify();
+                        }
+                    });
+                } else if should_load_clip {
+                    applier_for_auto.update(cx, |a, cx| {
+                        a.load_response_from_clipboard_if_changed();
+                        cx.notify();
+                    });
+                }
+            },
+            move |_ev, _win, cx: &mut App| {
+                state_rail_settings.update(cx, |s, cx| {
+                    s.toggle_settings();
+                    cx.notify();
+                });
+            },
+        )
+    }
+
+    #[allow(clippy::too_many_lines, clippy::too_many_arguments)]
+    fn render_bottom_bar_buttons(
+        &self,
+        telemetry_summary: core::shared_kernel::execution::telemetry::TelemetrySummary,
+        chrome: &UiChromeConfig,
+        labels: &'static crate::locale::UiLabels,
+        theme: &'static ThemeTokens,
+        cx: &Context<Self>,
+    ) -> impl IntoElement + use<> {
+        let colors = &theme.colors;
+        let snap = self.state.read(cx);
+        let dock_open = snap.is_logs_dock_open();
+        let active_dock_tab = snap.dock_active_tab();
+        let has_slow =
+            telemetry_summary.slow_or_warn_count > 0 || telemetry_summary.error_count > 0;
+        let total_logs_count = telemetry_summary.total_count;
+
+        let state_term = self.state.clone();
+        let state_logs = self.state.clone();
+        let hover_bg = colors.bg_hover;
+
+        let is_term_active = dock_open && active_dock_tab == DockToolTab::Terminal;
+        let is_logs_active = dock_open && active_dock_tab == DockToolTab::Logs;
+
+        let mut row = div().flex().flex_row().items_center().gap(px(theme.spacing.xs));
+
+        if chrome.show_terminal_button {
+            let term_btn = div()
+                .id("zed-bottom-bar-terminal-btn")
+                .h(px(22.0))
+                .px(px(theme.spacing.sm))
+                .rounded(px(theme.radius.sm))
+                .bg(if is_term_active { colors.bg_elevated } else { colors.bg_status_bar })
+                .cursor_pointer()
+                .hover(move |s| s.bg(hover_bg))
+                .flex()
+                .flex_row()
+                .items_center()
+                .gap(px(theme.spacing.xxs))
+                .on_click(move |_ev, _win, cx| {
+                    cx.stop_propagation();
+                    state_term.update(cx, |s, cx| {
+                        s.open_or_toggle_dock_tab(DockToolTab::Terminal);
+                        if s.is_logs_dock_open() {
+                            s.bottom_dock_mut().terminal_focused = true;
+                        }
+                        cx.notify();
+                    });
+                })
+                .child(render_icon(
+                    UiIcon::Terminal,
+                    12.0,
+                    if is_term_active { colors.cyan } else { colors.text_secondary },
+                ))
+                .child(
+                    div()
+                        .font_family(FONT_FAMILY_UI)
+                        .text_xs()
+                        .text_color(if is_term_active {
+                            colors.text_primary
+                        } else {
+                            colors.text_secondary
+                        })
+                        .child(labels.dock_tab_terminal),
+                );
+            row = row.child(term_btn);
+        }
+
+        if chrome.show_logs_button {
+            let logs_btn = div()
+                .id("zed-bottom-bar-logs-btn")
+                .h(px(22.0))
+                .px(px(theme.spacing.sm))
+                .rounded(px(theme.radius.sm))
+                .bg(if is_logs_active { colors.bg_elevated } else { colors.bg_status_bar })
+                .cursor_pointer()
+                .hover(move |s| s.bg(hover_bg))
+                .flex()
+                .flex_row()
+                .items_center()
+                .gap(px(theme.spacing.xxs))
+                .on_click(move |_ev, _win, cx| {
+                    cx.stop_propagation();
+                    state_logs.update(cx, |s, cx| {
+                        s.open_or_toggle_dock_tab(DockToolTab::Logs);
+                        cx.notify();
+                    });
+                })
+                .child(div().w(px(6.0)).h(px(6.0)).rounded(px(99.0)).bg(if has_slow {
+                    colors.warning
+                } else {
+                    colors.success
+                }))
+                .child(
+                    div()
+                        .font_family(FONT_FAMILY_UI)
+                        .text_xs()
+                        .text_color(if is_logs_active {
+                            colors.text_primary
+                        } else {
+                            colors.text_secondary
+                        })
+                        .child(SharedString::from(format!(
+                            "{} ({total_logs_count})",
+                            labels.dock_tab_logs
+                        ))),
+                );
+            row = row.child(logs_btn);
+        }
+
+        row
+    }
+
+    fn render_bottom_status_bar(
+        &self,
+        telemetry_summary: core::shared_kernel::execution::telemetry::TelemetrySummary,
+        chrome: &UiChromeConfig,
+        labels: &'static crate::locale::UiLabels,
+        theme: &'static ThemeTokens,
+        cx: &Context<Self>,
+    ) -> impl IntoElement + use<> {
+        let colors = &theme.colors;
+        let buttons = self.render_bottom_bar_buttons(telemetry_summary, chrome, labels, theme, cx);
+
+        div()
+            .w_full()
+            .h(px(theme.layout.status_bar_height))
+            .min_h(px(theme.layout.status_bar_height))
+            .px(px(theme.spacing.lg))
+            .bg(colors.bg_status_bar)
+            .border_t_1()
+            .border_color(colors.border)
+            .flex_shrink_0()
+            .flex()
+            .flex_row()
+            .items_center()
+            .justify_start()
+            .child(buttons)
+    }
+
+    #[allow(clippy::too_many_lines)]
+    fn build_diagnostics_dock(
+        &self,
+        summary: core::shared_kernel::execution::telemetry::TelemetrySummary,
+        chrome: &UiChromeConfig,
+        labels: &'static crate::locale::UiLabels,
+        theme: &'static ThemeTokens,
+        cx: &Context<Self>,
+    ) -> DiagnosticsDockComponent {
+        let dock_snap = self.state.read(cx).bottom_dock().clone();
+        let terminal_presets =
+            self.settings_state.read(cx).global_config().terminal_presets.clone();
+        let filter_mode = dock_snap.log_filter_mode;
+        let active_tab = dock_snap.active_tab;
+        let entries = self.container.telemetry().entries_filtered(filter_mode);
+        let show_inline_categories =
+            !chrome.show_bottom_bar || !chrome.show_terminal_button || !chrome.show_logs_button;
+
+        let props = DiagnosticsDockProps {
+            active_tab,
+            entries,
+            summary,
+            filter_mode,
+            task_category: dock_snap.task_category,
+            terminal_presets,
+            terminal_input: dock_snap.terminal_input,
+            terminal_focused: dock_snap.terminal_focused,
+            terminal_running: dock_snap.terminal_running,
+            is_tall_dock: dock_snap.is_tall,
+            show_terminal_presets: chrome.show_terminal_presets,
+            show_inline_categories,
+            terminal_history: dock_snap.terminal_history,
+            labels,
+            theme,
+        };
+
+        let state_tab = self.state.clone();
+        let state_cat = self.state.clone();
+        let state_save_preset = self.state.clone();
+        let settings_save_preset = self.settings_state.clone();
+        let settings_del_preset = self.settings_state.clone();
+        let state_height = self.state.clone();
+        let state_focus_term = self.state.clone();
+        let view_submit_term = cx.entity().clone();
+        let view_preset_term = cx.entity().clone();
+        let state_filter = self.state.clone();
+        let container_copy = self.container.clone();
+        let state_copy = self.state.clone();
+        let container_clear = self.container.clone();
+        let state_clear = self.state.clone();
+        let state_close = self.state.clone();
+
+        DiagnosticsDockComponent::new(props)
+            .on_select_tab(move |tab, _win, cx| {
+                state_tab.update(cx, |s, cx| {
+                    s.set_dock_tab(tab);
+                    if tab == DockToolTab::Terminal {
+                        s.bottom_dock_mut().terminal_focused = true;
+                    }
+                    cx.notify();
+                });
+            })
+            .on_select_task_category(move |cat_opt, _win, cx| {
+                state_cat.update(cx, |s, cx| {
+                    s.bottom_dock_mut().task_category = cat_opt;
+                    cx.notify();
+                });
+            })
+            .on_preset_management(
+                move |_ev, _win, cx| {
+                    let (raw_cmd, cat) = {
+                        let d = state_save_preset.read(cx).bottom_dock();
+                        (
+                            d.terminal_input.trim().to_owned(),
+                            d.task_category.unwrap_or(TerminalTaskCategory::Custom),
+                        )
+                    };
+                    if !raw_cmd.is_empty() {
+                        let preset_count =
+                            settings_save_preset.read(cx).global_config().terminal_presets.len();
+                        let preset = TerminalCommandPreset {
+                            id: format!("custom_cmd_{}", preset_count + 1),
+                            name: raw_cmd.clone(),
+                            command: raw_cmd,
+                            category: cat,
+                            is_custom: true,
+                        };
+                        settings_save_preset.update(cx, |ss, cx| {
+                            let _ = ss.add_terminal_preset(preset);
+                            cx.notify();
+                        });
+                    }
+                },
+                move |idx, _win, cx| {
+                    settings_del_preset.update(cx, |ss, cx| {
+                        let _ = ss.remove_terminal_preset(idx);
+                        cx.notify();
+                    });
+                },
+                move |_ev, _win, cx| {
+                    state_height.update(cx, |s, cx| {
+                        s.toggle_dock_tall_height();
+                        cx.notify();
+                    });
+                },
+            )
+            .on_terminal_actions(
+                move |_ev, _win, cx| {
+                    state_focus_term.update(cx, |s, cx| {
+                        s.bottom_dock_mut().terminal_focused = true;
+                        cx.notify();
+                    });
+                },
+                move |_ev, _win, cx| {
+                    view_submit_term.update(cx, |this, cx| {
+                        let cmd = this.state.update(cx, |s, cx| {
+                            let taken = std::mem::take(&mut s.bottom_dock_mut().terminal_input);
+                            cx.notify();
+                            taken
+                        });
+                        this.spawn_terminal_command(&cmd, cx);
+                    });
+                },
+                move |preset_cmd, _win, cx| {
+                    view_preset_term.update(cx, |this, cx| {
+                        this.spawn_terminal_command(preset_cmd, cx);
+                    });
+                },
+            )
+            .with_actions(
+                move |mode, _win, cx| {
+                    state_filter.update(cx, |s, cx| {
+                        s.set_log_filter_mode(mode);
+                        cx.notify();
+                    });
+                },
+                move |_ev, _win, cx| {
+                    let text = if active_tab == DockToolTab::Logs {
+                        container_copy.telemetry().export_plain_text(filter_mode)
+                    } else {
+                        state_copy
+                            .read(cx)
+                            .bottom_dock()
+                            .terminal_history
+                            .iter()
+                            .map(|h| format!("$ {}\n{}", h.command, h.output))
+                            .collect::<Vec<_>>()
+                            .join("\n\n")
+                    };
+                    if !text.is_empty() {
+                        cx.write_to_clipboard(ClipboardItem::new_string(text));
+                    }
+                },
+                move |_ev, _win, cx| {
+                    if active_tab == DockToolTab::Logs {
+                        container_clear.telemetry().clear();
+                    }
+                    state_clear.update(cx, |s, cx| {
+                        if active_tab == DockToolTab::Terminal {
+                            s.bottom_dock_mut().terminal_history.clear();
+                        }
+                        cx.notify();
+                    });
+                },
+                move |_ev, _win, cx| {
+                    state_close.update(cx, |s, cx| {
+                        s.set_logs_dock_open(false);
+                        cx.notify();
+                    });
+                },
+            )
+    }
+
     fn build_update_now_button(
         &self,
         labels: &'static crate::locale::UiLabels,
@@ -1206,6 +1765,10 @@ fn map_cyrillic_to_qwerty_token(token: &str) -> &str {
 
 #[inline]
 fn extract_printable_regex_char(event: &KeyDownEvent) -> Option<char> {
+    let key = event.keystroke.key.as_str();
+    if key == " " || key.eq_ignore_ascii_case("space") {
+        return Some(' ');
+    }
     if let Some(ref kc) = event.keystroke.key_char {
         let mut chars = kc.chars();
         if let Some(ch) = chars.next()
@@ -1215,7 +1778,6 @@ fn extract_printable_regex_char(event: &KeyDownEvent) -> Option<char> {
             return Some(ch);
         }
     }
-    let key = event.keystroke.key.as_str();
     let mut chars = key.chars();
     let ch = chars.next()?;
     if chars.next().is_none() && !ch.is_control() { Some(ch) } else { None }
@@ -1223,6 +1785,10 @@ fn extract_printable_regex_char(event: &KeyDownEvent) -> Option<char> {
 
 #[inline]
 fn extract_printable_search_char(event: &KeyDownEvent) -> Option<char> {
+    let key = event.keystroke.key.as_str();
+    if key == " " || key.eq_ignore_ascii_case("space") {
+        return Some(' ');
+    }
     if let Some(ref kc) = event.keystroke.key_char {
         let mut chars = kc.chars();
         if let Some(ch) = chars.next()
@@ -1232,10 +1798,10 @@ fn extract_printable_search_char(event: &KeyDownEvent) -> Option<char> {
             return Some(ch);
         }
     }
-    let key = event.keystroke.key.as_str();
     let mut chars = key.chars();
     let ch = chars.next()?;
-    if chars.next().is_none() && (ch.is_alphanumeric() || matches!(ch, '.' | '_' | '-' | '/')) {
+    if chars.next().is_none() && (ch.is_alphanumeric() || matches!(ch, '.' | '_' | '-' | '/' | ' '))
+    {
         Some(ch)
     } else {
         None
@@ -1282,7 +1848,52 @@ fn is_key_z(key: &str) -> bool {
     key.eq_ignore_ascii_case("z") || key == "я" || key == "Я"
 }
 
+fn run_shell_command_captured(cmd_str: &str, work_dir: &Path) -> (String, i32, Duration) {
+    let t0 = Instant::now();
+    let mut cmd = if cfg!(windows) {
+        let mut c = Command::new("powershell.exe");
+        c.args(["-NoProfile", "-NonInteractive", "-Command", cmd_str]);
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt as _;
+            const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+            c.creation_flags(CREATE_NO_WINDOW);
+        }
+        c
+    } else {
+        let mut c = Command::new("sh");
+        c.args(["-c", cmd_str]);
+        c
+    };
+    cmd.current_dir(work_dir);
+
+    match cmd.output() {
+        Ok(out) => {
+            let code = out.status.code().unwrap_or(-1);
+            let stdout = String::from_utf8_lossy(&out.stdout);
+            let stderr = String::from_utf8_lossy(&out.stderr);
+            let mut combined = String::with_capacity(stdout.len() + stderr.len());
+            if !stdout.trim().is_empty() {
+                combined.push_str(stdout.trim_end());
+            }
+            if !stderr.trim().is_empty() {
+                if !combined.is_empty() {
+                    combined.push('\n');
+                }
+                combined.push_str(stderr.trim_end());
+            }
+            if combined.len() > 16_384 {
+                combined.truncate(16_384);
+                combined.push_str("\n… [truncated]");
+            }
+            (combined, code, t0.elapsed())
+        }
+        Err(err) => (err.to_string(), -1, t0.elapsed()),
+    }
+}
+
 impl Render for MainWindowView {
+    #[allow(clippy::too_many_lines)]
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         if !self.focus_handle.is_focused(window) {
             window.focus(&self.focus_handle);
@@ -1291,6 +1902,7 @@ impl Render for MainWindowView {
         let snap = self.state.read(cx);
         let active_tab = snap.active_tab();
         let settings_open = snap.is_settings_open();
+        let logs_dock_open = snap.is_logs_dock_open();
         let meta_open = snap.is_project_meta_open();
         let recent_open = snap.is_recent_projects_open();
         let update_modal_open = snap.is_update_modal_open();
@@ -1300,48 +1912,15 @@ impl Render for MainWindowView {
         let theme = theme_variant.tokens();
         let labels = locale.labels();
 
+        let chrome = self.settings_state.read(cx).global_config().ui_chrome.clone();
+        let telemetry_summary = self.container.telemetry().summary();
+
         let packer_snap = self.packer_state.read(cx);
         let project_display = packer_snap
             .project_root()
             .map_or_else(|| labels.no_project_selected.to_owned(), |p| p.display().to_string());
 
-        let state_rail_tab = self.state.clone();
-        let packer_for_tab = self.packer_state.clone();
-        let applier_for_auto = self.applier_state.clone();
-        let settings_for_auto = self.settings_state.clone();
-        let state_rail_settings = self.state.clone();
-
-        let rail = ActivityRailComponent::new(active_tab, settings_open, labels, theme)
-            .with_actions(
-                move |tab, _win, cx: &mut App| {
-                    let auto_clip =
-                        settings_for_auto.read(cx).global_config().auto_read_clipboard_on_apply;
-                    let mut should_load_clip = false;
-                    state_rail_tab.update(cx, |s, cx| {
-                        should_load_clip = s.switch_to_tab(tab, auto_clip);
-                        cx.notify();
-                    });
-                    if tab == WorkspaceTab::ContextPacker {
-                        packer_for_tab.update(cx, |p, cx| {
-                            if p.sync_with_disk_if_changed() {
-                                cx.notify();
-                            }
-                        });
-                    } else if should_load_clip {
-                        applier_for_auto.update(cx, |a, cx| {
-                            a.load_response_from_clipboard_if_changed();
-                            cx.notify();
-                        });
-                    }
-                },
-                move |_ev, _win, cx: &mut App| {
-                    state_rail_settings.update(cx, |s, cx| {
-                        s.toggle_settings();
-                        cx.notify();
-                    });
-                },
-            );
-
+        let rail = self.build_activity_rail(active_tab, settings_open, labels, theme);
         let top_bar = self.render_top_bar(active_tab, locale, theme_variant, &project_display);
 
         let active_content = match active_tab {
@@ -1349,7 +1928,38 @@ impl Render for MainWindowView {
             WorkspaceTab::ChangeApplier => self.applier_view.clone().into_any_element(),
         };
 
+        let mut workspace_col = div()
+            .flex_1()
+            .min_w(px(0.0))
+            .h_full()
+            .flex()
+            .flex_col()
+            .overflow_hidden()
+            .child(top_bar)
+            .child(div().flex_1().min_h(px(0.0)).overflow_hidden().child(active_content));
+
+        if logs_dock_open {
+            workspace_col = workspace_col.child(self.build_diagnostics_dock(
+                telemetry_summary,
+                &chrome,
+                labels,
+                theme,
+                cx,
+            ));
+        }
+
+        if chrome.show_bottom_bar {
+            workspace_col = workspace_col.child(self.render_bottom_status_bar(
+                telemetry_summary,
+                &chrome,
+                labels,
+                theme,
+                cx,
+            ));
+        }
+
         let packer_unfocus_search = self.packer_state.clone();
+        let state_unfocus_term = self.state.clone();
         let mut root = div()
             .id("main-window-root")
             .track_focus(&self.focus_handle)
@@ -1357,6 +1967,12 @@ impl Render for MainWindowView {
                 packer_unfocus_search.update(cx, |p, cx| {
                     if p.ui_status().search_focused {
                         p.set_search_focused(false);
+                        cx.notify();
+                    }
+                });
+                state_unfocus_term.update(cx, |s, cx| {
+                    if s.bottom_dock().terminal_focused {
+                        s.bottom_dock_mut().terminal_focused = false;
                         cx.notify();
                     }
                 });
@@ -1370,16 +1986,7 @@ impl Render for MainWindowView {
             .font_family(FONT_FAMILY_UI)
             .overflow_hidden()
             .child(rail)
-            .child(
-                div()
-                    .flex_1()
-                    .h_full()
-                    .flex()
-                    .flex_col()
-                    .overflow_hidden()
-                    .child(top_bar)
-                    .child(div().flex_1().overflow_hidden().child(active_content)),
-            );
+            .child(workspace_col);
 
         if recent_open {
             root = root.child(self.build_recent_projects_popover(locale, theme, cx));

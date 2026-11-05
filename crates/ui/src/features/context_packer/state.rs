@@ -22,7 +22,7 @@ use core::preset::models::template::{
 
 use crate::features::context_packer::components::filter_modal::{
     ExtensionFilterMode, ExtensionStatItem, FilterModalProps, FolderRuleItem, RegexTargetScope,
-    SystemPromptModalProps,
+    RegexTemplateItem, SystemPromptModalProps,
 };
 use crate::features::context_packer::components::rules_editor::RuleToggleKind;
 use crate::locale::{AppLocale, UiLabels};
@@ -46,6 +46,7 @@ enum ModalInputFocus {
     None,
     FolderName,
     RegexPattern,
+    RegexTemplateName,
     CustomExtension,
     PromptDraft,
 }
@@ -69,6 +70,7 @@ pub struct ContextPackerState {
     folder_input_draft: String,
     prompt_input_draft: String,
     regex_draft: String,
+    regex_name_draft: String,
     regex_is_valid: bool,
     modal_input_focus: ModalInputFocus,
     prompt_modal_open: bool,
@@ -106,6 +108,7 @@ impl ContextPackerState {
             folder_input_draft: String::new(),
             prompt_input_draft: String::new(),
             regex_draft: String::new(),
+            regex_name_draft: String::new(),
             regex_is_valid: true,
             modal_input_focus: ModalInputFocus::None,
             prompt_modal_open: false,
@@ -127,6 +130,7 @@ impl ContextPackerState {
     }
 
     pub fn open_project(&mut self, project_root: PathBuf) -> Result<(), PackServiceError> {
+        let t_cfg = std::time::Instant::now();
         self.cancel_token.cancel();
         self.cancel_token = CancelToken::new();
         self.scan_generation = self.scan_generation.wrapping_add(1);
@@ -137,6 +141,7 @@ impl ContextPackerState {
         self.folder_input_draft.clear();
         self.extension_input_draft.clear();
         self.prompt_input_draft.clear();
+        self.regex_name_draft.clear();
         self.modal_input_focus = ModalInputFocus::None;
         self.prompt_modal_open = false;
         self.pending_tree_scroll.set(Some(0));
@@ -145,6 +150,16 @@ impl ContextPackerState {
         self.collapsed_dirs.clear();
         self.resolved_config =
             self.container.preset_service().resolve_project_config(Some(&project_root));
+        self.container.telemetry().record_timed(
+            "config",
+            "resolve_cascade",
+            t_cfg.elapsed(),
+            format!(
+                "origin={:?} · warnings={}",
+                self.resolved_config.origin,
+                self.resolved_config.warnings.len()
+            ),
+        );
         self.sync_filter_controls_from_preset();
         self.project_root = Some(project_root);
         self.rescan_current_project()
@@ -171,8 +186,20 @@ impl ContextPackerState {
 
         let preset = self.resolved_config.effective_preset.clone();
         let from_untrusted = self.resolved_config.from_untrusted_project_config();
+        let t_scan = std::time::Instant::now();
         let mut indexed_project =
             self.container.pack_service().index_project(root, preset, from_untrusted, &token)?;
+        self.container.telemetry().record_timed(
+            "scan",
+            "index_project",
+            t_scan.elapsed(),
+            format!(
+                "{} files · {} anomalies · rules={}",
+                indexed_project.entries().len(),
+                indexed_project.anomalies().len(),
+                self.active_custom_filter_rules_count()
+            ),
+        );
 
         if self.discovered_ext_counts.is_empty()
             || (self.resolved_config.effective_preset.filters.include_extensions.is_empty()
@@ -198,13 +225,38 @@ impl ContextPackerState {
             let _ = indexed_project.set_file_selected(rel_path, false);
         }
 
+        let t_hyd = std::time::Instant::now();
         self.populate_hydrated_cache_from_project(&indexed_project, &token);
+        let hydrated_bytes: usize = self.hydrated_cache.iter().map(|(_, c)| c.len()).sum();
+        self.container.telemetry().record_timed(
+            "hydrate",
+            "read_disk_files",
+            t_hyd.elapsed(),
+            format!(
+                "{} text files · {}",
+                self.hydrated_cache.len(),
+                crate::theme::format_bytes_human(hydrated_bytes as u64)
+            ),
+        );
+
+        let t_pack = std::time::Instant::now();
         let packed = self.container.pack_service().pack_from_hydrated_cache(
             &indexed_project,
             &indexed_project.preset().clone(),
             &self.hydrated_cache,
             0,
             &[],
+        );
+        self.container.telemetry().record_timed(
+            "pack",
+            "assemble_buffer",
+            t_pack.elapsed(),
+            format!(
+                "{} files · {} · {} vol",
+                packed.packed_files_count,
+                crate::theme::format_bytes_human(packed.total_bytes as u64),
+                packed.chunks.len()
+            ),
         );
         self.project = Some(indexed_project);
         self.apply_pack_result(packed);
@@ -630,6 +682,87 @@ impl ContextPackerState {
     }
 
     #[inline]
+    pub const fn set_regex_name_input_focused(&mut self, focused: bool) {
+        self.modal_input_focus =
+            if focused { ModalInputFocus::RegexTemplateName } else { ModalInputFocus::None };
+    }
+
+    #[inline]
+    pub const fn is_regex_name_input_focused(&self) -> bool {
+        matches!(self.modal_input_focus, ModalInputFocus::RegexTemplateName)
+    }
+
+    pub fn append_regex_name_char(&mut self, ch: char) {
+        self.modal_input_focus = ModalInputFocus::RegexTemplateName;
+        self.regex_name_draft.push(ch);
+    }
+
+    pub fn pop_regex_name_char(&mut self) -> bool {
+        self.regex_name_draft.pop().is_some()
+    }
+
+    pub fn submit_manual_regex_template(&mut self) -> bool {
+        let pattern = self.regex_draft.trim().to_owned();
+        if pattern.is_empty() || !self.regex_is_valid {
+            return false;
+        }
+        let raw_name = std::mem::take(&mut self.regex_name_draft);
+        let name_trimmed = raw_name.trim();
+        let display_name =
+            if name_trimmed.is_empty() { pattern.clone() } else { name_trimmed.to_owned() };
+
+        let templates = &mut self.resolved_config.effective_preset.filters.regex_templates;
+        if let Some(existing) =
+            templates.iter_mut().find(|t| t.pattern == pattern && t.scope == self.regex_scope)
+        {
+            existing.name.clone_from(&display_name);
+            existing.name_en = display_name;
+        } else {
+            let next_id = format!("custom_re_{}", templates.len() + 1);
+            templates.push(RegexTemplateItem {
+                id: next_id,
+                name: display_name.clone(),
+                name_en: display_name,
+                pattern,
+                scope: self.regex_scope,
+                is_custom: true,
+            });
+        }
+        self.modal_input_focus = ModalInputFocus::None;
+        let _ = self.save_current_preset_globally();
+        true
+    }
+
+    pub fn apply_regex_template_by_index(&mut self, index: usize) {
+        let Some(tpl) =
+            self.resolved_config.effective_preset.filters.regex_templates.get(index).cloned()
+        else {
+            return;
+        };
+        if self.regex_draft == tpl.pattern && self.regex_scope == tpl.scope {
+            self.regex_draft.clear();
+        } else {
+            self.regex_scope = tpl.scope;
+            self.regex_draft = tpl.pattern;
+        }
+        self.apply_regex_draft_to_preset();
+    }
+
+    pub fn delete_regex_template(&mut self, index: usize) -> bool {
+        let templates = &mut self.resolved_config.effective_preset.filters.regex_templates;
+        if index >= templates.len() {
+            return false;
+        }
+        let removed = templates.remove(index);
+        if self.regex_draft == removed.pattern && self.regex_scope == removed.scope {
+            self.regex_draft.clear();
+            self.apply_regex_draft_to_preset();
+        }
+        let _ = self.save_current_preset_globally();
+        true
+    }
+
+    #[inline]
     pub const fn set_folder_input_focused(&mut self, focused: bool) {
         self.modal_input_focus =
             if focused { ModalInputFocus::FolderName } else { ModalInputFocus::None };
@@ -829,12 +962,18 @@ impl ContextPackerState {
     }
 
     pub fn reset_all_filters(&mut self) {
+        let saved_templates =
+            std::mem::take(&mut self.resolved_config.effective_preset.filters.regex_templates);
         let preset = &mut self.resolved_config.effective_preset;
         preset.filters = core::preset::models::preset::FileFilters::default();
+        if !saved_templates.is_empty() {
+            preset.filters.regex_templates = saved_templates;
+        }
         preset.folder_filters = core::preset::models::preset::FolderFilters::default();
         self.ext_filter_mode = ExtensionFilterMode::All;
         self.regex_scope = RegexTargetScope::FilesExclude;
         self.regex_draft.clear();
+        self.regex_name_draft.clear();
         self.regex_is_valid = true;
         let _ = self.rescan_current_project();
     }
@@ -955,8 +1094,11 @@ impl ContextPackerState {
             regex_scope: self.regex_scope,
             regex_pattern: self.regex_draft.clone(),
             regex_focused: self.is_regex_input_focused(),
+            regex_name_draft: self.regex_name_draft.clone(),
+            regex_name_focused: self.is_regex_name_input_focused(),
             regex_case_sensitive,
             regex_is_valid: self.regex_is_valid,
+            regex_templates: preset.filters.regex_templates.clone(),
             active_rules_count: self.active_custom_filter_rules_count(),
             selected_files_count: self.tree_projection.selected_files(),
             total_files_count: self.tree_projection.total_indexed_files(),
@@ -1399,8 +1541,20 @@ impl ContextPackerState {
             .as_ref()
             .and_then(|res| res.chunks.get(self.active_chunk_index))
             .map_or_else(|| self.preview_buffer.as_str(), |c| c.content.as_str());
+        let t_clip = std::time::Instant::now();
         let bytes_len = text_to_copy.len();
         self.container.clipboard().copy_text(text_to_copy)?;
+        self.container.telemetry().record_timed(
+            "clipboard",
+            "copy_context",
+            t_clip.elapsed(),
+            format!(
+                "vol {}/{} · {}",
+                self.active_chunk_index + 1,
+                self.pack_result.as_ref().map_or(1, |r| r.chunks.len()),
+                crate::theme::format_bytes_human(bytes_len as u64)
+            ),
+        );
         self.ui_status.copied_recently = true;
         Ok(bytes_len)
     }
@@ -1442,6 +1596,7 @@ impl ContextPackerState {
         let Some(ref project) = self.project else {
             return;
         };
+        let t_repack = std::time::Instant::now();
         let preset = &self.resolved_config.effective_preset;
         let result = self.container.pack_service().pack_from_hydrated_cache(
             project,
@@ -1449,6 +1604,16 @@ impl ContextPackerState {
             &self.hydrated_cache,
             0,
             &[],
+        );
+        self.container.telemetry().record_timed(
+            "pack",
+            "repack_memory",
+            t_repack.elapsed(),
+            format!(
+                "{} selected · {}",
+                result.packed_files_count,
+                crate::theme::format_bytes_human(result.total_bytes as u64)
+            ),
         );
         self.apply_pack_result(result);
     }
@@ -1469,11 +1634,23 @@ impl ContextPackerState {
 
     fn rebuild_tree_projection(&mut self) {
         if let Some(ref proj) = self.project {
+            let t_tree = std::time::Instant::now();
             self.tree_projection = FlatTreeProjection::build_with_mode(
                 proj,
                 &self.collapsed_dirs,
                 &self.search_query,
                 self.sort_mode,
+            );
+            self.container.telemetry().record_timed(
+                "tree",
+                "build_projection",
+                t_tree.elapsed(),
+                format!(
+                    "{} visible nodes · {}/{} selected",
+                    self.tree_projection.visible_nodes().len(),
+                    self.tree_projection.selected_files(),
+                    self.tree_projection.total_indexed_files()
+                ),
             );
         } else {
             self.tree_projection = FlatTreeProjection::default();

@@ -7,6 +7,174 @@ pub const DEFAULT_UPDATE_CHANNEL: &str = "stable";
 pub const DEFAULT_UPDATE_REPO_URL: &str = "https://github.com/NIKIRIKI7/CodeContext.git";
 pub const MAX_RECENT_PROJECTS: usize = 8;
 
+fn default_toggle_terminal_shortcut() -> String {
+    "Ctrl+Backquote".to_owned()
+}
+
+const fn default_true() -> bool {
+    true
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TerminalTaskCategory {
+    #[default]
+    Git,
+    Build,
+    Test,
+    Custom,
+}
+
+impl TerminalTaskCategory {
+    pub const ALL: [Self; 4] = [Self::Git, Self::Build, Self::Test, Self::Custom];
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TerminalCommandPreset {
+    pub id: String,
+    pub name: String,
+    pub command: String,
+    #[serde(default)]
+    pub category: TerminalTaskCategory,
+    #[serde(default)]
+    pub is_custom: bool,
+}
+
+pub fn default_terminal_command_presets() -> Vec<TerminalCommandPreset> {
+    vec![
+        TerminalCommandPreset {
+            id: "git_status".to_owned(),
+            name: "git status -s".to_owned(),
+            command: "git status -s".to_owned(),
+            category: TerminalTaskCategory::Git,
+            is_custom: false,
+        },
+        TerminalCommandPreset {
+            id: "git_diff_stat".to_owned(),
+            name: "git diff --stat".to_owned(),
+            command: "git diff --stat".to_owned(),
+            category: TerminalTaskCategory::Git,
+            is_custom: false,
+        },
+        TerminalCommandPreset {
+            id: "git_log_5".to_owned(),
+            name: "git log -n 5".to_owned(),
+            command: "git log -n 5 --oneline".to_owned(),
+            category: TerminalTaskCategory::Git,
+            is_custom: false,
+        },
+        TerminalCommandPreset {
+            id: "cargo_check".to_owned(),
+            name: "cargo check".to_owned(),
+            command: "cargo check --workspace".to_owned(),
+            category: TerminalTaskCategory::Build,
+            is_custom: false,
+        },
+        TerminalCommandPreset {
+            id: "cargo_build_rel".to_owned(),
+            name: "cargo build --release".to_owned(),
+            command: "cargo build --release".to_owned(),
+            category: TerminalTaskCategory::Build,
+            is_custom: false,
+        },
+        TerminalCommandPreset {
+            id: "cargo_clippy".to_owned(),
+            name: "cargo clippy".to_owned(),
+            command: "cargo clippy --workspace --all-targets -- -D warnings".to_owned(),
+            category: TerminalTaskCategory::Test,
+            is_custom: false,
+        },
+        TerminalCommandPreset {
+            id: "cargo_test".to_owned(),
+            name: "cargo test".to_owned(),
+            command: "cargo test --workspace".to_owned(),
+            category: TerminalTaskCategory::Test,
+            is_custom: false,
+        },
+        TerminalCommandPreset {
+            id: "cargo_fmt_check".to_owned(),
+            name: "cargo fmt --check".to_owned(),
+            command: "cargo fmt --all -- --check".to_owned(),
+            category: TerminalTaskCategory::Test,
+            is_custom: false,
+        },
+    ]
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum UiChromeSetting {
+    BottomBar,
+    TerminalButton,
+    LogsButton,
+    StatusMetrics,
+    TerminalPresets,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UiChromeConfig {
+    #[serde(default = "default_true")]
+    pub show_bottom_bar: bool,
+    #[serde(default = "default_true")]
+    pub show_terminal_button: bool,
+    #[serde(default = "default_true")]
+    pub show_logs_button: bool,
+    #[serde(default = "default_true")]
+    pub show_status_metrics: bool,
+    #[serde(default = "default_true")]
+    pub show_terminal_presets: bool,
+}
+
+impl Default for UiChromeConfig {
+    fn default() -> Self {
+        Self {
+            show_bottom_bar: true,
+            show_terminal_button: true,
+            show_logs_button: true,
+            show_status_metrics: true,
+            show_terminal_presets: true,
+        }
+    }
+}
+
+impl UiChromeConfig {
+    #[inline]
+    pub const fn is_enabled(&self, setting: UiChromeSetting) -> bool {
+        match setting {
+            UiChromeSetting::BottomBar => self.show_bottom_bar,
+            UiChromeSetting::TerminalButton => self.show_terminal_button,
+            UiChromeSetting::LogsButton => self.show_logs_button,
+            UiChromeSetting::StatusMetrics => self.show_status_metrics,
+            UiChromeSetting::TerminalPresets => self.show_terminal_presets,
+        }
+    }
+
+    #[inline]
+    pub const fn toggle(&mut self, setting: UiChromeSetting) -> bool {
+        match setting {
+            UiChromeSetting::BottomBar => {
+                self.show_bottom_bar = !self.show_bottom_bar;
+                self.show_bottom_bar
+            }
+            UiChromeSetting::TerminalButton => {
+                self.show_terminal_button = !self.show_terminal_button;
+                self.show_terminal_button
+            }
+            UiChromeSetting::LogsButton => {
+                self.show_logs_button = !self.show_logs_button;
+                self.show_logs_button
+            }
+            UiChromeSetting::StatusMetrics => {
+                self.show_status_metrics = !self.show_status_metrics;
+                self.show_status_metrics
+            }
+            UiChromeSetting::TerminalPresets => {
+                self.show_terminal_presets = !self.show_terminal_presets;
+                self.show_terminal_presets
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum KeymapAction {
     GlobalHotkey,
@@ -17,10 +185,11 @@ pub enum KeymapAction {
     PasteResponse,
     ApplyChanges,
     UndoChanges,
+    ToggleTerminal,
 }
 
 impl KeymapAction {
-    pub const ALL: [Self; 8] = [
+    pub const ALL: [Self; 9] = [
         Self::GlobalHotkey,
         Self::OpenProject,
         Self::SearchFiles,
@@ -29,6 +198,7 @@ impl KeymapAction {
         Self::PasteResponse,
         Self::ApplyChanges,
         Self::UndoChanges,
+        Self::ToggleTerminal,
     ];
 }
 
@@ -41,6 +211,8 @@ pub struct KeymapConfig {
     pub paste_response: String,
     pub apply_changes: String,
     pub undo_changes: String,
+    #[serde(default = "default_toggle_terminal_shortcut")]
+    pub toggle_terminal: String,
 }
 
 impl Default for KeymapConfig {
@@ -53,6 +225,7 @@ impl Default for KeymapConfig {
             paste_response: "Ctrl+V".to_owned(),
             apply_changes: "Ctrl+Enter".to_owned(),
             undo_changes: "Ctrl+Z".to_owned(),
+            toggle_terminal: default_toggle_terminal_shortcut(),
         }
     }
 }
@@ -69,6 +242,7 @@ impl KeymapConfig {
             KeymapAction::PasteResponse => &self.paste_response,
             KeymapAction::ApplyChanges => &self.apply_changes,
             KeymapAction::UndoChanges => &self.undo_changes,
+            KeymapAction::ToggleTerminal => &self.toggle_terminal,
         }
     }
 
@@ -83,6 +257,7 @@ impl KeymapConfig {
             KeymapAction::PasteResponse => self.paste_response = canonical,
             KeymapAction::ApplyChanges => self.apply_changes = canonical,
             KeymapAction::UndoChanges => self.undo_changes = canonical,
+            KeymapAction::ToggleTerminal => self.toggle_terminal = canonical,
         }
     }
 }
@@ -127,6 +302,12 @@ pub struct GlobalConfig {
     pub global_hotkey: String,
     pub auto_read_clipboard_on_apply: bool,
     pub create_backups_by_default: bool,
+    #[serde(default = "default_true")]
+    pub show_bottom_bar: bool,
+    #[serde(default)]
+    pub ui_chrome: UiChromeConfig,
+    #[serde(default = "default_terminal_command_presets")]
+    pub terminal_presets: Vec<TerminalCommandPreset>,
     pub update_channel: String,
     pub update_repo_url: String,
     #[serde(default)]
@@ -144,6 +325,9 @@ impl Default for GlobalConfig {
             global_hotkey: DEFAULT_GLOBAL_HOTKEY.to_owned(),
             auto_read_clipboard_on_apply: false,
             create_backups_by_default: true,
+            show_bottom_bar: true,
+            ui_chrome: UiChromeConfig::default(),
+            terminal_presets: default_terminal_command_presets(),
             update_channel: DEFAULT_UPDATE_CHANNEL.to_owned(),
             update_repo_url: DEFAULT_UPDATE_REPO_URL.to_owned(),
             recent_projects: Vec::new(),

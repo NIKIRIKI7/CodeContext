@@ -1,4 +1,4 @@
-use core::preset::models::resolution::KeymapAction;
+use core::preset::models::resolution::{KeymapAction, UiChromeSetting};
 use core::system::ports::hotkey::HotkeyRegistrationStatus;
 use core::system::ports::shell::ShellRegistrationStatus;
 use core::system::ports::updater::{
@@ -52,9 +52,16 @@ impl SettingsModalView {
         }
     }
 
-    fn render_appearance_section(&self, theme: &'static ThemeTokens) -> impl IntoElement + use<> {
+    #[allow(clippy::too_many_lines)]
+    fn render_appearance_section(
+        &self,
+        theme: &'static ThemeTokens,
+        cx: &Context<Self>,
+    ) -> impl IntoElement + use<> {
         let labels = self.locale.labels();
+        let is_english = self.locale == AppLocale::En;
         let colors = &theme.colors;
+        let chrome = self.state.read(cx).global_config().ui_chrome.clone();
         let state_dark = self.state.clone();
         let state_light = self.state.clone();
         let state_ru = self.state.clone();
@@ -104,7 +111,51 @@ impl SettingsModalView {
             theme,
         );
 
-        div()
+        let chrome_rows: &[(&str, &str, UiChromeSetting)] = &[
+            (
+                "settings-toggle-bottom-bar",
+                labels.settings_show_bottom_bar,
+                UiChromeSetting::BottomBar,
+            ),
+            (
+                "settings-toggle-term-btn",
+                if is_english {
+                    "Show 'Command Line' button in bottom bar"
+                } else {
+                    "Кнопка «Командная строка» в нижней панели"
+                },
+                UiChromeSetting::TerminalButton,
+            ),
+            (
+                "settings-toggle-logs-btn",
+                if is_english {
+                    "Show 'Logs' button in bottom bar"
+                } else {
+                    "Кнопка «Логи» в нижней панели"
+                },
+                UiChromeSetting::LogsButton,
+            ),
+            (
+                "settings-toggle-metrics",
+                if is_english {
+                    "Show file metrics & hotkey in bottom bar"
+                } else {
+                    "Сводка файлов и хоткей в нижней панели"
+                },
+                UiChromeSetting::StatusMetrics,
+            ),
+            (
+                "settings-toggle-term-presets",
+                if is_english {
+                    "Show quick command presets bar in terminal"
+                } else {
+                    "Панель быстрых пресетов команд в терминале"
+                },
+                UiChromeSetting::TerminalPresets,
+            ),
+        ];
+
+        let mut container = div()
             .w_full()
             .p(px(theme.spacing.xl))
             .rounded(px(theme.radius.md))
@@ -113,7 +164,7 @@ impl SettingsModalView {
             .border_color(colors.border)
             .flex()
             .flex_col()
-            .gap(px(theme.spacing.sm))
+            .gap(px(theme.spacing.xs))
             .child(
                 div()
                     .font_family(FONT_FAMILY_UI)
@@ -122,7 +173,30 @@ impl SettingsModalView {
                     .child(labels.settings_section_appearance),
             )
             .child(render_setting_row(labels.settings_theme_label, theme_switcher, theme))
-            .child(render_setting_row(labels.settings_language_label, lang_switcher, theme))
+            .child(render_setting_row(labels.settings_language_label, lang_switcher, theme));
+
+        for &(id, row_label, setting) in chrome_rows {
+            let state_c = self.state.clone();
+            let setting_enabled = chrome.is_enabled(setting);
+            container = container.child(render_setting_row(
+                row_label,
+                render_compact_toggle_pill(
+                    id,
+                    setting_enabled,
+                    self.locale,
+                    theme,
+                    move |_ev, _win, cx| {
+                        state_c.update(cx, |s, cx| {
+                            let _ = s.toggle_ui_chrome(setting);
+                            cx.notify();
+                        });
+                    },
+                ),
+                theme,
+            ));
+        }
+
+        container
     }
 
     fn render_system_section(
@@ -203,7 +277,7 @@ impl SettingsModalView {
             .border_color(colors.border)
             .flex()
             .flex_col()
-            .gap(px(theme.spacing.sm))
+            .gap(px(theme.spacing.xs))
             .child(
                 div()
                     .font_family(FONT_FAMILY_UI)
@@ -355,7 +429,7 @@ impl SettingsModalView {
             .border_color(colors.border)
             .flex()
             .flex_col()
-            .gap(px(theme.spacing.sm))
+            .gap(px(theme.spacing.xs))
             .child(
                 div()
                     .font_family(FONT_FAMILY_UI)
@@ -724,7 +798,7 @@ fn render_setting_row(
 ) -> impl IntoElement {
     div()
         .w_full()
-        .min_h(px(32.0))
+        .min_h(px(28.0))
         .flex()
         .flex_row()
         .items_center()
@@ -752,6 +826,7 @@ const fn action_label_for(action: KeymapAction, labels: &'static UiLabels) -> &'
         KeymapAction::PasteResponse => labels.hotkey_action_paste_response,
         KeymapAction::ApplyChanges => labels.hotkey_action_apply_changes,
         KeymapAction::UndoChanges => labels.hotkey_action_undo_changes,
+        KeymapAction::ToggleTerminal => labels.hotkey_action_toggle_terminal,
     }
 }
 
@@ -762,7 +837,7 @@ impl Render for SettingsModalView {
         let labels = self.locale.labels();
         let hotkeys_modal_open = self.state.read(cx).is_hotkeys_modal_open();
         let state_close = self.state.clone();
-        let appearance_sec = self.render_appearance_section(theme);
+        let appearance_sec = self.render_appearance_section(theme, cx);
         let system_sec = self.render_system_section(theme, cx);
         let safety_sec = self.render_safety_section(theme, cx);
         let backdrop = Rgba { r: 0.02, g: 0.03, b: 0.05, a: 0.72 };
@@ -791,7 +866,9 @@ impl Render for SettingsModalView {
                     .on_click(|_ev, _win, cx| {
                         cx.stop_propagation();
                     })
-                    .w(px(580.0))
+                    .w(px(600.0))
+                    .max_h(px(650.0))
+                    .overflow_y_scroll()
                     .p(px(theme.spacing.xxl))
                     .rounded(px(theme.radius.lg))
                     .bg(colors.bg_panel)
@@ -799,7 +876,7 @@ impl Render for SettingsModalView {
                     .border_color(colors.border_active)
                     .flex()
                     .flex_col()
-                    .gap(px(theme.spacing.lg))
+                    .gap(px(theme.spacing.md))
                     .child(
                         div()
                             .w_full()
