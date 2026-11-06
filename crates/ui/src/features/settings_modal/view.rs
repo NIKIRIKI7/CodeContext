@@ -6,16 +6,18 @@ use core::system::ports::updater::{
 };
 use gpui::{
     App, ClickEvent, Context, Entity, InteractiveElement as _, IntoElement, ParentElement as _,
-    Render, Rgba, SharedString, StatefulInteractiveElement as _, Styled as _, Window, div, px,
+    Render, SharedString, StatefulInteractiveElement as _, Styled as _, Window, div, px,
 };
 
 use crate::features::settings_modal::state::{SettingsCategory, SettingsModalState};
 use crate::locale::{AppLocale, UiLabels};
-use crate::shared::primitives::button::{ButtonVariant, UiButton};
-use crate::shared::primitives::icon::{UiIcon, render_icon, render_vector_checkbox};
-use crate::theme::{
-    FONT_FAMILY_MONO, FONT_FAMILY_UI, ThemeTokens, ThemeVariant, format_hotkey_for_current_os,
+use crate::shared::containers::form_controls::{
+    render_compact_toggle_pill, render_labeled_setting_row, render_segmented_tab,
 };
+use crate::shared::containers::modal_dialog::ModalDialogShell;
+use crate::shared::primitives::button::{ButtonVariant, UiButton};
+use crate::shared::primitives::icon::{UiIcon, render_icon};
+use crate::theme::{FONT_FAMILY_UI, ThemeTokens, ThemeVariant, format_hotkey_for_current_os};
 
 #[derive(Debug, Clone)]
 pub struct SettingsModalView {
@@ -121,8 +123,8 @@ impl SettingsModalView {
                     .text_color(colors.text_muted)
                     .child(labels.settings_section_appearance),
             )
-            .child(render_setting_row(labels.settings_theme_label, theme_switcher, theme))
-            .child(render_setting_row(labels.settings_language_label, lang_switcher, theme))
+            .child(render_labeled_setting_row(labels.settings_theme_label, theme_switcher, theme))
+            .child(render_labeled_setting_row(labels.settings_language_label, lang_switcher, theme))
     }
 
     fn render_panels_section(
@@ -191,7 +193,7 @@ impl SettingsModalView {
         for &(id, row_label, setting) in chrome_rows {
             let state_c = self.state.clone();
             let setting_enabled = chrome.is_enabled(setting);
-            container = container.child(render_setting_row(
+            container = container.child(render_labeled_setting_row(
                 row_label,
                 render_compact_toggle_pill(
                     id,
@@ -298,14 +300,18 @@ impl SettingsModalView {
                     .text_color(colors.text_muted)
                     .child(labels.settings_section_system),
             )
-            .child(render_setting_row(hotkey_row_label, hk_button, theme))
-            .child(render_setting_row(shell_row_label, shell_button, theme))
-            .child(render_setting_row(
+            .child(render_labeled_setting_row(hotkey_row_label, hk_button, theme))
+            .child(render_labeled_setting_row(shell_row_label, shell_button, theme))
+            .child(render_labeled_setting_row(
                 labels.settings_update_channel_label,
                 channel_selector,
                 theme,
             ))
-            .child(render_setting_row(labels.settings_version_row_label, update_button, theme))
+            .child(render_labeled_setting_row(
+                labels.settings_version_row_label,
+                update_button,
+                theme,
+            ))
     }
 
     fn build_update_controls(
@@ -450,8 +456,8 @@ impl SettingsModalView {
                     .text_color(colors.text_muted)
                     .child(labels.settings_section_safety),
             )
-            .child(render_setting_row(labels.settings_auto_clipboard, clip_btn, theme))
-            .child(render_setting_row(labels.settings_create_backups, bak_btn, theme))
+            .child(render_labeled_setting_row(labels.settings_auto_clipboard, clip_btn, theme))
+            .child(render_labeled_setting_row(labels.settings_create_backups, bak_btn, theme))
     }
 
     fn render_keymap_section(
@@ -487,8 +493,11 @@ impl SettingsModalView {
                         cx.notify();
                     });
                 });
-            list_col =
-                list_col.child(render_setting_row(action_label_for(action, labels), btn, theme));
+            list_col = list_col.child(render_labeled_setting_row(
+                action_label_for(action, labels),
+                btn,
+                theme,
+            ));
         }
 
         let state_reset = self.state.clone();
@@ -667,76 +676,7 @@ fn render_segment_item(
     on_click: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
     theme: &'static ThemeTokens,
 ) -> impl IntoElement {
-    let colors = &theme.colors;
-    let hover_bg = colors.bg_hover;
-    div()
-        .id(id)
-        .flex_1()
-        .h_full()
-        .rounded(px(theme.radius.sm))
-        .border_1()
-        .border_color(if active { colors.border_active } else { colors.bg_app })
-        .bg(if active { colors.bg_elevated } else { colors.bg_app })
-        .cursor_pointer()
-        .hover(move |s| s.bg(hover_bg))
-        .flex()
-        .items_center()
-        .justify_center()
-        .font_family(FONT_FAMILY_MONO)
-        .text_xs()
-        .text_color(if active { colors.text_primary } else { colors.text_secondary })
-        .on_click(on_click)
-        .child(label)
-}
-
-fn render_compact_toggle_pill(
-    id: &'static str,
-    enabled: bool,
-    locale: AppLocale,
-    theme: &'static ThemeTokens,
-    on_click: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
-) -> impl IntoElement {
-    let colors = &theme.colors;
-    let hover_bg = colors.bg_hover;
-    let (check_background, check_border, check_foreground) = if enabled {
-        (colors.badge_accent.bg, colors.cyan, colors.cyan)
-    } else {
-        (colors.bg_elevated, colors.border_active, colors.text_muted)
-    };
-
-    div()
-        .id(id)
-        .w(px(88.0))
-        .h(px(theme.layout.control_height))
-        .px(px(theme.spacing.md))
-        .rounded(px(theme.radius.md))
-        .bg(colors.bg_app)
-        .border_1()
-        .border_color(if enabled { colors.border_active } else { colors.border })
-        .cursor_pointer()
-        .hover(move |s| s.bg(hover_bg))
-        .flex_shrink_0()
-        .flex()
-        .flex_row()
-        .items_center()
-        .justify_between()
-        .on_click(on_click)
-        .child(render_vector_checkbox(
-            enabled,
-            false,
-            14.0,
-            check_background,
-            check_border,
-            check_foreground,
-            theme.radius.sm,
-        ))
-        .child(
-            div()
-                .font_family(FONT_FAMILY_MONO)
-                .text_xs()
-                .text_color(if enabled { colors.text_primary } else { colors.text_secondary })
-                .child(locale.toggle_state_label(enabled)),
-        )
+    render_segmented_tab(id, label, active, true, true, theme, on_click)
 }
 
 fn spawn_update_or_self_install_action(state_upd: Entity<SettingsModalState>, cx: &mut App) {
@@ -839,31 +779,6 @@ fn format_update_action_label(
     }
 }
 
-fn render_setting_row(
-    label: &'static str,
-    control: impl IntoElement,
-    theme: &'static ThemeTokens,
-) -> impl IntoElement {
-    div()
-        .w_full()
-        .min_h(px(28.0))
-        .flex()
-        .flex_row()
-        .items_center()
-        .justify_between()
-        .gap(px(theme.spacing.lg))
-        .child(
-            div()
-                .flex_1()
-                .min_w(px(0.0))
-                .font_family(FONT_FAMILY_UI)
-                .text_xs()
-                .text_color(theme.colors.text_primary)
-                .child(label),
-        )
-        .child(control)
-}
-
 const fn action_label_for(action: KeymapAction, labels: &'static UiLabels) -> &'static str {
     match action {
         KeymapAction::GlobalHotkey => labels.hotkey_action_global,
@@ -881,7 +796,6 @@ const fn action_label_for(action: KeymapAction, labels: &'static UiLabels) -> &'
 impl Render for SettingsModalView {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = self.theme_variant.tokens();
-        let colors = &theme.colors;
         let labels = self.locale.labels();
         let active_cat = self.state.read(cx).active_category();
         let state_close = self.state.clone();
@@ -901,91 +815,42 @@ impl Render for SettingsModalView {
             }
         };
 
-        let backdrop = Rgba { r: 0.02, g: 0.03, b: 0.05, a: 0.72 };
-        let state_close_backdrop = self.state.clone();
-
-        div()
-            .id("settings-modal-backdrop")
-            .absolute()
-            .top_0()
-            .left_0()
-            .size_full()
-            .bg(backdrop)
-            .flex()
-            .items_center()
-            .justify_center()
-            .p(px(theme.spacing.xxl))
-            .on_click(move |_ev, _win, cx| {
-                state_close_backdrop.update(cx, |s, cx| {
-                    s.request_close();
-                    cx.notify();
-                });
-            })
-            .child(
-                div()
-                    .id("settings-modal-dialog")
-                    .on_click(|_ev, _win, cx| {
-                        cx.stop_propagation();
-                    })
-                    .w(px(680.0))
-                    .h(px(460.0))
-                    .p(px(theme.spacing.xxl))
-                    .rounded(px(theme.radius.lg))
-                    .bg(colors.bg_panel)
-                    .border_1()
-                    .border_color(colors.border_active)
-                    .flex()
-                    .flex_col()
-                    .gap(px(theme.spacing.lg))
-                    .child(
-                        div()
-                            .w_full()
-                            .pb(px(theme.spacing.sm))
-                            .border_b_1()
-                            .border_color(colors.border)
-                            .flex()
-                            .flex_row()
-                            .items_center()
-                            .justify_between()
-                            .child(
-                                div()
-                                    .font_family(FONT_FAMILY_UI)
-                                    .text_sm()
-                                    .text_color(colors.text_primary)
-                                    .child(labels.settings_modal_title),
-                            )
-                            .child(
-                                UiButton::icon_only("settings-close-modal-btn", UiIcon::X)
-                                    .variant(ButtonVariant::Ghost)
-                                    .with_theme(theme)
-                                    .on_click(move |_ev, _win, cx| {
-                                        state_close.update(cx, |s, cx| {
-                                            s.request_close();
-                                            cx.notify();
-                                        });
-                                    }),
-                            ),
-                    )
-                    .child(
-                        div()
-                            .flex_1()
-                            .min_h(px(0.0))
-                            .w_full()
-                            .flex()
-                            .flex_row()
-                            .gap(px(theme.spacing.lg))
-                            .overflow_hidden()
-                            .child(sidebar)
-                            .child(
-                                div()
-                                    .id("settings-category-content-scroll")
-                                    .flex_1()
-                                    .min_w(px(0.0))
-                                    .h_full()
-                                    .overflow_y_scroll()
-                                    .child(active_section),
-                            ),
-                    ),
-            )
+        ModalDialogShell::new(
+            "settings-modal-backdrop",
+            "settings-modal-dialog",
+            "settings-close-modal-btn",
+            labels.settings_modal_title,
+        )
+        .width(680.0)
+        .fixed_height(460.0)
+        .leading_icon(UiIcon::Settings)
+        .with_header_border(true)
+        .with_theme(theme)
+        .on_close(move |_ev, _win, cx| {
+            state_close.update(cx, |s, cx| {
+                s.request_close();
+                cx.notify();
+            });
+        })
+        .child(
+            div()
+                .flex_1()
+                .min_h(px(0.0))
+                .w_full()
+                .flex()
+                .flex_row()
+                .gap(px(theme.spacing.lg))
+                .overflow_hidden()
+                .child(sidebar)
+                .child(
+                    div()
+                        .id("settings-category-content-scroll")
+                        .flex_1()
+                        .min_w(px(0.0))
+                        .h_full()
+                        .overflow_y_scroll()
+                        .child(active_section),
+                ),
+        )
     }
 }

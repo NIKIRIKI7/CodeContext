@@ -8,9 +8,10 @@ use gpui::{
 };
 
 use crate::locale::UiLabels;
+use crate::shared::containers::form_controls::{render_checkbox_switch_row, render_segmented_tab};
 use crate::shared::primitives::badge::{Badge, BadgeVariant};
 use crate::shared::primitives::button::{ButtonVariant, UiButton};
-use crate::shared::primitives::icon::{UiIcon, render_icon, render_vector_checkbox};
+use crate::shared::primitives::icon::{UiIcon, render_icon};
 use crate::theme::{
     FONT_FAMILY_MONO, FONT_FAMILY_UI, ThemeTokens, active_theme, format_bytes_human,
 };
@@ -367,46 +368,7 @@ fn render_inspector_switch_row(
     theme: &'static ThemeTokens,
     on_toggle: Option<&RuleToggleCallback>,
 ) -> impl IntoElement + use<> {
-    let colors = &theme.colors;
-    let hover_bg = colors.bg_hover;
-    let (check_background, check_border, check_foreground) = if is_on {
-        (colors.badge_accent.bg, colors.cyan, colors.cyan)
-    } else {
-        (colors.bg_elevated, colors.border_active, colors.text_muted)
-    };
-
-    let mut row = div()
-        .id(id)
-        .w_full()
-        .h(px(theme.layout.control_height))
-        .px(px(theme.spacing.md))
-        .rounded(px(theme.radius.md))
-        .bg(colors.bg_panel)
-        .border_1()
-        .border_color(if is_on { colors.border_active } else { colors.border })
-        .cursor_pointer()
-        .hover(move |s| s.bg(hover_bg))
-        .flex()
-        .flex_row()
-        .items_center()
-        .justify_between()
-        .child(
-            div()
-                .font_family(FONT_FAMILY_UI)
-                .text_xs()
-                .text_color(if is_on { colors.text_primary } else { colors.text_secondary })
-                .child(label),
-        )
-        .child(render_vector_checkbox(
-            is_on,
-            false,
-            14.0,
-            check_background,
-            check_border,
-            check_foreground,
-            theme.radius.sm,
-        ));
-
+    let mut row = render_checkbox_switch_row(id, label, is_on, theme);
     if let Some(cb) = on_toggle {
         let cb_clone = Arc::clone(cb);
         row = row.on_click(move |_ev, win, cx| cb_clone(kind, win, cx));
@@ -433,7 +395,7 @@ fn render_chunk_size_selector(
         .h(px(32.0))
         .p(px(2.0))
         .rounded(px(theme.radius.md))
-        .bg(colors.bg_panel)
+        .bg(colors.bg_app)
         .border_1()
         .border_color(colors.border)
         .flex()
@@ -443,30 +405,20 @@ fn render_chunk_size_selector(
 
     for (idx, &(label, limit_opt)) in presets.iter().enumerate() {
         let is_selected = current_limit == limit_opt;
-        let hover_bg = colors.bg_hover;
-        let mut seg = div()
-            .id(("chunk-limit-opt", idx))
-            .flex_1()
-            .h_full()
-            .rounded(px(theme.radius.sm))
-            .border_1()
-            .border_color(if is_selected { colors.border_active } else { colors.bg_panel })
-            .bg(if is_selected { colors.bg_elevated } else { colors.bg_panel })
-            .cursor_pointer()
-            .hover(move |s| s.bg(hover_bg))
-            .flex()
-            .items_center()
-            .justify_center()
-            .font_family(FONT_FAMILY_MONO)
-            .text_xs()
-            .text_color(if is_selected { colors.text_primary } else { colors.text_secondary })
-            .child(label);
-
-        if let Some(cb) = on_select {
-            let cb_clone = Arc::clone(cb);
-            seg = seg.on_click(move |_ev, win, cx| cb_clone(limit_opt, win, cx));
-        }
-        row = row.child(seg);
+        let cb_opt = on_select.cloned();
+        row = row.child(render_segmented_tab(
+            ("chunk-limit-opt", idx),
+            label,
+            is_selected,
+            true,
+            true,
+            theme,
+            move |_ev, win, cx| {
+                if let Some(ref cb) = cb_opt {
+                    cb(limit_opt, win, cx);
+                }
+            },
+        ));
     }
 
     if let Some(custom) = current_limit

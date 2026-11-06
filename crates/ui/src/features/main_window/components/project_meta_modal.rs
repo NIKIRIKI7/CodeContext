@@ -4,11 +4,12 @@ use std::sync::Arc;
 use core::preset::models::preset::Preset;
 use core::preset::models::resolution::ConfigOrigin;
 use gpui::{
-    App, ClickEvent, InteractiveElement as _, IntoElement, ParentElement as _, RenderOnce, Rgba,
-    SharedString, StatefulInteractiveElement as _, Styled as _, Window, div, px,
+    App, ClickEvent, IntoElement, ParentElement as _, RenderOnce, SharedString, Styled as _,
+    Window, div, px,
 };
 
 use crate::locale::UiLabels;
+use crate::shared::containers::modal_dialog::ModalDialogShell;
 use crate::shared::primitives::badge::{Badge, BadgeVariant};
 use crate::shared::primitives::button::{ButtonVariant, UiButton};
 use crate::shared::primitives::icon::UiIcon;
@@ -204,82 +205,26 @@ impl RenderOnce for ProjectMetaModalComponent {
             save_btn = save_btn.on_click(move |ev, w, c| save_fn(ev, w, c));
         }
 
-        let mut close_btn = UiButton::icon_only("meta-close-modal-btn", UiIcon::X)
-            .variant(ButtonVariant::Ghost)
-            .with_theme(theme);
-        if let Some(ref close_fn) = self.on_close {
-            let cb = Arc::clone(close_fn);
-            close_btn = close_btn.on_click(move |ev, w, c| cb(ev, w, c));
-        }
-
-        let backdrop = Rgba { r: 0.02, g: 0.03, b: 0.05, a: 0.72 };
-        let state_close_backdrop = self.on_close;
-
-        let mut backdrop_el = div()
-            .id("project-meta-modal-backdrop")
-            .absolute()
-            .top_0()
-            .left_0()
-            .size_full()
-            .bg(backdrop)
-            .flex()
-            .items_center()
-            .justify_center()
-            .p(px(theme.spacing.xxl));
-
-        if let Some(close_fn) = state_close_backdrop {
-            backdrop_el = backdrop_el.on_click(move |ev, w, c| close_fn(ev, w, c));
-        }
-
-        backdrop_el.child(
-            div()
-                .id("project-meta-modal-dialog")
-                .on_click(|_ev, _win, cx| {
-                    cx.stop_propagation();
-                })
-                .w(px(580.0))
-                .p(px(theme.spacing.xxl))
-                .rounded(px(theme.radius.lg))
-                .bg(colors.bg_panel)
-                .border_1()
-                .border_color(colors.border_active)
-                .flex()
-                .flex_col()
-                .gap(px(theme.spacing.lg))
-                .child(
-                    div()
-                        .w_full()
-                        .flex()
-                        .flex_row()
-                        .items_center()
-                        .justify_between()
-                        .child(
-                            div()
-                                .flex()
-                                .flex_row()
-                                .items_center()
-                                .gap(px(theme.spacing.sm))
-                                .child(
-                                    div()
-                                        .font_family(FONT_FAMILY_UI)
-                                        .text_sm()
-                                        .text_color(colors.text_primary)
-                                        .child(labels.meta_modal_title),
-                                )
-                                .child(Badge::new(origin_label, origin_variant).with_theme(theme)),
-                        )
-                        .child(close_btn),
-                )
-                .child(
-                    div()
-                        .font_family(FONT_FAMILY_MONO)
-                        .text_xs()
-                        .text_color(colors.text_secondary)
-                        .child(SharedString::from(self.props.project_path)),
-                )
-                .child(metrics_grid)
-                .child(limits_box)
-                .child(div().w_full().flex().flex_row().justify_end().child(save_btn)),
+        ModalDialogShell::new(
+            "project-meta-modal-backdrop",
+            "project-meta-modal-dialog",
+            "meta-close-modal-btn",
+            labels.meta_modal_title,
         )
+        .width(580.0)
+        .leading_icon(UiIcon::Info)
+        .header_badge(Badge::new(origin_label, origin_variant).with_theme(theme))
+        .with_theme(theme)
+        .on_close_arc(self.on_close)
+        .child(
+            div()
+                .font_family(FONT_FAMILY_MONO)
+                .text_xs()
+                .text_color(colors.text_secondary)
+                .child(SharedString::from(self.props.project_path)),
+        )
+        .child(metrics_grid)
+        .child(limits_box)
+        .child(div().w_full().flex().flex_row().justify_end().child(save_btn))
     }
 }

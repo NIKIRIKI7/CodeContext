@@ -2,13 +2,13 @@ use std::fmt;
 use std::sync::Arc;
 
 use gpui::{
-    App, ClickEvent, InteractiveElement as _, IntoElement, ParentElement as _, RenderOnce,
-    StatefulInteractiveElement as _, Styled as _, Window, div, px,
+    App, ClickEvent, IntoElement, ParentElement as _, RenderOnce, StatefulInteractiveElement as _,
+    Styled as _, Window, div, px,
 };
 
 use crate::locale::{AppLocale, UiLabels};
+use crate::shared::containers::form_controls::render_checkbox_switch_row;
 use crate::shared::primitives::badge::{Badge, BadgeVariant};
-use crate::shared::primitives::icon::render_vector_checkbox;
 use crate::theme::{FONT_FAMILY_UI, ThemeTokens, active_theme};
 
 pub type ToggleBackupCallback = Arc<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>;
@@ -68,46 +68,13 @@ impl RenderOnce for BackupDrawerComponent {
         let theme = self.theme;
         let colors = &theme.colors;
         let labels = self.labels;
-        let hover_bg = colors.bg_hover;
 
-        let (check_background, check_border, check_foreground) = if self.backups_enabled {
-            (colors.badge_accent.bg, colors.cyan, colors.cyan)
-        } else {
-            (colors.bg_elevated, colors.border_active, colors.text_muted)
-        };
-
-        let mut backup_row = div()
-            .id("toggle-backup-drawer-pill")
-            .w_full()
-            .h(px(theme.layout.control_height))
-            .px(px(theme.spacing.md))
-            .rounded(px(theme.radius.md))
-            .bg(colors.bg_panel)
-            .border_1()
-            .border_color(if self.backups_enabled { colors.border_active } else { colors.border })
-            .cursor_pointer()
-            .hover(move |s| s.bg(hover_bg))
-            .flex()
-            .flex_row()
-            .items_center()
-            .justify_between()
-            .child(
-                div()
-                    .font_family(FONT_FAMILY_UI)
-                    .text_xs()
-                    .text_color(colors.text_primary)
-                    .child(labels.settings_create_backups),
-            )
-            .child(render_vector_checkbox(
-                self.backups_enabled,
-                false,
-                14.0,
-                check_background,
-                check_border,
-                check_foreground,
-                theme.radius.sm,
-            ));
-
+        let mut backup_row = render_checkbox_switch_row(
+            "toggle-backup-drawer-pill",
+            labels.settings_create_backups,
+            self.backups_enabled,
+            theme,
+        );
         if let Some(cb) = self.on_toggle {
             backup_row = backup_row.on_click(move |ev, w, c| cb(ev, w, c));
         }

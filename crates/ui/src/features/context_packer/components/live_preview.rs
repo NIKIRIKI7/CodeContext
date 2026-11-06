@@ -8,6 +8,7 @@ use gpui::{
 };
 
 use crate::locale::UiLabels;
+use crate::shared::containers::form_controls::render_pane_header;
 use crate::shared::containers::virtual_text::{VirtualTextBuffer, VirtualTextView};
 use crate::shared::primitives::badge::{Badge, BadgeVariant};
 use crate::shared::primitives::button::{ButtonVariant, UiButton};
@@ -202,22 +203,7 @@ impl RenderOnce for LivePreviewComponent {
             .flex_col()
             .bg(theme.colors.bg_app)
             .overflow_hidden()
-            .child(
-                div()
-                    .w_full()
-                    .h(px(theme.layout.pane_header_height))
-                    .px(px(theme.spacing.xl))
-                    .bg(theme.colors.bg_panel)
-                    .border_b_1()
-                    .border_color(theme.colors.border)
-                    .flex()
-                    .flex_row()
-                    .items_center()
-                    .justify_between()
-                    .gap(px(theme.spacing.md))
-                    .child(left_info)
-                    .child(copy_btn),
-            )
+            .child(render_pane_header(left_info, copy_btn, theme.spacing.xl, theme))
             .child(chunk_bar)
             .child(div().flex_1().overflow_hidden().child(text_view))
     }

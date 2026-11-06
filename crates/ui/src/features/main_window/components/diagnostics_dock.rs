@@ -13,6 +13,7 @@ use gpui::{
 };
 
 use crate::locale::UiLabels;
+use crate::shared::containers::form_controls::{TextInputField, render_segmented_tab};
 use crate::shared::primitives::button::{ButtonVariant, UiButton};
 use crate::shared::primitives::icon::{UiIcon, render_icon};
 use crate::theme::{FONT_FAMILY_MONO, FONT_FAMILY_UI, ThemeTokens};
@@ -366,28 +367,20 @@ fn render_terminal_task_category_tabs(
 
     for &(id, title, cat_opt) in categories {
         let is_active = props.task_category == cat_opt;
-        let hover_bg = colors.bg_hover;
-        let mut pill = div()
-            .id(id)
-            .px(px(theme.spacing.sm))
-            .h_full()
-            .rounded(px(theme.radius.sm))
-            .bg(if is_active { colors.bg_elevated } else { colors.bg_app })
-            .cursor_pointer()
-            .hover(move |s| s.bg(hover_bg))
-            .flex()
-            .items_center()
-            .justify_center()
-            .font_family(FONT_FAMILY_UI)
-            .text_xs()
-            .text_color(if is_active { colors.text_primary } else { colors.text_secondary })
-            .child(title);
-
-        if let Some(ref cb) = callbacks.select_task_category {
-            let cb_clone = Arc::clone(cb);
-            pill = pill.on_click(move |_ev, w, c| cb_clone(cat_opt, w, c));
-        }
-        bar = bar.child(pill);
+        let cb_opt = callbacks.select_task_category.clone();
+        bar = bar.child(render_segmented_tab(
+            id,
+            title,
+            is_active,
+            false,
+            false,
+            theme,
+            move |_ev, w, c| {
+                if let Some(ref cb) = cb_opt {
+                    cb(cat_opt, w, c);
+                }
+            },
+        ));
     }
 
     bar
@@ -474,28 +467,20 @@ fn render_logs_header_controls(
 
     for &(id, text, mode) in filters {
         let is_active = props.filter_mode == mode;
-        let hover_bg = colors.bg_hover;
-        let mut pill = div()
-            .id(id)
-            .px(px(theme.spacing.sm))
-            .h_full()
-            .rounded(px(theme.radius.sm))
-            .bg(if is_active { colors.bg_elevated } else { colors.bg_app })
-            .cursor_pointer()
-            .hover(move |s| s.bg(hover_bg))
-            .flex()
-            .items_center()
-            .justify_center()
-            .font_family(FONT_FAMILY_UI)
-            .text_xs()
-            .text_color(if is_active { colors.text_primary } else { colors.text_secondary })
-            .child(text);
-
-        if let Some(ref cb) = callbacks.select_filter {
-            let cb_clone = Arc::clone(cb);
-            pill = pill.on_click(move |_ev, w, c| cb_clone(mode, w, c));
-        }
-        filter_bar = filter_bar.child(pill);
+        let cb_opt = callbacks.select_filter.clone();
+        filter_bar = filter_bar.child(render_segmented_tab(
+            id,
+            text,
+            is_active,
+            false,
+            false,
+            theme,
+            move |_ev, w, c| {
+                if let Some(ref cb) = cb_opt {
+                    cb(mode, w, c);
+                }
+            },
+        ));
     }
 
     filter_bar
@@ -713,55 +698,15 @@ fn render_terminal_input_bar(
     let is_en = labels.btn_copy_context == "Copy";
     let has_text = !props.terminal_input.is_empty();
 
-    let display_str = if props.terminal_focused && has_text {
-        SharedString::from(format!("{}▏", props.terminal_input))
-    } else if has_text {
-        SharedString::from(props.terminal_input.clone())
-    } else if props.terminal_focused {
-        SharedString::from(format!("▏{}", labels.terminal_input_placeholder))
-    } else {
-        SharedString::from(labels.terminal_input_placeholder)
-    };
-
-    let mut input_box = div()
-        .id("terminal-command-input-box")
-        .flex_1()
-        .min_w(px(0.0))
-        .h(px(28.0))
-        .px(px(theme.spacing.md))
-        .rounded(px(theme.radius.sm))
-        .border_1()
-        .border_color(if props.terminal_focused { colors.cyan } else { colors.border })
-        .bg(colors.bg_panel)
-        .cursor_pointer()
-        .flex()
-        .flex_row()
-        .items_center()
-        .gap(px(theme.spacing.sm))
-        .child(div().font_family(FONT_FAMILY_MONO).text_xs().text_color(colors.cyan).child(">_"))
-        .child(
-            div()
-                .flex_1()
-                .min_w(px(0.0))
-                .overflow_hidden()
-                .whitespace_nowrap()
-                .font_family(FONT_FAMILY_MONO)
-                .text_xs()
-                .text_color(if has_text || props.terminal_focused {
-                    colors.text_primary
-                } else {
-                    colors.text_muted
-                })
-                .child(display_str),
-        );
-
-    if let Some(ref cb) = callbacks.focus_terminal_input {
-        let cb_clone = Arc::clone(cb);
-        input_box = input_box.on_click(move |ev, w, c| {
-            c.stop_propagation();
-            cb_clone(ev, w, c);
-        });
-    }
+    let input_box = TextInputField::new(
+        "terminal-command-input-box",
+        props.terminal_input.clone(),
+        labels.terminal_input_placeholder,
+        props.terminal_focused,
+    )
+    .leading_prefix(">_")
+    .with_theme(theme)
+    .on_focus_arc(callbacks.focus_terminal_input.clone());
 
     let save_preset_label = if is_en { "+ Preset" } else { "+ Пресет" };
     let mut save_preset_btn = UiButton::new("terminal-save-preset-btn", save_preset_label)

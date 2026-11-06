@@ -7,6 +7,7 @@ use gpui::{
 };
 
 use crate::locale::{AppLocale, UiLabels};
+use crate::shared::containers::form_controls::render_pane_header;
 use crate::shared::containers::virtual_text::{
     LineHighlightMode, VirtualTextBuffer, VirtualTextView,
 };
@@ -143,22 +144,7 @@ impl RenderOnce for ResponseEditorComponent {
             .flex_col()
             .bg(theme.colors.bg_app)
             .overflow_hidden()
-            .child(
-                div()
-                    .w_full()
-                    .h(px(theme.layout.pane_header_height))
-                    .px(px(theme.spacing.xl))
-                    .bg(theme.colors.bg_panel)
-                    .border_b_1()
-                    .border_color(theme.colors.border)
-                    .flex()
-                    .flex_row()
-                    .items_center()
-                    .justify_between()
-                    .gap(px(theme.spacing.sm))
-                    .child(left_header)
-                    .child(actions),
-            )
+            .child(render_pane_header(left_header, actions, theme.spacing.xl, theme))
             .child(
                 div().flex_1().overflow_hidden().child(
                     VirtualTextView::new("applier-raw-response-view", self.buffer)

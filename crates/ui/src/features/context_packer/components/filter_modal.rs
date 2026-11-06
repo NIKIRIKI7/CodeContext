@@ -2,13 +2,18 @@ use std::fmt;
 use std::sync::Arc;
 
 pub use core::preset::models::preset::{RegexTargetScope, RegexTemplateItem};
-use core::preset::models::template::{PromptBlockItem, PromptCategory};
 use gpui::{
-    App, ClickEvent, InteractiveElement as _, IntoElement, ParentElement as _, RenderOnce, Rgba,
+    App, ClickEvent, InteractiveElement as _, IntoElement, ParentElement as _, RenderOnce,
     SharedString, StatefulInteractiveElement as _, Styled as _, Window, div, px,
 };
 
+pub use super::prompt_modal::{
+    NewPromptCategoryCallback, PromptCategoryCallback, PromptIndexCallback,
+    SystemPromptModalComponent, SystemPromptModalProps,
+};
 use crate::locale::UiLabels;
+use crate::shared::containers::form_controls::{TextInputField, render_segmented_tab};
+use crate::shared::containers::modal_dialog::ModalDialogShell;
 use crate::shared::primitives::badge::{Badge, BadgeVariant};
 use crate::shared::primitives::button::{ButtonVariant, UiButton};
 use crate::shared::primitives::icon::{UiIcon, render_icon, render_vector_checkbox};
@@ -292,105 +297,39 @@ impl FilterModalComponent {
 impl RenderOnce for FilterModalComponent {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
         let theme = self.props.theme;
-        let colors = &theme.colors;
         let labels = self.props.labels;
+        let badge_variant = if self.props.active_rules_count > 0 {
+            BadgeVariant::Accent
+        } else {
+            BadgeVariant::Neutral
+        };
+        let active_badge = Badge::new(
+            format!("{} {}", self.props.active_rules_count, labels.rules_active_suffix),
+            badge_variant,
+        )
+        .with_theme(theme);
 
-        let header = render_modal_header(&self.props, &self.callbacks);
         let ext_section = render_extensions_section(&self.props, &self.callbacks);
         let folders_section = render_folders_section(&self.props, &self.callbacks);
         let regex_section = render_regex_section(&self.props, &self.callbacks);
         let footer = render_modal_footer(&self.props, labels, &self.callbacks);
 
-        let backdrop_color = Rgba { r: 0.02, g: 0.03, b: 0.05, a: 0.72 };
-        let mut backdrop = div()
-            .id("filter-modal-backdrop")
-            .absolute()
-            .top_0()
-            .left_0()
-            .size_full()
-            .bg(backdrop_color)
-            .flex()
-            .items_center()
-            .justify_center()
-            .p(px(theme.spacing.xxl));
-
-        if let Some(ref close_fn) = self.callbacks.close {
-            let cb = Arc::clone(close_fn);
-            backdrop = backdrop.on_click(move |ev, w, c| cb(ev, w, c));
-        }
-
-        backdrop.child(
-            div()
-                .id("filter-modal-dialog")
-                .on_click(|_ev, _win, cx| {
-                    cx.stop_propagation();
-                })
-                .w(px(620.0))
-                .p(px(theme.spacing.xxl))
-                .rounded(px(theme.radius.lg))
-                .bg(colors.bg_panel)
-                .border_1()
-                .border_color(colors.border_active)
-                .flex()
-                .flex_col()
-                .gap(px(theme.spacing.lg))
-                .child(header)
-                .child(ext_section)
-                .child(folders_section)
-                .child(regex_section)
-                .child(footer),
+        ModalDialogShell::new(
+            "filter-modal-backdrop",
+            "filter-modal-dialog",
+            "filter-modal-close-btn",
+            labels.filter_modal_title,
         )
+        .width(620.0)
+        .leading_icon(UiIcon::SlidersHorizontal)
+        .header_badge(active_badge)
+        .with_theme(theme)
+        .on_close_arc(self.callbacks.close)
+        .child(ext_section)
+        .child(folders_section)
+        .child(regex_section)
+        .child(footer)
     }
-}
-
-fn render_modal_header(
-    props: &FilterModalProps,
-    callbacks: &FilterModalCallbacks,
-) -> impl IntoElement + use<> {
-    let theme = props.theme;
-    let colors = &theme.colors;
-    let labels = props.labels;
-
-    let mut close_btn = UiButton::icon_only("filter-modal-close-btn", UiIcon::X)
-        .variant(ButtonVariant::Ghost)
-        .with_theme(theme);
-    if let Some(ref close_fn) = callbacks.close {
-        let cb = Arc::clone(close_fn);
-        close_btn = close_btn.on_click(move |ev, w, c| cb(ev, w, c));
-    }
-
-    let badge_variant =
-        if props.active_rules_count > 0 { BadgeVariant::Accent } else { BadgeVariant::Neutral };
-
-    div()
-        .w_full()
-        .flex()
-        .flex_row()
-        .items_center()
-        .justify_between()
-        .child(
-            div()
-                .flex()
-                .flex_row()
-                .items_center()
-                .gap(px(theme.spacing.sm))
-                .child(render_icon(UiIcon::SlidersHorizontal, 15.0, colors.cyan))
-                .child(
-                    div()
-                        .font_family(FONT_FAMILY_UI)
-                        .text_sm()
-                        .text_color(colors.text_primary)
-                        .child(labels.filter_modal_title),
-                )
-                .child(
-                    Badge::new(
-                        format!("{} {}", props.active_rules_count, labels.rules_active_suffix),
-                        badge_variant,
-                    )
-                    .with_theme(theme),
-                ),
-        )
-        .child(close_btn)
 }
 
 fn render_extensions_section(
@@ -421,30 +360,20 @@ fn render_extensions_section(
 
     for &(id, text, mode) in mode_tabs {
         let is_active = props.ext_mode == mode;
-        let hover_bg = colors.bg_hover;
-        let mut tab = div()
-            .id(id)
-            .px(px(theme.spacing.md))
-            .h_full()
-            .rounded(px(theme.radius.sm))
-            .bg(if is_active { colors.bg_elevated } else { colors.bg_app })
-            .border_1()
-            .border_color(if is_active { colors.border_active } else { colors.bg_app })
-            .cursor_pointer()
-            .hover(move |s| s.bg(hover_bg))
-            .flex()
-            .items_center()
-            .justify_center()
-            .font_family(FONT_FAMILY_UI)
-            .text_xs()
-            .text_color(if is_active { colors.text_primary } else { colors.text_secondary })
-            .child(text);
-
-        if let Some(ref cb) = callbacks.select_ext_mode {
-            let cb_clone = Arc::clone(cb);
-            tab = tab.on_click(move |_ev, w, c| cb_clone(mode, w, c));
-        }
-        mode_bar = mode_bar.child(tab);
+        let cb_opt = callbacks.select_ext_mode.clone();
+        mode_bar = mode_bar.child(render_segmented_tab(
+            id,
+            text,
+            is_active,
+            false,
+            false,
+            theme,
+            move |_ev, w, c| {
+                if let Some(ref cb) = cb_opt {
+                    cb(mode, w, c);
+                }
+            },
+        ));
     }
 
     let add_ext_row = render_manual_extension_input_row(props, callbacks);
@@ -498,56 +427,18 @@ fn render_manual_extension_input_row(
     callbacks: &FilterModalCallbacks,
 ) -> impl IntoElement + use<> {
     let theme = props.theme;
-    let colors = &theme.colors;
     let labels = props.labels;
     let has_draft = !props.extension_input_draft.is_empty();
 
-    let display_text = if props.extension_input_focused && has_draft {
-        SharedString::from(format!("{}▏", props.extension_input_draft))
-    } else if has_draft {
-        SharedString::from(props.extension_input_draft.clone())
-    } else if props.extension_input_focused {
-        SharedString::from(format!("▏{}", labels.filter_ext_input_placeholder))
-    } else {
-        SharedString::from(labels.filter_ext_input_placeholder)
-    };
-
-    let mut input_box = div()
-        .id("filter-modal-extension-input")
-        .flex_1()
-        .min_w(px(0.0))
-        .h(px(28.0))
-        .px(px(theme.spacing.md))
-        .rounded(px(theme.radius.md))
-        .border_1()
-        .border_color(if props.extension_input_focused { colors.cyan } else { colors.border })
-        .bg(colors.bg_app)
-        .cursor_pointer()
-        .flex()
-        .flex_row()
-        .items_center()
-        .gap(px(theme.spacing.sm))
-        .child(render_icon(UiIcon::FileCode, 13.0, colors.text_muted))
-        .child(
-            div()
-                .flex_1()
-                .min_w(px(0.0))
-                .overflow_hidden()
-                .whitespace_nowrap()
-                .font_family(FONT_FAMILY_MONO)
-                .text_xs()
-                .text_color(if has_draft || props.extension_input_focused {
-                    colors.text_primary
-                } else {
-                    colors.text_muted
-                })
-                .child(display_text),
-        );
-
-    if let Some(ref cb) = callbacks.focus_extension_input {
-        let cb_clone = Arc::clone(cb);
-        input_box = input_box.on_click(move |ev, w, c| cb_clone(ev, w, c));
-    }
+    let input_box = TextInputField::new(
+        "filter-modal-extension-input",
+        props.extension_input_draft.clone(),
+        labels.filter_ext_input_placeholder,
+        props.extension_input_focused,
+    )
+    .leading_icon(UiIcon::FileCode)
+    .with_theme(theme)
+    .on_focus_arc(callbacks.focus_extension_input.clone());
 
     let mut add_btn = UiButton::new("filter-modal-add-ext-btn", labels.filter_ext_add_btn)
         .variant(if has_draft { ButtonVariant::Primary } else { ButtonVariant::Secondary })
@@ -741,56 +632,18 @@ fn render_manual_folder_input_row(
     callbacks: &FilterModalCallbacks,
 ) -> impl IntoElement + use<> {
     let theme = props.theme;
-    let colors = &theme.colors;
     let labels = props.labels;
     let has_draft = !props.folder_input_draft.is_empty();
 
-    let display_text = if props.folder_input_focused && has_draft {
-        SharedString::from(format!("{}▏", props.folder_input_draft))
-    } else if has_draft {
-        SharedString::from(props.folder_input_draft.clone())
-    } else if props.folder_input_focused {
-        SharedString::from(format!("▏{}", labels.filter_folder_input_placeholder))
-    } else {
-        SharedString::from(labels.filter_folder_input_placeholder)
-    };
-
-    let mut input_box = div()
-        .id("filter-modal-folder-input")
-        .flex_1()
-        .min_w(px(0.0))
-        .h(px(28.0))
-        .px(px(theme.spacing.md))
-        .rounded(px(theme.radius.md))
-        .border_1()
-        .border_color(if props.folder_input_focused { colors.cyan } else { colors.border })
-        .bg(colors.bg_app)
-        .cursor_pointer()
-        .flex()
-        .flex_row()
-        .items_center()
-        .gap(px(theme.spacing.sm))
-        .child(render_icon(UiIcon::Folder, 13.0, colors.text_muted))
-        .child(
-            div()
-                .flex_1()
-                .min_w(px(0.0))
-                .overflow_hidden()
-                .whitespace_nowrap()
-                .font_family(FONT_FAMILY_MONO)
-                .text_xs()
-                .text_color(if has_draft || props.folder_input_focused {
-                    colors.text_primary
-                } else {
-                    colors.text_muted
-                })
-                .child(display_text),
-        );
-
-    if let Some(ref cb) = callbacks.focus_folder_input {
-        let cb_clone = Arc::clone(cb);
-        input_box = input_box.on_click(move |ev, w, c| cb_clone(ev, w, c));
-    }
+    let input_box = TextInputField::new(
+        "filter-modal-folder-input",
+        props.folder_input_draft.clone(),
+        labels.filter_folder_input_placeholder,
+        props.folder_input_focused,
+    )
+    .leading_icon(UiIcon::Folder)
+    .with_theme(theme)
+    .on_focus_arc(callbacks.focus_folder_input.clone());
 
     let mut add_btn = UiButton::new("filter-modal-add-folder-btn", labels.filter_folder_add_btn)
         .variant(if has_draft { ButtonVariant::Primary } else { ButtonVariant::Secondary })
@@ -881,30 +734,20 @@ fn render_regex_scope_bar(
 
     for &(id, text, scope) in scopes {
         let is_active = props.regex_scope == scope;
-        let hover_bg = colors.bg_hover;
-        let mut item = div()
-            .id(id)
-            .px(px(theme.spacing.sm))
-            .h_full()
-            .rounded(px(theme.radius.sm))
-            .bg(if is_active { colors.bg_elevated } else { colors.bg_app })
-            .border_1()
-            .border_color(if is_active { colors.border_active } else { colors.bg_app })
-            .cursor_pointer()
-            .hover(move |s| s.bg(hover_bg))
-            .flex()
-            .items_center()
-            .justify_center()
-            .font_family(FONT_FAMILY_UI)
-            .text_xs()
-            .text_color(if is_active { colors.text_primary } else { colors.text_secondary })
-            .child(text);
-
-        if let Some(ref cb) = callbacks.select_regex_scope {
-            let cb_clone = Arc::clone(cb);
-            item = item.on_click(move |_ev, w, c| cb_clone(scope, w, c));
-        }
-        bar = bar.child(item);
+        let cb_opt = callbacks.select_regex_scope.clone();
+        bar = bar.child(render_segmented_tab(
+            id,
+            text,
+            is_active,
+            false,
+            false,
+            theme,
+            move |_ev, w, c| {
+                if let Some(ref cb) = cb_opt {
+                    cb(scope, w, c);
+                }
+            },
+        ));
     }
 
     bar
@@ -949,25 +792,8 @@ fn render_regex_pattern_box(
     let labels = props.labels;
     let has_pattern = !props.regex_pattern.is_empty();
 
-    let display_text = if props.regex_focused && has_pattern {
-        SharedString::from(format!("{}▏", props.regex_pattern))
-    } else if has_pattern {
-        SharedString::from(props.regex_pattern.clone())
-    } else if props.regex_focused {
-        SharedString::from(format!("▏{}", labels.tree_regex_placeholder))
-    } else {
-        SharedString::from(labels.tree_regex_placeholder)
-    };
-
-    let border_col = if !props.regex_is_valid {
-        colors.danger
-    } else if props.regex_focused {
-        colors.cyan
-    } else {
-        colors.border
-    };
-
-    let clear_el = if has_pattern {
+    let mut trailing_row = div().flex().flex_row().items_center().gap(px(theme.spacing.xs));
+    if has_pattern {
         let mut btn = div()
             .id("filter-modal-regex-clear")
             .p(px(2.0))
@@ -984,10 +810,8 @@ fn render_regex_pattern_box(
                 cb_clone(ev, w, c);
             });
         }
-        btn.into_any_element()
-    } else {
-        div().into_any_element()
-    };
+        trailing_row = trailing_row.child(btn);
+    }
 
     let hover_bg = colors.bg_hover;
     let mut case_btn = div()
@@ -1014,99 +838,35 @@ fn render_regex_pattern_box(
             cb_clone(ev, w, c);
         });
     }
+    trailing_row = trailing_row.child(case_btn);
 
-    let mut input_box = div()
-        .id("filter-modal-regex-input")
-        .flex_1()
-        .min_w(px(0.0))
-        .h(px(28.0))
-        .px(px(theme.spacing.md))
-        .rounded(px(theme.radius.md))
-        .border_1()
-        .border_color(border_col)
-        .bg(colors.bg_app)
-        .cursor_pointer()
-        .flex()
-        .flex_row()
-        .items_center()
-        .justify_between()
-        .gap(px(theme.spacing.sm))
-        .child(div().font_family(FONT_FAMILY_MONO).text_xs().text_color(colors.cyan).child("/"))
-        .child(
-            div()
-                .flex_1()
-                .min_w(px(0.0))
-                .overflow_hidden()
-                .whitespace_nowrap()
-                .font_family(FONT_FAMILY_MONO)
-                .text_xs()
-                .text_color(if has_pattern || props.regex_focused {
-                    colors.text_primary
-                } else {
-                    colors.text_muted
-                })
-                .child(display_text),
-        )
-        .child(clear_el)
-        .child(case_btn);
-
-    if let Some(ref cb) = callbacks.focus_regex_input {
-        let cb_clone = Arc::clone(cb);
-        input_box = input_box.on_click(move |ev, w, c| cb_clone(ev, w, c));
-    }
-
-    input_box
+    TextInputField::new(
+        "filter-modal-regex-input",
+        props.regex_pattern.clone(),
+        labels.tree_regex_placeholder,
+        props.regex_focused,
+    )
+    .invalid(!props.regex_is_valid)
+    .leading_prefix("/")
+    .trailing(trailing_row)
+    .with_theme(theme)
+    .on_focus_arc(callbacks.focus_regex_input.clone())
 }
 
 fn render_regex_template_name_box(
     props: &FilterModalProps,
     callbacks: &FilterModalCallbacks,
 ) -> impl IntoElement + use<> {
-    let theme = props.theme;
-    let colors = &theme.colors;
-    let labels = props.labels;
-    let has_name = !props.regex_name_draft.is_empty();
-
-    let name_display = if props.regex_name_focused && has_name {
-        SharedString::from(format!("{}▏", props.regex_name_draft))
-    } else if has_name {
-        SharedString::from(props.regex_name_draft.clone())
-    } else if props.regex_name_focused {
-        SharedString::from(format!("▏{}", labels.filter_regex_name_placeholder))
-    } else {
-        SharedString::from(labels.filter_regex_name_placeholder)
-    };
-
-    let mut name_box = div()
-        .id("filter-modal-regex-name-input")
-        .w(px(148.0))
-        .h(px(28.0))
-        .px(px(theme.spacing.md))
-        .rounded(px(theme.radius.md))
-        .border_1()
-        .border_color(if props.regex_name_focused { colors.cyan } else { colors.border })
-        .bg(colors.bg_app)
-        .cursor_pointer()
-        .flex()
-        .flex_row()
-        .items_center()
-        .overflow_hidden()
-        .whitespace_nowrap()
-        .font_family(FONT_FAMILY_UI)
-        .text_xs()
-        .text_color(if has_name || props.regex_name_focused {
-            colors.text_primary
-        } else {
-            colors.text_muted
-        })
-        .child(name_display);
-
-    if let Some(ref cb) = callbacks.focus_regex_name_input {
-        let cb_clone = Arc::clone(cb);
-        name_box = name_box.on_click(move |ev, w, c| cb_clone(ev, w, c));
-    }
-
-    name_box
+    TextInputField::new(
+        "filter-modal-regex-name-input",
+        props.regex_name_draft.clone(),
+        props.labels.filter_regex_name_placeholder,
+        props.regex_name_focused,
+    )
+    .monospace(false)
+    .fixed_width(148.0)
+    .with_theme(props.theme)
+    .on_focus_arc(callbacks.focus_regex_name_input.clone())
 }
 
 fn render_regex_presets_row(
@@ -1249,841 +1009,4 @@ fn render_modal_footer(
             ),
         )
         .child(actions)
-}
-
-pub type PromptIndexCallback = Arc<dyn Fn(usize, &mut Window, &mut App) + 'static>;
-pub type PromptCategoryCallback =
-    Arc<dyn Fn(Option<PromptCategory>, &mut Window, &mut App) + 'static>;
-pub type NewPromptCategoryCallback = Arc<dyn Fn(PromptCategory, &mut Window, &mut App) + 'static>;
-
-#[derive(Debug, Clone)]
-pub struct SystemPromptModalProps {
-    pub active_category: Option<PromptCategory>,
-    pub new_prompt_category: PromptCategory,
-    pub prompt_title_draft: String,
-    pub prompt_title_focused: bool,
-    pub prompt_input_draft: String,
-    pub prompt_input_focused: bool,
-    pub blocks: Vec<PromptBlockItem>,
-    pub effective_prompt_text: String,
-    pub labels: &'static UiLabels,
-    pub theme: &'static ThemeTokens,
-}
-
-#[derive(Clone, Default)]
-struct PromptModalCallbacks {
-    select_category: Option<PromptCategoryCallback>,
-    select_new_category: Option<NewPromptCategoryCallback>,
-    toggle_block: Option<PromptIndexCallback>,
-    move_up: Option<PromptIndexCallback>,
-    move_down: Option<PromptIndexCallback>,
-    delete_block: Option<PromptIndexCallback>,
-    focus_prompt_title: Option<FilterModalActionCallback>,
-    focus_prompt_input: Option<FilterModalActionCallback>,
-    submit_prompt_input: Option<FilterModalActionCallback>,
-    paste_custom: Option<FilterModalActionCallback>,
-    copy_prompt: Option<FilterModalActionCallback>,
-    reset_builtin: Option<FilterModalActionCallback>,
-    close: Option<FilterModalActionCallback>,
-}
-
-#[derive(IntoElement)]
-pub struct SystemPromptModalComponent {
-    props: SystemPromptModalProps,
-    callbacks: PromptModalCallbacks,
-}
-
-impl fmt::Debug for SystemPromptModalComponent {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("SystemPromptModalComponent")
-            .field("blocks_count", &self.props.blocks.len())
-            .finish_non_exhaustive()
-    }
-}
-
-impl SystemPromptModalComponent {
-    #[inline]
-    pub fn new(props: SystemPromptModalProps) -> Self {
-        Self { props, callbacks: PromptModalCallbacks::default() }
-    }
-
-    #[must_use]
-    #[inline]
-    pub fn on_select_category(
-        mut self,
-        handler: impl Fn(Option<PromptCategory>, &mut Window, &mut App) + 'static,
-    ) -> Self {
-        self.callbacks.select_category = Some(Arc::new(handler));
-        self
-    }
-
-    #[must_use]
-    #[inline]
-    pub fn on_select_new_category(
-        mut self,
-        handler: impl Fn(PromptCategory, &mut Window, &mut App) + 'static,
-    ) -> Self {
-        self.callbacks.select_new_category = Some(Arc::new(handler));
-        self
-    }
-
-    #[must_use]
-    #[inline]
-    pub fn on_toggle_block(
-        mut self,
-        handler: impl Fn(usize, &mut Window, &mut App) + 'static,
-    ) -> Self {
-        self.callbacks.toggle_block = Some(Arc::new(handler));
-        self
-    }
-
-    #[must_use]
-    #[inline]
-    pub fn on_move_up(mut self, handler: impl Fn(usize, &mut Window, &mut App) + 'static) -> Self {
-        self.callbacks.move_up = Some(Arc::new(handler));
-        self
-    }
-
-    #[must_use]
-    #[inline]
-    pub fn on_move_down(
-        mut self,
-        handler: impl Fn(usize, &mut Window, &mut App) + 'static,
-    ) -> Self {
-        self.callbacks.move_down = Some(Arc::new(handler));
-        self
-    }
-
-    #[must_use]
-    #[inline]
-    pub fn on_delete_block(
-        mut self,
-        handler: impl Fn(usize, &mut Window, &mut App) + 'static,
-    ) -> Self {
-        self.callbacks.delete_block = Some(Arc::new(handler));
-        self
-    }
-
-    #[must_use]
-    #[inline]
-    pub fn on_focus_prompt_title(
-        mut self,
-        handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
-    ) -> Self {
-        self.callbacks.focus_prompt_title = Some(Arc::new(handler));
-        self
-    }
-
-    #[must_use]
-    #[inline]
-    pub fn on_focus_prompt_input(
-        mut self,
-        handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
-    ) -> Self {
-        self.callbacks.focus_prompt_input = Some(Arc::new(handler));
-        self
-    }
-
-    #[must_use]
-    #[inline]
-    pub fn on_submit_prompt_input(
-        mut self,
-        handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
-    ) -> Self {
-        self.callbacks.submit_prompt_input = Some(Arc::new(handler));
-        self
-    }
-
-    #[must_use]
-    pub fn with_actions(
-        mut self,
-        on_paste_custom: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
-        on_copy_prompt: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
-        on_reset_builtin: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
-        on_close: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
-    ) -> Self {
-        self.callbacks.paste_custom = Some(Arc::new(on_paste_custom));
-        self.callbacks.copy_prompt = Some(Arc::new(on_copy_prompt));
-        self.callbacks.reset_builtin = Some(Arc::new(on_reset_builtin));
-        self.callbacks.close = Some(Arc::new(on_close));
-        self
-    }
-}
-
-impl RenderOnce for SystemPromptModalComponent {
-    fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
-        let theme = self.props.theme;
-        let colors = &theme.colors;
-        let labels = self.props.labels;
-
-        let composer_card = render_prompt_composer_card(&self.props, &self.callbacks);
-        let cat_bar = render_prompt_category_bar(&self.props, &self.callbacks);
-        let blocks_list = render_prompt_blocks_list(&self.props, &self.callbacks);
-
-        let preview_text = if self.props.effective_prompt_text.is_empty() {
-            SharedString::from(labels.prompt_preview_empty)
-        } else {
-            SharedString::from(self.props.effective_prompt_text.clone())
-        };
-
-        let preview_box = div()
-            .id("system-prompt-preview-scroll")
-            .w_full()
-            .h(px(110.0))
-            .overflow_y_scroll()
-            .p(px(theme.spacing.md))
-            .rounded(px(theme.radius.md))
-            .bg(colors.bg_app)
-            .border_1()
-            .border_color(colors.border)
-            .font_family(FONT_FAMILY_MONO)
-            .text_xs()
-            .text_color(if self.props.effective_prompt_text.is_empty() {
-                colors.text_muted
-            } else {
-                colors.text_primary
-            })
-            .child(preview_text);
-
-        let any_enabled = self.props.blocks.iter().any(|b| b.enabled);
-        let footer_row = render_prompt_modal_footer(
-            any_enabled,
-            labels,
-            theme,
-            self.callbacks.copy_prompt.as_ref(),
-            self.callbacks.reset_builtin.as_ref(),
-            self.callbacks.close.as_ref(),
-        );
-
-        let mut close_btn = UiButton::icon_only("prompt-modal-close-btn", UiIcon::X)
-            .variant(ButtonVariant::Ghost)
-            .with_theme(theme);
-        if let Some(ref close_fn) = self.callbacks.close {
-            let cb = Arc::clone(close_fn);
-            close_btn = close_btn.on_click(move |ev, w, c| cb(ev, w, c));
-        }
-
-        let backdrop_color = Rgba { r: 0.02, g: 0.03, b: 0.05, a: 0.72 };
-        let mut backdrop = div()
-            .id("system-prompt-modal-backdrop")
-            .absolute()
-            .top_0()
-            .left_0()
-            .size_full()
-            .bg(backdrop_color)
-            .flex()
-            .items_center()
-            .justify_center()
-            .p(px(theme.spacing.xxl));
-
-        if let Some(close_fn) = self.callbacks.close {
-            backdrop = backdrop.on_click(move |ev, w, c| close_fn(ev, w, c));
-        }
-
-        backdrop.child(
-            div()
-                .id("system-prompt-modal-dialog")
-                .on_click(|_ev, _win, cx| {
-                    cx.stop_propagation();
-                })
-                .w(px(680.0))
-                .p(px(theme.spacing.xxl))
-                .rounded(px(theme.radius.lg))
-                .bg(colors.bg_panel)
-                .border_1()
-                .border_color(colors.border_active)
-                .flex()
-                .flex_col()
-                .gap(px(theme.spacing.sm))
-                .child(
-                    div()
-                        .w_full()
-                        .flex()
-                        .flex_row()
-                        .items_center()
-                        .justify_between()
-                        .child(
-                            div()
-                                .font_family(FONT_FAMILY_UI)
-                                .text_sm()
-                                .text_color(colors.text_primary)
-                                .child(labels.prompt_modal_title),
-                        )
-                        .child(close_btn),
-                )
-                .child(
-                    div()
-                        .font_family(FONT_FAMILY_UI)
-                        .text_xs()
-                        .text_color(colors.text_secondary)
-                        .child(labels.prompt_modal_subtitle),
-                )
-                .child(composer_card)
-                .child(cat_bar)
-                .child(blocks_list)
-                .child(preview_box)
-                .child(footer_row),
-        )
-    }
-}
-
-fn render_prompt_composer_card(
-    props: &SystemPromptModalProps,
-    callbacks: &PromptModalCallbacks,
-) -> impl IntoElement + use<> {
-    let theme = props.theme;
-    let colors = &theme.colors;
-    let cat_row = render_new_prompt_category_row(props, callbacks);
-    let title_row = render_new_prompt_title_row(props, callbacks);
-    let content_row = render_manual_prompt_input_row(props, callbacks);
-
-    div()
-        .w_full()
-        .p(px(theme.spacing.md))
-        .rounded(px(theme.radius.md))
-        .bg(colors.bg_elevated)
-        .border_1()
-        .border_color(colors.border)
-        .flex()
-        .flex_col()
-        .gap(px(theme.spacing.xs))
-        .child(cat_row)
-        .child(title_row)
-        .child(content_row)
-}
-
-fn render_new_prompt_category_row(
-    props: &SystemPromptModalProps,
-    callbacks: &PromptModalCallbacks,
-) -> impl IntoElement + use<> {
-    let theme = props.theme;
-    let colors = &theme.colors;
-    let labels = props.labels;
-
-    let categories: &[(&str, &str, PromptCategory)] = &[
-        ("new-p-cat-patcher", labels.prompt_cat_patcher, PromptCategory::Patcher),
-        ("new-p-cat-arch", labels.prompt_cat_arch, PromptCategory::Architecture),
-        ("new-p-cat-behavior", labels.prompt_cat_behavior, PromptCategory::Behavior),
-        ("new-p-cat-custom", labels.prompt_cat_custom, PromptCategory::Custom),
-    ];
-
-    let mut bar = div()
-        .flex_1()
-        .h(px(26.0))
-        .p(px(2.0))
-        .rounded(px(theme.radius.sm))
-        .bg(colors.bg_app)
-        .border_1()
-        .border_color(colors.border)
-        .flex()
-        .flex_row()
-        .items_center()
-        .gap(px(2.0));
-
-    for &(id, text, cat) in categories {
-        let is_active = props.new_prompt_category == cat;
-        let hover_bg = colors.bg_hover;
-        let mut pill = div()
-            .id(id)
-            .flex_1()
-            .h_full()
-            .rounded(px(theme.radius.sm))
-            .bg(if is_active { colors.bg_elevated } else { colors.bg_app })
-            .border_1()
-            .border_color(if is_active { colors.cyan } else { colors.bg_app })
-            .cursor_pointer()
-            .hover(move |s| s.bg(hover_bg))
-            .flex()
-            .items_center()
-            .justify_center()
-            .font_family(FONT_FAMILY_UI)
-            .text_xs()
-            .text_color(if is_active { colors.text_primary } else { colors.text_secondary })
-            .child(text);
-
-        if let Some(ref cb) = callbacks.select_new_category {
-            let cb_clone = Arc::clone(cb);
-            pill = pill.on_click(move |_ev, w, c| cb_clone(cat, w, c));
-        }
-        bar = bar.child(pill);
-    }
-
-    div()
-        .w_full()
-        .flex()
-        .flex_row()
-        .items_center()
-        .gap(px(theme.spacing.sm))
-        .child(
-            div()
-                .w(px(86.0))
-                .flex_shrink_0()
-                .font_family(FONT_FAMILY_UI)
-                .text_xs()
-                .text_color(colors.text_secondary)
-                .child(labels.prompt_field_category_label),
-        )
-        .child(bar)
-}
-
-fn render_new_prompt_title_row(
-    props: &SystemPromptModalProps,
-    callbacks: &PromptModalCallbacks,
-) -> impl IntoElement + use<> {
-    let theme = props.theme;
-    let colors = &theme.colors;
-    let labels = props.labels;
-    let has_title = !props.prompt_title_draft.is_empty();
-
-    let display_text = if props.prompt_title_focused && has_title {
-        SharedString::from(format!("{}▏", props.prompt_title_draft))
-    } else if has_title {
-        SharedString::from(props.prompt_title_draft.clone())
-    } else if props.prompt_title_focused {
-        SharedString::from(format!("▏{}", labels.prompt_field_title_placeholder))
-    } else {
-        SharedString::from(labels.prompt_field_title_placeholder)
-    };
-
-    let mut title_box = div()
-        .id("system-prompt-title-input")
-        .flex_1()
-        .min_w(px(0.0))
-        .h(px(28.0))
-        .px(px(theme.spacing.md))
-        .rounded(px(theme.radius.md))
-        .border_1()
-        .border_color(if props.prompt_title_focused { colors.cyan } else { colors.border })
-        .bg(colors.bg_app)
-        .cursor_pointer()
-        .flex()
-        .flex_row()
-        .items_center()
-        .overflow_hidden()
-        .whitespace_nowrap()
-        .font_family(FONT_FAMILY_UI)
-        .text_xs()
-        .text_color(if has_title || props.prompt_title_focused {
-            colors.text_primary
-        } else {
-            colors.text_muted
-        })
-        .child(display_text);
-
-    if let Some(ref cb) = callbacks.focus_prompt_title {
-        let cb_clone = Arc::clone(cb);
-        title_box = title_box.on_click(move |ev, w, c| cb_clone(ev, w, c));
-    }
-
-    div()
-        .w_full()
-        .flex()
-        .flex_row()
-        .items_center()
-        .gap(px(theme.spacing.sm))
-        .child(
-            div()
-                .w(px(86.0))
-                .flex_shrink_0()
-                .font_family(FONT_FAMILY_UI)
-                .text_xs()
-                .text_color(colors.text_secondary)
-                .child(labels.prompt_field_title_label),
-        )
-        .child(title_box)
-}
-
-fn render_prompt_category_bar(
-    props: &SystemPromptModalProps,
-    callbacks: &PromptModalCallbacks,
-) -> impl IntoElement + use<> {
-    let theme = props.theme;
-    let colors = &theme.colors;
-    let labels = props.labels;
-
-    let categories: &[(&str, &str, Option<PromptCategory>)] = &[
-        ("p-cat-all", labels.prompt_cat_all, None),
-        ("p-cat-patcher", labels.prompt_cat_patcher, Some(PromptCategory::Patcher)),
-        ("p-cat-arch", labels.prompt_cat_arch, Some(PromptCategory::Architecture)),
-        ("p-cat-behavior", labels.prompt_cat_behavior, Some(PromptCategory::Behavior)),
-        ("p-cat-custom", labels.prompt_cat_custom, Some(PromptCategory::Custom)),
-    ];
-
-    let mut bar = div()
-        .w_full()
-        .h(px(28.0))
-        .p(px(2.0))
-        .rounded(px(theme.radius.md))
-        .bg(colors.bg_app)
-        .border_1()
-        .border_color(colors.border)
-        .flex()
-        .flex_row()
-        .items_center()
-        .gap(px(2.0));
-
-    for &(id, text, cat_opt) in categories {
-        let is_active = props.active_category == cat_opt;
-        let hover_bg = colors.bg_hover;
-        let mut tab = div()
-            .id(id)
-            .flex_1()
-            .h_full()
-            .rounded(px(theme.radius.sm))
-            .bg(if is_active { colors.bg_elevated } else { colors.bg_app })
-            .border_1()
-            .border_color(if is_active { colors.cyan } else { colors.bg_app })
-            .cursor_pointer()
-            .hover(move |s| s.bg(hover_bg))
-            .flex()
-            .items_center()
-            .justify_center()
-            .font_family(FONT_FAMILY_UI)
-            .text_xs()
-            .text_color(if is_active { colors.text_primary } else { colors.text_secondary })
-            .child(text);
-
-        if let Some(ref cb) = callbacks.select_category {
-            let cb_clone = Arc::clone(cb);
-            tab = tab.on_click(move |_ev, w, c| cb_clone(cat_opt, w, c));
-        }
-        bar = bar.child(tab);
-    }
-
-    bar
-}
-
-fn render_manual_prompt_input_row(
-    props: &SystemPromptModalProps,
-    callbacks: &PromptModalCallbacks,
-) -> impl IntoElement + use<> {
-    let theme = props.theme;
-    let colors = &theme.colors;
-    let labels = props.labels;
-    let has_draft = !props.prompt_input_draft.is_empty();
-    let can_submit = has_draft || !props.prompt_title_draft.is_empty();
-
-    let display_text = if props.prompt_input_focused && has_draft {
-        SharedString::from(format!("{}▏", props.prompt_input_draft))
-    } else if has_draft {
-        SharedString::from(props.prompt_input_draft.clone())
-    } else if props.prompt_input_focused {
-        SharedString::from(format!("▏{}", labels.prompt_add_input_placeholder))
-    } else {
-        SharedString::from(labels.prompt_add_input_placeholder)
-    };
-
-    let mut input_box = div()
-        .id("system-prompt-modal-input")
-        .flex_1()
-        .min_w(px(0.0))
-        .min_h(px(46.0))
-        .max_h(px(76.0))
-        .overflow_y_scroll()
-        .px(px(theme.spacing.md))
-        .py(px(theme.spacing.xs))
-        .rounded(px(theme.radius.md))
-        .border_1()
-        .border_color(if props.prompt_input_focused { colors.cyan } else { colors.border })
-        .bg(colors.bg_app)
-        .cursor_pointer()
-        .font_family(FONT_FAMILY_MONO)
-        .text_xs()
-        .text_color(if has_draft || props.prompt_input_focused {
-            colors.text_primary
-        } else {
-            colors.text_muted
-        })
-        .child(display_text);
-
-    if let Some(ref cb) = callbacks.focus_prompt_input {
-        let cb_clone = Arc::clone(cb);
-        input_box = input_box.on_click(move |ev, w, c| cb_clone(ev, w, c));
-    }
-
-    let mut paste_btn = UiButton::icon_only("prompt-modal-inline-paste", UiIcon::ClipboardPaste)
-        .variant(ButtonVariant::Secondary)
-        .with_theme(theme);
-    if let Some(ref cb) = callbacks.paste_custom {
-        let cb_clone = Arc::clone(cb);
-        paste_btn = paste_btn.on_click(move |ev, w, c| cb_clone(ev, w, c));
-    }
-
-    let mut add_btn = UiButton::new("prompt-modal-submit-btn", labels.prompt_add_btn)
-        .variant(if can_submit { ButtonVariant::Primary } else { ButtonVariant::Secondary })
-        .disabled(!can_submit)
-        .with_theme(theme);
-    if let Some(ref cb) = callbacks.submit_prompt_input {
-        let cb_clone = Arc::clone(cb);
-        add_btn = add_btn.on_click(move |ev, w, c| cb_clone(ev, w, c));
-    }
-
-    div()
-        .w_full()
-        .flex()
-        .flex_row()
-        .items_start()
-        .gap(px(theme.spacing.sm))
-        .child(
-            div()
-                .w(px(86.0))
-                .pt(px(theme.spacing.xs))
-                .flex_shrink_0()
-                .font_family(FONT_FAMILY_UI)
-                .text_xs()
-                .text_color(colors.text_secondary)
-                .child(labels.prompt_field_content_label),
-        )
-        .child(input_box)
-        .child(div().flex().flex_col().gap(px(theme.spacing.xs)).child(add_btn).child(paste_btn))
-}
-
-fn render_prompt_blocks_list(
-    props: &SystemPromptModalProps,
-    callbacks: &PromptModalCallbacks,
-) -> impl IntoElement + use<> {
-    let theme = props.theme;
-    let colors = &theme.colors;
-    let labels = props.labels;
-    let total_len = props.blocks.len();
-
-    let mut list = div()
-        .id("system-prompt-blocks-scroll")
-        .w_full()
-        .max_h(px(148.0))
-        .overflow_y_scroll()
-        .p(px(theme.spacing.sm))
-        .rounded(px(theme.radius.md))
-        .bg(colors.bg_elevated)
-        .border_1()
-        .border_color(colors.border)
-        .flex()
-        .flex_col()
-        .gap(px(theme.spacing.xs));
-
-    let mut active_order_num = 0_usize;
-    let mut visible_count = 0_usize;
-    for (idx, block) in props.blocks.iter().enumerate() {
-        if block.enabled {
-            active_order_num += 1;
-        }
-        if let Some(filter_cat) = props.active_category
-            && block.category != filter_cat
-        {
-            continue;
-        }
-        visible_count += 1;
-        let order_badge =
-            if block.enabled { format!("#{active_order_num}") } else { String::new() };
-        let cat_label = match block.category {
-            PromptCategory::Patcher => labels.prompt_cat_patcher,
-            PromptCategory::Architecture => labels.prompt_cat_arch,
-            PromptCategory::Behavior => labels.prompt_cat_behavior,
-            PromptCategory::Custom => labels.prompt_cat_custom,
-        };
-        list = list.child(render_prompt_block_row(
-            idx,
-            total_len,
-            block,
-            &order_badge,
-            cat_label,
-            theme,
-            callbacks,
-        ));
-    }
-
-    if visible_count == 0 {
-        list = list.child(
-            div()
-                .w_full()
-                .h(px(36.0))
-                .flex()
-                .items_center()
-                .justify_center()
-                .font_family(FONT_FAMILY_UI)
-                .text_xs()
-                .text_color(colors.text_muted)
-                .child(labels.prompt_category_empty_hint),
-        );
-    }
-
-    list
-}
-
-fn render_prompt_block_row(
-    idx: usize,
-    total_len: usize,
-    block: &PromptBlockItem,
-    order_badge: &str,
-    cat_label: &'static str,
-    theme: &'static ThemeTokens,
-    callbacks: &PromptModalCallbacks,
-) -> impl IntoElement + use<> {
-    let colors = &theme.colors;
-    let hover_bg = colors.bg_hover;
-    let is_on = block.enabled;
-
-    let (box_bg, box_border, check_glyph) = if is_on {
-        (colors.badge_accent.bg, colors.cyan, colors.cyan)
-    } else {
-        (colors.bg_app, colors.border_active, colors.text_muted)
-    };
-
-    let mut left_click_area = div()
-        .id(("prompt-block-toggle", idx))
-        .flex_1()
-        .min_w(px(0.0))
-        .cursor_pointer()
-        .flex()
-        .flex_row()
-        .items_center()
-        .gap(px(theme.spacing.sm))
-        .child(render_vector_checkbox(
-            is_on,
-            false,
-            14.0,
-            box_bg,
-            box_border,
-            check_glyph,
-            theme.radius.sm,
-        ))
-        .child(
-            div()
-                .w(px(22.0))
-                .font_family(FONT_FAMILY_MONO)
-                .text_xs()
-                .text_color(if is_on { colors.cyan } else { colors.text_muted })
-                .child(SharedString::from(order_badge.to_owned())),
-        )
-        .child(
-            div()
-                .flex_1()
-                .min_w(px(0.0))
-                .overflow_hidden()
-                .whitespace_nowrap()
-                .font_family(FONT_FAMILY_UI)
-                .text_xs()
-                .text_color(if is_on { colors.text_primary } else { colors.text_secondary })
-                .child(SharedString::from(block.title.clone())),
-        )
-        .child(
-            Badge::new(cat_label, if is_on { BadgeVariant::Accent } else { BadgeVariant::Neutral })
-                .with_theme(theme),
-        );
-
-    if let Some(ref cb) = callbacks.toggle_block {
-        let cb_clone = Arc::clone(cb);
-        left_click_area = left_click_area.on_click(move |_ev, w, c| cb_clone(idx, w, c));
-    }
-
-    let is_custom_item = block.id.starts_with("custom_");
-    let mut actions = div().flex_shrink_0().flex().flex_row().items_center().gap(px(2.0));
-
-    if is_custom_item {
-        let mut del_btn = UiButton::icon_only(("prompt-block-del", idx), UiIcon::X)
-            .variant(ButtonVariant::Ghost)
-            .with_theme(theme);
-        if let Some(ref cb) = callbacks.delete_block {
-            let cb_clone = Arc::clone(cb);
-            del_btn = del_btn.on_click(move |_ev, w, c| {
-                c.stop_propagation();
-                cb_clone(idx, w, c);
-            });
-        }
-        actions = actions.child(del_btn);
-    }
-
-    let mut up_btn = UiButton::icon_only(("prompt-block-up", idx), UiIcon::ChevronUp)
-        .variant(ButtonVariant::Ghost)
-        .disabled(idx == 0)
-        .with_theme(theme);
-    if let Some(ref cb) = callbacks.move_up {
-        let cb_clone = Arc::clone(cb);
-        up_btn = up_btn.on_click(move |_ev, w, c| {
-            c.stop_propagation();
-            cb_clone(idx, w, c);
-        });
-    }
-
-    let mut down_btn = UiButton::icon_only(("prompt-block-down", idx), UiIcon::ChevronDown)
-        .variant(ButtonVariant::Ghost)
-        .disabled(idx + 1 >= total_len)
-        .with_theme(theme);
-    if let Some(ref cb) = callbacks.move_down {
-        let cb_clone = Arc::clone(cb);
-        down_btn = down_btn.on_click(move |_ev, w, c| {
-            c.stop_propagation();
-            cb_clone(idx, w, c);
-        });
-    }
-
-    div()
-        .w_full()
-        .h(px(30.0))
-        .px(px(theme.spacing.md))
-        .rounded(px(theme.radius.sm))
-        .bg(colors.bg_panel)
-        .border_1()
-        .border_color(if is_on { colors.border_active } else { colors.border })
-        .hover(move |s| s.bg(hover_bg))
-        .flex()
-        .flex_row()
-        .items_center()
-        .justify_between()
-        .gap(px(theme.spacing.sm))
-        .child(left_click_area)
-        .child(actions.child(up_btn).child(down_btn))
-}
-
-fn render_prompt_modal_footer(
-    has_custom_override: bool,
-    labels: &'static UiLabels,
-    theme: &'static ThemeTokens,
-    on_copy_prompt: Option<&FilterModalActionCallback>,
-    on_reset_builtin: Option<&FilterModalActionCallback>,
-    on_close: Option<&FilterModalActionCallback>,
-) -> impl IntoElement + use<> {
-    let mut left_actions = div().flex().flex_row().items_center().gap(px(theme.spacing.xs));
-
-    let mut copy_btn = UiButton::new("prompt-modal-copy-btn", labels.prompt_copy_template_btn)
-        .icon(UiIcon::Copy)
-        .variant(ButtonVariant::Ghost)
-        .with_theme(theme);
-    if let Some(cb) = on_copy_prompt {
-        let cb_clone = Arc::clone(cb);
-        copy_btn = copy_btn.on_click(move |ev, w, c| cb_clone(ev, w, c));
-    }
-    left_actions = left_actions.child(copy_btn);
-
-    if has_custom_override {
-        let mut reset_btn =
-            UiButton::new("prompt-modal-reset-btn", labels.prompt_reset_default_btn)
-                .icon(UiIcon::RotateCcw)
-                .variant(ButtonVariant::Ghost)
-                .with_theme(theme);
-        if let Some(cb) = on_reset_builtin {
-            let cb_clone = Arc::clone(cb);
-            reset_btn = reset_btn.on_click(move |ev, w, c| cb_clone(ev, w, c));
-        }
-        left_actions = left_actions.child(reset_btn);
-    }
-
-    let mut done_btn = UiButton::new("prompt-modal-done-btn", labels.status_ready)
-        .icon(UiIcon::Check)
-        .variant(ButtonVariant::Primary)
-        .with_theme(theme);
-    if let Some(cb) = on_close {
-        let cb_clone = Arc::clone(cb);
-        done_btn = done_btn.on_click(move |ev, w, c| cb_clone(ev, w, c));
-    }
-
-    div()
-        .w_full()
-        .flex()
-        .flex_row()
-        .items_center()
-        .justify_between()
-        .gap(px(theme.spacing.sm))
-        .child(left_actions)
-        .child(done_btn)
 }
