@@ -2,4 +2,7 @@
 
 pub mod dependency_injector;
 
-pub use dependency_injector::{AppContainer, ClipboardAdapter, ParsedResponseFile};
+pub use apply::BackupSnapshotInfo;
+pub use dependency_injector::{
+    AppContainer, ClipboardAdapter, HousekeepingStats, ParsedResponseFile,
+};

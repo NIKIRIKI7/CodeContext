@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -91,6 +92,11 @@ impl ResponseApplier {
     pub fn undo_last_backup(project_root: &Path) -> Result<usize, String> {
         execute_undo_transaction(project_root)
     }
+
+    #[inline]
+    pub fn extract_run_commands(response_text: &str) -> Vec<String> {
+        fenced_blocks::parse_run_directives(response_text, &OutputTemplate::canonical())
+    }
 }
 
 impl ApplierPort for ResponseApplier {
@@ -112,6 +118,7 @@ impl ApplierPort for ResponseApplier {
         config: &ParserConfig,
     ) -> ApplyPlan {
         let mut raw_ops: Vec<(String, FileOperation, bool)> = Vec::new();
+        let mut seen_paths: HashSet<String> = HashSet::new();
 
         let sr_files = search_replace::parse_search_replace_blocks(
             raw_response,
@@ -120,6 +127,7 @@ impl ApplierPort for ResponseApplier {
             config,
         );
         for sr in sr_files {
+            seen_paths.insert(sr.rel_path.clone());
             raw_ops.push((
                 sr.rel_path,
                 FileOperation::SearchReplace { blocks: sr.blocks },
@@ -130,7 +138,7 @@ impl ApplierPort for ResponseApplier {
         let diff_files =
             unified_diff::parse_unified_diff_blocks(raw_response, project_root, config);
         for df in diff_files {
-            if !raw_ops.iter().any(|(existing, _, _)| existing == &df.rel_path) {
+            if seen_paths.insert(df.rel_path.clone()) {
                 let op = if df.is_deleted {
                     FileOperation::DeleteFile
                 } else {
@@ -147,7 +155,7 @@ impl ApplierPort for ResponseApplier {
             config,
         );
         for pf in full_files {
-            if !raw_ops.iter().any(|(existing, _, _)| existing == &pf.rel_path) {
+            if seen_paths.insert(pf.rel_path.clone()) {
                 raw_ops.push((
                     pf.rel_path,
                     FileOperation::OverwriteFull { content: pf.content },
@@ -159,8 +167,20 @@ impl ApplierPort for ResponseApplier {
         let explicit_deletes =
             fenced_blocks::parse_delete_directives(raw_response, project_root, template, config);
         for del_path in explicit_deletes {
-            if !raw_ops.iter().any(|(existing, _, _)| existing == &del_path) {
+            if seen_paths.insert(del_path.clone()) {
                 raw_ops.push((del_path, FileOperation::DeleteFile, false));
+            }
+        }
+
+        let explicit_renames =
+            fenced_blocks::parse_rename_directives(raw_response, project_root, template, config);
+        for (old_path, new_path) in explicit_renames {
+            if seen_paths.insert(new_path.clone()) {
+                raw_ops.push((
+                    new_path,
+                    FileOperation::RenameFile { from_rel_path: old_path },
+                    false,
+                ));
             }
         }
 
@@ -173,9 +193,23 @@ impl ApplierPort for ResponseApplier {
             let sandbox_check = validate_sandbox_path(validation_root, &rel_path);
             let is_sandbox_safe = sandbox_check.is_ok();
 
+            let is_from_safe = match &operation {
+                FileOperation::RenameFile { from_rel_path } => {
+                    validate_sandbox_path(validation_root, from_rel_path).is_ok()
+                }
+                _ => true,
+            };
+            let is_sandbox_safe = is_sandbox_safe && is_from_safe;
+
             let existing_content = if is_sandbox_safe {
                 valid_rel_paths.push(rel_path.clone());
-                project_root.and_then(|root| fs::read_to_string(root.join(&rel_path)).ok())
+                match &operation {
+                    FileOperation::RenameFile { from_rel_path } => project_root
+                        .and_then(|root| fs::read_to_string(root.join(from_rel_path)).ok()),
+                    _ => {
+                        project_root.and_then(|root| fs::read_to_string(root.join(&rel_path)).ok())
+                    }
+                }
             } else {
                 None
             };
@@ -246,12 +280,19 @@ impl ApplierPort for ResponseApplier {
             })
             .collect();
 
-        let files_to_delete: Vec<String> = plan
+        let mut files_to_delete: Vec<String> = plan
             .items
             .iter()
             .filter(|i| matches!(i.operation, FileOperation::DeleteFile))
             .map(|i| i.rel_path.clone())
             .collect();
+        for item in &plan.items {
+            if let FileOperation::RenameFile { ref from_rel_path } = item.operation
+                && !files_to_delete.contains(from_rel_path)
+            {
+                files_to_delete.push(from_rel_path.clone());
+            }
+        }
 
         let entries: Vec<BackupFileEntry> = plan
             .items

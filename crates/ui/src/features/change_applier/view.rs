@@ -137,12 +137,21 @@ impl Render for ChangeApplierView {
         let status_msg = snap.formatted_status_message(labels);
         let backups_enabled = snap.backups_enabled();
         let options_open = snap.is_options_open();
+        let raw_code_mode = snap.is_raw_code_view_mode();
+        let snapshots = if options_open { snap.backup_snapshots() } else { Vec::new() };
+        let suggested_cmd_opt = snap.suggested_commands().first().cloned();
         let split_ratio = snap.split_ratio();
         let is_resizing_split = snap.is_resizing_split();
+
+        let (editing_line_index, editing_line_draft) = snap
+            .editing_diff_line()
+            .map_or((None, String::new()), |(idx, text)| (Some(idx), text.to_owned()));
 
         let diff_meta = parsed_files.get(selected_idx).map_or_else(
             || DiffViewMeta {
                 file_path: labels.applier_no_parsed_files.to_owned(),
+                editing_line_index: None,
+                editing_line_draft: String::new(),
                 added_lines: 0,
                 removed_lines: 0,
                 line_ending: LineEnding::Lf,
@@ -150,9 +159,12 @@ impl Render for ChangeApplierView {
                 is_sandbox_safe: true,
                 has_conflict: false,
                 is_applied: false,
+                is_raw_code_mode: raw_code_mode,
             },
             |f| DiffViewMeta {
                 file_path: f.rel_path.clone(),
+                editing_line_index,
+                editing_line_draft,
                 added_lines: f.added_lines,
                 removed_lines: f.removed_lines,
                 line_ending: f.line_ending,
@@ -160,6 +172,7 @@ impl Render for ChangeApplierView {
                 is_sandbox_safe: f.is_sandbox_safe,
                 has_conflict: f.has_conflict,
                 is_applied: f.is_applied,
+                is_raw_code_mode: raw_code_mode,
             },
         );
 
@@ -196,10 +209,12 @@ impl Render for ChangeApplierView {
         let state_sel = self.state.clone();
         let state_toggle_file = self.state.clone();
         let state_bak = self.state.clone();
+        let state_restore = self.state.clone();
         let state_opts = self.state.clone();
         let state_apply = self.state.clone();
         let state_undo = self.state.clone();
         let right_header_tabs = FileChangesListComponent::new(parsed_files, selected_idx)
+            .with_snapshots(snapshots)
             .with_backups_enabled(backups_enabled)
             .with_options_open(options_open)
             .with_context(labels, theme)
@@ -220,6 +235,17 @@ impl Render for ChangeApplierView {
                     s.toggle_backups_enabled();
                     cx.notify();
                 });
+            })
+            .on_restore_snapshot(move |snap_id, _win, cx| {
+                let id_owned = snap_id.to_owned();
+                let is_ok = state_restore.update(cx, |s, cx| {
+                    let ok = s.restore_snapshot_by_id(&id_owned).is_ok();
+                    cx.notify();
+                    ok
+                });
+                if is_ok {
+                    Self::spawn_toast_auto_dismiss(state_restore.clone(), cx);
+                }
             })
             .on_toggle_options(move |_ev, _win, cx| {
                 state_opts.update(cx, |s, cx| {
@@ -250,7 +276,61 @@ impl Render for ChangeApplierView {
                 },
             );
 
-        let diff_view = DiffViewComponent::new(diff_meta, selected_buf).with_context(labels, theme);
+        let state_single = self.state.clone();
+        let state_raw_mode = self.state.clone();
+        let state_force = self.state.clone();
+        let state_sel_line = self.state.clone();
+        let state_commit_line = self.state.clone();
+        let state_cancel_line = self.state.clone();
+        let diff_view = DiffViewComponent::new(diff_meta, selected_buf)
+            .with_context(labels, theme)
+            .on_line_editing(
+                move |line_idx, _win, cx| {
+                    state_sel_line.update(cx, |s, cx| {
+                        s.start_editing_diff_line(line_idx);
+                        cx.notify();
+                    });
+                },
+                move |_ev, _win, cx| {
+                    state_commit_line.update(cx, |s, cx| {
+                        s.commit_diff_line_edit();
+                        cx.notify();
+                    });
+                },
+                move |_ev, _win, cx| {
+                    state_cancel_line.update(cx, |s, cx| {
+                        s.cancel_editing_diff_line();
+                        cx.notify();
+                    });
+                },
+            )
+            .with_file_actions(
+                move |_ev, _win, cx| {
+                    let is_ok = state_single.update(cx, |s, cx| {
+                        let idx = s.selected_file_index();
+                        let ok = s.apply_single_file_to_disk(idx).is_ok();
+                        cx.notify();
+                        ok
+                    });
+                    if is_ok {
+                        Self::spawn_toast_auto_dismiss(state_single.clone(), cx);
+                    }
+                },
+                move |_ev, _win, cx| {
+                    state_raw_mode.update(cx, |s, cx| {
+                        s.toggle_raw_code_view_mode();
+                        cx.notify();
+                    });
+                },
+                move |_ev, _win, cx| {
+                    state_force.update(cx, |s, cx| {
+                        s.force_resolve_selected_conflict();
+                        cx.notify();
+                    });
+                },
+            );
+
+        let _ = suggested_cmd_opt;
 
         let right_col = div()
             .size_full()

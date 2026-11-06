@@ -11,6 +11,7 @@ pub enum FileOperation {
     SearchReplace { blocks: Vec<SearchReplaceBlock> },
     UnifiedDiff { hunks: Vec<UnifiedDiffHunk> },
     DeleteFile,
+    RenameFile { from_rel_path: String },
 }
 
 impl FileOperation {
@@ -21,6 +22,7 @@ impl FileOperation {
             Self::SearchReplace { .. } => PatchOperationKind::SearchReplace,
             Self::UnifiedDiff { .. } => PatchOperationKind::UnifiedDiff,
             Self::DeleteFile => PatchOperationKind::DeleteFile,
+            Self::RenameFile { .. } => PatchOperationKind::RenameFile,
         }
     }
 }

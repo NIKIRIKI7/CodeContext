@@ -13,6 +13,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.2.5] - 2026-11-06
+
+### Added
+- **Zed-Style Command Palette (`Ctrl+P` / `Ctrl+Shift+P`, `crates/ui`)**: unified minimalist overlay for instant file search (`Space` to toggle selection, `Enter` to jump to preview) and command execution (`> copy`, `> apply`, `> undo`, `> terminal`, `> theme`, `> clean`, `> rename`).
+- **File & Directory Renaming (`=== RENAME FILE: old -> new ===`, `crates/core`, `crates/apply`, `crates/ui`)**: AI rename/move directive parsing with dual-path `Sandbox` validation, full `Undo` rollback in `BackupManifest`, and UI file renaming.
+- **Single-File Apply & Inline Edit Mode in `DiffView` (`crates/ui`, `crates/di`)**: added `Apply File` (commits only the active file tab) and `Edit` / `Force Apply` actions directly in the diff header.
+- **Actionable `SearchBlockConflict` Diagnostics (`crates/apply`, `crates/ui`)**: unmatched `SEARCH` blocks now render a diagnostic diff showing the exact unmatched block alongside the closest fuzzy candidate in the target file, with `Force Apply` and `Copy Block` actions.
+- **Visual `Undo` Snapshot History (`.ctxpack/backups`, `crates/apply`, `crates/ui`)**: lists recent backup snapshots with file counts and targeted rollback in the backup drawer.
+- **Zero-Trust AI Command Runner & Error Prompt Templates (`crates/apply`, `crates/ui`)**: parses `=== RUN: ... ===` directives with mandatory user confirmation (`Run` / `Edit` / `Dismiss`), optional post-apply verification, and a `Copy Error for AI` button with customizable prompt templates on failed terminal runs.
+- **Staged Housekeeping & Purge (`--clean`, `crates/apply`, `crates/app`, `crates/ui`)**: added the `Maintenance` settings category with live byte/item calculation for `.ctxpack/backups`, orphaned `.tmp` files, and IPC sockets, plus `codecontext --clean [all|backups|tmp]`.
+
 ## [0.2.1] - 2026-11-06
 
 ### Added

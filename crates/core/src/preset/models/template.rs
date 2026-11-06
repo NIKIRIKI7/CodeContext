@@ -39,6 +39,10 @@ pub const PROMPT_SEARCH_REPLACE: &str = concat!(
     "=== END FILE ===\n",
     "Д. Удаление файла\n",
     "=== DELETE FILE: crates/ui/src/obsolete.rs ===\n",
+    "Е. Переименование или перемещение файла\n",
+    "=== RENAME FILE: crates/ui/src/old_name.rs -> crates/ui/src/new_name.rs ===\n",
+    "Ж. Предложение терминальной команды для проверки после патча (опционально)\n",
+    "=== RUN: cargo check --workspace ===\n",
     "————\n",
     "3. ВАЖНЫЕ ТРЕБОВАНИЯ И ЗАПРЕТЫ\n",
     "1. Запрещён псевдокод: Категорически запрещено писать // ... остальной код ... или // TODO: keep existing code внутри блоков SEARCH или REPLACE.\n",
@@ -52,7 +56,10 @@ pub const PROMPT_CANONICAL_FULL: &str = concat!(
     "=== FILE: path/to/file.rs ===\n",
     "<полное содержимое файла целиком без пропусков и сокращений>\n",
     "=== END FILE ===\n",
-    "Для удаления файла используй директиву: === DELETE FILE: path/to/file.rs ===\n",
+    "Для создания нового файла: === CREATE FILE: path/to/new_file.rs === ... === END FILE ===\n",
+    "Для удаления файла: === DELETE FILE: path/to/file.rs ===\n",
+    "Для переименования или перемещения файла: === RENAME FILE: old/path.rs -> new/path.rs ===\n",
+    "Для предложения команды проверки после патча: === RUN: cargo test --workspace ===\n",
     "Категорически запрещено сокращать код комментариями вида `// ... existing code ...`.\n\n"
 );
 

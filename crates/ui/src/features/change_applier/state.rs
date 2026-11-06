@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use core::applying::aggregates::backup_manifest::BackupManifest;
-use di::{AppContainer, ParsedResponseFile};
+use di::{AppContainer, BackupSnapshotInfo, ParsedResponseFile};
 
 use crate::locale::UiLabels;
 use crate::shared::containers::virtual_text::VirtualTextBuffer;
@@ -39,11 +39,14 @@ pub struct ChangeApplierState {
     last_clipboard_revision: Option<u64>,
     response_buffer: VirtualTextBuffer,
     parsed_files: Vec<ParsedResponseFile>,
+    suggested_commands: Vec<String>,
     selected_file_index: usize,
     selected_file_buffer: VirtualTextBuffer,
+    editing_diff_line: Option<(usize, String)>,
     autofix_flags: AutofixFlags,
     backups_enabled: bool,
     options_open: bool,
+    raw_code_view_mode: bool,
     split_ratio: f32,
     resizing_split: bool,
     last_backup_manifest: Option<BackupManifest>,
@@ -63,11 +66,14 @@ impl ChangeApplierState {
             last_clipboard_revision: None,
             response_buffer: VirtualTextBuffer::default(),
             parsed_files: Vec::new(),
+            suggested_commands: Vec::new(),
             selected_file_index: 0,
             selected_file_buffer: VirtualTextBuffer::default(),
+            editing_diff_line: None,
             autofix_flags: AutofixFlags::default(),
             backups_enabled,
             options_open: false,
+            raw_code_view_mode: false,
             split_ratio: crate::theme::DEFAULT_LAYOUT.applier_split_ratio,
             resizing_split: false,
             last_backup_manifest: None,
@@ -152,6 +158,144 @@ impl ChangeApplierState {
     #[inline]
     pub const fn is_options_open(&self) -> bool {
         self.options_open
+    }
+
+    #[inline]
+    pub const fn is_raw_code_view_mode(&self) -> bool {
+        self.raw_code_view_mode
+    }
+
+    pub fn toggle_raw_code_view_mode(&mut self) {
+        self.raw_code_view_mode = !self.raw_code_view_mode;
+        self.editing_diff_line = None;
+        self.refresh_selected_file_buffer();
+    }
+
+    #[inline]
+    pub fn editing_diff_line(&self) -> Option<(usize, &str)> {
+        self.editing_diff_line.as_ref().map(|(idx, s)| (*idx, s.as_str()))
+    }
+
+    pub fn start_editing_diff_line(&mut self, line_idx: usize) {
+        if !self.raw_code_view_mode {
+            self.raw_code_view_mode = true;
+            self.refresh_selected_file_buffer();
+        }
+        let raw = self.selected_file_buffer.raw_line(line_idx).to_owned();
+        self.editing_diff_line = Some((line_idx, raw));
+    }
+
+    pub fn cancel_editing_diff_line(&mut self) {
+        self.editing_diff_line = None;
+    }
+
+    pub fn append_diff_line_char(&mut self, ch: char) {
+        if let Some((_, ref mut draft)) = self.editing_diff_line {
+            draft.push(ch);
+        }
+    }
+
+    pub fn pop_diff_line_char(&mut self) -> bool {
+        if let Some((_, ref mut draft)) = self.editing_diff_line {
+            return draft.pop().is_some();
+        }
+        false
+    }
+
+    pub fn commit_diff_line_edit(&mut self) {
+        let Some((line_idx, new_line)) = self.editing_diff_line.take() else {
+            return;
+        };
+        if let Some(file) = self.parsed_files.get_mut(self.selected_file_index) {
+            let mut lines: Vec<&str> = file.content.lines().collect();
+            if let Some(slot) = lines.get_mut(line_idx) {
+                *slot = &new_line;
+                let updated = lines.join(file.line_ending.as_str());
+                file.content = updated;
+                file.has_conflict = false;
+                file.is_selected = file.is_sandbox_safe;
+            }
+        }
+        self.refresh_selected_file_buffer();
+    }
+
+    #[inline]
+    pub fn suggested_commands(&self) -> &[String] {
+        &self.suggested_commands
+    }
+
+    pub fn dismiss_suggested_commands(&mut self) {
+        self.suggested_commands.clear();
+    }
+
+    pub fn backup_snapshots(&self) -> Vec<BackupSnapshotInfo> {
+        self.project_root.as_deref().map(AppContainer::list_backups).unwrap_or_default()
+    }
+
+    pub fn restore_snapshot_by_id(&mut self, snapshot_id: &str) -> Result<usize, String> {
+        let root = self
+            .project_root
+            .clone()
+            .or_else(|| std::env::current_dir().ok())
+            .ok_or_else(|| "Project root is not set".to_owned())?;
+        match AppContainer::restore_backup_snapshot(&root, snapshot_id) {
+            Ok(count) => {
+                for file in &mut self.parsed_files {
+                    if file.is_applied {
+                        file.is_applied = false;
+                        file.is_selected = file.is_sandbox_safe && !file.has_conflict;
+                    }
+                }
+                self.status_notice = Some(ApplierStatusNotice::Undone { count });
+                Ok(count)
+            }
+            Err(err) => {
+                self.status_notice = Some(ApplierStatusNotice::Error { reason: err.clone() });
+                Err(err)
+            }
+        }
+    }
+
+    pub fn apply_single_file_to_disk(&mut self, index: usize) -> Result<usize, String> {
+        let root = self
+            .project_root
+            .clone()
+            .or_else(|| std::env::current_dir().ok())
+            .ok_or_else(|| "Project root is not set".to_owned())?;
+        let Some(file) = self.parsed_files.get(index).cloned() else {
+            return Err("File index out of bounds".to_owned());
+        };
+        if !file.is_sandbox_safe || file.has_conflict || file.is_applied {
+            return Err("File cannot be applied".to_owned());
+        }
+        let mut single = file;
+        single.is_selected = true;
+        match AppContainer::apply_response_files(&root, &[single], self.backups_enabled) {
+            Ok(count) => {
+                if let Some(target) = self.parsed_files.get_mut(index) {
+                    target.is_applied = true;
+                    target.is_selected = false;
+                }
+                self.status_notice = Some(ApplierStatusNotice::Applied { count });
+                Ok(count)
+            }
+            Err(err) => {
+                self.status_notice = Some(ApplierStatusNotice::Error { reason: err.clone() });
+                Err(err)
+            }
+        }
+    }
+
+    pub fn force_resolve_selected_conflict(&mut self) {
+        if let Some(file) = self.parsed_files.get_mut(self.selected_file_index)
+            && file.has_conflict
+            && file.is_sandbox_safe
+        {
+            file.has_conflict = false;
+            file.is_selected = true;
+            self.raw_code_view_mode = true;
+            self.refresh_selected_file_buffer();
+        }
     }
 
     #[inline]
@@ -252,9 +396,21 @@ impl ChangeApplierState {
     }
 
     pub fn select_parsed_file(&mut self, index: usize) {
-        if let Some(file) = self.parsed_files.get(index) {
+        if index < self.parsed_files.len() {
             self.selected_file_index = index;
-            self.selected_file_buffer = VirtualTextBuffer::new(file.diff_preview.as_str());
+            self.editing_diff_line = None;
+            self.refresh_selected_file_buffer();
+        }
+    }
+
+    fn refresh_selected_file_buffer(&mut self) {
+        if let Some(file) = self.parsed_files.get(self.selected_file_index) {
+            let text = if self.raw_code_view_mode {
+                file.content.as_str()
+            } else {
+                file.diff_preview.as_str()
+            };
+            self.selected_file_buffer = VirtualTextBuffer::new(text);
         }
     }
 
@@ -283,15 +439,17 @@ impl ChangeApplierState {
         let parsed = self
             .container
             .parse_and_validate_for_project(&effective_text, self.project_root.as_deref());
+        self.suggested_commands = AppContainer::extract_suggested_commands(&effective_text);
 
         self.response_buffer = VirtualTextBuffer::new(effective_text.as_str());
         self.parsed_files = parsed;
         self.raw_response = effective_text;
         self.selected_file_index = 0;
-        self.selected_file_buffer =
-            self.parsed_files.first().map_or_else(VirtualTextBuffer::default, |f| {
-                VirtualTextBuffer::new(f.diff_preview.as_str())
-            });
+        self.raw_code_view_mode = false;
+        self.refresh_selected_file_buffer();
+        if self.parsed_files.is_empty() {
+            self.selected_file_buffer = VirtualTextBuffer::default();
+        }
     }
 
     #[inline]

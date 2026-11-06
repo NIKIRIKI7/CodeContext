@@ -2,7 +2,10 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
 
-use apply::{AutofixResult, ParsedFile, ResponseApplier};
+use apply::{
+    AutofixResult, BackupSnapshotInfo, ParsedFile, ResponseApplier, compute_dir_size_bytes,
+    list_backup_snapshots, purge_all_backups, restore_backup_by_id,
+};
 use config::LayeredConfigLoader;
 use core::applying::aggregates::backup_manifest::BackupManifest;
 use core::applying::ports::applier::ApplierPortError;
@@ -65,9 +68,19 @@ impl ClipboardPort for ClipboardAdapter {
     }
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct HousekeepingStats {
+    pub backups_bytes: u64,
+    pub backups_count: usize,
+    pub temp_files_bytes: u64,
+    pub temp_files_count: usize,
+    pub ipc_socket_exists: bool,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParsedResponseFile {
     pub rel_path: String,
+    pub renamed_from: Option<String>,
     pub content: String,
     pub diff_preview: String,
     pub added_lines: usize,
@@ -376,8 +389,15 @@ impl AppContainer {
                     || item.added_lines > 0
                     || item.removed_lines > 0;
                 let is_selected = item.is_sandbox_safe && !has_conflict && has_effective_changes;
+                let renamed_from = match &item.operation {
+                    core::applying::aggregates::apply_plan::FileOperation::RenameFile {
+                        from_rel_path,
+                    } => Some(from_rel_path.clone()),
+                    _ => None,
+                };
                 ParsedResponseFile {
                     rel_path: item.rel_path,
+                    renamed_from,
                     content: item.resolved_content,
                     diff_preview: item.diff_preview,
                     added_lines: item.added_lines,
@@ -415,7 +435,7 @@ impl AppContainer {
             })
             .collect();
 
-        let files_to_delete: Vec<String> = files
+        let mut files_to_delete: Vec<String> = files
             .iter()
             .filter(|f| {
                 f.is_selected
@@ -426,6 +446,17 @@ impl AppContainer {
             })
             .map(|f| f.rel_path.clone())
             .collect();
+        for f in files {
+            if f.is_selected
+                && !f.is_applied
+                && f.is_sandbox_safe
+                && !f.has_conflict
+                && let Some(ref old_p) = f.renamed_from
+                && !files_to_delete.contains(old_p)
+            {
+                files_to_delete.push(old_p.clone());
+            }
+        }
 
         let report = ResponseApplier::apply_files_and_deletions(
             project_root,
@@ -443,4 +474,109 @@ impl AppContainer {
         let service = ApplyService::new(ResponseApplier::new());
         service.undo_last(project_root).map_err(|e| e.to_string())
     }
+
+    #[inline]
+    pub fn list_backups(project_root: &Path) -> Vec<BackupSnapshotInfo> {
+        list_backup_snapshots(project_root)
+    }
+
+    #[inline]
+    pub fn restore_backup_snapshot(
+        project_root: &Path,
+        snapshot_id: &str,
+    ) -> Result<usize, String> {
+        restore_backup_by_id(project_root, snapshot_id)
+    }
+
+    #[inline]
+    pub fn extract_suggested_commands(raw_response: &str) -> Vec<String> {
+        ResponseApplier::extract_run_commands(raw_response)
+    }
+
+    pub fn rename_project_entry(
+        project_root: &Path,
+        old_rel_path: &str,
+        new_rel_path: &str,
+    ) -> Result<(), String> {
+        let abs_old = ResponseApplier::validate_path(project_root, old_rel_path)
+            .map_err(|e| e.to_string())?;
+        let abs_new = ResponseApplier::validate_path(project_root, new_rel_path)
+            .map_err(|e| e.to_string())?;
+        if let Some(parent) = abs_new.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        std::fs::rename(abs_old, abs_new).map_err(|e| e.to_string())
+    }
+
+    pub fn inspect_housekeeping(&self, project_root: Option<&Path>) -> HousekeepingStats {
+        let mut stats = HousekeepingStats::default();
+        if let Some(root) = project_root {
+            let snaps = list_backup_snapshots(root);
+            stats.backups_count = snaps.len();
+            stats.backups_bytes = compute_dir_size_bytes(&root.join(".ctxpack/backups"));
+            let (tmp_count, tmp_bytes) = scan_temp_files_in_dir(root, false);
+            stats.temp_files_count = tmp_count;
+            stats.temp_files_bytes = tmp_bytes;
+        }
+        stats.ipc_socket_exists = self.ipc.endpoint_config().socket_file_path.exists();
+        stats
+    }
+
+    pub fn clean_housekeeping(
+        &self,
+        project_root: Option<&Path>,
+        clean_backups: bool,
+        clean_temp: bool,
+        clean_ipc: bool,
+    ) -> u64 {
+        let mut freed = 0_u64;
+        if let Some(root) = project_root {
+            if clean_backups {
+                freed = freed.saturating_add(purge_all_backups(root));
+            }
+            if clean_temp {
+                let (_, bytes) = scan_temp_files_in_dir(root, true);
+                freed = freed.saturating_add(bytes);
+            }
+        }
+        if clean_ipc {
+            let sock = &self.ipc.endpoint_config().socket_file_path;
+            if sock.exists() {
+                if let Ok(meta) = std::fs::metadata(sock) {
+                    freed = freed.saturating_add(meta.len());
+                }
+                let _ = std::fs::remove_file(sock);
+            }
+        }
+        freed
+    }
+}
+
+fn scan_temp_files_in_dir(dir: &Path, remove: bool) -> (usize, u64) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return (0, 0);
+    };
+    let mut count = 0_usize;
+    let mut bytes = 0_u64;
+    for entry in entries.flatten() {
+        let p = entry.path();
+        let name = entry.file_name();
+        let name_str = name.to_string_lossy();
+        if p.is_dir() {
+            if name_str != ".git" && name_str != "target" && name_str != "node_modules" {
+                let (c, b) = scan_temp_files_in_dir(&p, remove);
+                count += c;
+                bytes = bytes.saturating_add(b);
+            }
+        } else if name_str.starts_with('.') && name_str.ends_with(".tmp") {
+            if let Ok(meta) = entry.metadata() {
+                bytes = bytes.saturating_add(meta.len());
+            }
+            count += 1;
+            if remove {
+                let _ = std::fs::remove_file(&p);
+            }
+        }
+    }
+    (count, bytes)
 }

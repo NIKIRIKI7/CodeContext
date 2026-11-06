@@ -48,6 +48,7 @@ pub type SelectTaskCategoryCallback =
     Arc<dyn Fn(Option<TerminalTaskCategory>, &mut Window, &mut App) + 'static>;
 pub type DockActionCallback = Arc<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>;
 pub type RunPresetCommandCallback = Arc<dyn Fn(&str, &mut Window, &mut App) + 'static>;
+pub type CopyErrorForAiCallback = Arc<dyn Fn(&str, &str, &mut Window, &mut App) + 'static>;
 pub type DeletePresetCallback = Arc<dyn Fn(usize, &mut Window, &mut App) + 'static>;
 pub type StartDockResizeCallback = Arc<dyn Fn(&MouseDownEvent, &mut Window, &mut App) + 'static>;
 
@@ -80,6 +81,7 @@ struct DockCallbacks {
     submit_terminal_cmd: Option<DockActionCallback>,
     save_terminal_preset: Option<DockActionCallback>,
     run_preset_cmd: Option<RunPresetCommandCallback>,
+    copy_error_for_ai: Option<CopyErrorForAiCallback>,
     delete_preset_idx: Option<DeletePresetCallback>,
     start_resize: Option<StartDockResizeCallback>,
     copy_active: Option<DockActionCallback>,
@@ -153,6 +155,16 @@ impl DiagnosticsDockComponent {
         self.callbacks.focus_terminal_input = Some(Arc::new(on_focus_input));
         self.callbacks.submit_terminal_cmd = Some(Arc::new(on_submit_cmd));
         self.callbacks.run_preset_cmd = Some(Arc::new(on_run_preset));
+        self
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn on_copy_error_for_ai(
+        mut self,
+        handler: impl Fn(&str, &str, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.callbacks.copy_error_for_ai = Some(Arc::new(handler));
         self
     }
 
@@ -635,12 +647,35 @@ fn render_terminal_body(
             .flex_col()
             .gap(px(theme.spacing.xs));
 
+        let is_en = labels.btn_copy_context == "Copy";
         for (idx, item) in props.terminal_history.iter().enumerate().rev() {
             let status_col = if item.exit_code == 0 { colors.success } else { colors.danger };
+            let mut right_status = div().flex().flex_row().items_center().gap(px(theme.spacing.xs));
+            if item.exit_code != 0
+                && let Some(ref copy_err_cb) = callbacks.copy_error_for_ai
+            {
+                let cb = Arc::clone(copy_err_cb);
+                let cmd_owned = item.command.clone();
+                let out_owned = item.output.clone();
+                let btn_label =
+                    if is_en { "Copy Error for AI" } else { "Ошибка для ИИ" };
+                right_status = right_status.child(
+                    UiButton::new(("term-copy-ai-err", idx), btn_label)
+                        .icon(UiIcon::Copy)
+                        .variant(ButtonVariant::Danger)
+                        .with_theme(theme)
+                        .on_click(move |_ev, w, c| cb(&cmd_owned, &out_owned, w, c)),
+                );
+            }
+            right_status = right_status.child(div().text_color(status_col).child(
+                SharedString::from(format!("exit {} · {} ms", item.exit_code, item.duration_ms)),
+            ));
+
             scroll = scroll.child(
                 div()
                     .id(("term-cmd-entry", idx))
                     .w_full()
+                    .flex_shrink_0()
                     .p(px(theme.spacing.xs))
                     .rounded(px(theme.radius.sm))
                     .bg(colors.bg_panel)
@@ -663,9 +698,7 @@ fn render_terminal_body(
                                     .text_color(colors.cyan)
                                     .child(SharedString::from(format!("$ {}", item.command))),
                             )
-                            .child(div().text_color(status_col).child(SharedString::from(
-                                format!("exit {} · {} ms", item.exit_code, item.duration_ms),
-                            ))),
+                            .child(right_status),
                     )
                     .child(
                         div()
@@ -779,6 +812,8 @@ fn render_log_row(
         .id(("telemetry-log-row", idx))
         .w_full()
         .h(px(22.0))
+        .min_h(px(22.0))
+        .flex_shrink_0()
         .px(px(theme.spacing.lg))
         .hover(move |s| s.bg(hover_bg))
         .flex()

@@ -266,3 +266,57 @@ fn bench_7_create_and_delete_directives_plan(bencher: Bencher) {
         divan::black_box(plan)
     });
 }
+
+#[divan::bench(sample_count = 40)]
+fn bench_8_parse_and_diff_212_files_1_7mb_against_disk(bencher: Bencher) {
+    let temp = TempDir::new().unwrap();
+    let root = temp.path();
+    let file_count = 212_usize;
+    let body_8kb = "pub fn fast_step(x: u64) -> u64 {\n    x.wrapping_mul(0x517cc1b727220a95)\n}\n"
+        .repeat(110);
+    let mut stream = String::with_capacity(file_count * (body_8kb.len() + 64));
+
+    std::fs::create_dir_all(root.join("crates/domain/src")).unwrap();
+    for i in 0..file_count {
+        let rel = format!("crates/domain/src/mod_{i}.rs");
+        std::fs::write(root.join(&rel), &body_8kb).unwrap();
+        let _ = writeln!(stream, "{}{rel} ===", concat!("=== ", "FILE: "));
+        if i == 200 {
+            stream.push_str(&body_8kb);
+            stream.push_str("\npub const MODIFIED: bool = true;\n");
+        } else {
+            stream.push_str(&body_8kb);
+        }
+        stream.push_str(concat!("=== ", "END FILE ===\n\n"));
+    }
+
+    let applier = ResponseApplier::new();
+    let tpl = OutputTemplate::canonical();
+    let cfg = ParserConfig::canonical();
+
+    bencher.counter(BytesCount::new(stream.len())).bench_local(|| {
+        let plan = applier.build_apply_plan(Some(root), divan::black_box(&stream), &tpl, &cfg);
+        assert_eq!(plan.items.len(), file_count);
+        divan::black_box(plan)
+    });
+}
+
+#[divan::bench(sample_count = 80)]
+fn bench_9_rename_and_run_directives_plan(bencher: Bencher) {
+    let mut stream = String::with_capacity(8192);
+    for i in 0..50 {
+        let _ = writeln!(stream, "=== RENAME FILE: src/old_{i}.rs -> src/new_{i}.rs ===");
+    }
+    stream.push_str("=== RUN: cargo check --workspace ===\n");
+    let applier = ResponseApplier::new();
+    let tpl = OutputTemplate::canonical();
+    let cfg = ParserConfig::canonical();
+
+    bencher.counter(ItemsCount::new(50_usize)).bench_local(|| {
+        let plan = applier.build_apply_plan(None, divan::black_box(&stream), &tpl, &cfg);
+        let cmds = ResponseApplier::extract_run_commands(divan::black_box(&stream));
+        assert_eq!(plan.items.len(), 50);
+        assert_eq!(cmds.len(), 1);
+        divan::black_box((plan, cmds))
+    });
+}

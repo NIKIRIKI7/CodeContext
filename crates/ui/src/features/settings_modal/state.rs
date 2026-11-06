@@ -28,11 +28,18 @@ pub enum SettingsCategory {
     Keymap,
     Safety,
     SystemAndUpdates,
+    Maintenance,
 }
 
 impl SettingsCategory {
-    pub const ALL: [Self; 5] =
-        [Self::Appearance, Self::PanelsAndBar, Self::Keymap, Self::Safety, Self::SystemAndUpdates];
+    pub const ALL: [Self; 6] = [
+        Self::Appearance,
+        Self::PanelsAndBar,
+        Self::Keymap,
+        Self::Safety,
+        Self::SystemAndUpdates,
+        Self::Maintenance,
+    ];
 }
 
 #[derive(Debug, Clone)]

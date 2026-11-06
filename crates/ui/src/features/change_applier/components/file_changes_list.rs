@@ -1,13 +1,15 @@
 use std::fmt;
 use std::sync::Arc;
 
-use di::ParsedResponseFile;
+use di::{BackupSnapshotInfo, ParsedResponseFile};
 use gpui::{
     App, ClickEvent, Div, InteractiveElement as _, IntoElement, ParentElement as _, RenderOnce,
     SharedString, StatefulInteractiveElement as _, Styled as _, Window, div, px,
 };
 
-use crate::features::change_applier::components::backup_drawer::BackupDrawerComponent;
+use crate::features::change_applier::components::backup_drawer::{
+    BackupDrawerComponent, RestoreSnapshotCallback,
+};
 use crate::locale::{AppLocale, UiLabels};
 use crate::shared::primitives::button::{ButtonVariant, UiButton};
 use crate::shared::primitives::icon::{UiIcon, render_icon, render_vector_checkbox};
@@ -20,6 +22,7 @@ pub type ApplyActionCallback = Arc<dyn Fn(&ClickEvent, &mut Window, &mut App) + 
 #[derive(IntoElement)]
 pub struct FileChangesListComponent {
     files: Vec<ParsedResponseFile>,
+    snapshots: Vec<BackupSnapshotInfo>,
     selected_index: usize,
     backups_enabled: bool,
     options_open: bool,
@@ -29,6 +32,7 @@ pub struct FileChangesListComponent {
     on_select: Option<SelectParsedFileCallback>,
     on_toggle_file_select: Option<ToggleFileCheckCallback>,
     on_toggle_backup: Option<ApplyActionCallback>,
+    on_restore_snapshot: Option<RestoreSnapshotCallback>,
     on_toggle_options: Option<ApplyActionCallback>,
     on_apply: Option<ApplyActionCallback>,
     on_undo: Option<ApplyActionCallback>,
@@ -49,6 +53,7 @@ impl FileChangesListComponent {
     pub fn new(files: Vec<ParsedResponseFile>, selected_index: usize) -> Self {
         Self {
             files,
+            snapshots: Vec::new(),
             selected_index,
             backups_enabled: true,
             options_open: false,
@@ -58,10 +63,28 @@ impl FileChangesListComponent {
             on_select: None,
             on_toggle_file_select: None,
             on_toggle_backup: None,
+            on_restore_snapshot: None,
             on_toggle_options: None,
             on_apply: None,
             on_undo: None,
         }
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn with_snapshots(mut self, snapshots: Vec<BackupSnapshotInfo>) -> Self {
+        self.snapshots = snapshots;
+        self
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn on_restore_snapshot(
+        mut self,
+        handler: impl Fn(&str, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.on_restore_snapshot = Some(Arc::new(handler));
+        self
     }
 
     #[must_use]
@@ -399,10 +422,14 @@ impl RenderOnce for FileChangesListComponent {
         );
 
         if self.options_open {
-            let mut drawer =
-                BackupDrawerComponent::new(self.backups_enabled).with_context(labels, theme);
+            let mut drawer = BackupDrawerComponent::new(self.backups_enabled)
+                .with_snapshots(self.snapshots)
+                .with_context(labels, theme);
             if let Some(toggle_bak) = self.on_toggle_backup {
                 drawer = drawer.on_toggle(move |ev, w, c| toggle_bak(ev, w, c));
+            }
+            if let Some(restore_snap) = self.on_restore_snapshot {
+                drawer = drawer.on_restore_snapshot(move |id, w, c| restore_snap(id, w, c));
             }
             container = container.child(drawer);
         }

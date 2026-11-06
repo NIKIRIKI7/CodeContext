@@ -17,7 +17,10 @@ use crate::shared::containers::form_controls::{
 use crate::shared::containers::modal_dialog::ModalDialogShell;
 use crate::shared::primitives::button::{ButtonVariant, UiButton};
 use crate::shared::primitives::icon::{UiIcon, render_icon};
-use crate::theme::{FONT_FAMILY_UI, ThemeTokens, ThemeVariant, format_hotkey_for_current_os};
+use crate::theme::{
+    FONT_FAMILY_MONO, FONT_FAMILY_UI, ThemeTokens, ThemeVariant, format_bytes_human,
+    format_hotkey_for_current_os,
+};
 
 #[derive(Debug, Clone)]
 pub struct SettingsModalView {
@@ -541,6 +544,121 @@ impl SettingsModalView {
             .child(list_col)
     }
 
+    fn render_maintenance_section(
+        &self,
+        theme: &'static ThemeTokens,
+        cx: &Context<Self>,
+    ) -> impl IntoElement + use<> {
+        let colors = &theme.colors;
+        let is_en = self.locale == AppLocale::En;
+        let snap = self.state.read(cx);
+        let project_root = std::env::current_dir().ok();
+        let stats = snap.container().inspect_housekeeping(project_root.as_deref());
+
+        let state_bak = self.state.clone();
+        let state_tmp = self.state.clone();
+        let state_all = self.state.clone();
+
+        let backups_info =
+            format!("{} · {}", stats.backups_count, format_bytes_human(stats.backups_bytes));
+        let temp_info =
+            format!("{} · {}", stats.temp_files_count, format_bytes_human(stats.temp_files_bytes));
+
+        let clean_backups_btn =
+            UiButton::new("settings-clean-backups-btn", SharedString::from(backups_info))
+                .icon(UiIcon::RotateCcw)
+                .variant(ButtonVariant::Secondary)
+                .with_theme(theme)
+                .on_click(move |_ev, _win, cx| {
+                    let root = std::env::current_dir().ok();
+                    state_bak.update(cx, |s, cx| {
+                        let _ =
+                            s.container().clean_housekeeping(root.as_deref(), true, false, false);
+                        cx.notify();
+                    });
+                });
+
+        let clean_tmp_btn = UiButton::new("settings-clean-tmp-btn", SharedString::from(temp_info))
+            .icon(UiIcon::RotateCcw)
+            .variant(ButtonVariant::Secondary)
+            .with_theme(theme)
+            .on_click(move |_ev, _win, cx| {
+                let root = std::env::current_dir().ok();
+                state_tmp.update(cx, |s, cx| {
+                    let _ = s.container().clean_housekeeping(root.as_deref(), false, true, false);
+                    cx.notify();
+                });
+            });
+
+        let clean_all_btn = UiButton::new(
+            "settings-clean-all-btn",
+            if is_en { "Clean All" } else { "Очистить всё" },
+        )
+        .icon(UiIcon::Check)
+        .variant(ButtonVariant::Danger)
+        .with_theme(theme)
+        .on_click(move |_ev, _win, cx| {
+            let root = std::env::current_dir().ok();
+            state_all.update(cx, |s, cx| {
+                let _ = s.container().clean_housekeeping(root.as_deref(), true, true, false);
+                cx.notify();
+            });
+        });
+
+        div()
+            .w_full()
+            .p(px(theme.spacing.xl))
+            .rounded(px(theme.radius.md))
+            .bg(colors.bg_elevated)
+            .border_1()
+            .border_color(colors.border)
+            .flex()
+            .flex_col()
+            .gap(px(theme.spacing.sm))
+            .child(div().font_family(FONT_FAMILY_UI).text_xs().text_color(colors.text_muted).child(
+                if is_en {
+                    "Housekeeping & Cache (.ctxpack/backups, .tmp)"
+                } else {
+                    "Очистка и обслуживание (.ctxpack/backups, .tmp)"
+                },
+            ))
+            .child(render_labeled_setting_row(
+                if is_en {
+                    "Backup snapshots (.ctxpack/backups)"
+                } else {
+                    "Снимки бэкапов (.ctxpack/backups)"
+                },
+                clean_backups_btn,
+                theme,
+            ))
+            .child(render_labeled_setting_row(
+                if is_en {
+                    "Orphaned atomic temp files (.*.tmp)"
+                } else {
+                    "Временные атомарные файлы (.*.tmp)"
+                },
+                clean_tmp_btn,
+                theme,
+            ))
+            .child(
+                div()
+                    .w_full()
+                    .pt(px(theme.spacing.xs))
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .justify_between()
+                    .child(
+                        div()
+                            .font_family(FONT_FAMILY_MONO)
+                            .text_xs()
+                            .text_color(colors.text_muted)
+                            .child("CLI: codecontext --clean [all|backups|tmp]"),
+                    )
+                    .child(clean_all_btn),
+            )
+    }
+
     fn render_category_sidebar(
         &self,
         active_cat: SettingsCategory,
@@ -548,6 +666,7 @@ impl SettingsModalView {
     ) -> impl IntoElement + use<> {
         let colors = &theme.colors;
         let labels = self.locale.labels();
+        let is_en = self.locale == AppLocale::En;
 
         let items: &[(&str, UiIcon, &str, SettingsCategory)] = &[
             (
@@ -579,6 +698,12 @@ impl SettingsModalView {
                 UiIcon::Package,
                 labels.settings_cat_system,
                 SettingsCategory::SystemAndUpdates,
+            ),
+            (
+                "settings-cat-maintenance",
+                UiIcon::RotateCcw,
+                if is_en { "Maintenance" } else { "Очистка и кэш" },
+                SettingsCategory::Maintenance,
             ),
         ];
 
@@ -812,6 +937,9 @@ impl Render for SettingsModalView {
             SettingsCategory::Safety => self.render_safety_section(theme, cx).into_any_element(),
             SettingsCategory::SystemAndUpdates => {
                 self.render_system_section(theme, cx).into_any_element()
+            }
+            SettingsCategory::Maintenance => {
+                self.render_maintenance_section(theme, cx).into_any_element()
             }
         };
 

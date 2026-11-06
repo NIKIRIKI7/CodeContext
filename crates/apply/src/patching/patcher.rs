@@ -8,8 +8,8 @@ use core::shared_kernel::fs::line_ending::LineEnding;
 use similar::{ChangeTag, TextDiff};
 
 use super::fuzzy_matcher::{
-    try_ellipsis_and_comment_tolerant_replace, try_formatter_agnostic_replace,
-    try_syntax_normalized_replace, try_trimmed_subsequence_replace,
+    dice_similarity_permille, try_ellipsis_and_comment_tolerant_replace,
+    try_formatter_agnostic_replace, try_syntax_normalized_replace, try_trimmed_subsequence_replace,
     try_zed_fuzzy_similarity_replace,
 };
 
@@ -94,20 +94,97 @@ pub fn apply_operation_to_text(
             apply_unified_diff_hunks(base_content, hunks, detected_ending)
         }
         FileOperation::DeleteFile => (String::new(), PatchResolutionStatus::Ready),
+        FileOperation::RenameFile { from_rel_path } => {
+            let mut preview = String::with_capacity(base_content.len() + 160);
+            let _ = writeln!(
+                preview,
+                "--- a/{from_rel_path}\n+++ b/{rel_path}\n@@ Переименование файла: {from_rel_path} -> {rel_path} @@"
+            );
+            return PatchedOutcome {
+                resolved_content: base_content.to_owned(),
+                status: PatchResolutionStatus::Ready,
+                diff: DiffSummary {
+                    unified_diff_text: preview,
+                    added_lines: 1,
+                    removed_lines: 1,
+                    line_ending: detected_ending,
+                },
+            };
+        }
     };
 
     if is_truncated && status == PatchResolutionStatus::Ready {
         status = PatchResolutionStatus::TruncatedWarning;
     }
 
-    let diff = build_unified_diff_preview(
+    let mut diff = build_unified_diff_preview(
         rel_path,
         existing_disk_content,
         &resolved_content,
         detected_ending,
     );
 
+    if let (
+        PatchResolutionStatus::SearchBlockConflict { unmatched_count },
+        FileOperation::SearchReplace { blocks },
+    ) = (&status, operation)
+    {
+        diff.unified_diff_text =
+            build_conflict_diagnostic_preview(rel_path, base_content, blocks, *unmatched_count);
+    }
+
     PatchedOutcome { resolved_content, status, diff }
+}
+
+fn build_conflict_diagnostic_preview(
+    rel_path: &str,
+    base_content: &str,
+    blocks: &[SearchReplaceBlock],
+    unmatched_count: usize,
+) -> String {
+    let mut out = String::with_capacity(1024);
+    let _ = writeln!(
+        out,
+        "--- a/{rel_path}\n+++ b/{rel_path}\n@@ КОНФЛИКТ ПАТЧА: не найдено блоков SEARCH ({unmatched_count}) @@"
+    );
+    let base_lines: Vec<&str> = base_content.lines().collect();
+
+    for (idx, block) in blocks.iter().enumerate() {
+        let first_search_line =
+            block.search.lines().map(str::trim).find(|l| !l.is_empty()).unwrap_or("");
+        let _ = writeln!(out, "@@ Блок #{} (ожидался фрагмент SEARCH) @@", idx + 1);
+        for line in block.search.lines() {
+            let _ = writeln!(out, "-{line}");
+        }
+        for line in block.replace.lines() {
+            let _ = writeln!(out, "+{line}");
+        }
+        if !first_search_line.is_empty() && !base_lines.is_empty() {
+            let mut best_line_idx = 0_usize;
+            let mut best_sim = 0_u32;
+            for (l_idx, &disk_line) in base_lines.iter().enumerate() {
+                let sim = dice_similarity_permille(disk_line.trim(), first_search_line);
+                if sim > best_sim {
+                    best_sim = sim;
+                    best_line_idx = l_idx;
+                }
+            }
+            if best_sim >= 350 {
+                let start = best_line_idx.saturating_sub(1);
+                let end = (best_line_idx + 4).min(base_lines.len());
+                let _ = writeln!(
+                    out,
+                    "@@ Ближайший похожий участок в файле (строка {}, сходство {}%) @@",
+                    best_line_idx + 1,
+                    best_sim / 10
+                );
+                for &ctx_line in base_lines.get(start..end).unwrap_or(&[]) {
+                    let _ = writeln!(out, " {ctx_line}");
+                }
+            }
+        }
+    }
+    out
 }
 
 fn normalize_overwrite_for_existing(
@@ -173,6 +250,17 @@ pub fn build_unified_diff_preview(
             line_ending,
         };
     };
+
+    if old_content == new_content {
+        let header_open = concat!("@", "@ Без изменений (");
+        let header_close = concat!(") @", "@\n");
+        return DiffSummary {
+            unified_diff_text: format!("{header_open}{rel_path}{header_close}{new_content}"),
+            added_lines: 0,
+            removed_lines: 0,
+            line_ending,
+        };
+    }
 
     let text_diff = TextDiff::from_lines(old_content, new_content);
     let mut added_lines = 0_usize;

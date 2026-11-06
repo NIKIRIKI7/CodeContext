@@ -80,6 +80,8 @@ pub struct ContextPackerState {
     modal_input_focus: ModalInputFocus,
     prompt_modal_open: bool,
     prompt_category_filter: Option<PromptCategory>,
+    renaming_path: Option<(String, String)>,
+    editing_preview_line: Option<(usize, String)>,
     split_ratio: f32,
     resizing_split: bool,
     pending_tree_scroll: Cell<Option<usize>>,
@@ -123,6 +125,8 @@ impl ContextPackerState {
             modal_input_focus: ModalInputFocus::None,
             prompt_modal_open: false,
             prompt_category_filter: None,
+            renaming_path: None,
+            editing_preview_line: None,
             split_ratio: crate::theme::DEFAULT_LAYOUT.packer_split_ratio,
             resizing_split: false,
             pending_tree_scroll: Cell::new(None),
@@ -158,6 +162,8 @@ impl ContextPackerState {
         self.regex_name_draft.clear();
         self.modal_input_focus = ModalInputFocus::None;
         self.prompt_modal_open = false;
+        self.renaming_path = None;
+        self.editing_preview_line = None;
         self.pending_tree_scroll.set(Some(0));
         self.pending_preview_scroll.set(Some(0));
         self.search_query.clear();
@@ -522,6 +528,109 @@ impl ContextPackerState {
     #[inline]
     pub const fn set_resizing_split(&mut self, resizing: bool) {
         self.resizing_split = resizing;
+    }
+
+    #[inline]
+    pub fn renaming_path(&self) -> Option<&(String, String)> {
+        self.renaming_path.as_ref()
+    }
+
+    pub fn start_renaming_path(&mut self, rel_path: &str) {
+        self.renaming_path = Some((rel_path.to_owned(), rel_path.to_owned()));
+        self.editing_preview_line = None;
+    }
+
+    pub fn cancel_renaming_path(&mut self) {
+        self.renaming_path = None;
+    }
+
+    pub fn append_rename_char(&mut self, ch: char) {
+        if let Some((_, ref mut draft)) = self.renaming_path {
+            draft.push(ch);
+        }
+    }
+
+    pub fn pop_rename_char(&mut self) -> bool {
+        if let Some((_, ref mut draft)) = self.renaming_path {
+            return draft.pop().is_some();
+        }
+        false
+    }
+
+    pub fn commit_rename_on_disk(&mut self) -> Result<(), String> {
+        let Some((old_rel, new_rel)) = self.renaming_path.take() else {
+            return Ok(());
+        };
+        let new_trimmed = new_rel.trim();
+        if new_trimmed.is_empty() || new_trimmed == old_rel {
+            return Ok(());
+        }
+        let Some(ref root) = self.project_root else {
+            return Err("No project root".to_owned());
+        };
+        AppContainer::rename_project_entry(root, &old_rel, new_trimmed)?;
+        let _ = self.rescan_current_project();
+        Ok(())
+    }
+
+    pub fn delete_path_on_disk(&mut self, rel_path: &str) -> Result<(), String> {
+        let Some(ref root) = self.project_root else {
+            return Err("No project root".to_owned());
+        };
+        let abs_target = root.join(rel_path);
+        if abs_target.is_dir() {
+            std::fs::remove_dir_all(&abs_target).map_err(|e| e.to_string())?;
+        } else if abs_target.exists() {
+            std::fs::remove_file(&abs_target).map_err(|e| e.to_string())?;
+        }
+        self.renaming_path = None;
+        let _ = self.rescan_current_project();
+        Ok(())
+    }
+
+    #[inline]
+    pub fn editing_preview_line(&self) -> Option<(usize, &str)> {
+        self.editing_preview_line.as_ref().map(|(idx, s)| (*idx, s.as_str()))
+    }
+
+    pub fn start_editing_preview_line(&mut self, line_idx: usize) {
+        let raw = self.preview_buffer.raw_line(line_idx).to_owned();
+        self.editing_preview_line = Some((line_idx, raw));
+        self.renaming_path = None;
+    }
+
+    pub fn cancel_editing_preview_line(&mut self) {
+        self.editing_preview_line = None;
+    }
+
+    pub fn append_preview_line_char(&mut self, ch: char) {
+        if let Some((_, ref mut draft)) = self.editing_preview_line {
+            draft.push(ch);
+        }
+    }
+
+    pub fn pop_preview_line_char(&mut self) -> bool {
+        if let Some((_, ref mut draft)) = self.editing_preview_line {
+            return draft.pop().is_some();
+        }
+        false
+    }
+
+    pub fn commit_preview_line_edit(&mut self) {
+        let Some((line_idx, new_line)) = self.editing_preview_line.take() else {
+            return;
+        };
+        let mut lines: Vec<&str> = self.preview_buffer.as_str().lines().collect();
+        if let Some(slot) = lines.get_mut(line_idx) {
+            *slot = &new_line;
+            let updated_text = lines.join("\n");
+            self.preview_buffer = VirtualTextBuffer::new(updated_text.as_str());
+            if let Some(ref mut res) = self.pack_result
+                && let Some(chunk) = res.chunks.get_mut(self.active_chunk_index)
+            {
+                chunk.content = updated_text;
+            }
+        }
     }
 
     pub fn select_system_prompt_mode(&mut self, mode: SystemPromptMode) {

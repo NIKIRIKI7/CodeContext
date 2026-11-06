@@ -2,10 +2,18 @@ use std::path::{Path, PathBuf};
 
 use platform::resolve_headless_target_path;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum CleanScope {
+    All,
+    Backups,
+    Temp,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum LaunchMode {
     HeadlessPack { project_root: PathBuf },
     HeadlessApply { project_root: PathBuf },
+    Clean { scope: CleanScope, project_root: PathBuf },
     RegisterShell,
     UnregisterShell,
     SelfInstall,
@@ -34,6 +42,18 @@ where
                 .next()
                 .map_or_else(|| PathBuf::from("."), |raw| resolve_headless_target_path(&raw));
             return LaunchMode::HeadlessApply { project_root: path };
+        }
+        if arg == "--clean" {
+            let next = iter.next().unwrap_or_else(|| "all".to_owned());
+            let scope = match next.as_str() {
+                "backups" => CleanScope::Backups,
+                "tmp" | "temp" => CleanScope::Temp,
+                _ => CleanScope::All,
+            };
+            let path = iter
+                .next()
+                .map_or_else(|| PathBuf::from("."), |raw| resolve_headless_target_path(&raw));
+            return LaunchMode::Clean { scope, project_root: path };
         }
         if arg == "--register-shell" {
             return LaunchMode::RegisterShell;

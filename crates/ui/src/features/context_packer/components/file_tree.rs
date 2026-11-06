@@ -481,6 +481,10 @@ struct TreeCallbacks {
     toggle_expand: Option<TreePathHandler>,
     select_file: Option<TreeFileSelectHandler>,
     toggle_secret_unlock: Option<TreePathHandler>,
+    start_rename_path: Option<TreePathHandler>,
+    delete_path: Option<TreePathHandler>,
+    submit_rename: Option<TreeBulkActionHandler>,
+    cancel_rename: Option<TreeBulkActionHandler>,
     master_toggle_all: Option<TreeBulkActionHandler>,
     toggle_expand_collapse_all: Option<TreeBulkActionHandler>,
     toggle_sort_mode: Option<TreeBulkActionHandler>,
@@ -494,6 +498,7 @@ struct TreeCallbacks {
 pub struct FileTreeComponent {
     projection: FlatTreeProjection,
     focused_index: Option<usize>,
+    renaming_target_and_draft: Option<(String, String)>,
     sort_mode: TreeSortMode,
     search_query: String,
     search_focused: bool,
@@ -521,6 +526,7 @@ impl FileTreeComponent {
         Self {
             projection,
             focused_index: None,
+            renaming_target_and_draft: None,
             sort_mode: TreeSortMode::AlphabeticalTree,
             search_query: String::new(),
             search_focused: false,
@@ -562,6 +568,28 @@ impl FileTreeComponent {
     #[inline]
     pub const fn with_focused_index(mut self, focused_index: Option<usize>) -> Self {
         self.focused_index = focused_index;
+        self
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn with_rename_state(mut self, target_and_draft: Option<(String, String)>) -> Self {
+        self.renaming_target_and_draft = target_and_draft;
+        self
+    }
+
+    #[must_use]
+    pub fn on_fs_operations(
+        mut self,
+        on_start_rename: impl Fn(&str, &mut Window, &mut App) + 'static,
+        on_delete_path: impl Fn(&str, &mut Window, &mut App) + 'static,
+        on_submit_rename: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
+        on_cancel_rename: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.callbacks.start_rename_path = Some(Arc::new(on_start_rename));
+        self.callbacks.delete_path = Some(Arc::new(on_delete_path));
+        self.callbacks.submit_rename = Some(Arc::new(on_submit_rename));
+        self.callbacks.cancel_rename = Some(Arc::new(on_cancel_rename));
         self
     }
 
@@ -764,6 +792,7 @@ impl RenderOnce for FileTreeComponent {
         let item_count = nodes.len();
 
         let header = self.render_compact_tree_toolbar();
+        let rename_bar_opt = self.render_inline_rename_or_actions_bar();
 
         if item_count == 0 {
             let mut open_btn =
@@ -832,8 +861,125 @@ impl RenderOnce for FileTreeComponent {
             .bg(theme.colors.bg_panel)
             .overflow_hidden()
             .child(header)
+            .children(rename_bar_opt)
             .child(div().flex_1().overflow_hidden().child(tracked))
             .into_any_element()
+    }
+}
+
+impl FileTreeComponent {
+    fn render_inline_rename_or_actions_bar(&self) -> Option<gpui::AnyElement> {
+        let theme = self.theme;
+        let colors = &theme.colors;
+        let is_en = self.labels.btn_copy_context == "Copy";
+
+        if let Some((ref old_path, ref draft)) = self.renaming_target_and_draft {
+            let input = crate::shared::containers::form_controls::TextInputField::new(
+                "tree-inline-rename-input",
+                draft.clone(),
+                "new/path.rs",
+                true,
+            )
+            .with_theme(theme);
+
+            let mut ok_btn = UiButton::icon_only("tree-inline-rename-submit", UiIcon::Check)
+                .variant(ButtonVariant::Primary)
+                .with_theme(theme);
+            if let Some(ref cb) = self.callbacks.submit_rename {
+                let cb_clone = Arc::clone(cb);
+                ok_btn = ok_btn.on_click(move |ev, w, c| cb_clone(ev, w, c));
+            }
+
+            let mut cancel_btn = UiButton::icon_only("tree-inline-rename-cancel", UiIcon::X)
+                .variant(ButtonVariant::Ghost)
+                .with_theme(theme);
+            if let Some(ref cb) = self.callbacks.cancel_rename {
+                let cb_clone = Arc::clone(cb);
+                cancel_btn = cancel_btn.on_click(move |ev, w, c| cb_clone(ev, w, c));
+            }
+
+            let _ = old_path;
+            return Some(
+                div()
+                    .w_full()
+                    .h(px(34.0))
+                    .px(px(theme.spacing.lg))
+                    .bg(colors.bg_elevated)
+                    .border_b_1()
+                    .border_color(colors.border_active)
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .gap(px(theme.spacing.xs))
+                    .child(input)
+                    .child(ok_btn)
+                    .child(cancel_btn)
+                    .into_any_element(),
+            );
+        }
+
+        let focused_idx = self.focused_index?;
+        let node = self.projection.visible_nodes().get(focused_idx)?;
+        let node_path = node.path.clone();
+        let node_path_del = node.path.clone();
+
+        let mut rename_btn = UiButton::new(
+            "tree-focused-rename-btn",
+            if is_en { "Rename" } else { "Переименовать" },
+        )
+        .variant(ButtonVariant::Ghost)
+        .with_theme(theme);
+        if let Some(ref cb) = self.callbacks.start_rename_path {
+            let cb_clone = Arc::clone(cb);
+            rename_btn = rename_btn.on_click(move |_ev, w, c| cb_clone(&node_path, w, c));
+        }
+
+        let mut del_btn =
+            UiButton::new("tree-focused-delete-btn", if is_en { "Delete" } else { "Удалить" })
+                .icon(UiIcon::X)
+                .variant(ButtonVariant::Ghost)
+                .with_theme(theme);
+        if let Some(ref cb) = self.callbacks.delete_path {
+            let cb_clone = Arc::clone(cb);
+            del_btn = del_btn.on_click(move |_ev, w, c| cb_clone(&node_path_del, w, c));
+        }
+
+        Some(
+            div()
+                .w_full()
+                .h(px(28.0))
+                .px(px(theme.spacing.lg))
+                .bg(colors.bg_elevated)
+                .border_b_1()
+                .border_color(colors.border)
+                .flex()
+                .flex_row()
+                .items_center()
+                .justify_between()
+                .gap(px(theme.spacing.xs))
+                .child(
+                    div()
+                        .flex_1()
+                        .min_w(px(0.0))
+                        .overflow_hidden()
+                        .whitespace_nowrap()
+                        .font_family(crate::theme::FONT_FAMILY_MONO)
+                        .text_xs()
+                        .text_color(colors.text_secondary)
+                        .child(SharedString::from(node.display_name.clone())),
+                )
+                .child(
+                    div()
+                        .flex_shrink_0()
+                        .flex()
+                        .flex_row()
+                        .items_center()
+                        .gap(px(2.0))
+                        .child(rename_btn)
+                        .child(del_btn),
+                )
+                .into_any_element(),
+        )
     }
 }
 

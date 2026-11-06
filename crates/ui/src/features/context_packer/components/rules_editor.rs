@@ -144,7 +144,9 @@ impl RenderOnce for RulesEditorComponent {
             + usize::from(self.preset.template.include_file_tree)
             + usize::from(self.preset.follow_symlinks);
 
-        let trigger_label = SharedString::from(format!("{} ({active_count})", labels.rules_header));
+        let short_rules_title =
+            if labels.btn_copy_context == "Copy" { "Options" } else { "Опции" };
+        let trigger_label = SharedString::from(format!("{short_rules_title} ({active_count})"));
 
         let mut trigger_btn = UiButton::new("btn-toggle-filters-inspector", trigger_label)
             .icon(UiIcon::SlidersHorizontal)
@@ -176,6 +178,8 @@ impl RenderOnce for RulesEditorComponent {
 
         let mut volume_hint = div()
             .id("btn-volume-summary-hint")
+            .flex_shrink_0()
+            .whitespace_nowrap()
             .cursor_pointer()
             .font_family(FONT_FAMILY_MONO)
             .text_xs()

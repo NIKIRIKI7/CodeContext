@@ -1,4 +1,5 @@
 use core::packing::aggregates::project::Project;
+use core::packing::ports::clipboard::ClipboardPort as _;
 use core::preset::models::resolution::{
     TerminalCommandPreset, TerminalTaskCategory, UiChromeConfig,
 };
@@ -534,6 +535,15 @@ impl MainWindowView {
         let state_clear = self.state.clone();
         let state_close = self.state.clone();
 
+        let container_ai_err = self.container.clone();
+        let dock = dock.on_copy_error_for_ai(move |cmd, output, _win, cx| {
+            let prompt = format!(
+                "Команда `{cmd}` завершилась с ошибкой:\n```text\n{output}\n```\nИсправь причину ошибки и выдай патч в формате SEARCH / REPLACE."
+            );
+            let _ = container_ai_err.clipboard().copy_text(&prompt);
+            cx.write_to_clipboard(ClipboardItem::new_string(prompt));
+        });
+
         dock.with_actions(
             move |mode, _win, cx| {
                 state_filter.update(cx, |s, cx| {
@@ -709,5 +719,308 @@ impl MainWindowView {
                 })
                 .detach();
             })
+    }
+
+    pub(crate) fn execute_selected_command_palette_item(&mut self, cx: &mut Context<Self>) {
+        let (query, sel_idx) = {
+            let cp = self.state.read(cx).command_palette();
+            (cp.query.clone(), cp.selected_index)
+        };
+        self.state.update(cx, |s, cx| {
+            s.close_command_palette();
+            cx.notify();
+        });
+
+        let trimmed = query.trim();
+        if let Some(cmd_q) = trimmed.strip_prefix('>') {
+            let q = cmd_q.trim().to_ascii_lowercase();
+            let cmds = [
+                "copy", "apply", "undo", "rescan", "terminal", "theme", "lang", "prompt",
+                "filters", "settings",
+            ];
+            let matched: Vec<&str> = cmds.into_iter().filter(|c| c.contains(&q)).collect();
+            let chosen = matched.get(sel_idx).copied().unwrap_or("copy");
+            match chosen {
+                "copy" => self.copy_packed_context_to_os_clipboard(cx),
+                "apply" => {
+                    self.applier_state.update(cx, |a, cx| {
+                        let _ = a.apply_changes_to_disk();
+                        cx.notify();
+                    });
+                }
+                "undo" => {
+                    self.applier_state.update(cx, |a, cx| {
+                        let _ = a.undo_last_apply();
+                        cx.notify();
+                    });
+                }
+                "rescan" => {
+                    self.packer_state.update(cx, |p, cx| {
+                        let _ = p.rescan_current_project();
+                        cx.notify();
+                    });
+                }
+                "terminal" => {
+                    self.state.update(cx, |s, cx| {
+                        s.open_or_toggle_dock_tab(DockToolTab::Terminal);
+                        cx.notify();
+                    });
+                }
+                "theme" => {
+                    self.state.update(cx, |s, cx| {
+                        s.toggle_theme();
+                        cx.notify();
+                    });
+                }
+                "lang" => {
+                    self.state.update(cx, |s, cx| {
+                        s.toggle_locale();
+                        cx.notify();
+                    });
+                }
+                "prompt" => {
+                    self.packer_state.update(cx, |p, cx| {
+                        p.set_prompt_modal_open(true);
+                        cx.notify();
+                    });
+                }
+                "filters" => {
+                    self.packer_state.update(cx, |p, cx| {
+                        p.set_regex_filter_open(true);
+                        cx.notify();
+                    });
+                }
+                _ => {
+                    self.state.update(cx, |s, cx| {
+                        s.set_settings_open(true);
+                        cx.notify();
+                    });
+                }
+            }
+            return;
+        }
+
+        let target_path_opt = {
+            let ps = self.packer_state.read(cx);
+            let q_lower = trimmed.to_ascii_lowercase();
+            ps.tree_projection()
+                .visible_nodes()
+                .iter()
+                .filter(|n| {
+                    !n.is_dir()
+                        && (q_lower.is_empty() || n.path.to_ascii_lowercase().contains(&q_lower))
+                })
+                .nth(sel_idx)
+                .map(|n| n.path.clone())
+        };
+        if let Some(rel_path) = target_path_opt {
+            self.packer_state.update(cx, |p, cx| {
+                let _ = p.jump_to_file_in_preview(&rel_path);
+                cx.notify();
+            });
+        }
+    }
+
+    fn collect_command_palette_items(
+        &self,
+        trimmed: &str,
+        is_en: bool,
+        cx: &Context<Self>,
+    ) -> Vec<(String, String)> {
+        let mut items: Vec<(String, String)> = Vec::with_capacity(10);
+        if let Some(cmd_q) = trimmed.strip_prefix('>') {
+            let q = cmd_q.trim().to_ascii_lowercase();
+            let all_cmds = [
+                (
+                    "> copy",
+                    if is_en {
+                        "Copy Packed Context"
+                    } else {
+                        "Копировать контекст"
+                    },
+                ),
+                (
+                    "> apply",
+                    if is_en {
+                        "Apply AI Changes"
+                    } else {
+                        "Применить патчи на диск"
+                    },
+                ),
+                (
+                    "> undo",
+                    if is_en {
+                        "Undo Last Apply"
+                    } else {
+                        "Откатить последний патч"
+                    },
+                ),
+                (
+                    "> rescan",
+                    if is_en {
+                        "Rescan Project"
+                    } else {
+                        "Обновить индекс файлов"
+                    },
+                ),
+                (
+                    "> terminal",
+                    if is_en {
+                        "Toggle Command Line"
+                    } else {
+                        "Открыть командную строку"
+                    },
+                ),
+                (
+                    "> prompt",
+                    if is_en {
+                        "System Prompts Builder"
+                    } else {
+                        "Конструктор промптов"
+                    },
+                ),
+                (
+                    "> filters",
+                    if is_en {
+                        "File & Regex Filters"
+                    } else {
+                        "Фильтры файлов и Regex"
+                    },
+                ),
+                (
+                    "> theme",
+                    if is_en {
+                        "Toggle Dark / Light Theme"
+                    } else {
+                        "Переключить тему"
+                    },
+                ),
+                (
+                    "> lang",
+                    if is_en {
+                        "Switch Language RU / EN"
+                    } else {
+                        "Переключить язык RU / EN"
+                    },
+                ),
+                ("> settings", if is_en { "Open Settings" } else { "Открыть настройки" }),
+            ];
+            for (code, desc) in all_cmds {
+                if q.is_empty() || code.contains(&q) || desc.to_lowercase().contains(&q) {
+                    items.push((desc.to_owned(), code.to_owned()));
+                }
+            }
+        } else {
+            let q = trimmed.to_ascii_lowercase();
+            let ps = self.packer_state.read(cx);
+            for node in ps.tree_projection().visible_nodes() {
+                if !node.is_dir() && (q.is_empty() || node.path.to_ascii_lowercase().contains(&q)) {
+                    items.push((node.display_name.clone(), node.path.clone()));
+                    if items.len() >= 10 {
+                        break;
+                    }
+                }
+            }
+        }
+        items
+    }
+
+    pub(crate) fn render_command_palette_modal(
+        &self,
+        locale: AppLocale,
+        theme: &'static ThemeTokens,
+        cx: &Context<Self>,
+    ) -> impl IntoElement + use<> {
+        let colors = &theme.colors;
+        let is_en = locale == AppLocale::En;
+        let cp = self.state.read(cx).command_palette().clone();
+        let trimmed = cp.query.trim();
+        let is_cmd_mode = trimmed.starts_with('>');
+        let items = self.collect_command_palette_items(trimmed, is_en, cx);
+
+        let mut list = div().w_full().flex().flex_col().gap(px(2.0));
+        for (idx, (title, subtitle)) in items.into_iter().enumerate() {
+            let is_sel = idx == cp.selected_index;
+            let view_entity = cx.entity().clone();
+            let state_sel = self.state.clone();
+            list = list.child(
+                div()
+                    .id(("cmd-palette-item", idx))
+                    .w_full()
+                    .h(px(28.0))
+                    .px(px(theme.spacing.md))
+                    .rounded(px(theme.radius.sm))
+                    .bg(if is_sel { colors.bg_elevated } else { colors.bg_panel })
+                    .border_1()
+                    .border_color(if is_sel { colors.cyan } else { colors.bg_panel })
+                    .cursor_pointer()
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .justify_between()
+                    .on_click(move |_ev, _win, cx| {
+                        state_sel.update(cx, |s, _cx| {
+                            s.command_palette_mut().selected_index = idx;
+                        });
+                        view_entity.update(cx, |this, cx| {
+                            this.execute_selected_command_palette_item(cx);
+                        });
+                    })
+                    .child(
+                        div()
+                            .font_family(FONT_FAMILY_UI)
+                            .text_xs()
+                            .text_color(colors.text_primary)
+                            .child(SharedString::from(title)),
+                    )
+                    .child(
+                        div()
+                            .font_family(FONT_FAMILY_MONO)
+                            .text_xs()
+                            .text_color(colors.text_muted)
+                            .child(SharedString::from(subtitle)),
+                    ),
+            );
+        }
+
+        let state_close = self.state.clone();
+        let placeholder = if is_cmd_mode {
+            if is_en { "Type a command..." } else { "Введите команду..." }
+        } else if is_en {
+            "Search files by name or type '>' for commands..."
+        } else {
+            "Поиск файла или введите '>' для команд..."
+        };
+
+        ModalDialogShell::new(
+            "cmd-palette-backdrop",
+            "cmd-palette-dialog",
+            "cmd-palette-close-btn",
+            if is_en {
+                "Command Palette (Ctrl+P)"
+            } else {
+                "Командная палитра (Ctrl+P)"
+            },
+        )
+        .width(520.0)
+        .leading_icon(UiIcon::Search)
+        .with_theme(theme)
+        .on_close(move |_ev, _win, cx| {
+            state_close.update(cx, |s, cx| {
+                s.close_command_palette();
+                cx.notify();
+            });
+        })
+        .child(
+            crate::shared::containers::form_controls::TextInputField::new(
+                "cmd-palette-input",
+                cp.query,
+                placeholder,
+                true,
+            )
+            .leading_icon(UiIcon::Search)
+            .with_theme(theme),
+        )
+        .child(list)
     }
 }

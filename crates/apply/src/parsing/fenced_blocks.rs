@@ -81,6 +81,19 @@ const DELETE_HEADER_PREFIXES: &[&str] = &[
     "УДАЛИТЬ ФАЙЛ:",
 ];
 
+const RENAME_HEADER_PREFIXES: &[&str] = &[
+    "=== RENAME FILE: ",
+    "=== RENAME: ",
+    "=== MOVE FILE: ",
+    "=== MOVE: ",
+    "RENAME FILE:",
+    "MOVE FILE:",
+    "ПЕРЕИМЕНОВАТЬ ФАЙЛ:",
+];
+
+const RUN_HEADER_PREFIXES: &[&str] =
+    &["=== RUN: ", "=== RUN COMMAND: ", "=== COMMAND: ", "=== EXEC: "];
+
 const ACTION_WORDS_TO_STRIP: &[&str] = &[
     "create file:",
     "create file",
@@ -180,6 +193,77 @@ pub(crate) fn parse_delete_directives(
         }
     }
     deleted_paths
+}
+
+pub(crate) fn parse_rename_directives(
+    input: &str,
+    project_root: Option<&Path>,
+    template: &OutputTemplate,
+    config: &ParserConfig,
+) -> Vec<(String, String)> {
+    if !contains_ignore_ascii_case(input, "rename")
+        && !contains_ignore_ascii_case(input, "move")
+        && !input.contains("Переименовать")
+        && !input.contains("переименовать")
+    {
+        return Vec::new();
+    }
+
+    let header_suffix = if config.sync_with_output_template {
+        template.header_suffix_trimmed()
+    } else {
+        DEFAULT_FILE_HEADER_SUFFIX.trim_end_matches(['\r', '\n'])
+    };
+
+    let mut renames = Vec::new();
+    for raw_line in input.lines() {
+        let trimmed = raw_line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        for &prefix in RENAME_HEADER_PREFIXES {
+            if let Some(after) = strip_prefix_ignore_case(trimmed, prefix) {
+                let body = after.trim().strip_suffix(header_suffix).unwrap_or(after.trim());
+                if let Some((old_raw, new_raw)) =
+                    body.split_once("->").or_else(|| body.split_once("=>"))
+                {
+                    let old_clean = normalize_extracted_path(old_raw, project_root, config);
+                    let new_clean = normalize_extracted_path(new_raw, project_root, config);
+                    if looks_like_file_path(&old_clean)
+                        && looks_like_file_path(&new_clean)
+                        && old_clean != new_clean
+                        && !renames.iter().any(|(_, n)| n == &new_clean)
+                    {
+                        renames.push((old_clean, new_clean));
+                    }
+                }
+            }
+        }
+    }
+    renames
+}
+
+pub(crate) fn parse_run_directives(input: &str, template: &OutputTemplate) -> Vec<String> {
+    if !contains_ignore_ascii_case(input, "=== run")
+        && !contains_ignore_ascii_case(input, "=== command:")
+        && !contains_ignore_ascii_case(input, "=== exec:")
+    {
+        return Vec::new();
+    }
+    let header_suffix = template.header_suffix_trimmed();
+    let mut commands = Vec::new();
+    for raw_line in input.lines() {
+        let trimmed = raw_line.trim();
+        for &prefix in RUN_HEADER_PREFIXES {
+            if let Some(after) = strip_prefix_ignore_case(trimmed, prefix) {
+                let cmd = after.trim().strip_suffix(header_suffix).unwrap_or(after.trim()).trim();
+                if !cmd.is_empty() && !commands.iter().any(|c| c == cmd) {
+                    commands.push(cmd.to_owned());
+                }
+            }
+        }
+    }
+    commands
 }
 
 #[inline]

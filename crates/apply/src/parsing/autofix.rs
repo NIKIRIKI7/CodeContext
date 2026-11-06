@@ -281,7 +281,6 @@ pub(crate) fn is_clean_line_tail(haystack: &str, after_marker_pos: usize) -> boo
 }
 
 pub(crate) fn is_offset_inside_rust_string(haystack: &str, target_offset: usize) -> bool {
-    let slice = haystack.get(..target_offset).unwrap_or(haystack);
     let after = haystack.get(target_offset..).unwrap_or("");
     let next_lines_have_closing_quote_semi = after
         .lines()
@@ -291,6 +290,8 @@ pub(crate) fn is_offset_inside_rust_string(haystack: &str, target_offset: usize)
         return false;
     }
 
+    let window_start = target_offset.saturating_sub(2048);
+    let slice = haystack.get(window_start..target_offset).unwrap_or("");
     let bytes = slice.as_bytes();
     let mut in_quotes = false;
     let mut escaped = false;

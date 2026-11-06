@@ -5,13 +5,18 @@ use core::preset::models::template::{
     DEFAULT_DIVIDER_MARKER, DEFAULT_FILE_FOOTER, DEFAULT_FILE_HEADER_PREFIX,
     DEFAULT_REPLACE_MARKER, DEFAULT_SEARCH_MARKER, OutputTemplate, ParserConfig,
 };
+use std::fmt;
+
 use gpui::{
-    App, ElementId, IntoElement, ParentElement as _, RenderOnce, SharedString, Styled as _,
-    UniformListScrollHandle, Window, div, px, uniform_list,
+    App, ElementId, InteractiveElement as _, IntoElement, ParentElement as _, RenderOnce,
+    SharedString, StatefulInteractiveElement as _, Styled as _, UniformListScrollHandle, Window,
+    div, px, uniform_list,
 };
 
 use crate::locale::{AppLocale, UiLabels};
 use crate::theme::{FONT_FAMILY_MONO, FONT_FAMILY_UI, ThemeTokens, active_theme};
+
+pub type LineClickCallback = Arc<dyn Fn(usize, &mut Window, &mut App) + 'static>;
 
 pub const DEFAULT_MAX_DISPLAY_LINE_BYTES: usize = 256;
 const MIN_DISPLAY_LINE_BYTES: usize = 16;
@@ -204,15 +209,26 @@ fn floor_utf8_char_boundary(s: &str, max_bytes: usize) -> usize {
     idx
 }
 
-#[derive(Debug, Clone, IntoElement)]
+#[derive(Clone, IntoElement)]
 pub struct VirtualTextView {
     id: ElementId,
     buffer: VirtualTextBuffer,
+    selected_line: Option<usize>,
     highlight_mode: LineHighlightMode,
     markers: HighlightMarkers,
     labels: &'static UiLabels,
     theme: &'static ThemeTokens,
     scroll_handle: Option<UniformListScrollHandle>,
+    on_line_click: Option<LineClickCallback>,
+}
+
+impl fmt::Debug for VirtualTextView {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("VirtualTextView")
+            .field("id", &self.id)
+            .field("selected_line", &self.selected_line)
+            .finish_non_exhaustive()
+    }
 }
 
 impl VirtualTextView {
@@ -221,12 +237,31 @@ impl VirtualTextView {
         Self {
             id: id.into(),
             buffer,
+            selected_line: None,
             highlight_mode: LineHighlightMode::PackedContext,
             markers: HighlightMarkers::default(),
             labels: AppLocale::Ru.labels(),
             theme: active_theme(),
             scroll_handle: None,
+            on_line_click: None,
         }
+    }
+
+    #[must_use]
+    #[inline]
+    pub const fn with_selected_line(mut self, selected_line: Option<usize>) -> Self {
+        self.selected_line = selected_line;
+        self
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn on_line_click(
+        mut self,
+        handler: impl Fn(usize, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.on_line_click = Some(Arc::new(handler));
+        self
     }
 
     #[must_use]
@@ -306,6 +341,8 @@ impl RenderOnce for VirtualTextView {
         let buffer = self.buffer;
         let mode = self.highlight_mode;
         let markers = self.markers;
+        let selected_line = self.selected_line;
+        let on_line_click = self.on_line_click;
 
         let list = uniform_list(
             self.id,
@@ -315,51 +352,66 @@ impl RenderOnce for VirtualTextView {
                 for line_idx in range {
                     let (line_text, is_clamped) = buffer.display_line(line_idx);
                     let line_number = SharedString::from(format!("{:>4}", line_idx + 1));
-                    let (line_fg, row_bg) =
+                    let (line_fg, base_bg) =
                         classify_line_by_mode(line_text, mode, &markers, colors);
+                    let is_selected = selected_line == Some(line_idx);
+                    let row_bg = if is_selected { colors.bg_elevated } else { base_bg };
                     let rendered_text = if is_clamped {
                         SharedString::from(format!("{line_text}{TRUNCATED_LINE_ELLIPSIS}"))
                     } else {
                         SharedString::from(line_text.to_owned())
                     };
-                    rows.push(
-                        div()
-                            .w_full()
-                            .h(px(theme.layout.code_line_height))
-                            .bg(row_bg)
-                            .flex()
-                            .flex_row()
-                            .items_center()
-                            .overflow_hidden()
-                            .whitespace_nowrap()
-                            .font_family(FONT_FAMILY_MONO)
-                            .child(
-                                div()
-                                    .w(px(theme.layout.line_number_width))
-                                    .h_full()
-                                    .pr(px(theme.spacing.md))
-                                    .border_r_1()
-                                    .border_color(colors.border)
-                                    .flex()
-                                    .items_center()
-                                    .justify_end()
-                                    .flex_shrink_0()
-                                    .text_xs()
-                                    .text_color(colors.text_muted)
-                                    .child(line_number),
-                            )
-                            .child(
-                                div()
-                                    .flex_1()
-                                    .pl(px(theme.spacing.xl))
-                                    .pr(px(theme.spacing.md))
-                                    .overflow_hidden()
-                                    .whitespace_nowrap()
-                                    .text_xs()
-                                    .text_color(line_fg)
-                                    .child(rendered_text),
-                            ),
-                    );
+                    let mut row_el = div()
+                        .id(("virtual-text-line", line_idx))
+                        .w_full()
+                        .h(px(theme.layout.code_line_height))
+                        .bg(row_bg)
+                        .flex()
+                        .flex_row()
+                        .items_center()
+                        .overflow_hidden()
+                        .whitespace_nowrap()
+                        .font_family(FONT_FAMILY_MONO)
+                        .child(
+                            div()
+                                .w(px(theme.layout.line_number_width))
+                                .h_full()
+                                .pr(px(theme.spacing.md))
+                                .border_r_1()
+                                .border_color(if is_selected { colors.cyan } else { colors.border })
+                                .flex()
+                                .items_center()
+                                .justify_end()
+                                .flex_shrink_0()
+                                .text_xs()
+                                .text_color(if is_selected {
+                                    colors.cyan
+                                } else {
+                                    colors.text_muted
+                                })
+                                .child(line_number),
+                        )
+                        .child(
+                            div()
+                                .flex_1()
+                                .pl(px(theme.spacing.xl))
+                                .pr(px(theme.spacing.md))
+                                .overflow_hidden()
+                                .whitespace_nowrap()
+                                .text_xs()
+                                .text_color(line_fg)
+                                .child(rendered_text),
+                        );
+
+                    if let Some(ref click_cb) = on_line_click {
+                        let cb = Arc::clone(click_cb);
+                        let hover_bg = colors.bg_hover;
+                        row_el = row_el
+                            .cursor_pointer()
+                            .hover(move |s| s.bg(hover_bg))
+                            .on_click(move |_ev, win, cx| cb(line_idx, win, cx));
+                    }
+                    rows.push(row_el);
                 }
                 rows
             },

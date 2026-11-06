@@ -19,11 +19,27 @@ impl MainWindowView {
         if self.try_handle_settings_recording_key(event, key, cx) {
             return;
         }
+        if self.try_handle_command_palette_key(event, key, primary_mod, cx) {
+            cx.stop_propagation();
+            return;
+        }
+        if primary_mod && is_key_p(key) {
+            cx.stop_propagation();
+            self.state.update(cx, |s, cx| {
+                s.open_command_palette(mods.shift);
+                cx.notify();
+            });
+            return;
+        }
         if self.try_handle_terminal_input_key(event, key, primary_mod, cx) {
             cx.stop_propagation();
             return;
         }
         if self.try_handle_packer_modals_key(event, key, primary_mod, cx) {
+            cx.stop_propagation();
+            return;
+        }
+        if self.try_handle_inline_editors_key(event, key, primary_mod, cx) {
             cx.stop_propagation();
             return;
         }
@@ -136,6 +152,69 @@ impl MainWindowView {
             cx.notify();
         });
         false
+    }
+
+    fn try_handle_command_palette_key(
+        &mut self,
+        event: &KeyDownEvent,
+        key: &str,
+        primary_mod: bool,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        if !self.state.read(cx).command_palette().is_open {
+            return false;
+        }
+        if key.eq_ignore_ascii_case("escape") {
+            self.state.update(cx, |s, cx| {
+                s.close_command_palette();
+                cx.notify();
+            });
+            return true;
+        }
+        if key.eq_ignore_ascii_case("down") || key.eq_ignore_ascii_case("arrowdown") {
+            self.state.update(cx, |s, cx| {
+                let cp = s.command_palette_mut();
+                cp.selected_index = cp.selected_index.saturating_add(1).min(11);
+                cx.notify();
+            });
+            return true;
+        }
+        if key.eq_ignore_ascii_case("up") || key.eq_ignore_ascii_case("arrowup") {
+            self.state.update(cx, |s, cx| {
+                let cp = s.command_palette_mut();
+                cp.selected_index = cp.selected_index.saturating_sub(1);
+                cx.notify();
+            });
+            return true;
+        }
+        if key.eq_ignore_ascii_case("enter") {
+            self.execute_selected_command_palette_item(cx);
+            return true;
+        }
+        if key.eq_ignore_ascii_case("backspace") {
+            self.state.update(cx, |s, cx| {
+                let cp = s.command_palette_mut();
+                if cp.query.pop().is_some() {
+                    cp.selected_index = 0;
+                    cx.notify();
+                }
+            });
+            return true;
+        }
+        let mods = event.keystroke.modifiers;
+        if !primary_mod
+            && !mods.alt
+            && let Some(ch) = extract_printable_regex_char(event)
+        {
+            self.state.update(cx, |s, cx| {
+                let cp = s.command_palette_mut();
+                cp.query.push(ch);
+                cp.selected_index = 0;
+                cx.notify();
+            });
+            return true;
+        }
+        true
     }
 
     fn handle_global_workspace_shortcuts(
@@ -302,6 +381,121 @@ impl MainWindowView {
                 });
                 return true;
             }
+        }
+        false
+    }
+
+    fn try_handle_inline_editors_key(
+        &self,
+        event: &KeyDownEvent,
+        key: &str,
+        primary_mod: bool,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        let mods = event.keystroke.modifiers;
+        if self.packer_state.read(cx).renaming_path().is_some() {
+            if key.eq_ignore_ascii_case("escape") {
+                self.packer_state.update(cx, |p, cx| {
+                    p.cancel_renaming_path();
+                    cx.notify();
+                });
+                return true;
+            }
+            if key.eq_ignore_ascii_case("enter") {
+                self.packer_state.update(cx, |p, cx| {
+                    let _ = p.commit_rename_on_disk();
+                    cx.notify();
+                });
+                return true;
+            }
+            if key.eq_ignore_ascii_case("backspace") {
+                self.packer_state.update(cx, |p, cx| {
+                    if p.pop_rename_char() {
+                        cx.notify();
+                    }
+                });
+                return true;
+            }
+            if !primary_mod
+                && !mods.alt
+                && let Some(ch) = extract_printable_regex_char(event)
+            {
+                self.packer_state.update(cx, |p, cx| {
+                    p.append_rename_char(ch);
+                    cx.notify();
+                });
+            }
+            return true;
+        }
+
+        if self.packer_state.read(cx).editing_preview_line().is_some() {
+            if key.eq_ignore_ascii_case("escape") {
+                self.packer_state.update(cx, |p, cx| {
+                    p.cancel_editing_preview_line();
+                    cx.notify();
+                });
+                return true;
+            }
+            if key.eq_ignore_ascii_case("enter") {
+                self.packer_state.update(cx, |p, cx| {
+                    p.commit_preview_line_edit();
+                    cx.notify();
+                });
+                return true;
+            }
+            if key.eq_ignore_ascii_case("backspace") {
+                self.packer_state.update(cx, |p, cx| {
+                    if p.pop_preview_line_char() {
+                        cx.notify();
+                    }
+                });
+                return true;
+            }
+            if !primary_mod
+                && !mods.alt
+                && let Some(ch) = extract_printable_regex_char(event)
+            {
+                self.packer_state.update(cx, |p, cx| {
+                    p.append_preview_line_char(ch);
+                    cx.notify();
+                });
+            }
+            return true;
+        }
+
+        if self.applier_state.read(cx).editing_diff_line().is_some() {
+            if key.eq_ignore_ascii_case("escape") {
+                self.applier_state.update(cx, |a, cx| {
+                    a.cancel_editing_diff_line();
+                    cx.notify();
+                });
+                return true;
+            }
+            if key.eq_ignore_ascii_case("enter") {
+                self.applier_state.update(cx, |a, cx| {
+                    a.commit_diff_line_edit();
+                    cx.notify();
+                });
+                return true;
+            }
+            if key.eq_ignore_ascii_case("backspace") {
+                self.applier_state.update(cx, |a, cx| {
+                    if a.pop_diff_line_char() {
+                        cx.notify();
+                    }
+                });
+                return true;
+            }
+            if !primary_mod
+                && !mods.alt
+                && let Some(ch) = extract_printable_regex_char(event)
+            {
+                self.applier_state.update(cx, |a, cx| {
+                    a.append_diff_line_char(ch);
+                    cx.notify();
+                });
+            }
+            return true;
         }
         false
     }
@@ -822,6 +1016,11 @@ fn is_key_k(key: &str) -> bool {
 #[inline]
 fn is_key_o(key: &str) -> bool {
     key.eq_ignore_ascii_case("o") || key == "щ" || key == "Щ"
+}
+
+#[inline]
+fn is_key_p(key: &str) -> bool {
+    key.eq_ignore_ascii_case("p") || key == "з" || key == "З"
 }
 
 #[inline]

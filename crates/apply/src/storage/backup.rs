@@ -14,6 +14,14 @@ const SNAPSHOT_FILES_SUBDIR: &str = "files";
 static BACKUP_SEQ_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BackupSnapshotInfo {
+    pub snapshot_id: String,
+    pub timestamp_ms: u128,
+    pub files_count: usize,
+    pub size_bytes: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 struct BackupFileEntry {
     rel_path: String,
     existed_before: bool,
@@ -118,4 +126,93 @@ pub(crate) fn restore_latest_backup(project_root: &Path) -> Result<usize, String
 
     let _ = fs::remove_dir_all(&latest_dir);
     Ok(restored_count)
+}
+
+pub fn list_backup_snapshots(project_root: &Path) -> Vec<BackupSnapshotInfo> {
+    let backups_root = project_root.join(BACKUPS_REL_DIR);
+    let Ok(read_dir) = fs::read_dir(&backups_root) else {
+        return Vec::new();
+    };
+    let mut subdirs: Vec<PathBuf> = read_dir
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.is_dir() && p.join(MANIFEST_FILE_NAME).exists())
+        .collect();
+    subdirs.sort();
+    subdirs.reverse();
+
+    let mut out = Vec::with_capacity(subdirs.len().min(8));
+    for dir in subdirs.into_iter().take(8) {
+        let snapshot_id = dir.file_name().and_then(|n| n.to_str()).unwrap_or_default().to_owned();
+        if let Ok(raw) = fs::read_to_string(dir.join(MANIFEST_FILE_NAME))
+            && let Ok(manifest) = serde_json::from_str::<BackupSnapshotManifest>(&raw)
+        {
+            let size_bytes = compute_dir_size_bytes(&dir);
+            out.push(BackupSnapshotInfo {
+                snapshot_id,
+                timestamp_ms: manifest.timestamp_ms,
+                files_count: manifest.entries.len(),
+                size_bytes,
+            });
+        }
+    }
+    out
+}
+
+pub fn restore_backup_by_id(project_root: &Path, snapshot_id: &str) -> Result<usize, String> {
+    if snapshot_id.is_empty() || snapshot_id.contains("..") || snapshot_id.contains(['/', '\\']) {
+        return Err("Некорректный идентификатор снимка бэкапа".to_owned());
+    }
+    let target_dir = project_root.join(BACKUPS_REL_DIR).join(snapshot_id);
+    if !target_dir.exists() {
+        return Err("Снимок бэкапа не найден".to_owned());
+    }
+    let manifest_raw =
+        fs::read_to_string(target_dir.join(MANIFEST_FILE_NAME)).map_err(|e| e.to_string())?;
+    let manifest: BackupSnapshotManifest =
+        serde_json::from_str(&manifest_raw).map_err(|e| e.to_string())?;
+    let files_dir = target_dir.join(SNAPSHOT_FILES_SUBDIR);
+
+    let mut restored_count = 0_usize;
+    for entry in &manifest.entries {
+        let target_path = project_root.join(&entry.rel_path);
+        if entry.existed_before {
+            let snap_file = files_dir.join(&entry.rel_path);
+            if let Ok(orig_content) = fs::read_to_string(&snap_file) {
+                write_file_atomically(&target_path, &orig_content).map_err(|e| e.to_string())?;
+                restored_count += 1;
+            }
+        } else if target_path.exists() {
+            let _ = fs::remove_file(&target_path);
+            restored_count += 1;
+        }
+    }
+    let _ = fs::remove_dir_all(&target_dir);
+    Ok(restored_count)
+}
+
+pub fn purge_all_backups(project_root: &Path) -> u64 {
+    let backups_root = project_root.join(BACKUPS_REL_DIR);
+    if !backups_root.exists() {
+        return 0;
+    }
+    let freed = compute_dir_size_bytes(&backups_root);
+    let _ = fs::remove_dir_all(&backups_root);
+    freed
+}
+
+pub fn compute_dir_size_bytes(dir: &Path) -> u64 {
+    let Ok(entries) = fs::read_dir(dir) else {
+        return 0;
+    };
+    let mut total = 0_u64;
+    for entry in entries.flatten() {
+        let p = entry.path();
+        if p.is_dir() {
+            total = total.saturating_add(compute_dir_size_bytes(&p));
+        } else if let Ok(meta) = entry.metadata() {
+            total = total.saturating_add(meta.len());
+        }
+    }
+    total
 }

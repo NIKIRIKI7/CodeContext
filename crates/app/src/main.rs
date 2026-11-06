@@ -40,6 +40,9 @@ fn main() {
         LaunchMode::HeadlessApply { project_root } => {
             let _ = headless::run_headless_apply(&project_root);
         }
+        LaunchMode::Clean { scope, project_root } => {
+            let _ = headless::run_headless_clean(scope, &project_root);
+        }
         LaunchMode::RegisterShell => {
             let _ = headless::register_os_context_menu();
         }

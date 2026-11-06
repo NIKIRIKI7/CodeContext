@@ -69,10 +69,18 @@ impl Default for BottomDockState {
 }
 
 #[derive(Debug, Clone, Default)]
+pub struct CommandPaletteState {
+    pub is_open: bool,
+    pub query: String,
+    pub selected_index: usize,
+}
+
+#[derive(Debug, Clone, Default)]
 pub struct MainWindowState {
     active_tab: WorkspaceTab,
     settings_open: bool,
     project_meta_open: bool,
+    command_palette: CommandPaletteState,
     bottom_dock: BottomDockState,
     projects_menu: ProjectsMenuState,
     update_modal_open: bool,
@@ -131,6 +139,31 @@ impl MainWindowState {
     #[inline]
     pub const fn is_settings_open(&self) -> bool {
         self.settings_open
+    }
+
+    #[inline]
+    pub const fn command_palette(&self) -> &CommandPaletteState {
+        &self.command_palette
+    }
+
+    #[inline]
+    pub const fn command_palette_mut(&mut self) -> &mut CommandPaletteState {
+        &mut self.command_palette
+    }
+
+    pub fn open_command_palette(&mut self, commands_mode: bool) {
+        self.command_palette.is_open = true;
+        self.command_palette.selected_index = 0;
+        self.command_palette.query = if commands_mode { ">".to_owned() } else { String::new() };
+        self.settings_open = false;
+        self.project_meta_open = false;
+        self.projects_menu = ProjectsMenuState::Closed;
+    }
+
+    pub fn close_command_palette(&mut self) {
+        self.command_palette.is_open = false;
+        self.command_palette.query.clear();
+        self.command_palette.selected_index = 0;
     }
 
     #[inline]

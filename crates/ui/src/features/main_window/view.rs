@@ -507,6 +507,7 @@ impl Render for MainWindowView {
         let logs_dock_open = snap.is_logs_dock_open();
         let meta_open = snap.is_project_meta_open();
         let recent_open = snap.is_recent_projects_open();
+        let cmd_palette_open = snap.command_palette().is_open;
         let update_modal_open = snap.is_update_modal_open();
         let available_update = snap.available_update();
         let locale = snap.locale();
@@ -603,6 +604,10 @@ impl Render for MainWindowView {
 
         if settings_open {
             root = root.child(self.settings_view.clone());
+        }
+
+        if cmd_palette_open {
+            root = root.child(self.render_command_palette_modal(locale, theme, cx));
         }
 
         if update_modal_open && let Some((new_ver, ch)) = available_update {

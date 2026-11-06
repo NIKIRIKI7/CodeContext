@@ -101,8 +101,15 @@ impl Render for ContextPackerView {
                 },
             );
 
+        let (editing_line_index, editing_line_draft) = snapshot
+            .editing_preview_line()
+            .map_or((None, String::new()), |(idx, text)| (Some(idx), text.to_owned()));
+        let renaming_state = snapshot.renaming_path().cloned();
+
         let preview_props = LivePreviewProps {
             buffer: snapshot.preview_buffer().clone(),
+            editing_line_index,
+            editing_line_draft,
             total_bytes,
             packed_files_count: packed_files,
             blocked_secrets_count: blocked_secrets,
@@ -129,6 +136,7 @@ impl Render for ContextPackerView {
         let file_tree = self.build_file_tree(
             tree_projection,
             focused_tree_index,
+            renaming_state,
             sort_mode,
             search_query,
             ui_status,
@@ -206,6 +214,7 @@ impl ContextPackerView {
         &self,
         projection: crate::features::context_packer::components::file_tree::FlatTreeProjection,
         focused_tree_index: Option<usize>,
+        renaming_state: Option<(String, String)>,
         sort_mode: crate::features::context_packer::components::file_tree::TreeSortMode,
         search_query: String,
         ui_status: crate::features::context_packer::state::PackerUiStatus,
@@ -218,18 +227,15 @@ impl ContextPackerView {
         let state_expand = self.state.clone();
         let state_select_file = self.state.clone();
         let state_secret = self.state.clone();
-        let state_master = self.state.clone();
-        let state_fold = self.state.clone();
         let state_sort = self.state.clone();
         let state_regex_toggle = self.state.clone();
-        let state_focus_search = self.state.clone();
-        let state_clear_search = self.state.clone();
         let state_open_proj = self.state.clone();
         let prompt_label = labels.btn_open_folder_prompt;
 
-        FileTreeComponent::new(projection, labels)
+        let base = FileTreeComponent::new(projection, labels)
             .with_theme(theme)
             .with_focused_index(focused_tree_index)
+            .with_rename_state(renaming_state)
             .with_sort_mode(sort_mode)
             .with_search_state(search_query, ui_status.search_focused, all_collapsed)
             .with_filter_modal_indicator(ui_status.regex_filter_open, active_filters_count)
@@ -293,33 +299,75 @@ impl ContextPackerView {
                     s.toggle_secret_unlock_in_session(&target_secret);
                     cx.notify();
                 });
-            })
-            .with_compact_header_actions(
-                move |_ev, _win, cx| {
-                    state_master.update(cx, |s, cx| {
-                        s.toggle_select_all_files();
-                        cx.notify();
-                    });
-                },
-                move |_ev, _win, cx| {
-                    state_fold.update(cx, |s, cx| {
-                        s.toggle_expand_collapse_all();
-                        cx.notify();
-                    });
-                },
-                move |_ev, _win, cx| {
-                    state_focus_search.update(cx, |s, cx| {
-                        s.set_search_focused(true);
-                        cx.notify();
-                    });
-                },
-                move |_ev, _win, cx| {
-                    state_clear_search.update(cx, |s, cx| {
-                        s.clear_search_query();
-                        cx.notify();
-                    });
-                },
-            )
+            });
+
+        self.attach_tree_fs_and_header_handlers(base)
+    }
+
+    fn attach_tree_fs_and_header_handlers(&self, tree: FileTreeComponent) -> FileTreeComponent {
+        let state_start_ren = self.state.clone();
+        let state_del_path = self.state.clone();
+        let state_submit_ren = self.state.clone();
+        let state_cancel_ren = self.state.clone();
+        let state_master = self.state.clone();
+        let state_fold = self.state.clone();
+        let state_focus_search = self.state.clone();
+        let state_clear_search = self.state.clone();
+
+        tree.on_fs_operations(
+            move |path, _win, cx| {
+                let p_owned = path.to_owned();
+                state_start_ren.update(cx, |s, cx| {
+                    s.start_renaming_path(&p_owned);
+                    cx.notify();
+                });
+            },
+            move |path, _win, cx| {
+                let p_owned = path.to_owned();
+                state_del_path.update(cx, |s, cx| {
+                    let _ = s.delete_path_on_disk(&p_owned);
+                    cx.notify();
+                });
+            },
+            move |_ev, _win, cx| {
+                state_submit_ren.update(cx, |s, cx| {
+                    let _ = s.commit_rename_on_disk();
+                    cx.notify();
+                });
+            },
+            move |_ev, _win, cx| {
+                state_cancel_ren.update(cx, |s, cx| {
+                    s.cancel_renaming_path();
+                    cx.notify();
+                });
+            },
+        )
+        .with_compact_header_actions(
+            move |_ev, _win, cx| {
+                state_master.update(cx, |s, cx| {
+                    s.toggle_select_all_files();
+                    cx.notify();
+                });
+            },
+            move |_ev, _win, cx| {
+                state_fold.update(cx, |s, cx| {
+                    s.toggle_expand_collapse_all();
+                    cx.notify();
+                });
+            },
+            move |_ev, _win, cx| {
+                state_focus_search.update(cx, |s, cx| {
+                    s.set_search_focused(true);
+                    cx.notify();
+                });
+            },
+            move |_ev, _win, cx| {
+                state_clear_search.update(cx, |s, cx| {
+                    s.clear_search_query();
+                    cx.notify();
+                });
+            },
+        )
     }
 
     fn build_rules_editor(
@@ -367,12 +415,35 @@ impl ContextPackerView {
 
     fn build_live_preview(&self, props: LivePreviewProps) -> LivePreviewComponent {
         let state_chunk = self.state.clone();
+        let state_sel_line = self.state.clone();
+        let state_commit_line = self.state.clone();
+        let state_cancel_line = self.state.clone();
         let state_prompt = self.state.clone();
         let state_open_meta = self.state.clone();
         let state_copy = self.state.clone();
 
         LivePreviewComponent::new(props)
             .track_scroll(self.preview_scroll_handle.clone())
+            .on_line_editing(
+                move |line_idx, _win, cx| {
+                    state_sel_line.update(cx, |s, cx| {
+                        s.start_editing_preview_line(line_idx);
+                        cx.notify();
+                    });
+                },
+                move |_ev, _win, cx| {
+                    state_commit_line.update(cx, |s, cx| {
+                        s.commit_preview_line_edit();
+                        cx.notify();
+                    });
+                },
+                move |_ev, _win, cx| {
+                    state_cancel_line.update(cx, |s, cx| {
+                        s.cancel_editing_preview_line();
+                        cx.notify();
+                    });
+                },
+            )
             .on_select_chunk(move |idx, _win, cx| {
                 state_chunk.update(cx, |s, cx| {
                     s.select_chunk(idx);

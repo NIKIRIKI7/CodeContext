@@ -11,6 +11,19 @@ use core::system::ports::updater::{
 use di::AppContainer;
 use platform::resolve_headless_target_path;
 
+use crate::cli::CleanScope;
+
+pub(crate) fn run_headless_clean(scope: CleanScope, target_path: &Path) -> u64 {
+    let container = AppContainer::new();
+    let project_root = resolve_headless_target_path(&target_path.to_string_lossy());
+    let (clean_backups, clean_temp, clean_ipc) = match scope {
+        CleanScope::All => (true, true, true),
+        CleanScope::Backups => (true, false, false),
+        CleanScope::Temp => (false, true, false),
+    };
+    container.clean_housekeeping(Some(&project_root), clean_backups, clean_temp, clean_ipc)
+}
+
 pub(crate) fn run_headless_pack(target_path: &Path) -> Result<PackResult> {
     let container = AppContainer::new();
     let project_root = resolve_headless_target_path(&target_path.to_string_lossy());

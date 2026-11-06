@@ -100,7 +100,8 @@ pub(crate) fn validate_sandbox_path_with_fs_check(
 
     if check_symlinks_on_disk
         && !is_synthetic_unix_root_on_windows
-        && clean_rel.symlink_metadata().is_ok()
+        && let Ok(meta) = clean_rel.symlink_metadata()
+        && meta.file_type().is_symlink()
         && let Ok(canon_target) = clean_rel.canonicalize()
         && let Ok(canon_root) = project_root.canonicalize()
         && !canon_target.starts_with(&canon_root)
