@@ -85,11 +85,14 @@ pub(crate) fn global_dto_to_domain(
         auto_read_clipboard_on_apply: dto.auto_read_clipboard_on_apply,
         create_backups_by_default: dto.create_backups_by_default,
         show_bottom_bar: ui_chrome.show_bottom_bar,
+        edition: dto.edition,
+        features: dto.features,
         ui_chrome,
         terminal_presets,
         update_channel,
         update_repo_url,
         recent_projects,
+        enabled_plugins: dto.enabled_plugins,
         keymap: dto.keymap,
     }
 }
@@ -103,11 +106,14 @@ pub(crate) fn global_domain_to_dto(domain: &GlobalConfig) -> GlobalConfigDto {
         auto_read_clipboard_on_apply: domain.auto_read_clipboard_on_apply,
         create_backups_by_default: domain.create_backups_by_default,
         show_bottom_bar: domain.ui_chrome.show_bottom_bar,
+        edition: domain.edition,
+        features: domain.features.clone(),
         ui_chrome: domain.ui_chrome.clone(),
         terminal_presets: domain.terminal_presets.clone(),
         update_channel: domain.update_channel.clone(),
         update_repo_url: domain.update_repo_url.clone(),
         recent_projects: domain.recent_projects.clone(),
+        enabled_plugins: domain.enabled_plugins.clone(),
         keymap: domain.keymap.clone(),
     }
 }

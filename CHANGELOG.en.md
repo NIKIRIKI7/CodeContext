@@ -13,6 +13,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.3.0] - 2026-11-07
+
+### Added
+- **VS Code-Style In-Row File Tree Rename & Transactional Delete (`F2` / `Delete`, `crates/ui`)**: file and directory renaming now renders directly inside the tree row (editing only the local node name without top toolbars), while `Delete` automatically snapshots files to `.ctxpack/backups` for instant `Ctrl+Z` undo.
+- **Direct In-Place Line Editing in `VirtualTextView` (`LivePreview` & `DiffView`, `crates/ui`)**: lines are edited directly inside the virtualized code row with `↑` / `↓` arrow navigation across adjacent lines and zero top editor bars.
+- **Edition Profiles (`Full` / `Lite` / `Custom`), Granular Module/Chrome Toggles & Zed-Style `{ } settings.json` Live Editor (`crates/core`, `crates/config`, `crates/ui`)**: added `EditionProfile`, `FeatureFlags`, and `WorkspaceChromeConfig` to toggle any module or UI bar, plus a `{ } settings.json` mode in the Settings header for live JSON editing with schema validation.
+- **Modular Setup & Uninstaller (`--setup` / `--uninstall`) with System Auto-Detection (`SystemProbe`, `crates/core`, `crates/platform`, `crates/app`)**: auto-detects OS, distro, CPU architecture, `AVX2+BMI2` / `NEON` SIMD level, display server, and file manager, writing `install-manifest.json` and supporting clean uninstallation.
+- **Extension Host & Plugin Subsystem (`PluginHostPort` + `SystemPluginHost` + `docs/05-plugins/`)**: declarative `plugin.json` manifests, lazy `ActivationEvent` hooks, zero-trust `PluginPermission` guards, `PluginViewSpec` 120 FPS declarative UI protocol, JSON-RPC 2.0 runner, and built-in `@git` context and Rust signature skeletonizer plugins.
+
 ## [0.2.5] - 2026-11-06
 
 ### Added

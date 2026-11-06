@@ -2,7 +2,8 @@ use std::path::Path;
 
 use crate::preset::models::preset::Preset;
 use crate::preset::models::resolution::{
-    ConfigWarning, GlobalConfig, ResolvedConfig, TerminalCommandPreset, UiChromeSetting,
+    ConfigWarning, EditionProfile, FeatureFlag, GlobalConfig, ResolvedConfig,
+    TerminalCommandPreset, UiChromeSetting,
 };
 use crate::preset::ports::config_repo::{ConfigPortError, ConfigRepositoryPort};
 
@@ -72,6 +73,32 @@ where
         if setting == UiChromeSetting::BottomBar {
             global.show_bottom_bar = new_val;
         }
+        global.edition = EditionProfile::Custom;
+        self.repo.save_global(&global)?;
+        Ok(global)
+    }
+
+    pub fn toggle_feature_flag(&self, flag: FeatureFlag) -> Result<GlobalConfig, ConfigPortError> {
+        let mut global = self.load_global_config();
+        let enabled = global.features.toggle(flag);
+        global.edition = EditionProfile::Custom;
+        if flag == FeatureFlag::ChangeApplier {
+            global.ui_chrome.workspace.show_activity_rail = enabled;
+        } else if flag == FeatureFlag::TerminalRunner {
+            global.ui_chrome.show_terminal_button = enabled;
+        } else if flag == FeatureFlag::TelemetryLogs {
+            global.ui_chrome.show_logs_button = enabled;
+        }
+        self.repo.save_global(&global)?;
+        Ok(global)
+    }
+
+    pub fn apply_edition_profile(
+        &self,
+        profile: EditionProfile,
+    ) -> Result<GlobalConfig, ConfigPortError> {
+        let mut global = self.load_global_config();
+        global.apply_edition_profile(profile);
         self.repo.save_global(&global)?;
         Ok(global)
     }

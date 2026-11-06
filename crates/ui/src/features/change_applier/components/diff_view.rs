@@ -150,15 +150,8 @@ impl RenderOnce for DiffViewComponent {
             )
             .child(right_meta);
 
-        let edit_bar_opt =
-            crate::features::context_packer::components::live_preview::render_inline_line_editor_bar(
-                self.meta.editing_line_index,
-                &self.meta.editing_line_draft,
-                labels,
-                theme,
-                self.on_commit_line_edit.as_ref(),
-                self.on_cancel_line_edit.as_ref(),
-            );
+        let _ = (&self.on_commit_line_edit, &self.on_cancel_line_edit);
+        let draft_opt = self.meta.editing_line_index.map(|_| self.meta.editing_line_draft);
 
         let highlight_mode = if self.meta.is_raw_code_mode {
             LineHighlightMode::PackedContext
@@ -168,6 +161,7 @@ impl RenderOnce for DiffViewComponent {
 
         let mut text_view = VirtualTextView::new("diff-preview-virtual-text", self.buffer)
             .with_selected_line(self.meta.editing_line_index)
+            .with_editing_line_draft(draft_opt)
             .with_highlight_mode(highlight_mode)
             .with_context(labels, theme);
         if let Some(line_cb) = self.on_select_line {
@@ -182,7 +176,6 @@ impl RenderOnce for DiffViewComponent {
             .overflow_hidden()
             .child(alert_strip)
             .child(file_banner)
-            .children(edit_bar_opt)
             .child(div().flex_1().overflow_hidden().child(text_view))
             .into_any_element()
     }

@@ -59,6 +59,33 @@ impl LayeredConfigLoader {
         project_root.join(PROJECT_CONFIG_FILE_NAME)
     }
 
+    /// Форматирует `GlobalConfig` в человекочитаемый JSON для встроенного редактора `{ } settings.json`.
+    pub fn export_global_json_string(config: &GlobalConfig) -> Result<String, ConfigPortError> {
+        let dto = global_domain_to_dto(config);
+        serde_json::to_string_pretty(&dto).map_err(|err| ConfigPortError::InvalidFormat {
+            path: "settings.json".to_owned(),
+            reason: err.to_string(),
+        })
+    }
+
+    /// Разбирает, валидирует и сохраняет `GlobalConfig` из текста редактора `{ } settings.json`.
+    pub fn parse_and_save_global_json_str(
+        &self,
+        raw_json: &str,
+    ) -> Result<(GlobalConfig, Vec<ConfigWarning>), ConfigPortError> {
+        let mut warnings = Vec::new();
+        let dto: GlobalConfigDto =
+            parse_and_migrate_json(raw_json, &mut warnings).map_err(|reason| {
+                ConfigPortError::InvalidFormat {
+                    path: self.global_config_path.display().to_string(),
+                    reason,
+                }
+            })?;
+        let domain = global_dto_to_domain(dto, &mut warnings);
+        self.save_global(&domain)?;
+        Ok((domain, warnings))
+    }
+
     fn load_global_layer(&self, warnings: &mut Vec<ConfigWarning>) -> (GlobalConfig, ConfigOrigin) {
         match read_bounded_file(&self.global_config_path) {
             Ok(None) => (GlobalConfig::default(), ConfigOrigin::BuiltInDefault),

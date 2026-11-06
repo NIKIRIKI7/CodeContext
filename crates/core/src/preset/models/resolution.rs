@@ -101,8 +101,183 @@ pub fn default_terminal_command_presets() -> Vec<TerminalCommandPreset> {
     ]
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EditionProfile {
+    #[default]
+    Full,
+    Lite,
+    Custom,
+}
+
+impl EditionProfile {
+    #[inline]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Full => "full",
+            Self::Lite => "lite",
+            Self::Custom => "custom",
+        }
+    }
+
+    #[inline]
+    pub fn parse(raw: &str) -> Self {
+        let trimmed = raw.trim();
+        if trimmed.eq_ignore_ascii_case("lite") {
+            Self::Lite
+        } else if trimmed.eq_ignore_ascii_case("custom") {
+            Self::Custom
+        } else {
+            Self::Full
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FeatureFlag {
+    ChangeApplier,
+    SystemPrompts,
+    AdvancedFilters,
+    TerminalRunner,
+    TelemetryLogs,
+    Plugins,
+}
+
+impl FeatureFlag {
+    pub const ALL: [Self; 6] = [
+        Self::ChangeApplier,
+        Self::SystemPrompts,
+        Self::AdvancedFilters,
+        Self::TerminalRunner,
+        Self::TelemetryLogs,
+        Self::Plugins,
+    ];
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FeatureFlags {
+    #[serde(default = "default_true")]
+    pub enable_change_applier: bool,
+    #[serde(default = "default_true")]
+    pub enable_system_prompts: bool,
+    #[serde(default = "default_true")]
+    pub enable_advanced_filters: bool,
+    #[serde(default = "default_true")]
+    pub enable_terminal_runner: bool,
+    #[serde(default = "default_true")]
+    pub enable_telemetry_logs: bool,
+    #[serde(default = "default_true")]
+    pub enable_plugins: bool,
+}
+
+impl Default for FeatureFlags {
+    fn default() -> Self {
+        Self::full()
+    }
+}
+
+impl FeatureFlags {
+    #[inline]
+    pub const fn full() -> Self {
+        Self {
+            enable_change_applier: true,
+            enable_system_prompts: true,
+            enable_advanced_filters: true,
+            enable_terminal_runner: true,
+            enable_telemetry_logs: true,
+            enable_plugins: true,
+        }
+    }
+
+    #[inline]
+    pub const fn lite() -> Self {
+        Self {
+            enable_change_applier: true,
+            enable_system_prompts: true,
+            enable_advanced_filters: true,
+            enable_terminal_runner: false,
+            enable_telemetry_logs: false,
+            enable_plugins: false,
+        }
+    }
+
+    #[inline]
+    pub const fn is_enabled(&self, flag: FeatureFlag) -> bool {
+        match flag {
+            FeatureFlag::ChangeApplier => self.enable_change_applier,
+            FeatureFlag::SystemPrompts => self.enable_system_prompts,
+            FeatureFlag::AdvancedFilters => self.enable_advanced_filters,
+            FeatureFlag::TerminalRunner => self.enable_terminal_runner,
+            FeatureFlag::TelemetryLogs => self.enable_telemetry_logs,
+            FeatureFlag::Plugins => self.enable_plugins,
+        }
+    }
+
+    #[inline]
+    pub const fn toggle(&mut self, flag: FeatureFlag) -> bool {
+        match flag {
+            FeatureFlag::ChangeApplier => {
+                self.enable_change_applier = !self.enable_change_applier;
+                self.enable_change_applier
+            }
+            FeatureFlag::SystemPrompts => {
+                self.enable_system_prompts = !self.enable_system_prompts;
+                self.enable_system_prompts
+            }
+            FeatureFlag::AdvancedFilters => {
+                self.enable_advanced_filters = !self.enable_advanced_filters;
+                self.enable_advanced_filters
+            }
+            FeatureFlag::TerminalRunner => {
+                self.enable_terminal_runner = !self.enable_terminal_runner;
+                self.enable_terminal_runner
+            }
+            FeatureFlag::TelemetryLogs => {
+                self.enable_telemetry_logs = !self.enable_telemetry_logs;
+                self.enable_telemetry_logs
+            }
+            FeatureFlag::Plugins => {
+                self.enable_plugins = !self.enable_plugins;
+                self.enable_plugins
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WorkspaceChromeConfig {
+    #[serde(default = "default_true")]
+    pub show_activity_rail: bool,
+    #[serde(default = "default_true")]
+    pub show_top_bar: bool,
+    #[serde(default = "default_true")]
+    pub show_options_footer: bool,
+    #[serde(default = "default_true")]
+    pub show_file_sizes: bool,
+    #[serde(default = "default_true")]
+    pub show_size_heatmap: bool,
+}
+
+impl Default for WorkspaceChromeConfig {
+    fn default() -> Self {
+        Self {
+            show_activity_rail: true,
+            show_top_bar: true,
+            show_options_footer: true,
+            show_file_sizes: true,
+            show_size_heatmap: true,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum UiChromeSetting {
+    ActivityRail,
+    TopBar,
+    OptionsFooter,
+    FileSizes,
+    SizeHeatmap,
     BottomBar,
     TerminalButton,
     LogsButton,
@@ -122,6 +297,8 @@ pub struct UiChromeConfig {
     pub show_status_metrics: bool,
     #[serde(default = "default_true")]
     pub show_terminal_presets: bool,
+    #[serde(default)]
+    pub workspace: WorkspaceChromeConfig,
 }
 
 impl Default for UiChromeConfig {
@@ -132,14 +309,38 @@ impl Default for UiChromeConfig {
             show_logs_button: true,
             show_status_metrics: true,
             show_terminal_presets: true,
+            workspace: WorkspaceChromeConfig::default(),
         }
     }
 }
 
 impl UiChromeConfig {
     #[inline]
+    pub const fn lite() -> Self {
+        Self {
+            show_bottom_bar: false,
+            show_terminal_button: false,
+            show_logs_button: false,
+            show_status_metrics: true,
+            show_terminal_presets: false,
+            workspace: WorkspaceChromeConfig {
+                show_activity_rail: true,
+                show_top_bar: true,
+                show_options_footer: true,
+                show_file_sizes: true,
+                show_size_heatmap: true,
+            },
+        }
+    }
+
+    #[inline]
     pub const fn is_enabled(&self, setting: UiChromeSetting) -> bool {
         match setting {
+            UiChromeSetting::ActivityRail => self.workspace.show_activity_rail,
+            UiChromeSetting::TopBar => self.workspace.show_top_bar,
+            UiChromeSetting::OptionsFooter => self.workspace.show_options_footer,
+            UiChromeSetting::FileSizes => self.workspace.show_file_sizes,
+            UiChromeSetting::SizeHeatmap => self.workspace.show_size_heatmap,
             UiChromeSetting::BottomBar => self.show_bottom_bar,
             UiChromeSetting::TerminalButton => self.show_terminal_button,
             UiChromeSetting::LogsButton => self.show_logs_button,
@@ -151,6 +352,26 @@ impl UiChromeConfig {
     #[inline]
     pub const fn toggle(&mut self, setting: UiChromeSetting) -> bool {
         match setting {
+            UiChromeSetting::ActivityRail => {
+                self.workspace.show_activity_rail = !self.workspace.show_activity_rail;
+                self.workspace.show_activity_rail
+            }
+            UiChromeSetting::TopBar => {
+                self.workspace.show_top_bar = !self.workspace.show_top_bar;
+                self.workspace.show_top_bar
+            }
+            UiChromeSetting::OptionsFooter => {
+                self.workspace.show_options_footer = !self.workspace.show_options_footer;
+                self.workspace.show_options_footer
+            }
+            UiChromeSetting::FileSizes => {
+                self.workspace.show_file_sizes = !self.workspace.show_file_sizes;
+                self.workspace.show_file_sizes
+            }
+            UiChromeSetting::SizeHeatmap => {
+                self.workspace.show_size_heatmap = !self.workspace.show_size_heatmap;
+                self.workspace.show_size_heatmap
+            }
             UiChromeSetting::BottomBar => {
                 self.show_bottom_bar = !self.show_bottom_bar;
                 self.show_bottom_bar
@@ -305,6 +526,10 @@ pub struct GlobalConfig {
     #[serde(default = "default_true")]
     pub show_bottom_bar: bool,
     #[serde(default)]
+    pub edition: EditionProfile,
+    #[serde(default)]
+    pub features: FeatureFlags,
+    #[serde(default)]
     pub ui_chrome: UiChromeConfig,
     #[serde(default = "default_terminal_command_presets")]
     pub terminal_presets: Vec<TerminalCommandPreset>,
@@ -312,6 +537,8 @@ pub struct GlobalConfig {
     pub update_repo_url: String,
     #[serde(default)]
     pub recent_projects: Vec<String>,
+    #[serde(default)]
+    pub enabled_plugins: Vec<String>,
     #[serde(default)]
     pub keymap: KeymapConfig,
 }
@@ -326,12 +553,34 @@ impl Default for GlobalConfig {
             auto_read_clipboard_on_apply: false,
             create_backups_by_default: true,
             show_bottom_bar: true,
+            edition: EditionProfile::Full,
+            features: FeatureFlags::full(),
             ui_chrome: UiChromeConfig::default(),
             terminal_presets: default_terminal_command_presets(),
             update_channel: DEFAULT_UPDATE_CHANNEL.to_owned(),
             update_repo_url: DEFAULT_UPDATE_REPO_URL.to_owned(),
             recent_projects: Vec::new(),
+            enabled_plugins: Vec::new(),
             keymap: KeymapConfig::default(),
+        }
+    }
+}
+
+impl GlobalConfig {
+    pub fn apply_edition_profile(&mut self, profile: EditionProfile) {
+        self.edition = profile;
+        match profile {
+            EditionProfile::Full => {
+                self.features = FeatureFlags::full();
+                self.ui_chrome = UiChromeConfig::default();
+                self.show_bottom_bar = true;
+            }
+            EditionProfile::Lite => {
+                self.features = FeatureFlags::lite();
+                self.ui_chrome = UiChromeConfig::lite();
+                self.show_bottom_bar = false;
+            }
+            EditionProfile::Custom => {}
         }
     }
 }

@@ -3,6 +3,7 @@ use std::path::Path;
 use anyhow::Result;
 use core::applying::aggregates::backup_manifest::BackupManifest;
 use core::packing::aggregates::pack_result::PackResult;
+use core::preset::models::resolution::EditionProfile;
 use core::shared_kernel::execution::cancel_token::CancelToken;
 use core::system::ports::shell::{ShellIntegrationPort as _, ShellMenuConfig};
 use core::system::ports::updater::{
@@ -61,6 +62,34 @@ pub(crate) fn unregister_os_context_menu() -> Result<()> {
     let container = AppContainer::new();
     container.shell_integration().unregister_context_menu()?;
     Ok(())
+}
+
+pub(crate) fn run_modular_setup(
+    edition_str: &str,
+    target_dir: Option<std::path::PathBuf>,
+) -> Result<std::path::PathBuf> {
+    let container = AppContainer::new();
+    let probe = container.updater().probe_system();
+    let edition = EditionProfile::parse(edition_str);
+    println!("====================================================================");
+    println!(" CodeContext Modular Installer (v{})", container.updater().current_version());
+    println!(" OS / Distro     : {} ({})", probe.os_name, probe.distro_or_edition);
+    println!(" CPU / SIMD      : {} cores · {:?}", probe.logical_cores, probe.simd_level);
+    println!(" Display / Shell : {} · {}", probe.display_server, probe.file_manager);
+    println!(" Edition Profile : {}", edition.as_str());
+    println!("====================================================================");
+    let path =
+        container.perform_modular_setup(edition, target_dir, true).map_err(anyhow::Error::msg)?;
+    println!(" [OK] Installed binary & manifest to: {}", path.display());
+    Ok(path)
+}
+
+pub(crate) fn run_uninstall(purge_user_data: bool) -> Result<usize> {
+    let container = AppContainer::new();
+    let _ = container.shell_integration().unregister_context_menu();
+    let removed = container.updater().execute_uninstall(purge_user_data)?;
+    println!(" [OK] CodeContext uninstalled (removed {removed} artifacts).");
+    Ok(removed)
 }
 
 pub(crate) fn run_self_install() -> Result<SelfInstallStatus> {

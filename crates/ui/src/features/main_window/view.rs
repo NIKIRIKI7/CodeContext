@@ -523,10 +523,17 @@ impl Render for MainWindowView {
             .project_root()
             .map_or_else(|| labels.no_project_selected.to_owned(), |p| p.display().to_string());
 
-        let rail = self.build_activity_rail(active_tab, settings_open, labels, theme);
-        let top_bar = self.render_top_bar(active_tab, locale, theme, &project_display);
+        let features = self.settings_state.read(cx).global_config().features.clone();
+        let show_rail = chrome.workspace.show_activity_rail;
+        let effective_tab =
+            if features.enable_change_applier { active_tab } else { WorkspaceTab::ContextPacker };
 
-        let active_content = match active_tab {
+        let rail_opt = show_rail
+            .then(|| self.build_activity_rail(effective_tab, settings_open, labels, theme));
+        let top_bar =
+            self.render_top_bar(effective_tab, !show_rail, locale, theme, &project_display);
+
+        let active_content = match effective_tab {
             WorkspaceTab::ContextPacker => self.packer_view.clone().into_any_element(),
             WorkspaceTab::ChangeApplier => self.applier_view.clone().into_any_element(),
         };
@@ -591,7 +598,7 @@ impl Render for MainWindowView {
             .bg(theme.colors.bg_app)
             .font_family(FONT_FAMILY_UI)
             .overflow_hidden()
-            .child(rail)
+            .children(rail_opt)
             .child(workspace_col);
 
         if recent_open {

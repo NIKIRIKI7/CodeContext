@@ -1,8 +1,9 @@
 use core::preset::models::resolution::{
-    DEFAULT_GLOBAL_HOTKEY, GlobalConfig, KeymapAction, KeymapConfig, TerminalCommandPreset,
-    UiChromeSetting,
+    DEFAULT_GLOBAL_HOTKEY, EditionProfile, FeatureFlag, GlobalConfig, KeymapAction, KeymapConfig,
+    TerminalCommandPreset, UiChromeSetting,
 };
 use core::preset::ports::config_repo::ConfigPortError;
+use core::system::plugins::protocol::{PluginDescriptor, PluginHostPort as _};
 use core::system::ports::hotkey::{
     GlobalHotkeyPort as _, HotkeyPortError, HotkeyRegistrationStatus, HotkeyShortcut,
 };
@@ -10,15 +11,46 @@ use core::system::ports::shell::{
     ShellIntegrationError, ShellIntegrationPort as _, ShellMenuConfig, ShellRegistrationStatus,
 };
 use core::system::ports::updater::{
-    SelfInstallStatus, SemanticVersion, UpdateChannel, UpdateStage, UpdaterPort as _,
-    UpdaterPortError,
+    SelfInstallStatus, SemanticVersion, SystemProbeReport, UpdateChannel, UpdateStage,
+    UpdaterPort as _, UpdaterPortError,
 };
 use di::AppContainer;
 
 use crate::locale::AppLocale;
+use crate::shared::containers::virtual_text::VirtualTextBuffer;
 use crate::theme::ThemeVariant;
 
 const HOTKEY_CYCLE_PRESETS: &[&str] = &["Ctrl+K", "Ctrl+Shift+C", "Ctrl+Alt+C"];
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum SetupWizardStep {
+    #[default]
+    Step1SystemProbe,
+    Step2EditionSelect,
+    Step3TargetAndOs,
+    Step4Execute,
+}
+
+#[derive(Debug, Clone)]
+pub struct SetupWizardState {
+    pub is_open: bool,
+    pub step: SetupWizardStep,
+    pub register_shell: bool,
+    pub add_to_path: bool,
+    pub status_message: Option<String>,
+}
+
+impl Default for SetupWizardState {
+    fn default() -> Self {
+        Self {
+            is_open: false,
+            step: SetupWizardStep::Step1SystemProbe,
+            register_shell: true,
+            add_to_path: true,
+            status_message: None,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum SettingsCategory {
@@ -32,14 +64,8 @@ pub enum SettingsCategory {
 }
 
 impl SettingsCategory {
-    pub const ALL: [Self; 6] = [
-        Self::Appearance,
-        Self::PanelsAndBar,
-        Self::Keymap,
-        Self::Safety,
-        Self::SystemAndUpdates,
-        Self::Maintenance,
-    ];
+    pub const ALL: [Self; 5] =
+        [Self::Appearance, Self::PanelsAndBar, Self::Keymap, Self::Safety, Self::SystemAndUpdates];
 }
 
 #[derive(Debug, Clone)]
@@ -54,6 +80,11 @@ pub struct SettingsModalState {
     locale: AppLocale,
     theme_variant: ThemeVariant,
     active_category: SettingsCategory,
+    json_editor_mode: bool,
+    json_buffer: VirtualTextBuffer,
+    editing_json_line: Option<(usize, String)>,
+    json_error: Option<String>,
+    wizard: SetupWizardState,
     hotkeys_modal_open: bool,
     recording_action: Option<KeymapAction>,
     close_requested: bool,
@@ -75,6 +106,7 @@ impl SettingsModalState {
         let update_stage = container.updater().stage();
         let self_install_status = container.updater().self_install_status();
 
+        let json_str = container.export_global_settings_json();
         Self {
             container,
             global_config,
@@ -86,10 +118,158 @@ impl SettingsModalState {
             locale: AppLocale::default(),
             theme_variant: ThemeVariant::default(),
             active_category: SettingsCategory::default(),
+            json_editor_mode: false,
+            json_buffer: VirtualTextBuffer::new(json_str),
+            editing_json_line: None,
+            json_error: None,
+            wizard: SetupWizardState::default(),
             hotkeys_modal_open: false,
             recording_action: None,
             close_requested: false,
         }
+    }
+
+    #[inline]
+    pub const fn wizard(&self) -> &SetupWizardState {
+        &self.wizard
+    }
+
+    pub fn open_setup_wizard(&mut self) {
+        self.wizard.is_open = true;
+        self.wizard.step = SetupWizardStep::Step1SystemProbe;
+        self.wizard.status_message = None;
+        self.json_editor_mode = false;
+    }
+
+    pub fn close_setup_wizard(&mut self) {
+        self.wizard.is_open = false;
+    }
+
+    pub fn set_wizard_step(&mut self, step: SetupWizardStep) {
+        self.wizard.step = step;
+    }
+
+    pub fn toggle_wizard_register_shell(&mut self) {
+        self.wizard.register_shell = !self.wizard.register_shell;
+    }
+
+    pub fn toggle_wizard_add_path(&mut self) {
+        self.wizard.add_to_path = !self.wizard.add_to_path;
+    }
+
+    pub fn execute_wizard_install(&mut self) -> Result<std::path::PathBuf, String> {
+        let edition = self.global_config.edition;
+        let res =
+            self.container.perform_modular_setup(edition, None, self.wizard.register_shell)?;
+        self.sync_from_container();
+        self.wizard.step = SetupWizardStep::Step4Execute;
+        self.wizard.status_message = Some(format!("Успешно установлено: {}", res.display()));
+        Ok(res)
+    }
+
+    pub fn execute_wizard_uninstall(&mut self) -> Result<usize, String> {
+        let _ = self.container.shell_integration().unregister_context_menu();
+        let removed =
+            self.container.updater().execute_uninstall(false).map_err(|e| e.to_string())?;
+        self.sync_from_container();
+        self.wizard.step = SetupWizardStep::Step4Execute;
+        self.wizard.status_message =
+            Some(format!("Деинсталляция завершена (удалено объектов: {removed})"));
+        Ok(removed)
+    }
+
+    #[inline]
+    pub const fn is_json_editor_mode(&self) -> bool {
+        self.json_editor_mode
+    }
+
+    pub fn toggle_json_editor_mode(&mut self) {
+        self.json_editor_mode = !self.json_editor_mode;
+        self.editing_json_line = None;
+        self.json_error = None;
+        if self.json_editor_mode {
+            self.refresh_json_buffer();
+        }
+    }
+
+    pub fn refresh_json_buffer(&mut self) {
+        let raw = self.container.export_global_settings_json();
+        self.json_buffer = VirtualTextBuffer::new(raw);
+    }
+
+    #[inline]
+    pub const fn json_buffer(&self) -> &VirtualTextBuffer {
+        &self.json_buffer
+    }
+
+    #[inline]
+    pub fn json_error(&self) -> Option<&str> {
+        self.json_error.as_deref()
+    }
+
+    #[inline]
+    pub fn editing_json_line(&self) -> Option<(usize, &str)> {
+        self.editing_json_line.as_ref().map(|(idx, s)| (*idx, s.as_str()))
+    }
+
+    pub fn start_editing_json_line(&mut self, line_idx: usize) {
+        let raw = self.json_buffer.raw_line(line_idx).to_owned();
+        self.editing_json_line = Some((line_idx, raw));
+    }
+
+    pub fn cancel_editing_json_line(&mut self) {
+        self.editing_json_line = None;
+    }
+
+    pub fn append_json_line_char(&mut self, ch: char) {
+        if let Some((_, ref mut draft)) = self.editing_json_line {
+            draft.push(ch);
+        }
+    }
+
+    pub fn pop_json_line_char(&mut self) -> bool {
+        if let Some((_, ref mut draft)) = self.editing_json_line {
+            return draft.pop().is_some();
+        }
+        false
+    }
+
+    pub fn commit_json_line_edit(&mut self) {
+        let Some((line_idx, new_line)) = self.editing_json_line.take() else {
+            return;
+        };
+        let mut lines: Vec<&str> = self.json_buffer.as_str().lines().collect();
+        if let Some(slot) = lines.get_mut(line_idx) {
+            *slot = &new_line;
+            let updated_json = lines.join("\n");
+            self.json_buffer = VirtualTextBuffer::new(updated_json.as_str());
+            match self.container.apply_global_settings_json(&updated_json) {
+                Ok((new_cfg, _)) => {
+                    self.global_config = new_cfg;
+                    self.json_error = None;
+                }
+                Err(err) => {
+                    self.json_error = Some(err);
+                }
+            }
+        }
+    }
+
+    pub fn move_json_line_edit(&mut self, delta: isize) {
+        let Some((curr_idx, _)) = self.editing_json_line else {
+            return;
+        };
+        self.commit_json_line_edit();
+        let total = self.json_buffer.line_count();
+        if total == 0 {
+            return;
+        }
+        let next_idx = if delta < 0 {
+            curr_idx.saturating_sub(delta.unsigned_abs())
+        } else {
+            (curr_idx + delta.unsigned_abs()).min(total - 1)
+        };
+        self.start_editing_json_line(next_idx);
     }
 
     #[inline]
@@ -204,7 +384,51 @@ impl SettingsModalState {
     pub fn toggle_ui_chrome(&mut self, setting: UiChromeSetting) -> Result<(), ConfigPortError> {
         let updated = self.container.preset_service().toggle_ui_chrome(setting)?;
         self.global_config = updated;
+        if self.json_editor_mode {
+            self.refresh_json_buffer();
+        }
         Ok(())
+    }
+
+    pub fn toggle_feature_flag(&mut self, flag: FeatureFlag) -> Result<(), ConfigPortError> {
+        let updated = self.container.preset_service().toggle_feature_flag(flag)?;
+        self.global_config = updated;
+        if self.json_editor_mode {
+            self.refresh_json_buffer();
+        }
+        Ok(())
+    }
+
+    pub fn select_edition_profile(
+        &mut self,
+        profile: EditionProfile,
+    ) -> Result<(), ConfigPortError> {
+        let updated = self.container.preset_service().apply_edition_profile(profile)?;
+        self.global_config = updated;
+        if self.json_editor_mode {
+            self.refresh_json_buffer();
+        }
+        Ok(())
+    }
+
+    #[inline]
+    pub fn list_plugins(&self) -> Vec<PluginDescriptor> {
+        self.container.list_plugins()
+    }
+
+    pub fn toggle_plugin(&mut self, plugin_id: &str) {
+        let curr = self
+            .container
+            .list_plugins()
+            .into_iter()
+            .find(|p| p.manifest.id == plugin_id)
+            .is_some_and(|p| p.enabled);
+        let _ = self.container.plugin_host().set_plugin_enabled(plugin_id, !curr);
+    }
+
+    #[inline]
+    pub fn system_probe_report(&self) -> SystemProbeReport {
+        self.container.updater().probe_system()
     }
 
     pub fn add_terminal_preset(

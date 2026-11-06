@@ -14,7 +14,8 @@ use core::shared_kernel::fs::file_kind::split_file_name_and_ext;
 use di::AppContainer;
 
 use crate::features::context_packer::components::file_tree::{
-    FlatTreeProjection, QuickFilterChip, QuickFilterChipKind, TreeSortMode, TriState,
+    CreateEntryKind, CreatingEntryState, FlatTreeProjection, QuickFilterChip, QuickFilterChipKind,
+    TreeContextMenuState, TreeSortMode, TriState,
 };
 use core::preset::models::template::{
     PromptBlockItem, PromptCategory, SystemPromptMode, default_prompt_blocks,
@@ -80,6 +81,10 @@ pub struct ContextPackerState {
     modal_input_focus: ModalInputFocus,
     prompt_modal_open: bool,
     prompt_category_filter: Option<PromptCategory>,
+    tree_context_menu: Option<TreeContextMenuState>,
+    last_tree_click: Option<(String, std::time::Instant)>,
+    creating_entry: Option<CreatingEntryState>,
+    user_created_dirs: HashSet<String>,
     renaming_path: Option<(String, String)>,
     editing_preview_line: Option<(usize, String)>,
     split_ratio: f32,
@@ -125,6 +130,10 @@ impl ContextPackerState {
             modal_input_focus: ModalInputFocus::None,
             prompt_modal_open: false,
             prompt_category_filter: None,
+            tree_context_menu: None,
+            last_tree_click: None,
+            creating_entry: None,
+            user_created_dirs: HashSet::new(),
             renaming_path: None,
             editing_preview_line: None,
             split_ratio: crate::theme::DEFAULT_LAYOUT.packer_split_ratio,
@@ -162,6 +171,10 @@ impl ContextPackerState {
         self.regex_name_draft.clear();
         self.modal_input_focus = ModalInputFocus::None;
         self.prompt_modal_open = false;
+        self.tree_context_menu = None;
+        self.last_tree_click = None;
+        self.creating_entry = None;
+        self.user_created_dirs.clear();
         self.renaming_path = None;
         self.editing_preview_line = None;
         self.pending_tree_scroll.set(Some(0));
@@ -377,6 +390,14 @@ impl ContextPackerState {
             self.collapsed_dirs.insert(dir_path.to_owned());
         }
         self.rebuild_tree_projection();
+        if let Some(idx) = self
+            .tree_projection
+            .visible_nodes()
+            .iter()
+            .position(|n| n.is_dir() && n.path == dir_path)
+        {
+            self.focused_tree_index = Some(idx);
+        }
     }
 
     #[inline]
@@ -531,13 +552,145 @@ impl ContextPackerState {
     }
 
     #[inline]
+    pub const fn tree_context_menu(&self) -> Option<&TreeContextMenuState> {
+        self.tree_context_menu.as_ref()
+    }
+
+    pub fn open_tree_context_menu(&mut self, path: &str, is_dir: bool, x: f32, y: f32) {
+        if !path.is_empty()
+            && let Some(idx) = self
+                .tree_projection
+                .visible_nodes()
+                .iter()
+                .position(|n| n.path == path && n.is_dir() == is_dir)
+        {
+            self.focused_tree_index = Some(idx);
+        }
+        self.tree_context_menu =
+            Some(TreeContextMenuState { target_path: path.to_owned(), is_dir, x, y });
+    }
+
+    pub fn close_tree_context_menu(&mut self) {
+        self.tree_context_menu = None;
+    }
+
+    #[inline]
+    pub const fn creating_entry(&self) -> Option<&CreatingEntryState> {
+        self.creating_entry.as_ref()
+    }
+
+    pub fn start_creating_entry(&mut self, parent_hint: &str, kind: CreateEntryKind) {
+        self.tree_context_menu = None;
+        let resolved_parent = if !parent_hint.is_empty() {
+            parent_hint.to_owned()
+        } else if let Some(idx) = self.focused_tree_index
+            && let Some(node) = self.tree_projection.visible_nodes().get(idx)
+        {
+            if node.is_dir() {
+                node.path.clone()
+            } else {
+                node.path.rsplit_once('/').map_or_else(String::new, |(p, _)| p.to_owned())
+            }
+        } else {
+            String::new()
+        };
+        if !resolved_parent.is_empty() {
+            self.collapsed_dirs.remove(&resolved_parent);
+        }
+        self.renaming_path = None;
+        self.editing_preview_line = None;
+        self.creating_entry = Some(CreatingEntryState {
+            parent_dir: resolved_parent,
+            kind,
+            draft_name: String::new(),
+        });
+    }
+
+    pub fn cancel_creating_entry(&mut self) {
+        self.creating_entry = None;
+    }
+
+    pub fn append_creating_char(&mut self, ch: char) {
+        if let Some(ref mut c) = self.creating_entry {
+            c.draft_name.push(ch);
+        }
+    }
+
+    pub fn pop_creating_char(&mut self) -> bool {
+        if let Some(ref mut c) = self.creating_entry {
+            return c.draft_name.pop().is_some();
+        }
+        false
+    }
+
+    pub fn commit_creating_entry_on_disk(&mut self) -> Result<String, String> {
+        let Some(creating) = self.creating_entry.take() else {
+            return Ok(String::new());
+        };
+        let clean_name = creating.draft_name.trim().trim_matches(['/', '\\']);
+        if clean_name.is_empty() {
+            return Ok(String::new());
+        }
+        let rel_path = if creating.parent_dir.is_empty() {
+            clean_name.to_owned()
+        } else {
+            format!("{}/{clean_name}", creating.parent_dir)
+        };
+        let Some(ref root) = self.project_root.clone() else {
+            return Err("No project root".to_owned());
+        };
+        match creating.kind {
+            CreateEntryKind::File => {
+                AppContainer::create_project_file(root, &rel_path)?;
+            }
+            CreateEntryKind::Folder => {
+                AppContainer::create_project_folder(root, &rel_path)?;
+                self.user_created_dirs.insert(rel_path.clone());
+            }
+        }
+        let _ = self.rescan_current_project();
+        if let Some(idx) =
+            self.tree_projection.visible_nodes().iter().position(|n| n.path == rel_path)
+        {
+            self.focused_tree_index = Some(idx);
+        }
+        Ok(rel_path)
+    }
+
+    #[inline]
     pub fn renaming_path(&self) -> Option<&(String, String)> {
         self.renaming_path.as_ref()
     }
 
     pub fn start_renaming_path(&mut self, rel_path: &str) {
-        self.renaming_path = Some((rel_path.to_owned(), rel_path.to_owned()));
+        self.tree_context_menu = None;
+        self.creating_entry = None;
+        let local_name = rel_path.rsplit_once('/').map_or(rel_path, |(_, name)| name);
+        self.renaming_path = Some((rel_path.to_owned(), local_name.to_owned()));
         self.editing_preview_line = None;
+    }
+
+    pub fn start_renaming_focused_tree_node(&mut self) -> bool {
+        let Some(idx) = self.focused_tree_index else {
+            return false;
+        };
+        let Some(node) = self.tree_projection.visible_nodes().get(idx) else {
+            return false;
+        };
+        let target_path = node.path.clone();
+        self.start_renaming_path(&target_path);
+        true
+    }
+
+    pub fn delete_focused_tree_node(&mut self) -> bool {
+        let Some(idx) = self.focused_tree_index else {
+            return false;
+        };
+        let Some(node) = self.tree_projection.visible_nodes().get(idx) else {
+            return false;
+        };
+        let target_path = node.path.clone();
+        self.delete_path_on_disk(&target_path).is_ok()
     }
 
     pub fn cancel_renaming_path(&mut self) {
@@ -558,31 +711,50 @@ impl ContextPackerState {
     }
 
     pub fn commit_rename_on_disk(&mut self) -> Result<(), String> {
-        let Some((old_rel, new_rel)) = self.renaming_path.take() else {
+        let Some((old_rel, new_draft)) = self.renaming_path.take() else {
             return Ok(());
         };
-        let new_trimmed = new_rel.trim();
-        if new_trimmed.is_empty() || new_trimmed == old_rel {
+        let clean_draft = new_draft.trim().trim_matches(['/', '\\']);
+        if clean_draft.is_empty() {
+            return Ok(());
+        }
+        let new_rel = if clean_draft.contains('/') {
+            clean_draft.to_owned()
+        } else if let Some((parent, _)) = old_rel.rsplit_once('/') {
+            format!("{parent}/{clean_draft}")
+        } else {
+            clean_draft.to_owned()
+        };
+        if new_rel == old_rel {
             return Ok(());
         }
         let Some(ref root) = self.project_root else {
             return Err("No project root".to_owned());
         };
-        AppContainer::rename_project_entry(root, &old_rel, new_trimmed)?;
+        AppContainer::rename_project_entry(root, &old_rel, &new_rel)?;
+        if self.user_created_dirs.remove(&old_rel) {
+            self.user_created_dirs.insert(new_rel.clone());
+        }
+        if self.collapsed_dirs.remove(&old_rel) {
+            self.collapsed_dirs.insert(new_rel.clone());
+        }
         let _ = self.rescan_current_project();
+        if let Some(idx) =
+            self.tree_projection.visible_nodes().iter().position(|n| n.path == new_rel)
+        {
+            self.focused_tree_index = Some(idx);
+        }
         Ok(())
     }
 
     pub fn delete_path_on_disk(&mut self, rel_path: &str) -> Result<(), String> {
-        let Some(ref root) = self.project_root else {
+        self.tree_context_menu = None;
+        let Some(ref root) = self.project_root.clone() else {
             return Err("No project root".to_owned());
         };
-        let abs_target = root.join(rel_path);
-        if abs_target.is_dir() {
-            std::fs::remove_dir_all(&abs_target).map_err(|e| e.to_string())?;
-        } else if abs_target.exists() {
-            std::fs::remove_file(&abs_target).map_err(|e| e.to_string())?;
-        }
+        AppContainer::delete_project_entry_with_backup(root, rel_path)?;
+        let prefix = format!("{rel_path}/");
+        self.user_created_dirs.retain(|d| d != rel_path && !d.starts_with(&prefix));
         self.renaming_path = None;
         let _ = self.rescan_current_project();
         Ok(())
@@ -631,6 +803,23 @@ impl ContextPackerState {
                 chunk.content = updated_text;
             }
         }
+    }
+
+    pub fn move_preview_line_edit(&mut self, delta: isize) {
+        let Some((curr_idx, _)) = self.editing_preview_line else {
+            return;
+        };
+        self.commit_preview_line_edit();
+        let total = self.preview_buffer.line_count();
+        if total == 0 {
+            return;
+        }
+        let next_idx = if delta < 0 {
+            curr_idx.saturating_sub(delta.unsigned_abs())
+        } else {
+            (curr_idx + delta.unsigned_abs()).min(total - 1)
+        };
+        self.start_editing_preview_line(next_idx);
     }
 
     pub fn select_system_prompt_mode(&mut self, mode: SystemPromptMode) {
@@ -1528,8 +1717,38 @@ impl ContextPackerState {
         self.rebuild_tree_projection();
     }
 
+    pub fn click_folder_in_tree(&mut self, dir_path: &str) {
+        self.ui_status.search_focused = false;
+        self.tree_context_menu = None;
+        let now = std::time::Instant::now();
+        if let Some((ref prev_path, prev_time)) = self.last_tree_click
+            && prev_path == dir_path
+            && now.duration_since(prev_time).as_millis() <= 450
+        {
+            self.last_tree_click = None;
+            self.collapsed_dirs.remove(dir_path);
+            self.rebuild_tree_projection();
+            self.start_renaming_path(dir_path);
+            return;
+        }
+        self.last_tree_click = Some((dir_path.to_owned(), now));
+        self.toggle_directory_expanded(dir_path);
+    }
+
     pub fn select_file_in_tree_and_jump(&mut self, row_idx: usize, rel_path: &str) {
         self.ui_status.search_focused = false;
+        self.tree_context_menu = None;
+        let now = std::time::Instant::now();
+        if let Some((ref prev_path, prev_time)) = self.last_tree_click
+            && prev_path == rel_path
+            && now.duration_since(prev_time).as_millis() <= 450
+        {
+            self.last_tree_click = None;
+            self.focused_tree_index = Some(row_idx);
+            self.start_renaming_path(rel_path);
+            return;
+        }
+        self.last_tree_click = Some((rel_path.to_owned(), now));
         self.focused_tree_index = Some(row_idx);
         let _ = self.jump_to_file_in_preview(rel_path);
     }
@@ -1905,11 +2124,12 @@ impl ContextPackerState {
     fn rebuild_tree_projection(&mut self) {
         if let Some(ref proj) = self.project {
             let t_tree = std::time::Instant::now();
-            self.tree_projection = FlatTreeProjection::build_with_mode(
+            self.tree_projection = FlatTreeProjection::build_with_mode_and_dirs(
                 proj,
                 &self.collapsed_dirs,
                 &self.search_query,
                 self.sort_mode,
+                &self.user_created_dirs,
             );
             self.container.telemetry().record_timed(
                 "tree",

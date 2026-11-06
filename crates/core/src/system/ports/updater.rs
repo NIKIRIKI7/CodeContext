@@ -87,7 +87,7 @@ pub struct SemanticVersion {
 
 impl Default for SemanticVersion {
     fn default() -> Self {
-        Self::new(0, 2, 5)
+        Self::new(0, 3, 0)
     }
 }
 
@@ -329,6 +329,69 @@ pub fn select_best_release<'a>(
         .max_by(|a, b| a.version.cmp(&b.version))
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CpuArchKind {
+    #[default]
+    X86_64,
+    Aarch64,
+    Other,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SimdAccelerationLevel {
+    #[default]
+    Avx2Bmi2,
+    ArmNeon,
+    BaselineScalar,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SystemProbeReport {
+    pub os_name: String,
+    pub distro_or_edition: String,
+    pub cpu_arch: CpuArchKind,
+    pub simd_level: SimdAccelerationLevel,
+    pub logical_cores: usize,
+    pub display_server: String,
+    pub file_manager: String,
+    pub recommended_target: String,
+    pub default_install_dir: PathBuf,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct InstallRequestOptions {
+    pub target_dir: PathBuf,
+    pub edition: String,
+    pub register_context_menu: bool,
+    pub add_to_user_path: bool,
+    pub enable_change_applier: bool,
+    pub enable_terminal_runner: bool,
+}
+
+impl Default for InstallRequestOptions {
+    fn default() -> Self {
+        Self {
+            target_dir: PathBuf::from("."),
+            edition: "full".to_owned(),
+            register_context_menu: true,
+            add_to_user_path: true,
+            enable_change_applier: true,
+            enable_terminal_runner: true,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct InstallReceiptManifest {
+    pub version: SemanticVersion,
+    pub edition: String,
+    pub binary_path: PathBuf,
+    pub registered_context_menu: bool,
+    pub added_to_user_path: bool,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SelfInstallStatus {
     InstalledCanonical { install_path: PathBuf },
@@ -396,4 +459,44 @@ pub trait UpdaterPort: Send + Sync {
     fn apply_staged_update(&self) -> Result<UpdateStage, UpdaterPortError>;
 
     fn perform_self_install(&self) -> Result<SelfInstallStatus, UpdaterPortError>;
+
+    fn probe_system(&self) -> SystemProbeReport {
+        SystemProbeReport {
+            os_name: std::env::consts::OS.to_owned(),
+            distro_or_edition: std::env::consts::FAMILY.to_owned(),
+            cpu_arch: if std::env::consts::ARCH == "aarch64" {
+                CpuArchKind::Aarch64
+            } else {
+                CpuArchKind::X86_64
+            },
+            simd_level: SimdAccelerationLevel::Avx2Bmi2,
+            logical_cores: 4,
+            display_server: "Native".to_owned(),
+            file_manager: "System".to_owned(),
+            recommended_target: "x86_64-unknown-linux-gnu".to_owned(),
+            default_install_dir: PathBuf::from("."),
+        }
+    }
+
+    fn execute_modular_install(
+        &self,
+        options: &InstallRequestOptions,
+    ) -> Result<InstallReceiptManifest, UpdaterPortError> {
+        let status = self.perform_self_install()?;
+        let binary_path = match status {
+            SelfInstallStatus::InstalledCanonical { install_path } => install_path,
+            SelfInstallStatus::PortableMode { target_install_path, .. } => target_install_path,
+        };
+        Ok(InstallReceiptManifest {
+            version: self.current_version(),
+            edition: options.edition.clone(),
+            binary_path,
+            registered_context_menu: options.register_context_menu,
+            added_to_user_path: options.add_to_user_path,
+        })
+    }
+
+    fn execute_uninstall(&self, _purge_user_data: bool) -> Result<usize, UpdaterPortError> {
+        Ok(0)
+    }
 }

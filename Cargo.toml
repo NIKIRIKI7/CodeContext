@@ -13,7 +13,7 @@ default-members = ["crates/app"]
 resolver = "2"
 
 [workspace.package]
-version = "0.2.5"
+version = "0.3.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 description = "Cross-platform desktop tool for zero-reallocation codebase context packing and transactional AI patch application"
@@ -22,13 +22,13 @@ keywords = ["context", "llm", "gpui", "packer", "diff"]
 categories = ["command-line-utilities", "development-tools", "gui"]
 
 [workspace.dependencies]
-core = { version = "0.2.5", path = "crates/core" }
-config = { version = "0.2.5", path = "crates/config" }
-scanner = { version = "0.2.5", path = "crates/scanner" }
-apply = { version = "0.2.5", path = "crates/apply" }
-platform = { version = "0.2.5", path = "crates/platform" }
-di = { version = "0.2.5", path = "crates/di" }
-ui = { version = "0.2.5", path = "crates/ui" }
+core = { version = "0.3.0", path = "crates/core" }
+config = { version = "0.3.0", path = "crates/config" }
+scanner = { version = "0.3.0", path = "crates/scanner" }
+apply = { version = "0.3.0", path = "crates/apply" }
+platform = { version = "0.3.0", path = "crates/platform" }
+di = { version = "0.3.0", path = "crates/di" }
+ui = { version = "0.3.0", path = "crates/ui" }
 gpui = "0.2.2"
 gpui-component = "0.5.1"
 fluent-templates = "0.14"

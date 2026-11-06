@@ -49,6 +49,12 @@ fn main() {
         LaunchMode::UnregisterShell => {
             let _ = headless::unregister_os_context_menu();
         }
+        LaunchMode::Setup { edition, target_dir } => {
+            let _ = headless::run_modular_setup(&edition, target_dir);
+        }
+        LaunchMode::Uninstall { purge_user_data } => {
+            let _ = headless::run_uninstall(purge_user_data);
+        }
         LaunchMode::SelfInstall => {
             let _ = headless::run_self_install();
         }

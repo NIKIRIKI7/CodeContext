@@ -5,7 +5,8 @@ use core::preset::models::preset::{
     RegexTemplateItem,
 };
 use core::preset::models::resolution::{
-    KeymapConfig, TerminalCommandPreset, UiChromeConfig, default_terminal_command_presets,
+    EditionProfile, FeatureFlags, KeymapConfig, TerminalCommandPreset, UiChromeConfig,
+    default_terminal_command_presets,
 };
 use core::preset::models::template::{PromptBlockItem, SystemPromptMode};
 use serde::{Deserialize, Serialize};
@@ -346,6 +347,10 @@ pub struct GlobalConfigDto {
     #[serde(default = "default_true")]
     pub show_bottom_bar: bool,
     #[serde(default)]
+    pub edition: EditionProfile,
+    #[serde(default)]
+    pub features: FeatureFlags,
+    #[serde(default)]
     pub ui_chrome: UiChromeConfig,
     #[serde(default = "default_terminal_command_presets")]
     pub terminal_presets: Vec<TerminalCommandPreset>,
@@ -355,6 +360,8 @@ pub struct GlobalConfigDto {
     pub update_repo_url: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub recent_projects: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub enabled_plugins: Vec<String>,
     #[serde(default)]
     pub keymap: KeymapConfig,
 }
@@ -369,11 +376,14 @@ impl Default for GlobalConfigDto {
             auto_read_clipboard_on_apply: false,
             create_backups_by_default: true,
             show_bottom_bar: true,
+            edition: EditionProfile::Full,
+            features: FeatureFlags::full(),
             ui_chrome: UiChromeConfig::default(),
             terminal_presets: default_terminal_command_presets(),
             update_channel: default_update_channel(),
             update_repo_url: default_update_repo_url(),
             recent_projects: Vec::new(),
+            enabled_plugins: Vec::new(),
             keymap: KeymapConfig::default(),
         }
     }

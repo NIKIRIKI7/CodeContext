@@ -5,9 +5,10 @@ use std::process::Command;
 use std::sync::{Arc, Mutex};
 
 use core::system::ports::updater::{
-    EMBEDDED_RELEASE_PUBLIC_KEY_HEX, ReleaseArtifact, ReleaseManifest, ReleaseProviderSpec,
-    SelfInstallStatus, SemanticVersion, UpdateChannel, UpdateStage, UpdaterPort, UpdaterPortError,
-    select_best_release,
+    CpuArchKind, EMBEDDED_RELEASE_PUBLIC_KEY_HEX, InstallReceiptManifest, InstallRequestOptions,
+    ReleaseArtifact, ReleaseManifest, ReleaseProviderSpec, SelfInstallStatus, SemanticVersion,
+    SimdAccelerationLevel, SystemProbeReport, UpdateChannel, UpdateStage, UpdaterPort,
+    UpdaterPortError, select_best_release,
 };
 
 const SHA256_K: [u32; 64] = [
@@ -228,6 +229,89 @@ pub fn current_target_triple() -> &'static str {
         "aarch64-unknown-linux-gnu"
     } else {
         "x86_64-unknown-linux-gnu"
+    }
+}
+
+pub fn probe_system_environment() -> SystemProbeReport {
+    let os_name = std::env::consts::OS.to_owned();
+    let distro_or_edition = detect_os_distro_or_edition();
+    let cpu_arch = if cfg!(target_arch = "aarch64") {
+        CpuArchKind::Aarch64
+    } else if cfg!(target_arch = "x86_64") {
+        CpuArchKind::X86_64
+    } else {
+        CpuArchKind::Other
+    };
+    let simd_level = if cfg!(all(target_arch = "x86_64", target_feature = "avx2")) {
+        SimdAccelerationLevel::Avx2Bmi2
+    } else if cfg!(target_arch = "aarch64") {
+        SimdAccelerationLevel::ArmNeon
+    } else {
+        SimdAccelerationLevel::BaselineScalar
+    };
+    let logical_cores = std::thread::available_parallelism().map_or(1, usize::from);
+    let display_server = detect_display_server();
+    let file_manager = detect_system_file_manager();
+    let recommended_target = current_target_triple().to_owned();
+    let default_install_dir = canonical_install_binary_path()
+        .parent()
+        .map_or_else(|| PathBuf::from("."), Path::to_path_buf);
+
+    SystemProbeReport {
+        os_name,
+        distro_or_edition,
+        cpu_arch,
+        simd_level,
+        logical_cores,
+        display_server,
+        file_manager,
+        recommended_target,
+        default_install_dir,
+    }
+}
+
+fn detect_os_distro_or_edition() -> String {
+    if cfg!(target_os = "windows") {
+        return "Windows NT (Win32 / Explorer)".to_owned();
+    }
+    if cfg!(target_os = "macos") {
+        return "macOS (Darwin / Aqua)".to_owned();
+    }
+    if let Ok(os_rel) = fs::read_to_string("/etc/os-release") {
+        for line in os_rel.lines() {
+            if let Some(pretty) = line.strip_prefix("PRETTY_NAME=") {
+                return pretty.trim_matches('"').to_owned();
+            }
+        }
+    }
+    std::env::consts::FAMILY.to_owned()
+}
+
+fn detect_display_server() -> String {
+    if cfg!(target_os = "windows") {
+        "Win32 Desktop DWM".to_owned()
+    } else if cfg!(target_os = "macos") {
+        "macOS Quartz Compositor".to_owned()
+    } else if std::env::var_os("WAYLAND_DISPLAY").is_some() {
+        "Wayland".to_owned()
+    } else if std::env::var_os("DISPLAY").is_some() {
+        "X11 / XOrg".to_owned()
+    } else {
+        "Headless TTY".to_owned()
+    }
+}
+
+fn detect_system_file_manager() -> String {
+    if cfg!(target_os = "windows") {
+        "Windows Explorer (HKCU)".to_owned()
+    } else if cfg!(target_os = "macos") {
+        "macOS Finder (Services)".to_owned()
+    } else if std::env::var("XDG_CURRENT_DESKTOP")
+        .is_ok_and(|d| d.to_ascii_lowercase().contains("kde"))
+    {
+        "KDE Dolphin (ServiceMenus)".to_owned()
+    } else {
+        "XDG Desktop (Dolphin / Nemo / Nautilus)".to_owned()
     }
 }
 
@@ -652,6 +736,98 @@ impl UpdaterPort for SystemUpdater {
             guard.current_exe.clone_from(&target_exe);
         }
         Ok(SelfInstallStatus::InstalledCanonical { install_path: target_exe })
+    }
+
+    fn probe_system(&self) -> SystemProbeReport {
+        probe_system_environment()
+    }
+
+    fn execute_modular_install(
+        &self,
+        options: &InstallRequestOptions,
+    ) -> Result<InstallReceiptManifest, UpdaterPortError> {
+        let mut guard = self.state.lock().map_err(|e| UpdaterPortError::Storage(e.to_string()))?;
+        let bin_name = if cfg!(windows) { "codecontext.exe" } else { "codecontext" };
+        let target_exe =
+            if options.target_dir.as_os_str().is_empty() || options.target_dir == Path::new(".") {
+                guard.install_target_exe.clone()
+            } else if options.target_dir.extension().is_some() {
+                options.target_dir.clone()
+            } else {
+                options.target_dir.join(bin_name)
+            };
+
+        if self.mode == UpdaterBackendMode::NativeOs
+            && guard.current_exe.exists()
+            && guard.current_exe != target_exe
+        {
+            let bytes = fs::read(&guard.current_exe)
+                .map_err(|e| UpdaterPortError::Storage(e.to_string()))?;
+            atomic_swap_executable(&target_exe, &bytes)?;
+        } else if self.mode == UpdaterBackendMode::InMemory
+            && !options.target_dir.as_os_str().is_empty()
+        {
+            if let Some(parent) = target_exe.parent() {
+                let _ = fs::create_dir_all(parent);
+            }
+            let _ = fs::write(&target_exe, b"codecontext_modular_install_binary");
+        }
+
+        if let Some(parent) = target_exe.parent()
+            && parent.exists()
+        {
+            let manifest_json = format!(
+                "{{\n  \"version\": \"{}\",\n  \"edition\": \"{}\",\n  \"binary_path\": \"{}\",\n  \"registered_context_menu\": {},\n  \"added_to_user_path\": {}\n}}\n",
+                guard.current_version,
+                options.edition,
+                target_exe.display().to_string().replace('\\', "\\\\"),
+                options.register_context_menu,
+                options.add_to_user_path
+            );
+            let _ = fs::write(parent.join("install-manifest.json"), manifest_json);
+        }
+
+        guard.install_target_exe.clone_from(&target_exe);
+        guard.current_exe.clone_from(&target_exe);
+
+        Ok(InstallReceiptManifest {
+            version: guard.current_version,
+            edition: options.edition.clone(),
+            binary_path: target_exe,
+            registered_context_menu: options.register_context_menu,
+            added_to_user_path: options.add_to_user_path,
+        })
+    }
+
+    fn execute_uninstall(&self, purge_user_data: bool) -> Result<usize, UpdaterPortError> {
+        let guard = self.state.lock().map_err(|e| UpdaterPortError::Storage(e.to_string()))?;
+        let mut removed_items = 0_usize;
+        let target_exe = &guard.install_target_exe;
+        if let Some(parent) = target_exe.parent() {
+            let manifest_file = parent.join("install-manifest.json");
+            if manifest_file.exists() && fs::remove_file(manifest_file).is_ok() {
+                removed_items += 1;
+            }
+            let old_backup = target_exe.with_extension("old");
+            if old_backup.exists() && fs::remove_file(old_backup).is_ok() {
+                removed_items += 1;
+            }
+        }
+        if self.mode == UpdaterBackendMode::InMemory
+            && target_exe.exists()
+            && fs::remove_file(target_exe).is_ok()
+        {
+            removed_items += 1;
+        }
+        if purge_user_data
+            && self.mode == UpdaterBackendMode::NativeOs
+            && let Some(cfg_dir) = dirs::config_dir().map(|d| d.join("CodeContext"))
+            && cfg_dir.exists()
+            && fs::remove_dir_all(cfg_dir).is_ok()
+        {
+            removed_items += 1;
+        }
+        Ok(removed_items)
     }
 }
 

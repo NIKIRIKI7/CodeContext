@@ -214,17 +214,12 @@ impl RenderOnce for LivePreviewComponent {
             self.on_select_chunk.as_ref(),
         );
 
-        let edit_bar_opt = render_inline_line_editor_bar(
-            self.props.editing_line_index,
-            &self.props.editing_line_draft,
-            labels,
-            theme,
-            self.on_commit_line_edit.as_ref(),
-            self.on_cancel_line_edit.as_ref(),
-        );
+        let _ = (&self.on_commit_line_edit, &self.on_cancel_line_edit);
+        let draft_opt = self.props.editing_line_index.map(|_| self.props.editing_line_draft);
 
         let mut text_view = VirtualTextView::new("live-preview-virtual-text", self.props.buffer)
             .with_selected_line(self.props.editing_line_index)
+            .with_editing_line_draft(draft_opt)
             .with_context(labels, theme);
         if let Some(line_cb) = self.on_select_line {
             text_view = text_view.on_line_click(move |line_idx, w, c| line_cb(line_idx, w, c));
@@ -241,66 +236,8 @@ impl RenderOnce for LivePreviewComponent {
             .overflow_hidden()
             .child(render_pane_header(left_info, copy_btn, theme.spacing.xl, theme))
             .child(chunk_bar)
-            .children(edit_bar_opt)
             .child(div().flex_1().overflow_hidden().child(text_view))
     }
-}
-
-pub(crate) fn render_inline_line_editor_bar(
-    editing_line_idx: Option<usize>,
-    draft: &str,
-    labels: &'static UiLabels,
-    theme: &'static ThemeTokens,
-    on_commit: Option<&PreviewActionCallback>,
-    on_cancel: Option<&PreviewActionCallback>,
-) -> Option<gpui::AnyElement> {
-    let line_idx = editing_line_idx?;
-    let colors = &theme.colors;
-    let line_prefix: &'static str = Box::leak(format!("L{}:", line_idx + 1).into_boxed_str());
-
-    let input = crate::shared::containers::form_controls::TextInputField::new(
-        "inline-virtual-line-editor-input",
-        draft.to_owned(),
-        "",
-        true,
-    )
-    .leading_prefix(line_prefix)
-    .with_theme(theme);
-
-    let mut save_btn = UiButton::new("inline-line-edit-save-btn", labels.btn_save_global)
-        .icon(UiIcon::Check)
-        .variant(ButtonVariant::Primary)
-        .with_theme(theme);
-    if let Some(cb) = on_commit {
-        let cb_clone = Arc::clone(cb);
-        save_btn = save_btn.on_click(move |ev, w, c| cb_clone(ev, w, c));
-    }
-
-    let mut cancel_btn = UiButton::icon_only("inline-line-edit-cancel-btn", UiIcon::X)
-        .variant(ButtonVariant::Ghost)
-        .with_theme(theme);
-    if let Some(cb) = on_cancel {
-        let cb_clone = Arc::clone(cb);
-        cancel_btn = cancel_btn.on_click(move |ev, w, c| cb_clone(ev, w, c));
-    }
-
-    Some(
-        div()
-            .w_full()
-            .h(px(34.0))
-            .px(px(theme.spacing.xl))
-            .bg(colors.bg_elevated)
-            .border_b_1()
-            .border_color(colors.border_active)
-            .flex()
-            .flex_row()
-            .items_center()
-            .gap(px(theme.spacing.xs))
-            .child(input)
-            .child(save_btn)
-            .child(cancel_btn)
-            .into_any_element(),
-    )
 }
 
 fn render_chunk_selector_bar(

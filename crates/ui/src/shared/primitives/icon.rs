@@ -31,6 +31,9 @@ pub enum UiIcon {
     Info,
     Keyboard,
     Terminal,
+    Pencil,
+    Trash,
+    Puzzle,
 }
 
 impl UiIcon {
@@ -64,6 +67,9 @@ impl UiIcon {
             Self::Info => "icons/info.svg",
             Self::Keyboard => "icons/keyboard.svg",
             Self::Terminal => "icons/terminal.svg",
+            Self::Pencil => "icons/pencil.svg",
+            Self::Trash => "icons/trash.svg",
+            Self::Puzzle => "icons/puzzle.svg",
         }
     }
 }
@@ -187,6 +193,15 @@ pub fn load_icon_bytes(path: &str) -> Option<Cow<'static, [u8]>> {
         "icons/terminal.svg" => {
             r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>"#
         }
+        "icons/pencil.svg" => {
+            r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg>"#
+        }
+        "icons/trash.svg" => {
+            r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>"#
+        }
+        "icons/puzzle.svg" => {
+            r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M19.439 7.85c-.049.322.059.648.289.878l1.568 1.568c.47.47.706 1.087.706 1.704s-.235 1.233-.706 1.704l-1.611 1.611a.98.98 0 0 1-.837.276c-.47-.07-.802-.48-.968-.925a2.501 2.501 0 1 0-3.214 3.214c.446.166.855.497.925.968a.979.979 0 0 1-.276.837l-1.61 1.61a2.404 2.404 0 0 1-1.705.707 2.402 2.402 0 0 1-1.704-.706l-1.568-1.568a1.026 1.026 0 0 0-.877-.29c-.493.074-.84.504-1.02.968a2.5 2.5 0 1 1-3.237-3.237c.464-.18.894-.527.967-1.02a1.026 1.026 0 0 0-.289-.877l-1.568-1.568A2.402 2.402 0 0 1 1.998 12c0-.617.236-1.234.706-1.704L4.23 8.77c.24-.24.581-.353.917-.303.515.077.877.528 1.073 1.01a2.5 2.5 0 1 0 3.259-3.259c-.482-.196-.933-.558-1.01-1.073-.05-.336.062-.676.303-.917l1.525-1.525A2.402 2.402 0 0 1 12 1.998c.617 0 1.234.236 1.704.706l1.568 1.568c.23.23.556.338.877.29.493-.074.84-.504 1.02-.968a2.5 2.5 0 1 1 3.237 3.237c-.464.18-.894.527-.967 1.02Z"/></svg>"#
+        }
         _ => return None,
     };
     Some(Cow::Borrowed(svg_str.as_bytes()))
@@ -222,5 +237,8 @@ pub fn list_icon_paths() -> Vec<SharedString> {
         SharedString::from(UiIcon::Info.path()),
         SharedString::from(UiIcon::Keyboard.path()),
         SharedString::from(UiIcon::Terminal.path()),
+        SharedString::from(UiIcon::Pencil.path()),
+        SharedString::from(UiIcon::Trash.path()),
+        SharedString::from(UiIcon::Puzzle.path()),
     ]
 }

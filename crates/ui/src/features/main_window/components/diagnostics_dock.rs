@@ -351,18 +351,14 @@ fn render_terminal_task_category_tabs(
 ) -> impl IntoElement + use<> {
     let theme = props.theme;
     let colors = &theme.colors;
-    let is_en = props.labels.btn_copy_context == "Copy";
+    let labels = props.labels;
 
     let categories: &[(&str, &str, Option<TerminalTaskCategory>)] = &[
-        ("t-cat-all", if is_en { "All" } else { "Все" }, None),
+        ("t-cat-all", labels.prompt_cat_all, None),
         ("t-cat-git", "Git", Some(TerminalTaskCategory::Git)),
-        ("t-cat-build", if is_en { "Build" } else { "Сборка" }, Some(TerminalTaskCategory::Build)),
-        (
-            "t-cat-test",
-            if is_en { "Test & QA" } else { "Тесты и QA" },
-            Some(TerminalTaskCategory::Test),
-        ),
-        ("t-cat-custom", if is_en { "Custom" } else { "Свои" }, Some(TerminalTaskCategory::Custom)),
+        ("t-cat-build", labels.terminal_cat_build, Some(TerminalTaskCategory::Build)),
+        ("t-cat-test", labels.terminal_cat_test, Some(TerminalTaskCategory::Test)),
+        ("t-cat-custom", labels.prompt_cat_custom, Some(TerminalTaskCategory::Custom)),
     ];
 
     let mut bar = div()
@@ -647,7 +643,6 @@ fn render_terminal_body(
             .flex_col()
             .gap(px(theme.spacing.xs));
 
-        let is_en = labels.btn_copy_context == "Copy";
         for (idx, item) in props.terminal_history.iter().enumerate().rev() {
             let status_col = if item.exit_code == 0 { colors.success } else { colors.danger };
             let mut right_status = div().flex().flex_row().items_center().gap(px(theme.spacing.xs));
@@ -657,8 +652,7 @@ fn render_terminal_body(
                 let cb = Arc::clone(copy_err_cb);
                 let cmd_owned = item.command.clone();
                 let out_owned = item.output.clone();
-                let btn_label =
-                    if is_en { "Copy Error for AI" } else { "Ошибка для ИИ" };
+                let btn_label = labels.terminal_copy_err_ai_btn;
                 right_status = right_status.child(
                     UiButton::new(("term-copy-ai-err", idx), btn_label)
                         .icon(UiIcon::Copy)
@@ -728,7 +722,6 @@ fn render_terminal_input_bar(
     let theme = props.theme;
     let colors = &theme.colors;
     let labels = props.labels;
-    let is_en = labels.btn_copy_context == "Copy";
     let has_text = !props.terminal_input.is_empty();
 
     let input_box = TextInputField::new(
@@ -741,7 +734,7 @@ fn render_terminal_input_bar(
     .with_theme(theme)
     .on_focus_arc(callbacks.focus_terminal_input.clone());
 
-    let save_preset_label = if is_en { "+ Preset" } else { "+ Пресет" };
+    let save_preset_label = labels.terminal_save_preset_btn;
     let mut save_preset_btn = UiButton::new("terminal-save-preset-btn", save_preset_label)
         .variant(ButtonVariant::Secondary)
         .disabled(!has_text)

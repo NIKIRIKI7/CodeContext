@@ -1,4 +1,4 @@
-use core::preset::models::resolution::{KeymapAction, UiChromeSetting};
+use core::preset::models::resolution::KeymapAction;
 use core::system::ports::hotkey::HotkeyRegistrationStatus;
 use core::system::ports::shell::ShellRegistrationStatus;
 use core::system::ports::updater::{
@@ -24,9 +24,9 @@ use crate::theme::{
 
 #[derive(Debug, Clone)]
 pub struct SettingsModalView {
-    state: Entity<SettingsModalState>,
-    locale: AppLocale,
-    theme_variant: ThemeVariant,
+    pub(crate) state: Entity<SettingsModalState>,
+    pub(crate) locale: AppLocale,
+    pub(crate) theme_variant: ThemeVariant,
 }
 
 impl SettingsModalView {
@@ -130,93 +130,6 @@ impl SettingsModalView {
             .child(render_labeled_setting_row(labels.settings_language_label, lang_switcher, theme))
     }
 
-    fn render_panels_section(
-        &self,
-        theme: &'static ThemeTokens,
-        cx: &Context<Self>,
-    ) -> impl IntoElement + use<> {
-        let labels = self.locale.labels();
-        let is_english = self.locale == AppLocale::En;
-        let colors = &theme.colors;
-        let chrome = self.state.read(cx).global_config().ui_chrome.clone();
-
-        let chrome_rows: &[(&str, &str, UiChromeSetting)] = &[
-            (
-                "settings-toggle-bottom-bar",
-                labels.settings_show_bottom_bar,
-                UiChromeSetting::BottomBar,
-            ),
-            (
-                "settings-toggle-term-btn",
-                if is_english {
-                    "Show 'Command Line' button in bottom bar"
-                } else {
-                    "Кнопка «Командная строка» в нижней панели"
-                },
-                UiChromeSetting::TerminalButton,
-            ),
-            (
-                "settings-toggle-logs-btn",
-                if is_english {
-                    "Show 'Logs' button in bottom bar"
-                } else {
-                    "Кнопка «Логи» в нижней панели"
-                },
-                UiChromeSetting::LogsButton,
-            ),
-            (
-                "settings-toggle-term-presets",
-                if is_english {
-                    "Show quick command presets bar in terminal"
-                } else {
-                    "Панель быстрых пресетов команд в терминале"
-                },
-                UiChromeSetting::TerminalPresets,
-            ),
-        ];
-
-        let mut container = div()
-            .w_full()
-            .p(px(theme.spacing.xl))
-            .rounded(px(theme.radius.md))
-            .bg(colors.bg_elevated)
-            .border_1()
-            .border_color(colors.border)
-            .flex()
-            .flex_col()
-            .gap(px(theme.spacing.sm))
-            .child(
-                div()
-                    .font_family(FONT_FAMILY_UI)
-                    .text_xs()
-                    .text_color(colors.text_muted)
-                    .child(labels.settings_cat_panels),
-            );
-
-        for &(id, row_label, setting) in chrome_rows {
-            let state_c = self.state.clone();
-            let setting_enabled = chrome.is_enabled(setting);
-            container = container.child(render_labeled_setting_row(
-                row_label,
-                render_compact_toggle_pill(
-                    id,
-                    setting_enabled,
-                    self.locale,
-                    theme,
-                    move |_ev, _win, cx| {
-                        state_c.update(cx, |s, cx| {
-                            let _ = s.toggle_ui_chrome(setting);
-                            cx.notify();
-                        });
-                    },
-                ),
-                theme,
-            ));
-        }
-
-        container
-    }
-
     fn render_system_section(
         &self,
         theme: &'static ThemeTokens,
@@ -257,6 +170,7 @@ impl SettingsModalView {
 
         let state_hk = self.state.clone();
         let state_shell = self.state.clone();
+        let state_wiz = self.state.clone();
 
         let hk_button = UiButton::new("settings-cycle-hotkey", SharedString::from(hotkey_badge))
             .icon(UiIcon::Keyboard)
@@ -315,6 +229,21 @@ impl SettingsModalView {
                 update_button,
                 theme,
             ))
+            .child(render_labeled_setting_row(
+                labels.settings_installer_row_label,
+                UiButton::new("settings-open-setup-wizard-btn", labels.settings_open_wizard_btn)
+                    .icon(UiIcon::Package)
+                    .variant(ButtonVariant::FilterPill)
+                    .fixed_width(220.0)
+                    .with_theme(theme)
+                    .on_click(move |_ev, _win, cx| {
+                        state_wiz.update(cx, |s, cx| {
+                            s.open_setup_wizard();
+                            cx.notify();
+                        });
+                    }),
+                theme,
+            ))
     }
 
     fn build_update_controls(
@@ -332,8 +261,7 @@ impl SettingsModalView {
             snap.self_install_status(),
             snap.update_stage(),
         );
-        let is_update_cta = matches!(snap.update_stage(), UpdateStage::UpdateAvailable { .. })
-            || !snap.self_install_status().is_installed();
+        let is_update_cta = matches!(snap.update_stage(), UpdateStage::UpdateAvailable { .. });
 
         let state_ch_stable = self.state.clone();
         let state_ch_beta = self.state.clone();
@@ -550,7 +478,7 @@ impl SettingsModalView {
         cx: &Context<Self>,
     ) -> impl IntoElement + use<> {
         let colors = &theme.colors;
-        let is_en = self.locale == AppLocale::En;
+        let labels = self.locale.labels();
         let snap = self.state.read(cx);
         let project_root = std::env::current_dir().ok();
         let stats = snap.container().inspect_housekeeping(project_root.as_deref());
@@ -590,20 +518,17 @@ impl SettingsModalView {
                 });
             });
 
-        let clean_all_btn = UiButton::new(
-            "settings-clean-all-btn",
-            if is_en { "Clean All" } else { "Очистить всё" },
-        )
-        .icon(UiIcon::Check)
-        .variant(ButtonVariant::Danger)
-        .with_theme(theme)
-        .on_click(move |_ev, _win, cx| {
-            let root = std::env::current_dir().ok();
-            state_all.update(cx, |s, cx| {
-                let _ = s.container().clean_housekeeping(root.as_deref(), true, true, false);
-                cx.notify();
+        let clean_all_btn = UiButton::new("settings-clean-all-btn", labels.settings_clean_all_btn)
+            .icon(UiIcon::Check)
+            .variant(ButtonVariant::Danger)
+            .with_theme(theme)
+            .on_click(move |_ev, _win, cx| {
+                let root = std::env::current_dir().ok();
+                state_all.update(cx, |s, cx| {
+                    let _ = s.container().clean_housekeeping(root.as_deref(), true, true, false);
+                    cx.notify();
+                });
             });
-        });
 
         div()
             .w_full()
@@ -615,28 +540,20 @@ impl SettingsModalView {
             .flex()
             .flex_col()
             .gap(px(theme.spacing.sm))
-            .child(div().font_family(FONT_FAMILY_UI).text_xs().text_color(colors.text_muted).child(
-                if is_en {
-                    "Housekeeping & Cache (.ctxpack/backups, .tmp)"
-                } else {
-                    "Очистка и обслуживание (.ctxpack/backups, .tmp)"
-                },
-            ))
+            .child(
+                div()
+                    .font_family(FONT_FAMILY_UI)
+                    .text_xs()
+                    .text_color(colors.text_muted)
+                    .child(labels.settings_housekeeping_title),
+            )
             .child(render_labeled_setting_row(
-                if is_en {
-                    "Backup snapshots (.ctxpack/backups)"
-                } else {
-                    "Снимки бэкапов (.ctxpack/backups)"
-                },
+                labels.settings_housekeeping_backups,
                 clean_backups_btn,
                 theme,
             ))
             .child(render_labeled_setting_row(
-                if is_en {
-                    "Orphaned atomic temp files (.*.tmp)"
-                } else {
-                    "Временные атомарные файлы (.*.tmp)"
-                },
+                labels.settings_housekeeping_temp,
                 clean_tmp_btn,
                 theme,
             ))
@@ -668,6 +585,7 @@ impl SettingsModalView {
         let labels = self.locale.labels();
         let is_en = self.locale == AppLocale::En;
 
+        let _ = is_en;
         let items: &[(&str, UiIcon, &str, SettingsCategory)] = &[
             (
                 "settings-cat-appearance",
@@ -677,7 +595,7 @@ impl SettingsModalView {
             ),
             (
                 "settings-cat-panels",
-                UiIcon::Terminal,
+                UiIcon::Puzzle,
                 labels.settings_cat_panels,
                 SettingsCategory::PanelsAndBar,
             ),
@@ -698,12 +616,6 @@ impl SettingsModalView {
                 UiIcon::Package,
                 labels.settings_cat_system,
                 SettingsCategory::SystemAndUpdates,
-            ),
-            (
-                "settings-cat-maintenance",
-                UiIcon::RotateCcw,
-                if is_en { "Maintenance" } else { "Очистка и кэш" },
-                SettingsCategory::Maintenance,
             ),
         ];
 
@@ -923,44 +835,54 @@ impl Render for SettingsModalView {
         let theme = self.theme_variant.tokens();
         let labels = self.locale.labels();
         let active_cat = self.state.read(cx).active_category();
+        let is_json_mode = self.state.read(cx).is_json_editor_mode();
+        let is_wizard_open = self.state.read(cx).wizard().is_open;
         let state_close = self.state.clone();
-        let sidebar = self.render_category_sidebar(active_cat, theme);
+        let state_json_toggle = self.state.clone();
 
-        let active_section = match active_cat {
-            SettingsCategory::Appearance => {
-                self.render_appearance_section(theme).into_any_element()
-            }
-            SettingsCategory::PanelsAndBar => {
-                self.render_panels_section(theme, cx).into_any_element()
-            }
-            SettingsCategory::Keymap => self.render_keymap_section(theme, cx).into_any_element(),
-            SettingsCategory::Safety => self.render_safety_section(theme, cx).into_any_element(),
-            SettingsCategory::SystemAndUpdates => {
-                self.render_system_section(theme, cx).into_any_element()
-            }
-            SettingsCategory::Maintenance => {
-                self.render_maintenance_section(theme, cx).into_any_element()
-            }
-        };
-
-        ModalDialogShell::new(
-            "settings-modal-backdrop",
-            "settings-modal-dialog",
-            "settings-close-modal-btn",
-            labels.settings_modal_title,
+        let json_toggle_btn = UiButton::new(
+            "settings-toggle-json-mode-btn",
+            if is_json_mode { "GUI" } else { "{ } settings.json" },
         )
-        .width(680.0)
-        .fixed_height(460.0)
-        .leading_icon(UiIcon::Settings)
-        .with_header_border(true)
+        .icon(UiIcon::FileCode)
+        .variant(if is_json_mode { ButtonVariant::Primary } else { ButtonVariant::FilterPill })
         .with_theme(theme)
-        .on_close(move |_ev, _win, cx| {
-            state_close.update(cx, |s, cx| {
-                s.request_close();
+        .on_click(move |_ev, _win, cx| {
+            state_json_toggle.update(cx, |s, cx| {
+                s.toggle_json_editor_mode();
                 cx.notify();
             });
-        })
-        .child(
+        });
+
+        let body_content = if is_wizard_open {
+            self.render_setup_wizard_body(theme, cx).into_any_element()
+        } else if is_json_mode {
+            self.render_live_json_editor(theme, cx).into_any_element()
+        } else {
+            let sidebar = self.render_category_sidebar(active_cat, theme);
+            let active_section = match active_cat {
+                SettingsCategory::Appearance => {
+                    self.render_appearance_section(theme).into_any_element()
+                }
+                SettingsCategory::PanelsAndBar => {
+                    self.render_modules_and_panels_section(theme, cx).into_any_element()
+                }
+                SettingsCategory::Keymap => {
+                    self.render_keymap_section(theme, cx).into_any_element()
+                }
+                SettingsCategory::Safety | SettingsCategory::Maintenance => div()
+                    .w_full()
+                    .flex()
+                    .flex_col()
+                    .gap(px(theme.spacing.md))
+                    .child(self.render_safety_section(theme, cx))
+                    .child(self.render_maintenance_section(theme, cx))
+                    .into_any_element(),
+                SettingsCategory::SystemAndUpdates => {
+                    self.render_system_section(theme, cx).into_any_element()
+                }
+            };
+
             div()
                 .flex_1()
                 .min_h(px(0.0))
@@ -978,7 +900,28 @@ impl Render for SettingsModalView {
                         .h_full()
                         .overflow_y_scroll()
                         .child(active_section),
-                ),
+                )
+                .into_any_element()
+        };
+
+        ModalDialogShell::new(
+            "settings-modal-backdrop",
+            "settings-modal-dialog",
+            "settings-close-modal-btn",
+            labels.settings_modal_title,
         )
+        .width(720.0)
+        .fixed_height(490.0)
+        .leading_icon(UiIcon::Settings)
+        .header_badge(json_toggle_btn)
+        .with_header_border(true)
+        .with_theme(theme)
+        .on_close(move |_ev, _win, cx| {
+            state_close.update(cx, |s, cx| {
+                s.request_close();
+                cx.notify();
+            });
+        })
+        .child(body_content)
     }
 }

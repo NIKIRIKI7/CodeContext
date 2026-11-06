@@ -29,7 +29,15 @@
 * [ADR-001: Вертикальные поддомены DDD и Ports & Adapters](./03-architecture/adr/001-onion-and-ddd-slices.md)
 * [ADR-002: Двухфазное сканирование и сборка буфера с нулём реаллокаций](./03-architecture/adr/002-zero-realloc-packing.md)
 * [ADR-003: Транзакционное применение патчей (Staging + Backup Manifest)](./03-architecture/adr/003-transactional-apply.md)
+* [ADR-004: Изоляция плагинов (Extension Host) и Декларативный UI-протокол GPUI](./03-architecture/adr/004-plugin-extension-host.md)
 
-### 4. Справочные материалы (`04-references/`)
+
+
+### 5. Разработка плагинов и расширений (`05-plugins/`)
+* [01-architecture-and-lifecycle.md](./05-plugins/01-architecture-and-lifecycle.md) — Архитектура Extension Host, ленивая активация и модель разрешений Zero-Trust.
+* [02-manifest-and-contributions.md](./05-plugins/02-manifest-and-contributions.md) — Справочник `plugin.json` и точек расширения (`ContributionPoints`).
+* [03-declarative-ui-protocol.md](./05-plugins/03-declarative-ui-protocol.md) — Протокол `PluginViewSpec` для рендеринга UI плагинов на 120 FPS.
+* [04-host-api-reference.md](./05-plugins/04-host-api-reference.md) — Справочник JSON-RPC 2.0 и встроенных плагинов ядра.
+* [05-tutorials-and-examples.md](./05-plugins/05-tutorials-and-examples.md) — Пошаговые шаблоны плагинов.
 * `drafts/` — Исходные черновики требований (`Описание_проекта.docx`).
 * `articles/` — Учебные материалы и руководства по GPUI и DDD.

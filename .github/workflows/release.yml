@@ -203,8 +203,13 @@ jobs:
           cp LICENSE-MIT LICENSE-APACHE CHANGELOG.md VERSION dist/
 
           cp "dist/${{ matrix.out_bin }}" "out/${{ matrix.pkg_prefix }}.exe"
+          cp "dist/${{ matrix.out_bin }}" "out/codecontext-setup-${{ matrix.target }}.exe"
           (cd dist && 7z a -tzip "../out/${{ matrix.pkg_prefix }}.zip" "${{ matrix.out_bin }}" LICENSE-MIT LICENSE-APACHE CHANGELOG.md VERSION)
           (cd dist && 7z a -t7z "../out/${{ matrix.pkg_prefix }}.7z" "${{ matrix.out_bin }}" LICENSE-MIT LICENSE-APACHE CHANGELOG.md VERSION)
+          mkdir -p dist_lite
+          cp "dist/${{ matrix.out_bin }}" "dist_lite/${{ matrix.out_bin }}"
+          printf '{\n  "schema_version": 2,\n  "edition": "lite"\n}\n' > dist_lite/config.json
+          (cd dist_lite && 7z a -tzip "../out/codecontext-lite-${{ matrix.target }}.zip" "${{ matrix.out_bin }}" config.json)
 
           if [ "${{ matrix.enable_msi }}" = "true" ] && [ -n "${WIX:-}" ]; then
             cat > installer.wxs <<EOF
@@ -284,10 +289,16 @@ jobs:
           chmod 0755 "dist/${{ matrix.out_bin }}"
           cp LICENSE-MIT LICENSE-APACHE CHANGELOG.md VERSION dist/
 
+          cp "dist/${{ matrix.out_bin }}" "out/codecontext-setup-${{ matrix.target }}"
+          chmod 0755 "out/codecontext-setup-${{ matrix.target }}"
           tar -C dist -czf "out/${{ matrix.pkg_prefix }}.tar.gz" "${{ matrix.out_bin }}" LICENSE-MIT LICENSE-APACHE CHANGELOG.md VERSION
           tar -C dist -cJf "out/${{ matrix.pkg_prefix }}.tar.xz" "${{ matrix.out_bin }}" LICENSE-MIT LICENSE-APACHE CHANGELOG.md VERSION
           tar -C dist --zstd -cf "out/${{ matrix.pkg_prefix }}.tar.zst" "${{ matrix.out_bin }}" LICENSE-MIT LICENSE-APACHE CHANGELOG.md VERSION
           (cd dist && zip -q "../out/${{ matrix.pkg_prefix }}.zip" "${{ matrix.out_bin }}" LICENSE-MIT LICENSE-APACHE CHANGELOG.md VERSION)
+          mkdir -p dist_lite
+          cp "dist/${{ matrix.out_bin }}" "dist_lite/${{ matrix.out_bin }}"
+          printf '{\n  "schema_version": 2,\n  "edition": "lite"\n}\n' > dist_lite/config.json
+          tar -C dist_lite -czf "out/codecontext-lite-${{ matrix.target }}.tar.gz" "${{ matrix.out_bin }}" config.json
 
           DEB_DIR="deb_root"
           mkdir -p "${DEB_DIR}/DEBIAN" "${DEB_DIR}/usr/bin" "${DEB_DIR}/usr/share/applications"
@@ -374,8 +385,14 @@ jobs:
           chmod 0755 "dist/${{ matrix.out_bin }}"
           cp LICENSE-MIT LICENSE-APACHE CHANGELOG.md VERSION dist/
 
+          cp "dist/${{ matrix.out_bin }}" "out/codecontext-setup-${{ matrix.target }}"
+          chmod 0755 "out/codecontext-setup-${{ matrix.target }}"
           tar -C dist -czf "out/${{ matrix.pkg_prefix }}.tar.gz" "${{ matrix.out_bin }}" LICENSE-MIT LICENSE-APACHE CHANGELOG.md VERSION
           (cd dist && zip -q "../out/${{ matrix.pkg_prefix }}.zip" "${{ matrix.out_bin }}" LICENSE-MIT LICENSE-APACHE CHANGELOG.md VERSION)
+          mkdir -p dist_lite
+          cp "dist/${{ matrix.out_bin }}" "dist_lite/${{ matrix.out_bin }}"
+          printf '{\n  "schema_version": 2,\n  "edition": "lite"\n}\n' > dist_lite/config.json
+          tar -C dist_lite -czf "out/codecontext-lite-${{ matrix.target }}.tar.gz" "${{ matrix.out_bin }}" config.json
 
           APP_DIR="dmg_stage/CodeContext.app/Contents"
           mkdir -p "${APP_DIR}/MacOS" "${APP_DIR}/Resources"
@@ -533,6 +550,13 @@ jobs:
           pathlib.Path("artifacts/RELEASE_NOTES.md").write_text("\n".join(body) + "\n", encoding="utf-8")
           PY_NOTES
 
+          mkdir -p plugins_bundle/git_context plugins_bundle/ast_signatures
+          cp assets/filter_templates.json assets/prompt_templates.json plugins_bundle/
+          printf '{\n  "id": "builtin.git_context",\n  "name": "Git Branch & Diff Context",\n  "version": "1.0.0"\n}\n' > plugins_bundle/git_context/plugin.json
+          printf '{\n  "id": "builtin.ast_signatures",\n  "name": "Rust Signatures Skeletonizer",\n  "version": "1.0.0"\n}\n' > plugins_bundle/ast_signatures/plugin.json
+          (cd plugins_bundle && zip -qr ../artifacts/codecontext-plugins-pack.zip .)
+          (cd artifacts && shasum -a 256 codecontext-plugins-pack.zip > codecontext-plugins-pack.zip.sha256)
+
           cd artifacts
           cat *.sha256 > SHA256SUMS.txt
           cat SHA256SUMS.txt
@@ -570,12 +594,22 @@ jobs:
                   "signature": sig,
               })
 
+          modules_list = []
+          plugins_pack = pathlib.Path("codecontext-plugins-pack.zip")
+          if plugins_pack.exists():
+              modules_list.append({
+                  "id": "plugins-pack",
+                  "url": f"https://github.com/{repo}/releases/download/v{ver}/codecontext-plugins-pack.zip",
+                  "sha256": hashlib.sha256(plugins_pack.read_bytes()).hexdigest(),
+              })
+
           manifest = {
               "version": ver,
               "channel": channel,
               "published_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
               "changelog": f"Release v{ver}",
               "artifacts": artifacts_list,
+              "modules": modules_list,
           }
           pathlib.Path("releases-index.json").write_text(json.dumps([manifest], indent=2) + "\n", encoding="utf-8")
           PY

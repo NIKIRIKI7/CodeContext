@@ -4,7 +4,7 @@ use std::ops::Range;
 use std::sync::Arc;
 
 use core::packing::aggregates::file_entry::FileEntry;
-use core::packing::aggregates::project::Project;
+use core::packing::aggregates::project::{Project, compare_paths_folders_first};
 use core::shared_kernel::fs::file_kind::{FileKind, contains_ignore_ascii_case};
 use gpui::{
     App, ClickEvent, InteractiveElement as _, IntoElement, ParentElement as _, RenderOnce,
@@ -36,6 +36,27 @@ pub struct QuickFilterChip {
     pub label: String,
     pub active: bool,
     pub kind: QuickFilterChipKind,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CreateEntryKind {
+    File,
+    Folder,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CreatingEntryState {
+    pub parent_dir: String,
+    pub kind: CreateEntryKind,
+    pub draft_name: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TreeContextMenuState {
+    pub target_path: String,
+    pub is_dir: bool,
+    pub x: f32,
+    pub y: f32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -121,10 +142,71 @@ impl FlatTreeProjection {
         search_query: &str,
         sort_mode: TreeSortMode,
     ) -> Self {
+        let empty_extra = HashSet::new();
+        Self::build_with_mode_and_dirs(
+            project,
+            collapsed_dirs,
+            search_query,
+            sort_mode,
+            &empty_extra,
+        )
+    }
+
+    pub fn build_with_mode_and_dirs(
+        project: &Project,
+        collapsed_dirs: &HashSet<String>,
+        search_query: &str,
+        sort_mode: TreeSortMode,
+        extra_dirs: &HashSet<String>,
+    ) -> Self {
         if sort_mode == TreeSortMode::TopHeavyFiles {
             return Self::build_top_heavy_files(project, search_query);
         }
-        Self::build_hierarchical(project, collapsed_dirs, search_query)
+        let mut proj = Self::build_hierarchical(project, collapsed_dirs, search_query);
+        if !extra_dirs.is_empty() {
+            proj.inject_empty_directories(extra_dirs, collapsed_dirs, search_query);
+        }
+        proj
+    }
+
+    fn inject_empty_directories(
+        &mut self,
+        extra_dirs: &HashSet<String>,
+        collapsed_dirs: &HashSet<String>,
+        search_query: &str,
+    ) {
+        let clean_query = search_query.trim();
+        let has_query = !clean_query.is_empty();
+        let mut nodes_vec = self.visible_nodes.to_vec();
+        let mut sorted_extra: Vec<&String> = extra_dirs.iter().collect();
+        sorted_extra.sort_unstable_by(|a, b| compare_paths_folders_first(a, b));
+
+        for dir_path in sorted_extra {
+            if has_query && !contains_ignore_ascii_case(dir_path, clean_query) {
+                continue;
+            }
+            if !has_query && is_parent_collapsed(dir_path, collapsed_dirs) {
+                continue;
+            }
+            if nodes_vec.iter().any(|n| n.is_dir() && &n.path == dir_path) {
+                continue;
+            }
+            let (display_name, depth) = extract_name_and_depth(dir_path);
+            let new_node = FlatTreeNode {
+                path: dir_path.clone(),
+                display_name: display_name.to_owned(),
+                depth,
+                kind: TreeNodeKind::Directory { file_count: 0, selected_count: 0, size_bytes: 0 },
+                is_expanded: !collapsed_dirs.contains(dir_path),
+                check_state: TriState::Unchecked,
+            };
+            let insert_pos = nodes_vec
+                .iter()
+                .position(|n| compare_paths_folders_first(&n.path, dir_path).is_gt())
+                .unwrap_or(nodes_vec.len());
+            nodes_vec.insert(insert_pos, new_node);
+        }
+        self.visible_nodes = Arc::from(nodes_vec);
     }
 
     fn build_top_heavy_files(project: &Project, search_query: &str) -> Self {
@@ -474,13 +556,20 @@ pub type TreeNodeActionHandler = Arc<dyn Fn(&str, bool, &mut Window, &mut App) +
 pub type TreePathHandler = Arc<dyn Fn(&str, &mut Window, &mut App) + 'static>;
 pub type TreeBulkActionHandler = Arc<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>;
 pub type TreeFileSelectHandler = Arc<dyn Fn(usize, &str, &mut Window, &mut App) + 'static>;
+pub type TreeContextMenuHandler =
+    Arc<dyn Fn(&str, bool, f32, f32, &mut Window, &mut App) + 'static>;
 
 #[derive(Clone, Default)]
 struct TreeCallbacks {
     toggle_check: Option<TreeNodeActionHandler>,
     toggle_expand: Option<TreePathHandler>,
+    click_folder_label: Option<TreePathHandler>,
     select_file: Option<TreeFileSelectHandler>,
     toggle_secret_unlock: Option<TreePathHandler>,
+    open_context_menu: Option<TreeContextMenuHandler>,
+    close_context_menu: Option<TreeBulkActionHandler>,
+    start_create_file: Option<TreePathHandler>,
+    start_create_folder: Option<TreePathHandler>,
     start_rename_path: Option<TreePathHandler>,
     delete_path: Option<TreePathHandler>,
     submit_rename: Option<TreeBulkActionHandler>,
@@ -498,7 +587,11 @@ struct TreeCallbacks {
 pub struct FileTreeComponent {
     projection: FlatTreeProjection,
     focused_index: Option<usize>,
+    context_menu: Option<TreeContextMenuState>,
+    creating_entry: Option<CreatingEntryState>,
     renaming_target_and_draft: Option<(String, String)>,
+    show_file_sizes: bool,
+    show_size_heatmap: bool,
     sort_mode: TreeSortMode,
     search_query: String,
     search_focused: bool,
@@ -526,7 +619,11 @@ impl FileTreeComponent {
         Self {
             projection,
             focused_index: None,
+            context_menu: None,
+            creating_entry: None,
             renaming_target_and_draft: None,
+            show_file_sizes: true,
+            show_size_heatmap: true,
             sort_mode: TreeSortMode::AlphabeticalTree,
             search_query: String::new(),
             search_focused: false,
@@ -538,6 +635,14 @@ impl FileTreeComponent {
             scroll_handle: None,
             callbacks: TreeCallbacks::default(),
         }
+    }
+
+    #[must_use]
+    #[inline]
+    pub const fn with_size_display(mut self, show_sizes: bool, show_heatmap: bool) -> Self {
+        self.show_file_sizes = show_sizes;
+        self.show_size_heatmap = show_heatmap;
+        self
     }
 
     #[must_use]
@@ -575,6 +680,44 @@ impl FileTreeComponent {
     #[inline]
     pub fn with_rename_state(mut self, target_and_draft: Option<(String, String)>) -> Self {
         self.renaming_target_and_draft = target_and_draft;
+        self
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn with_creating_state(mut self, creating: Option<CreatingEntryState>) -> Self {
+        self.creating_entry = creating;
+        self
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn with_context_menu(mut self, menu: Option<TreeContextMenuState>) -> Self {
+        self.context_menu = menu;
+        self
+    }
+
+    #[must_use]
+    pub fn on_context_menu(
+        mut self,
+        on_open: impl Fn(&str, bool, f32, f32, &mut Window, &mut App) + 'static,
+        on_close: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
+        on_click_folder_label: impl Fn(&str, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.callbacks.open_context_menu = Some(Arc::new(on_open));
+        self.callbacks.close_context_menu = Some(Arc::new(on_close));
+        self.callbacks.click_folder_label = Some(Arc::new(on_click_folder_label));
+        self
+    }
+
+    #[must_use]
+    pub fn on_create_operations(
+        mut self,
+        on_new_file: impl Fn(&str, &mut Window, &mut App) + 'static,
+        on_new_folder: impl Fn(&str, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.callbacks.start_create_file = Some(Arc::new(on_new_file));
+        self.callbacks.start_create_folder = Some(Arc::new(on_new_folder));
         self
     }
 
@@ -792,9 +935,10 @@ impl RenderOnce for FileTreeComponent {
         let item_count = nodes.len();
 
         let header = self.render_compact_tree_toolbar();
-        let rename_bar_opt = self.render_inline_rename_or_actions_bar();
+        let creating_row_opt =
+            self.creating_entry.as_ref().map(|c| render_inline_creating_row(c, theme));
 
-        if item_count == 0 {
+        if item_count == 0 && creating_row_opt.is_none() {
             let mut open_btn =
                 UiButton::new("btn-empty-tree-open-project", labels.btn_open_folder_prompt)
                     .icon(UiIcon::FolderOpen)
@@ -831,8 +975,16 @@ impl RenderOnce for FileTreeComponent {
                 .into_any_element();
         }
 
+        let ctx_menu_overlay = self
+            .context_menu
+            .as_ref()
+            .map(|m| render_tree_context_menu_overlay(m, labels, theme, &self.callbacks));
+        let root_ctx_cb = self.callbacks.open_context_menu.clone();
         let callbacks = self.callbacks;
         let focused_index = self.focused_index;
+        let renaming_state = self.renaming_target_and_draft;
+        let show_sizes = self.show_file_sizes;
+        let show_heatmap = self.show_size_heatmap;
         let list = uniform_list(
             "context-packer-file-tree",
             item_count,
@@ -841,8 +993,19 @@ impl RenderOnce for FileTreeComponent {
                 for row_idx in range {
                     if let Some(node) = nodes.get(row_idx) {
                         let is_focused = focused_index == Some(row_idx);
+                        let row_rename_draft = renaming_state
+                            .as_ref()
+                            .filter(|(target, _)| target == &node.path)
+                            .map(|(_, draft)| draft.as_str());
                         rows.push(render_tree_row(
-                            row_idx, node, is_focused, labels, theme, &callbacks,
+                            row_idx,
+                            node,
+                            is_focused,
+                            row_rename_draft,
+                            (show_sizes, show_heatmap),
+                            labels,
+                            theme,
+                            &callbacks,
                         ));
                     }
                 }
@@ -854,132 +1017,30 @@ impl RenderOnce for FileTreeComponent {
         let tracked =
             if let Some(handle) = self.scroll_handle { list.track_scroll(handle) } else { list };
 
+        let mut tree_body = div().flex_1().overflow_hidden().child(tracked);
+        if let Some(cb) = root_ctx_cb {
+            tree_body = tree_body.on_mouse_down(
+                gpui::MouseButton::Right,
+                move |ev: &gpui::MouseDownEvent, win, cx| {
+                    let x = ev.position.x / px(1.0);
+                    let y = ev.position.y / px(1.0);
+                    cb("", true, x, y, win, cx);
+                },
+            );
+        }
+
         div()
+            .relative()
             .size_full()
             .flex()
             .flex_col()
             .bg(theme.colors.bg_panel)
             .overflow_hidden()
             .child(header)
-            .children(rename_bar_opt)
-            .child(div().flex_1().overflow_hidden().child(tracked))
+            .children(creating_row_opt)
+            .child(tree_body)
+            .children(ctx_menu_overlay)
             .into_any_element()
-    }
-}
-
-impl FileTreeComponent {
-    fn render_inline_rename_or_actions_bar(&self) -> Option<gpui::AnyElement> {
-        let theme = self.theme;
-        let colors = &theme.colors;
-        let is_en = self.labels.btn_copy_context == "Copy";
-
-        if let Some((ref old_path, ref draft)) = self.renaming_target_and_draft {
-            let input = crate::shared::containers::form_controls::TextInputField::new(
-                "tree-inline-rename-input",
-                draft.clone(),
-                "new/path.rs",
-                true,
-            )
-            .with_theme(theme);
-
-            let mut ok_btn = UiButton::icon_only("tree-inline-rename-submit", UiIcon::Check)
-                .variant(ButtonVariant::Primary)
-                .with_theme(theme);
-            if let Some(ref cb) = self.callbacks.submit_rename {
-                let cb_clone = Arc::clone(cb);
-                ok_btn = ok_btn.on_click(move |ev, w, c| cb_clone(ev, w, c));
-            }
-
-            let mut cancel_btn = UiButton::icon_only("tree-inline-rename-cancel", UiIcon::X)
-                .variant(ButtonVariant::Ghost)
-                .with_theme(theme);
-            if let Some(ref cb) = self.callbacks.cancel_rename {
-                let cb_clone = Arc::clone(cb);
-                cancel_btn = cancel_btn.on_click(move |ev, w, c| cb_clone(ev, w, c));
-            }
-
-            let _ = old_path;
-            return Some(
-                div()
-                    .w_full()
-                    .h(px(34.0))
-                    .px(px(theme.spacing.lg))
-                    .bg(colors.bg_elevated)
-                    .border_b_1()
-                    .border_color(colors.border_active)
-                    .flex()
-                    .flex_row()
-                    .items_center()
-                    .gap(px(theme.spacing.xs))
-                    .child(input)
-                    .child(ok_btn)
-                    .child(cancel_btn)
-                    .into_any_element(),
-            );
-        }
-
-        let focused_idx = self.focused_index?;
-        let node = self.projection.visible_nodes().get(focused_idx)?;
-        let node_path = node.path.clone();
-        let node_path_del = node.path.clone();
-
-        let mut rename_btn = UiButton::new(
-            "tree-focused-rename-btn",
-            if is_en { "Rename" } else { "Переименовать" },
-        )
-        .variant(ButtonVariant::Ghost)
-        .with_theme(theme);
-        if let Some(ref cb) = self.callbacks.start_rename_path {
-            let cb_clone = Arc::clone(cb);
-            rename_btn = rename_btn.on_click(move |_ev, w, c| cb_clone(&node_path, w, c));
-        }
-
-        let mut del_btn =
-            UiButton::new("tree-focused-delete-btn", if is_en { "Delete" } else { "Удалить" })
-                .icon(UiIcon::X)
-                .variant(ButtonVariant::Ghost)
-                .with_theme(theme);
-        if let Some(ref cb) = self.callbacks.delete_path {
-            let cb_clone = Arc::clone(cb);
-            del_btn = del_btn.on_click(move |_ev, w, c| cb_clone(&node_path_del, w, c));
-        }
-
-        Some(
-            div()
-                .w_full()
-                .h(px(28.0))
-                .px(px(theme.spacing.lg))
-                .bg(colors.bg_elevated)
-                .border_b_1()
-                .border_color(colors.border)
-                .flex()
-                .flex_row()
-                .items_center()
-                .justify_between()
-                .gap(px(theme.spacing.xs))
-                .child(
-                    div()
-                        .flex_1()
-                        .min_w(px(0.0))
-                        .overflow_hidden()
-                        .whitespace_nowrap()
-                        .font_family(crate::theme::FONT_FAMILY_MONO)
-                        .text_xs()
-                        .text_color(colors.text_secondary)
-                        .child(SharedString::from(node.display_name.clone())),
-                )
-                .child(
-                    div()
-                        .flex_shrink_0()
-                        .flex()
-                        .flex_row()
-                        .items_center()
-                        .gap(px(2.0))
-                        .child(rename_btn)
-                        .child(del_btn),
-                )
-                .into_any_element(),
-        )
     }
 }
 
@@ -1111,25 +1172,55 @@ fn render_search_box(
     search_box
 }
 
+#[allow(clippy::too_many_arguments)]
 fn render_tree_row(
     row_idx: usize,
     node: &FlatTreeNode,
     is_focused: bool,
+    rename_draft: Option<&str>,
+    size_opts: (bool, bool),
     labels: &'static UiLabels,
     theme: &'static ThemeTokens,
     callbacks: &TreeCallbacks,
 ) -> impl IntoElement + use<> {
     let colors = &theme.colors;
+    let (show_sizes, show_heatmap) = size_opts;
     let indent_px =
         f32::from(node.depth) * theme.layout.tree_indent_step + theme.layout.tree_indent_base;
     let (chevron_el, check_el, name_el) =
-        build_tree_row_interactive_cells(row_idx, node, is_focused, theme, callbacks);
+        build_tree_row_interactive_cells(row_idx, node, is_focused, rename_draft, theme, callbacks);
     let (leading_icon, count_chip, size_label, secret_unlock_btn) =
         render_node_metadata(row_idx, node, labels, theme, callbacks.toggle_secret_unlock.clone());
     let hover_bg = colors.bg_hover;
-    let row_bg = if is_focused { colors.bg_elevated } else { colors.bg_panel };
+    let row_bg =
+        if is_focused || rename_draft.is_some() { colors.bg_elevated } else { colors.bg_panel };
 
-    div()
+    let size_color =
+        if show_heatmap { node_size_heatmap_color(node, colors) } else { colors.text_muted };
+
+    let mut right_group = div()
+        .flex_shrink_0()
+        .flex()
+        .flex_row()
+        .items_center()
+        .gap(px(theme.spacing.xs))
+        .child(secret_unlock_btn);
+
+    if show_sizes && rename_draft.is_none() {
+        right_group = right_group.child(
+            div()
+                .font_family(crate::theme::FONT_FAMILY_MONO)
+                .text_xs()
+                .text_color(size_color)
+                .child(size_label),
+        );
+    }
+
+    let path_for_ctx = node.path.clone();
+    let is_dir_for_ctx = node.is_dir();
+    let ctx_cb_opt = callbacks.open_context_menu.clone();
+
+    let mut row_div = div()
         .w_full()
         .h(px(theme.layout.tree_row_height))
         .pl(px(indent_px))
@@ -1142,7 +1233,21 @@ fn render_tree_row(
         .gap(px(theme.spacing.sm))
         .overflow_hidden()
         .whitespace_nowrap()
-        .hover(move |s| s.bg(hover_bg))
+        .hover(move |s| s.bg(hover_bg));
+
+    if let Some(ctx_cb) = ctx_cb_opt {
+        row_div = row_div.on_mouse_down(
+            gpui::MouseButton::Right,
+            move |ev: &gpui::MouseDownEvent, win, cx| {
+                cx.stop_propagation();
+                let x = ev.position.x / px(1.0);
+                let y = ev.position.y / px(1.0);
+                ctx_cb(&path_for_ctx, is_dir_for_ctx, x, y, win, cx);
+            },
+        );
+    }
+
+    row_div
         .child(
             div()
                 .flex_1()
@@ -1158,28 +1263,232 @@ fn render_tree_row(
                 .child(name_el)
                 .child(count_chip),
         )
+        .child(right_group)
+}
+
+fn render_inline_creating_row(
+    creating: &CreatingEntryState,
+    theme: &'static ThemeTokens,
+) -> gpui::Div {
+    let colors = &theme.colors;
+    let icon = match creating.kind {
+        CreateEntryKind::File => UiIcon::FileCode,
+        CreateEntryKind::Folder => UiIcon::FolderOpen,
+    };
+    let prefix = if creating.parent_dir.is_empty() {
+        "/".to_owned()
+    } else {
+        format!("{}/", creating.parent_dir)
+    };
+
+    div()
+        .w_full()
+        .h(px(26.0))
+        .px(px(theme.spacing.lg))
+        .bg(colors.bg_elevated)
+        .border_b_1()
+        .border_color(colors.cyan)
+        .flex()
+        .flex_row()
+        .items_center()
+        .gap(px(theme.spacing.xs))
+        .child(render_icon(icon, 13.0, colors.cyan))
         .child(
             div()
-                .flex_shrink_0()
+                .font_family(crate::theme::FONT_FAMILY_MONO)
+                .text_xs()
+                .text_color(colors.text_muted)
+                .child(SharedString::from(prefix)),
+        )
+        .child(
+            div()
+                .flex_1()
+                .min_w(px(60.0))
+                .h(px(20.0))
+                .px(px(theme.spacing.xs))
+                .rounded(px(theme.radius.sm))
+                .bg(colors.bg_app)
+                .border_1()
+                .border_color(colors.cyan)
+                .flex()
+                .items_center()
+                .font_family(crate::theme::FONT_FAMILY_MONO)
+                .text_xs()
+                .text_color(colors.text_primary)
+                .child(SharedString::from(format!("{}▏", creating.draft_name))),
+        )
+        .child(
+            div()
+                .font_family(crate::theme::FONT_FAMILY_MONO)
+                .text_xs()
+                .text_color(colors.text_muted)
+                .child("↵ · Esc"),
+        )
+}
+
+fn render_tree_context_menu_overlay(
+    menu: &TreeContextMenuState,
+    labels: &'static UiLabels,
+    theme: &'static ThemeTokens,
+    callbacks: &TreeCallbacks,
+) -> gpui::AnyElement {
+    let colors = &theme.colors;
+    let parent_dir = if menu.is_dir {
+        menu.target_path.clone()
+    } else {
+        menu.target_path.rsplit_once('/').map_or_else(String::new, |(p, _)| p.to_owned())
+    };
+    let parent_for_folder = parent_dir.clone();
+    let target_ren = menu.target_path.clone();
+    let target_del = menu.target_path.clone();
+
+    let mut card = div()
+        .id("tree-context-menu-card")
+        .on_mouse_down(gpui::MouseButton::Left, |_ev, _win, cx| {
+            cx.stop_propagation();
+        })
+        .on_click(|_ev, _win, cx| {
+            cx.stop_propagation();
+        })
+        .w(px(210.0))
+        .p(px(theme.spacing.xs))
+        .rounded(px(theme.radius.md))
+        .bg(colors.bg_elevated)
+        .border_1()
+        .border_color(colors.border_active)
+        .flex()
+        .flex_col()
+        .gap(px(2.0))
+        .child(render_ctx_menu_item(
+            "ctx-menu-new-file",
+            UiIcon::Plus,
+            labels.ctx_menu_new_file,
+            "",
+            false,
+            theme,
+            callbacks.start_create_file.clone(),
+            parent_dir,
+        ))
+        .child(render_ctx_menu_item(
+            "ctx-menu-new-folder",
+            UiIcon::FolderOpen,
+            labels.ctx_menu_new_folder,
+            "",
+            false,
+            theme,
+            callbacks.start_create_folder.clone(),
+            parent_for_folder,
+        ));
+
+    if !menu.target_path.is_empty() {
+        card = card
+            .child(div().w_full().h(px(1.0)).my(px(2.0)).bg(colors.border))
+            .child(render_ctx_menu_item(
+                "ctx-menu-rename",
+                UiIcon::Pencil,
+                labels.ctx_menu_rename,
+                "F2",
+                false,
+                theme,
+                callbacks.start_rename_path.clone(),
+                target_ren,
+            ))
+            .child(render_ctx_menu_item(
+                "ctx-menu-delete",
+                UiIcon::Trash,
+                labels.ctx_menu_delete,
+                "Del",
+                true,
+                theme,
+                callbacks.delete_path.clone(),
+                target_del,
+            ));
+    }
+
+    let menu_x = (menu.x - 48.0).clamp(8.0, 220.0);
+    let menu_y = (menu.y - 40.0).clamp(8.0, 480.0);
+
+    let mut backdrop = div()
+        .id("tree-context-menu-backdrop")
+        .absolute()
+        .top_0()
+        .left_0()
+        .size_full()
+        .child(div().absolute().left(px(menu_x)).top(px(menu_y)).child(card));
+
+    if let Some(ref close_cb) = callbacks.close_context_menu {
+        let cb = Arc::clone(close_cb);
+        backdrop = backdrop.on_click(move |ev, w, c| cb(ev, w, c));
+    }
+
+    backdrop.into_any_element()
+}
+
+#[allow(clippy::too_many_arguments)]
+fn render_ctx_menu_item(
+    id: &'static str,
+    icon: UiIcon,
+    label: &'static str,
+    shortcut: &'static str,
+    is_danger: bool,
+    theme: &'static ThemeTokens,
+    callback: Option<TreePathHandler>,
+    target_arg: String,
+) -> gpui::Stateful<gpui::Div> {
+    let colors = &theme.colors;
+    let hover_bg = colors.bg_hover;
+    let fg = if is_danger { colors.danger } else { colors.text_primary };
+    let icon_col = if is_danger { colors.danger } else { colors.text_secondary };
+
+    let mut row = div()
+        .id(id)
+        .w_full()
+        .h(px(26.0))
+        .px(px(theme.spacing.sm))
+        .rounded(px(theme.radius.sm))
+        .cursor_pointer()
+        .hover(move |s| s.bg(hover_bg))
+        .flex()
+        .flex_row()
+        .items_center()
+        .justify_between()
+        .child(
+            div()
                 .flex()
                 .flex_row()
                 .items_center()
-                .gap(px(theme.spacing.xs))
-                .child(secret_unlock_btn)
+                .gap(px(theme.spacing.sm))
+                .child(render_icon(icon, 13.0, icon_col))
                 .child(
                     div()
-                        .font_family(crate::theme::FONT_FAMILY_MONO)
+                        .font_family(crate::theme::FONT_FAMILY_UI)
                         .text_xs()
-                        .text_color(node_size_heatmap_color(node, colors))
-                        .child(size_label),
+                        .text_color(fg)
+                        .child(label),
                 ),
         )
+        .child(
+            div()
+                .font_family(crate::theme::FONT_FAMILY_MONO)
+                .text_xs()
+                .text_color(colors.text_muted)
+                .child(shortcut),
+        );
+
+    if let Some(cb) = callback {
+        row = row.on_click(move |_ev, win, cx| {
+            cx.stop_propagation();
+            cb(&target_arg, win, cx);
+        });
+    }
+    row
 }
 
 fn build_tree_row_interactive_cells(
     row_idx: usize,
     node: &FlatTreeNode,
     is_focused: bool,
+    rename_draft: Option<&str>,
     theme: &'static ThemeTokens,
     callbacks: &TreeCallbacks,
 ) -> (gpui::Stateful<gpui::Div>, gpui::Stateful<gpui::Div>, gpui::Stateful<gpui::Div>) {
@@ -1232,6 +1541,26 @@ fn build_tree_row_interactive_cells(
         });
     }
 
+    if let Some(draft) = rename_draft {
+        let rename_box = div()
+            .id(("tree-inline-rename-cell", row_idx))
+            .flex_1()
+            .min_w(px(96.0))
+            .h(px(20.0))
+            .px(px(theme.spacing.xs))
+            .rounded(px(theme.radius.sm))
+            .border_1()
+            .border_color(colors.cyan)
+            .bg(colors.bg_app)
+            .flex()
+            .items_center()
+            .font_family(crate::theme::FONT_FAMILY_MONO)
+            .text_xs()
+            .text_color(colors.text_primary)
+            .child(SharedString::from(format!("{draft}▏")));
+        return (chevron_el, check_el, rename_box);
+    }
+
     let mut name_el = div()
         .id(("tree-label", row_idx))
         .overflow_hidden()
@@ -1247,7 +1576,12 @@ fn build_tree_row_interactive_cells(
         .child(SharedString::from(node.display_name.clone()));
 
     if is_dir {
-        if let Some(ref expand_fn) = callbacks.toggle_expand {
+        if let Some(ref folder_click_fn) = callbacks.click_folder_label {
+            let cb = Arc::clone(folder_click_fn);
+            name_el = name_el.on_click(move |_ev, win, cx| {
+                cb(&path_for_label, win, cx);
+            });
+        } else if let Some(ref expand_fn) = callbacks.toggle_expand {
             let cb = Arc::clone(expand_fn);
             name_el = name_el.on_click(move |_ev, win, cx| {
                 cb(&path_for_label, win, cx);

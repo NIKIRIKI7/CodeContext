@@ -17,6 +17,7 @@ use core::packing::services::pack_service::PackService;
 use core::preset::models::preset::PROJECT_CONFIG_FILE_NAME;
 use core::preset::services::preset_service::PresetService;
 use core::shared_kernel::execution::cancel_token::CancelToken;
+use core::system::plugins::protocol::PluginHostPort as _;
 use core::system::ports::hotkey::{
     GlobalHotkeyPort as _, HotkeyKey, HotkeyModifiers, HotkeyRegistrationStatus, HotkeyShortcut,
 };
@@ -24,6 +25,7 @@ use core::system::ports::ipc::{
     IpcCommand, MAX_IPC_FRAME_BYTES, PrimaryElectionResult, SingleInstanceIpcPort as _,
 };
 use core::system::ports::shell::{ShellIntegrationPort, ShellMenuConfig, ShellRegistrationStatus};
+use core::system::ports::updater::InstallRequestOptions;
 use core::system::ports::updater::{
     EMBEDDED_RELEASE_PUBLIC_KEY_HEX, GitHostKind, PreReleaseTag, ReleaseArtifact, ReleaseManifest,
     ReleaseProviderSpec, SelfInstallStatus, SemanticVersion, UpdateChannel, UpdateStage,
@@ -31,9 +33,10 @@ use core::system::ports::updater::{
 };
 use platform::{
     InMemoryClipboard, IpcEndpointConfig, LinuxShellImp, MacOsShellImp, SystemGlobalHotkey,
-    SystemSingleInstanceIpc, SystemUpdater, WindowsShellImp, build_linux_xdg_manifest,
-    build_macos_workflow_manifest, build_windows_registry_manifest, compute_sha256_hex,
-    current_target_triple, decode_ipc_frame, encode_ipc_frame, resolve_headless_target_path,
+    SystemPluginHost, SystemSingleInstanceIpc, SystemUpdater, WindowsShellImp,
+    build_linux_xdg_manifest, build_macos_workflow_manifest, build_windows_registry_manifest,
+    compute_sha256_hex, current_target_triple, decode_ipc_frame, encode_ipc_frame,
+    extract_rust_public_signatures, probe_system_environment, resolve_headless_target_path,
     sanitize_executable_path, sanitize_explorer_path_arg, sign_release_payload,
 };
 use proptest::prelude::*;
@@ -413,6 +416,36 @@ fn test_10_updater_channels_signature_sha256_and_self_install_lifecycle() {
     };
     updater.set_simulated_staged_payload(tampered_manifest, b"tampered".to_vec());
     assert!(updater.apply_staged_update().is_err());
+
+    let probe = probe_system_environment();
+    assert_ne!(probe.os_name, "");
+    assert!(probe.logical_cores >= 1);
+
+    let install_dir = temp.path().join("ModularInstall");
+    let receipt = updater
+        .execute_modular_install(&InstallRequestOptions {
+            target_dir: install_dir.clone(),
+            edition: "lite".to_owned(),
+            register_context_menu: true,
+            add_to_user_path: true,
+            enable_change_applier: false,
+            enable_terminal_runner: false,
+        })
+        .unwrap();
+    assert_eq!(receipt.edition, "lite");
+    assert!(install_dir.join("install-manifest.json").exists());
+    let removed = updater.execute_uninstall(false).unwrap();
+    assert!(removed >= 1);
+
+    let plugin_host = SystemPluginHost::new_in_memory();
+    let plugins = plugin_host.list_plugins();
+    assert_eq!(plugins.len(), 2);
+    plugin_host.set_plugin_enabled("builtin.ast_signatures", true).unwrap();
+    let skeleton = extract_rust_public_signatures(
+        "pub struct Demo {\n    pub x: u32,\n}\npub fn compute(a: u32) -> u32 {\n    let y = a + 1;\n    y\n}\n",
+    );
+    assert!(skeleton.contains("pub fn compute(a: u32) -> u32 { /* ... */ }"));
+    assert!(!skeleton.contains("let y = a + 1;"));
 }
 
 proptest! {

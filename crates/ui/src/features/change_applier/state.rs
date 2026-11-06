@@ -219,6 +219,23 @@ impl ChangeApplierState {
         self.refresh_selected_file_buffer();
     }
 
+    pub fn move_diff_line_edit(&mut self, delta: isize) {
+        let Some((curr_idx, _)) = self.editing_diff_line else {
+            return;
+        };
+        self.commit_diff_line_edit();
+        let total = self.selected_file_buffer.line_count();
+        if total == 0 {
+            return;
+        }
+        let next_idx = if delta < 0 {
+            curr_idx.saturating_sub(delta.unsigned_abs())
+        } else {
+            (curr_idx + delta.unsigned_abs()).min(total - 1)
+        };
+        self.start_editing_diff_line(next_idx);
+    }
+
     #[inline]
     pub fn suggested_commands(&self) -> &[String] {
         &self.suggested_commands

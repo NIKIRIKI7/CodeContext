@@ -81,6 +81,57 @@ impl MainWindowView {
             }
             return true;
         }
+        if self.settings_state.read(cx).editing_json_line().is_some() {
+            cx.stop_propagation();
+            if key.eq_ignore_ascii_case("escape") {
+                self.settings_state.update(cx, |s, cx| {
+                    s.cancel_editing_json_line();
+                    cx.notify();
+                });
+                return true;
+            }
+            if key.eq_ignore_ascii_case("enter") {
+                self.settings_state.update(cx, |s, cx| {
+                    s.commit_json_line_edit();
+                    cx.notify();
+                });
+                return true;
+            }
+            if key.eq_ignore_ascii_case("up") || key.eq_ignore_ascii_case("arrowup") {
+                self.settings_state.update(cx, |s, cx| {
+                    s.move_json_line_edit(-1);
+                    cx.notify();
+                });
+                return true;
+            }
+            if key.eq_ignore_ascii_case("down") || key.eq_ignore_ascii_case("arrowdown") {
+                self.settings_state.update(cx, |s, cx| {
+                    s.move_json_line_edit(1);
+                    cx.notify();
+                });
+                return true;
+            }
+            if key.eq_ignore_ascii_case("backspace") {
+                self.settings_state.update(cx, |s, cx| {
+                    if s.pop_json_line_char() {
+                        cx.notify();
+                    }
+                });
+                return true;
+            }
+            let mods = event.keystroke.modifiers;
+            if !mods.control
+                && !mods.alt
+                && !mods.platform
+                && let Some(ch) = extract_printable_regex_char(event)
+            {
+                self.settings_state.update(cx, |s, cx| {
+                    s.append_json_line_char(ch);
+                    cx.notify();
+                });
+            }
+            return true;
+        }
         if key.eq_ignore_ascii_case("escape")
             && self.settings_state.read(cx).is_hotkeys_modal_open()
         {
@@ -392,112 +443,106 @@ impl MainWindowView {
         primary_mod: bool,
         cx: &mut Context<Self>,
     ) -> bool {
-        let mods = event.keystroke.modifiers;
-        if self.packer_state.read(cx).renaming_path().is_some() {
-            if key.eq_ignore_ascii_case("escape") {
-                self.packer_state.update(cx, |p, cx| {
-                    p.cancel_renaming_path();
-                    cx.notify();
-                });
-                return true;
-            }
-            if key.eq_ignore_ascii_case("enter") {
-                self.packer_state.update(cx, |p, cx| {
-                    let _ = p.commit_rename_on_disk();
-                    cx.notify();
-                });
-                return true;
-            }
-            if key.eq_ignore_ascii_case("backspace") {
-                self.packer_state.update(cx, |p, cx| {
-                    if p.pop_rename_char() {
-                        cx.notify();
-                    }
-                });
-                return true;
-            }
-            if !primary_mod
-                && !mods.alt
-                && let Some(ch) = extract_printable_regex_char(event)
-            {
-                self.packer_state.update(cx, |p, cx| {
-                    p.append_rename_char(ch);
-                    cx.notify();
-                });
-            }
+        if self.try_handle_inline_tree_rename_key(event, key, primary_mod, cx) {
             return true;
         }
-
+        let mods = event.keystroke.modifiers;
         if self.packer_state.read(cx).editing_preview_line().is_some() {
-            if key.eq_ignore_ascii_case("escape") {
-                self.packer_state.update(cx, |p, cx| {
+            self.packer_state.update(cx, |p, cx| {
+                if key.eq_ignore_ascii_case("escape") {
                     p.cancel_editing_preview_line();
-                    cx.notify();
-                });
-                return true;
-            }
-            if key.eq_ignore_ascii_case("enter") {
-                self.packer_state.update(cx, |p, cx| {
+                } else if key.eq_ignore_ascii_case("enter") {
                     p.commit_preview_line_edit();
-                    cx.notify();
-                });
-                return true;
-            }
-            if key.eq_ignore_ascii_case("backspace") {
-                self.packer_state.update(cx, |p, cx| {
-                    if p.pop_preview_line_char() {
-                        cx.notify();
-                    }
-                });
-                return true;
-            }
-            if !primary_mod
-                && !mods.alt
-                && let Some(ch) = extract_printable_regex_char(event)
-            {
-                self.packer_state.update(cx, |p, cx| {
+                } else if key.eq_ignore_ascii_case("up") || key.eq_ignore_ascii_case("arrowup") {
+                    p.move_preview_line_edit(-1);
+                } else if key.eq_ignore_ascii_case("down") || key.eq_ignore_ascii_case("arrowdown")
+                {
+                    p.move_preview_line_edit(1);
+                } else if key.eq_ignore_ascii_case("backspace") {
+                    let _ = p.pop_preview_line_char();
+                } else if !primary_mod
+                    && !mods.alt
+                    && let Some(ch) = extract_printable_regex_char(event)
+                {
                     p.append_preview_line_char(ch);
-                    cx.notify();
-                });
-            }
+                }
+                cx.notify();
+            });
             return true;
         }
 
         if self.applier_state.read(cx).editing_diff_line().is_some() {
-            if key.eq_ignore_ascii_case("escape") {
-                self.applier_state.update(cx, |a, cx| {
+            self.applier_state.update(cx, |a, cx| {
+                if key.eq_ignore_ascii_case("escape") {
                     a.cancel_editing_diff_line();
-                    cx.notify();
-                });
-                return true;
-            }
-            if key.eq_ignore_ascii_case("enter") {
-                self.applier_state.update(cx, |a, cx| {
+                } else if key.eq_ignore_ascii_case("enter") {
                     a.commit_diff_line_edit();
-                    cx.notify();
-                });
-                return true;
-            }
-            if key.eq_ignore_ascii_case("backspace") {
-                self.applier_state.update(cx, |a, cx| {
-                    if a.pop_diff_line_char() {
-                        cx.notify();
-                    }
-                });
-                return true;
-            }
-            if !primary_mod
-                && !mods.alt
-                && let Some(ch) = extract_printable_regex_char(event)
-            {
-                self.applier_state.update(cx, |a, cx| {
+                } else if key.eq_ignore_ascii_case("up") || key.eq_ignore_ascii_case("arrowup") {
+                    a.move_diff_line_edit(-1);
+                } else if key.eq_ignore_ascii_case("down") || key.eq_ignore_ascii_case("arrowdown")
+                {
+                    a.move_diff_line_edit(1);
+                } else if key.eq_ignore_ascii_case("backspace") {
+                    let _ = a.pop_diff_line_char();
+                } else if !primary_mod
+                    && !mods.alt
+                    && let Some(ch) = extract_printable_regex_char(event)
+                {
                     a.append_diff_line_char(ch);
-                    cx.notify();
-                });
-            }
+                }
+                cx.notify();
+            });
             return true;
         }
         false
+    }
+
+    fn try_handle_inline_tree_rename_key(
+        &self,
+        event: &KeyDownEvent,
+        key: &str,
+        primary_mod: bool,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        if self.packer_state.read(cx).creating_entry().is_some() {
+            let mods = event.keystroke.modifiers;
+            self.packer_state.update(cx, |p, cx| {
+                if key.eq_ignore_ascii_case("escape") {
+                    p.cancel_creating_entry();
+                } else if key.eq_ignore_ascii_case("enter") {
+                    let _ = p.commit_creating_entry_on_disk();
+                } else if key.eq_ignore_ascii_case("backspace") {
+                    let _ = p.pop_creating_char();
+                } else if !primary_mod
+                    && !mods.alt
+                    && let Some(ch) = extract_printable_regex_char(event)
+                {
+                    p.append_creating_char(ch);
+                }
+                cx.notify();
+            });
+            return true;
+        }
+        if self.packer_state.read(cx).renaming_path().is_none() {
+            return false;
+        }
+        let mods = event.keystroke.modifiers;
+        self.packer_state.update(cx, |p, cx| {
+            if key.eq_ignore_ascii_case("escape") {
+                p.cancel_renaming_path();
+            } else if key.eq_ignore_ascii_case("enter") {
+                let _ = p.commit_rename_on_disk();
+            } else if key.eq_ignore_ascii_case("backspace") {
+                let _ = p.pop_rename_char();
+            } else if !primary_mod
+                && !mods.alt
+                && let Some(ch) = extract_printable_regex_char(event)
+            {
+                p.append_rename_char(ch);
+            }
+            cx.notify();
+        });
+        true
     }
 
     fn try_handle_packer_modals_key(
@@ -805,6 +850,22 @@ impl MainWindowView {
             return false;
         }
 
+        if key.eq_ignore_ascii_case("f2") {
+            self.packer_state.update(cx, |p, cx| {
+                if p.start_renaming_focused_tree_node() {
+                    cx.notify();
+                }
+            });
+            return true;
+        }
+        if key.eq_ignore_ascii_case("delete") {
+            self.packer_state.update(cx, |p, cx| {
+                if p.delete_focused_tree_node() {
+                    cx.notify();
+                }
+            });
+            return true;
+        }
         if key.eq_ignore_ascii_case("down") || key.eq_ignore_ascii_case("arrowdown") {
             self.packer_state.update(cx, |p, cx| {
                 if p.move_tree_focus_down() {

@@ -1,5 +1,6 @@
 mod desktop;
 mod lifecycle;
+mod plugins;
 mod shell;
 
 pub use desktop::clipboard::{InMemoryClipboard, SystemClipboard};
@@ -12,9 +13,10 @@ pub use lifecycle::ipc::{
 pub use lifecycle::updater::{
     SystemUpdater, atomic_swap_executable, canonical_install_binary_path, compute_sha256_hex,
     current_target_triple, is_valid_native_executable_bytes, parse_forge_releases_tags,
-    repair_corrupted_canonical_binary_if_needed, sign_release_payload, verify_payload_integrity,
-    verify_release_signature,
+    probe_system_environment, repair_corrupted_canonical_binary_if_needed, sign_release_payload,
+    verify_payload_integrity, verify_release_signature,
 };
+pub use plugins::host::{SystemPluginHost, extract_rust_public_signatures};
 pub use shell::{
     FileManifest, LinuxShellImp, MacOsShellImp, RegistryKeySpec, ShellFileArtifact,
     SystemShellIntegration, WINDOWS_DEFAULT_CLASSES_PREFIX, WindowsRegistryManifest,

@@ -14,13 +14,15 @@ use core::applying::values::patch_status::{PatchOperationKind, PatchResolutionSt
 use core::packing::ports::clipboard::{ClipboardPort, ClipboardPortError};
 use core::packing::services::pack_service::PackService;
 use core::preset::models::preset::Preset;
+use core::preset::models::resolution::{ConfigWarning, EditionProfile, GlobalConfig};
 use core::preset::services::preset_service::PresetService;
 use core::shared_kernel::execution::telemetry::TelemetryLog;
 use core::shared_kernel::fs::line_ending::LineEnding;
+use core::system::plugins::protocol::{PluginDescriptor, PluginHostPort as _};
 use gpui::Global;
 use platform::{
-    InMemoryClipboard, SystemClipboard, SystemGlobalHotkey, SystemShellIntegration,
-    SystemSingleInstanceIpc, SystemUpdater,
+    InMemoryClipboard, SystemClipboard, SystemGlobalHotkey, SystemPluginHost,
+    SystemShellIntegration, SystemSingleInstanceIpc, SystemUpdater,
 };
 use scanner::{IgnoreFileScanner, is_valid_regex_pattern};
 
@@ -102,6 +104,7 @@ pub struct AppContainerBuilder {
     hotkey: Option<SystemGlobalHotkey>,
     ipc: Option<SystemSingleInstanceIpc>,
     updater: Option<SystemUpdater>,
+    plugin_host: Option<SystemPluginHost>,
 }
 
 impl AppContainerBuilder {
@@ -152,6 +155,13 @@ impl AppContainerBuilder {
         self
     }
 
+    #[must_use]
+    #[inline]
+    pub fn with_plugin_host(mut self, plugin_host: SystemPluginHost) -> Self {
+        self.plugin_host = Some(plugin_host);
+        self
+    }
+
     pub fn build(self) -> AppContainer {
         let clipboard = self.clipboard.unwrap_or_default();
         let config_loader = self
@@ -161,6 +171,7 @@ impl AppContainerBuilder {
         let hotkey = self.hotkey.unwrap_or_default();
         let ipc = self.ipc.unwrap_or_default();
         let updater = self.updater.unwrap_or_default();
+        let plugin_host = self.plugin_host.unwrap_or_default();
         let scanner = IgnoreFileScanner::new();
         let applier = ResponseApplier::new();
         let telemetry = Arc::new(TelemetryLog::new());
@@ -176,6 +187,7 @@ impl AppContainerBuilder {
             hotkey,
             ipc,
             updater,
+            plugin_host,
         }
     }
 }
@@ -191,6 +203,7 @@ pub struct AppContainer {
     hotkey: SystemGlobalHotkey,
     ipc: SystemSingleInstanceIpc,
     updater: SystemUpdater,
+    plugin_host: SystemPluginHost,
 }
 
 impl Global for AppContainer {}
@@ -221,6 +234,7 @@ impl AppContainer {
             .with_hotkey(SystemGlobalHotkey::new_in_memory())
             .with_ipc(SystemSingleInstanceIpc::new_in_memory())
             .with_updater(SystemUpdater::new_in_memory())
+            .with_plugin_host(SystemPluginHost::new_in_memory())
             .build()
     }
 
@@ -267,6 +281,116 @@ impl AppContainer {
     #[inline]
     pub const fn updater(&self) -> &SystemUpdater {
         &self.updater
+    }
+
+    #[inline]
+    pub const fn plugin_host(&self) -> &SystemPluginHost {
+        &self.plugin_host
+    }
+
+    #[inline]
+    pub fn list_plugins(&self) -> Vec<PluginDescriptor> {
+        self.plugin_host.list_plugins()
+    }
+
+    pub fn export_global_settings_json(&self) -> String {
+        let cfg = self.preset_service.load_global_config();
+        LayeredConfigLoader::export_global_json_string(&cfg).unwrap_or_default()
+    }
+
+    pub fn apply_global_settings_json(
+        &self,
+        raw_json: &str,
+    ) -> Result<(GlobalConfig, Vec<ConfigWarning>), String> {
+        self.preset_service
+            .repo()
+            .parse_and_save_global_json_str(raw_json)
+            .map_err(|e| e.to_string())
+    }
+
+    pub fn create_project_file(project_root: &Path, rel_path: &str) -> Result<(), String> {
+        let abs_target =
+            ResponseApplier::validate_path(project_root, rel_path).map_err(|e| e.to_string())?;
+        if abs_target.exists() {
+            return Ok(());
+        }
+        ResponseApplier::apply_files(
+            project_root,
+            &[ParsedFile {
+                rel_path: rel_path.to_owned(),
+                content: String::new(),
+                is_truncated: false,
+            }],
+            false,
+        )
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+    }
+
+    pub fn create_project_folder(project_root: &Path, rel_path: &str) -> Result<(), String> {
+        let abs_target =
+            ResponseApplier::validate_path(project_root, rel_path).map_err(|e| e.to_string())?;
+        std::fs::create_dir_all(abs_target).map_err(|e| e.to_string())
+    }
+
+    pub fn delete_project_entry_with_backup(
+        project_root: &Path,
+        rel_path: &str,
+    ) -> Result<(), String> {
+        let abs_target =
+            ResponseApplier::validate_path(project_root, rel_path).map_err(|e| e.to_string())?;
+        if abs_target.is_dir() {
+            let mut files_in_dir = Vec::new();
+            collect_rel_files_in_dir(project_root, &abs_target, &mut files_in_dir);
+            if !files_in_dir.is_empty() {
+                let _ = ResponseApplier::apply_files_and_deletions(
+                    project_root,
+                    &[],
+                    &files_in_dir,
+                    true,
+                );
+            }
+            std::fs::remove_dir_all(&abs_target).map_err(|e| e.to_string())
+        } else if abs_target.is_file() {
+            ResponseApplier::apply_files_and_deletions(
+                project_root,
+                &[],
+                &[rel_path.to_owned()],
+                true,
+            )
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+        } else {
+            Ok(())
+        }
+    }
+
+    pub fn perform_modular_setup(
+        &self,
+        edition: EditionProfile,
+        custom_dir: Option<PathBuf>,
+        register_shell: bool,
+    ) -> Result<PathBuf, String> {
+        use core::system::ports::shell::{ShellIntegrationPort as _, ShellMenuConfig};
+        use core::system::ports::updater::{InstallRequestOptions, UpdaterPort as _};
+
+        let _ = self.preset_service.apply_edition_profile(edition);
+        let probe = self.updater.probe_system();
+        let target_dir = custom_dir.unwrap_or(probe.default_install_dir);
+        let opts = InstallRequestOptions {
+            target_dir,
+            edition: edition.as_str().to_owned(),
+            register_context_menu: register_shell,
+            add_to_user_path: true,
+            enable_change_applier: edition != EditionProfile::Lite,
+            enable_terminal_runner: edition != EditionProfile::Lite,
+        };
+        let receipt = self.updater.execute_modular_install(&opts).map_err(|e| e.to_string())?;
+        if register_shell {
+            let cfg = ShellMenuConfig::with_executable(receipt.binary_path.clone());
+            let _ = self.shell_integration.register_with_config(&cfg);
+        }
+        Ok(receipt.binary_path)
     }
 
     #[inline]
@@ -549,6 +673,22 @@ impl AppContainer {
             }
         }
         freed
+    }
+}
+
+fn collect_rel_files_in_dir(root: &Path, dir: &Path, out: &mut Vec<String>) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let p = entry.path();
+        if p.is_dir() {
+            collect_rel_files_in_dir(root, &p, out);
+        } else if p.is_file()
+            && let Ok(rel) = p.strip_prefix(root)
+        {
+            out.push(rel.to_string_lossy().replace('\\', "/"));
+        }
     }
 }
 

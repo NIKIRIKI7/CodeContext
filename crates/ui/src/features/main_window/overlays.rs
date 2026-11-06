@@ -29,6 +29,7 @@ impl MainWindowView {
     pub(crate) fn render_top_bar(
         &self,
         active_tab: WorkspaceTab,
+        show_fallback_settings: bool,
         locale: AppLocale,
         theme: &'static ThemeTokens,
         project_display: &str,
@@ -40,6 +41,19 @@ impl MainWindowView {
             WorkspaceTab::ContextPacker => labels.tab_context_packer,
             WorkspaceTab::ChangeApplier => labels.tab_change_applier,
         };
+
+        let fallback_settings_opt = show_fallback_settings.then(|| {
+            let state_settings_top = self.state.clone();
+            UiButton::icon_only("top-bar-fallback-settings-btn", UiIcon::Settings)
+                .variant(ButtonVariant::Ghost)
+                .with_theme(theme)
+                .on_click(move |_ev, _win, cx| {
+                    state_settings_top.update(cx, |s, cx| {
+                        s.toggle_settings();
+                        cx.notify();
+                    });
+                })
+        });
 
         div()
             .w_full()
@@ -57,10 +71,18 @@ impl MainWindowView {
             .child(left_controls)
             .child(
                 div()
-                    .font_family(FONT_FAMILY_MONO)
-                    .text_xs()
-                    .text_color(theme.colors.text_muted)
-                    .child(mode_title),
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .gap(px(theme.spacing.sm))
+                    .child(
+                        div()
+                            .font_family(FONT_FAMILY_MONO)
+                            .text_xs()
+                            .text_color(theme.colors.text_muted)
+                            .child(mode_title),
+                    )
+                    .children(fallback_settings_opt),
             )
     }
 
@@ -736,7 +758,7 @@ impl MainWindowView {
             let q = cmd_q.trim().to_ascii_lowercase();
             let cmds = [
                 "copy", "apply", "undo", "rescan", "terminal", "theme", "lang", "prompt",
-                "filters", "settings",
+                "filters", "setup", "settings",
             ];
             let matched: Vec<&str> = cmds.into_iter().filter(|c| c.contains(&q)).collect();
             let chosen = matched.get(sel_idx).copied().unwrap_or("copy");
@@ -790,6 +812,16 @@ impl MainWindowView {
                         cx.notify();
                     });
                 }
+                "setup" => {
+                    self.settings_state.update(cx, |ss, cx| {
+                        ss.open_setup_wizard();
+                        cx.notify();
+                    });
+                    self.state.update(cx, |s, cx| {
+                        s.set_settings_open(true);
+                        cx.notify();
+                    });
+                }
                 _ => {
                     self.state.update(cx, |s, cx| {
                         s.set_settings_open(true);
@@ -824,86 +856,24 @@ impl MainWindowView {
     fn collect_command_palette_items(
         &self,
         trimmed: &str,
-        is_en: bool,
+        labels: &'static crate::locale::UiLabels,
         cx: &Context<Self>,
     ) -> Vec<(String, String)> {
         let mut items: Vec<(String, String)> = Vec::with_capacity(10);
         if let Some(cmd_q) = trimmed.strip_prefix('>') {
             let q = cmd_q.trim().to_ascii_lowercase();
             let all_cmds = [
-                (
-                    "> copy",
-                    if is_en {
-                        "Copy Packed Context"
-                    } else {
-                        "Копировать контекст"
-                    },
-                ),
-                (
-                    "> apply",
-                    if is_en {
-                        "Apply AI Changes"
-                    } else {
-                        "Применить патчи на диск"
-                    },
-                ),
-                (
-                    "> undo",
-                    if is_en {
-                        "Undo Last Apply"
-                    } else {
-                        "Откатить последний патч"
-                    },
-                ),
-                (
-                    "> rescan",
-                    if is_en {
-                        "Rescan Project"
-                    } else {
-                        "Обновить индекс файлов"
-                    },
-                ),
-                (
-                    "> terminal",
-                    if is_en {
-                        "Toggle Command Line"
-                    } else {
-                        "Открыть командную строку"
-                    },
-                ),
-                (
-                    "> prompt",
-                    if is_en {
-                        "System Prompts Builder"
-                    } else {
-                        "Конструктор промптов"
-                    },
-                ),
-                (
-                    "> filters",
-                    if is_en {
-                        "File & Regex Filters"
-                    } else {
-                        "Фильтры файлов и Regex"
-                    },
-                ),
-                (
-                    "> theme",
-                    if is_en {
-                        "Toggle Dark / Light Theme"
-                    } else {
-                        "Переключить тему"
-                    },
-                ),
-                (
-                    "> lang",
-                    if is_en {
-                        "Switch Language RU / EN"
-                    } else {
-                        "Переключить язык RU / EN"
-                    },
-                ),
-                ("> settings", if is_en { "Open Settings" } else { "Открыть настройки" }),
+                ("> copy", labels.cmd_desc_copy),
+                ("> apply", labels.cmd_desc_apply),
+                ("> undo", labels.cmd_desc_undo),
+                ("> rescan", labels.cmd_desc_rescan),
+                ("> terminal", labels.cmd_desc_terminal),
+                ("> prompt", labels.cmd_desc_prompt),
+                ("> filters", labels.cmd_desc_filters),
+                ("> theme", labels.cmd_desc_theme),
+                ("> lang", labels.cmd_desc_lang),
+                ("> setup", labels.cmd_desc_setup),
+                ("> settings", labels.cmd_desc_settings),
             ];
             for (code, desc) in all_cmds {
                 if q.is_empty() || code.contains(&q) || desc.to_lowercase().contains(&q) {
@@ -932,11 +902,11 @@ impl MainWindowView {
         cx: &Context<Self>,
     ) -> impl IntoElement + use<> {
         let colors = &theme.colors;
-        let is_en = locale == AppLocale::En;
+        let labels = locale.labels();
         let cp = self.state.read(cx).command_palette().clone();
         let trimmed = cp.query.trim();
         let is_cmd_mode = trimmed.starts_with('>');
-        let items = self.collect_command_palette_items(trimmed, is_en, cx);
+        let items = self.collect_command_palette_items(trimmed, labels, cx);
 
         let mut list = div().w_full().flex().flex_col().gap(px(2.0));
         for (idx, (title, subtitle)) in items.into_iter().enumerate() {
@@ -985,22 +955,16 @@ impl MainWindowView {
 
         let state_close = self.state.clone();
         let placeholder = if is_cmd_mode {
-            if is_en { "Type a command..." } else { "Введите команду..." }
-        } else if is_en {
-            "Search files by name or type '>' for commands..."
+            labels.cmd_palette_placeholder_cmd
         } else {
-            "Поиск файла или введите '>' для команд..."
+            labels.cmd_palette_placeholder_file
         };
 
         ModalDialogShell::new(
             "cmd-palette-backdrop",
             "cmd-palette-dialog",
             "cmd-palette-close-btn",
-            if is_en {
-                "Command Palette (Ctrl+P)"
-            } else {
-                "Командная палитра (Ctrl+P)"
-            },
+            labels.cmd_palette_title,
         )
         .width(520.0)
         .leading_icon(UiIcon::Search)

@@ -19,6 +19,7 @@ use core::packing::aggregates::file_entry::FileEntry;
 use core::packing::aggregates::project::Project;
 use core::packing::ports::clipboard::ClipboardPort as _;
 use core::preset::models::preset::{FolderOverrideMode, PROJECT_CONFIG_FILE_NAME, Preset};
+use core::preset::models::resolution::{EditionProfile, FeatureFlag, UiChromeSetting};
 use core::preset::models::template::SystemPromptMode;
 use core::shared_kernel::fs::file_kind::FileKind;
 use core::system::ports::hotkey::HotkeyShortcut;
@@ -192,6 +193,89 @@ fn interactive_search_master_checkbox_and_modals_work_ergonomically() {
 }
 
 #[test]
+fn vscode_explorer_crud_and_inplace_line_editing_work() {
+    let temp = TempDir::new().unwrap();
+    let global_cfg = temp.path().join("global/config.json");
+    let root = temp.path().join("workspace");
+    fs::create_dir_all(root.join("src")).unwrap();
+    fs::write(root.join("src/alpha.rs"), "pub fn alpha() {}\n").unwrap();
+    fs::write(root.join("src/beta.rs"), "pub fn beta() {}\n").unwrap();
+
+    let container = AppContainer::for_testing(global_cfg);
+    let mut packer = ContextPackerState::new(container, Some(root));
+
+    // VS Code inline rename edits only local filename while preserving parent directory
+    packer.start_renaming_path("src/alpha.rs");
+    assert_eq!(packer.renaming_path(), Some(&("src/alpha.rs".to_owned(), "alpha.rs".to_owned())));
+    for _ in 0.."alpha.rs".len() {
+        packer.pop_rename_char();
+    }
+    for ch in "alpha_renamed.rs".chars() {
+        packer.append_rename_char(ch);
+    }
+    packer.commit_rename_on_disk().unwrap();
+    assert!(
+        packer
+            .tree_projection()
+            .visible_nodes()
+            .iter()
+            .any(|n| n.display_name == "alpha_renamed.rs")
+    );
+
+    // Transactional delete creates a backup that can be undone via Ctrl+Z
+    packer.delete_path_on_disk("src/alpha_renamed.rs").unwrap();
+    assert!(
+        !packer
+            .tree_projection()
+            .visible_nodes()
+            .iter()
+            .any(|n| n.display_name == "alpha_renamed.rs")
+    );
+
+    // VS Code Explorer CRUD: create folder and create file inside it, then rename the folder
+    packer.start_creating_entry(
+        "src",
+        ui::features::context_packer::components::file_tree::CreateEntryKind::Folder,
+    );
+    for ch in "new_domain".chars() {
+        packer.append_creating_char(ch);
+    }
+    let created_folder = packer.commit_creating_entry_on_disk().unwrap();
+    assert_eq!(created_folder, "src/new_domain");
+    assert!(
+        packer
+            .tree_projection()
+            .visible_nodes()
+            .iter()
+            .any(|n| n.is_dir() && n.path == "src/new_domain")
+    );
+
+    packer.start_creating_entry(
+        "src/new_domain",
+        ui::features::context_packer::components::file_tree::CreateEntryKind::File,
+    );
+    for ch in "entity.rs".chars() {
+        packer.append_creating_char(ch);
+    }
+    let created_file = packer.commit_creating_entry_on_disk().unwrap();
+    assert_eq!(created_file, "src/new_domain/entity.rs");
+    assert!(
+        packer
+            .tree_projection()
+            .visible_nodes()
+            .iter()
+            .any(|n| !n.is_dir() && n.path == "src/new_domain/entity.rs")
+    );
+
+    // In-place line editing in VirtualTextView with vertical arrow navigation
+    packer.start_editing_preview_line(0);
+    assert!(packer.editing_preview_line().is_some());
+    packer.move_preview_line_edit(1);
+    assert_eq!(packer.editing_preview_line().map(|(i, _)| i), Some(1));
+    packer.cancel_editing_preview_line();
+}
+
+#[test]
 fn scenario_a3_untrusted_project_config_raises_security_banner_and_blocks_secrets() {
     let temp = TempDir::new().unwrap();
     let global_cfg = temp.path().join("global/config.json");
@@ -333,6 +417,31 @@ fn global_hotkey_activation_auto_reads_and_deduplicates_clipboard_on_apply_tab()
 
     let rebind_st = settings.cycle_hotkey_preset().unwrap();
     assert!(rebind_st.is_active());
+
+    // Edition profiles (Full / Lite / Custom), FeatureFlags, and Zed-style live JSON editor
+    settings.select_edition_profile(EditionProfile::Lite).unwrap();
+    assert_eq!(settings.global_config().edition, EditionProfile::Lite);
+    assert!(settings.global_config().features.enable_change_applier);
+    assert!(!settings.global_config().features.enable_terminal_runner);
+    assert!(settings.global_config().ui_chrome.workspace.show_activity_rail);
+
+    settings.toggle_feature_flag(FeatureFlag::TerminalRunner).unwrap();
+    assert_eq!(settings.global_config().edition, EditionProfile::Custom);
+    assert!(settings.global_config().features.enable_terminal_runner);
+
+    settings.toggle_ui_chrome(UiChromeSetting::OptionsFooter).unwrap();
+    assert!(!settings.global_config().ui_chrome.workspace.show_options_footer);
+
+    settings.select_edition_profile(EditionProfile::Full).unwrap();
+    assert!(settings.global_config().ui_chrome.workspace.show_options_footer);
+
+    settings.toggle_json_editor_mode();
+    assert!(settings.is_json_editor_mode());
+    assert!(settings.json_buffer().line_count() > 5);
+    settings.start_editing_json_line(0);
+    settings.commit_json_line_edit();
+    assert!(settings.json_error().is_none());
+    settings.toggle_json_editor_mode();
 
     let mut main_state = MainWindowState::new();
     main_state.set_active_tab(WorkspaceTab::ChangeApplier);

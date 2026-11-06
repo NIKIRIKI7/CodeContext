@@ -214,6 +214,7 @@ pub struct VirtualTextView {
     id: ElementId,
     buffer: VirtualTextBuffer,
     selected_line: Option<usize>,
+    editing_line_draft: Option<String>,
     highlight_mode: LineHighlightMode,
     markers: HighlightMarkers,
     labels: &'static UiLabels,
@@ -238,6 +239,7 @@ impl VirtualTextView {
             id: id.into(),
             buffer,
             selected_line: None,
+            editing_line_draft: None,
             highlight_mode: LineHighlightMode::PackedContext,
             markers: HighlightMarkers::default(),
             labels: AppLocale::Ru.labels(),
@@ -251,6 +253,13 @@ impl VirtualTextView {
     #[inline]
     pub const fn with_selected_line(mut self, selected_line: Option<usize>) -> Self {
         self.selected_line = selected_line;
+        self
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn with_editing_line_draft(mut self, draft: Option<String>) -> Self {
+        self.editing_line_draft = draft;
         self
     }
 
@@ -305,43 +314,14 @@ impl RenderOnce for VirtualTextView {
         let total_lines = self.buffer.line_count();
 
         if total_lines == 0 {
-            let empty_hint = match self.highlight_mode {
-                LineHighlightMode::RawAiStream => self.labels.applier_empty_diff_hint,
-                LineHighlightMode::PackedContext | LineHighlightMode::UnifiedDiff => {
-                    self.labels.empty_preview_hint
-                }
-            };
-            return div()
-                .size_full()
-                .flex()
-                .flex_row()
-                .items_center()
-                .justify_center()
-                .p(px(theme.spacing.xl))
-                .bg(colors.bg_app)
-                .overflow_hidden()
-                .child(
-                    div()
-                        .flex_1()
-                        .min_w(px(0.0))
-                        .max_w(px(360.0))
-                        .p(px(theme.spacing.xl))
-                        .rounded(px(theme.radius.lg))
-                        .border_1()
-                        .border_color(colors.border)
-                        .bg(colors.bg_panel)
-                        .font_family(FONT_FAMILY_UI)
-                        .text_xs()
-                        .text_color(colors.text_muted)
-                        .child(empty_hint),
-                )
-                .into_any_element();
+            return render_empty_virtual_text_card(self.highlight_mode, self.labels, theme);
         }
 
         let buffer = self.buffer;
         let mode = self.highlight_mode;
         let markers = self.markers;
         let selected_line = self.selected_line;
+        let editing_line_draft = self.editing_line_draft;
         let on_line_click = self.on_line_click;
 
         let list = uniform_list(
@@ -356,7 +336,9 @@ impl RenderOnce for VirtualTextView {
                         classify_line_by_mode(line_text, mode, &markers, colors);
                     let is_selected = selected_line == Some(line_idx);
                     let row_bg = if is_selected { colors.bg_elevated } else { base_bg };
-                    let rendered_text = if is_clamped {
+                    let rendered_text = if is_selected && let Some(ref draft) = editing_line_draft {
+                        SharedString::from(format!("{draft}▏"))
+                    } else if is_clamped {
                         SharedString::from(format!("{line_text}{TRUNCATED_LINE_ELLIPSIS}"))
                     } else {
                         SharedString::from(line_text.to_owned())
@@ -399,9 +381,20 @@ impl RenderOnce for VirtualTextView {
                                 .overflow_hidden()
                                 .whitespace_nowrap()
                                 .text_xs()
-                                .text_color(line_fg)
+                                .text_color(if is_selected { colors.text_primary } else { line_fg })
                                 .child(rendered_text),
                         );
+
+                    if is_selected && editing_line_draft.is_some() {
+                        row_el = row_el.child(
+                            div()
+                                .flex_shrink_0()
+                                .pr(px(theme.spacing.md))
+                                .text_xs()
+                                .text_color(colors.text_muted)
+                                .child("↵ Enter · Esc"),
+                        );
+                    }
 
                     if let Some(ref click_cb) = on_line_click {
                         let cb = Arc::clone(click_cb);
@@ -423,6 +416,45 @@ impl RenderOnce for VirtualTextView {
 
         div().size_full().bg(colors.bg_app).overflow_hidden().child(tracked_list).into_any_element()
     }
+}
+
+fn render_empty_virtual_text_card(
+    mode: LineHighlightMode,
+    labels: &'static UiLabels,
+    theme: &'static ThemeTokens,
+) -> gpui::AnyElement {
+    let colors = &theme.colors;
+    let empty_hint = match mode {
+        LineHighlightMode::RawAiStream => labels.applier_empty_diff_hint,
+        LineHighlightMode::PackedContext | LineHighlightMode::UnifiedDiff => {
+            labels.empty_preview_hint
+        }
+    };
+    div()
+        .size_full()
+        .flex()
+        .flex_row()
+        .items_center()
+        .justify_center()
+        .p(px(theme.spacing.xl))
+        .bg(colors.bg_app)
+        .overflow_hidden()
+        .child(
+            div()
+                .flex_1()
+                .min_w(px(0.0))
+                .max_w(px(360.0))
+                .p(px(theme.spacing.xl))
+                .rounded(px(theme.radius.lg))
+                .border_1()
+                .border_color(colors.border)
+                .bg(colors.bg_panel)
+                .font_family(FONT_FAMILY_UI)
+                .text_xs()
+                .text_color(colors.text_muted)
+                .child(empty_hint),
+        )
+        .into_any_element()
 }
 
 #[inline]

@@ -4,16 +4,16 @@ use gpui::{
     Styled as _, UniformListScrollHandle, Window, div,
 };
 
-use crate::features::context_packer::components::file_tree::FileTreeComponent;
+use crate::features::context_packer::components::file_tree::{CreateEntryKind, FileTreeComponent};
 use crate::features::context_packer::components::live_preview::{
     LivePreviewComponent, LivePreviewProps,
 };
 use crate::features::context_packer::components::rules_editor::RulesEditorComponent;
 use crate::features::context_packer::state::ContextPackerState;
-use crate::locale::AppLocale;
+use crate::locale::{AppLocale, UiLabels};
 use crate::shared::containers::split_pane::SplitPane;
 use crate::shared::primitives::warning_banner::WarningBanner;
-use crate::theme::ThemeVariant;
+use crate::theme::{ThemeTokens, ThemeVariant};
 
 #[derive(Debug, Clone)]
 pub struct ContextPackerView {
@@ -83,49 +83,18 @@ impl Render for ContextPackerView {
         let all_collapsed = snapshot.are_all_dirs_collapsed();
         let active_preset = snapshot.effective_preset().clone();
 
-        let (total_bytes, packed_files, blocked_secrets, skipped_binaries, total_chunks) =
-            snapshot.pack_result().map_or_else(
-                || {
-                    let est = snapshot.project().map_or(0, Project::estimated_pack_capacity_bytes);
-                    let sel = snapshot.project().map_or(0, Project::selected_files_count);
-                    (est, sel, 0, 0, 1)
-                },
-                |res| {
-                    (
-                        res.total_bytes as u64,
-                        res.packed_files_count,
-                        res.blocked_secrets_count,
-                        res.skipped_binary_count,
-                        res.chunks.len().max(1),
-                    )
-                },
-            );
-
-        let (editing_line_index, editing_line_draft) = snapshot
-            .editing_preview_line()
-            .map_or((None, String::new()), |(idx, text)| (Some(idx), text.to_owned()));
+        let ctx_menu_state = snapshot.tree_context_menu().cloned();
+        let creating_state = snapshot.creating_entry().cloned();
         let renaming_state = snapshot.renaming_path().cloned();
+        let preview_props = compute_preview_props(snapshot, labels, theme);
 
-        let preview_props = LivePreviewProps {
-            buffer: snapshot.preview_buffer().clone(),
-            editing_line_index,
-            editing_line_draft,
-            total_bytes,
-            packed_files_count: packed_files,
-            blocked_secrets_count: blocked_secrets,
-            skipped_binary_count: skipped_binaries,
-            active_chunk_index: snapshot.active_chunk_index(),
-            total_chunks,
-            system_prompt_mode: active_preset.template.system_prompt_preset,
-            copied_recently: ui_status.copied_recently,
-            labels,
-            theme,
-        };
-
+        let ws = &snapshot.resolved_config().global_config.ui_chrome.workspace;
+        let (show_footer, show_sizes, show_heatmap) =
+            (ws.show_options_footer, ws.show_file_sizes, ws.show_size_heatmap);
         let active_filters_count = snapshot.active_custom_filter_rules_count();
         let active_prompts_count = active_preset.template.active_prompt_blocks_count();
-        let split_ratio = snapshot.split_ratio();
-        let is_resizing_split = snapshot.is_resizing_split();
+        let (split_ratio, is_resizing_split) =
+            (snapshot.split_ratio(), snapshot.is_resizing_split());
         let filter_modal_props_opt =
             ui_status.regex_filter_open.then(|| snapshot.build_filter_modal_props(labels, theme));
         let prompt_modal_props_opt = snapshot
@@ -133,21 +102,27 @@ impl Render for ContextPackerView {
             .then(|| snapshot.build_system_prompt_modal_props(labels, theme));
 
         let banner = self.build_warning_banner(banner_items);
-        let file_tree = self.build_file_tree(
-            tree_projection,
-            focused_tree_index,
-            renaming_state,
-            sort_mode,
-            search_query,
-            ui_status,
-            active_filters_count,
-            all_collapsed,
-        );
-        let rules_editor = self.build_rules_editor(
-            active_preset,
-            ui_status.filters_popover_open,
-            active_prompts_count,
-        );
+        let file_tree = self
+            .build_file_tree(
+                tree_projection,
+                focused_tree_index,
+                renaming_state,
+                sort_mode,
+                search_query,
+                ui_status,
+                active_filters_count,
+                all_collapsed,
+            )
+            .with_context_menu(ctx_menu_state)
+            .with_creating_state(creating_state)
+            .with_size_display(show_sizes, show_heatmap);
+        let rules_editor_opt = show_footer.then(|| {
+            self.build_rules_editor(
+                active_preset,
+                ui_status.filters_popover_open,
+                active_prompts_count,
+            )
+        });
         let live_preview = self.build_live_preview(preview_props);
 
         let left_column = div()
@@ -156,7 +131,7 @@ impl Render for ContextPackerView {
             .flex_col()
             .overflow_hidden()
             .child(div().flex_1().overflow_hidden().child(file_tree))
-            .child(rules_editor);
+            .children(rules_editor_opt);
 
         let state_start_resize = self.state.clone();
         let mut root = div()
@@ -305,6 +280,11 @@ impl ContextPackerView {
     }
 
     fn attach_tree_fs_and_header_handlers(&self, tree: FileTreeComponent) -> FileTreeComponent {
+        let state_ctx_open = self.state.clone();
+        let state_ctx_close = self.state.clone();
+        let state_click_dir = self.state.clone();
+        let state_new_file = self.state.clone();
+        let state_new_folder = self.state.clone();
         let state_start_ren = self.state.clone();
         let state_del_path = self.state.clone();
         let state_submit_ren = self.state.clone();
@@ -314,7 +294,45 @@ impl ContextPackerView {
         let state_focus_search = self.state.clone();
         let state_clear_search = self.state.clone();
 
-        tree.on_fs_operations(
+        tree.on_context_menu(
+            move |path, is_dir, x, y, _win, cx| {
+                let p_owned = path.to_owned();
+                state_ctx_open.update(cx, |s, cx| {
+                    s.open_tree_context_menu(&p_owned, is_dir, x, y);
+                    cx.notify();
+                });
+            },
+            move |_ev, _win, cx| {
+                state_ctx_close.update(cx, |s, cx| {
+                    s.close_tree_context_menu();
+                    cx.notify();
+                });
+            },
+            move |dir_path, _win, cx| {
+                let d_owned = dir_path.to_owned();
+                state_click_dir.update(cx, |s, cx| {
+                    s.click_folder_in_tree(&d_owned);
+                    cx.notify();
+                });
+            },
+        )
+        .on_create_operations(
+            move |parent_dir, _win, cx| {
+                let p_owned = parent_dir.to_owned();
+                state_new_file.update(cx, |s, cx| {
+                    s.start_creating_entry(&p_owned, CreateEntryKind::File);
+                    cx.notify();
+                });
+            },
+            move |parent_dir, _win, cx| {
+                let p_owned = parent_dir.to_owned();
+                state_new_folder.update(cx, |s, cx| {
+                    s.start_creating_entry(&p_owned, CreateEntryKind::Folder);
+                    cx.notify();
+                });
+            },
+        )
+        .on_fs_operations(
             move |path, _win, cx| {
                 let p_owned = path.to_owned();
                 state_start_ren.update(cx, |s, cx| {
@@ -473,5 +491,49 @@ impl ContextPackerView {
                     cx.write_to_clipboard(ClipboardItem::new_string(text));
                 }
             })
+    }
+}
+
+fn compute_preview_props(
+    snapshot: &ContextPackerState,
+    labels: &'static UiLabels,
+    theme: &'static ThemeTokens,
+) -> LivePreviewProps {
+    let (total_bytes, packed_files, blocked_secrets, skipped_binaries, total_chunks) =
+        snapshot.pack_result().map_or_else(
+            || {
+                let est = snapshot.project().map_or(0, Project::estimated_pack_capacity_bytes);
+                let sel = snapshot.project().map_or(0, Project::selected_files_count);
+                (est, sel, 0, 0, 1)
+            },
+            |res| {
+                (
+                    res.total_bytes as u64,
+                    res.packed_files_count,
+                    res.blocked_secrets_count,
+                    res.skipped_binary_count,
+                    res.chunks.len().max(1),
+                )
+            },
+        );
+
+    let (editing_line_index, editing_line_draft) = snapshot
+        .editing_preview_line()
+        .map_or((None, String::new()), |(idx, text)| (Some(idx), text.to_owned()));
+
+    LivePreviewProps {
+        buffer: snapshot.preview_buffer().clone(),
+        editing_line_index,
+        editing_line_draft,
+        total_bytes,
+        packed_files_count: packed_files,
+        blocked_secrets_count: blocked_secrets,
+        skipped_binary_count: skipped_binaries,
+        active_chunk_index: snapshot.active_chunk_index(),
+        total_chunks,
+        system_prompt_mode: snapshot.effective_preset().template.system_prompt_preset,
+        copied_recently: snapshot.ui_status().copied_recently,
+        labels,
+        theme,
     }
 }

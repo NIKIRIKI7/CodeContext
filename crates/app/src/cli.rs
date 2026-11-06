@@ -14,6 +14,8 @@ pub(crate) enum LaunchMode {
     HeadlessPack { project_root: PathBuf },
     HeadlessApply { project_root: PathBuf },
     Clean { scope: CleanScope, project_root: PathBuf },
+    Setup { edition: String, target_dir: Option<PathBuf> },
+    Uninstall { purge_user_data: bool },
     RegisterShell,
     UnregisterShell,
     SelfInstall,
@@ -28,6 +30,9 @@ where
 {
     let mut iter = args.into_iter().skip(1);
     while let Some(arg) = iter.next() {
+        if arg == "--wizard" || arg == "--setup-wizard" {
+            return LaunchMode::Gui { initial_project_root: None };
+        }
         if arg == "--version" || arg == "-V" {
             return LaunchMode::Version;
         }
@@ -60,6 +65,22 @@ where
         }
         if arg == "--unregister-shell" {
             return LaunchMode::UnregisterShell;
+        }
+        if arg == "--setup" {
+            let mut edition = "full".to_owned();
+            let mut target_dir = None;
+            while let Some(sub) = iter.next() {
+                if sub == "lite" || sub == "full" || sub == "custom" {
+                    edition = sub;
+                } else if sub == "--dir" {
+                    target_dir = iter.next().map(PathBuf::from);
+                }
+            }
+            return LaunchMode::Setup { edition, target_dir };
+        }
+        if arg == "--uninstall" {
+            let purge_user_data = iter.any(|a| a == "--purge");
+            return LaunchMode::Uninstall { purge_user_data };
         }
         if arg == "--self-install" {
             return LaunchMode::SelfInstall;
