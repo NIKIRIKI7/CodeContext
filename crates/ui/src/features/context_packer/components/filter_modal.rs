@@ -1254,10 +1254,14 @@ fn render_modal_footer(
 pub type PromptIndexCallback = Arc<dyn Fn(usize, &mut Window, &mut App) + 'static>;
 pub type PromptCategoryCallback =
     Arc<dyn Fn(Option<PromptCategory>, &mut Window, &mut App) + 'static>;
+pub type NewPromptCategoryCallback = Arc<dyn Fn(PromptCategory, &mut Window, &mut App) + 'static>;
 
 #[derive(Debug, Clone)]
 pub struct SystemPromptModalProps {
     pub active_category: Option<PromptCategory>,
+    pub new_prompt_category: PromptCategory,
+    pub prompt_title_draft: String,
+    pub prompt_title_focused: bool,
     pub prompt_input_draft: String,
     pub prompt_input_focused: bool,
     pub blocks: Vec<PromptBlockItem>,
@@ -1269,10 +1273,12 @@ pub struct SystemPromptModalProps {
 #[derive(Clone, Default)]
 struct PromptModalCallbacks {
     select_category: Option<PromptCategoryCallback>,
+    select_new_category: Option<NewPromptCategoryCallback>,
     toggle_block: Option<PromptIndexCallback>,
     move_up: Option<PromptIndexCallback>,
     move_down: Option<PromptIndexCallback>,
     delete_block: Option<PromptIndexCallback>,
+    focus_prompt_title: Option<FilterModalActionCallback>,
     focus_prompt_input: Option<FilterModalActionCallback>,
     submit_prompt_input: Option<FilterModalActionCallback>,
     paste_custom: Option<FilterModalActionCallback>,
@@ -1313,6 +1319,16 @@ impl SystemPromptModalComponent {
 
     #[must_use]
     #[inline]
+    pub fn on_select_new_category(
+        mut self,
+        handler: impl Fn(PromptCategory, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.callbacks.select_new_category = Some(Arc::new(handler));
+        self
+    }
+
+    #[must_use]
+    #[inline]
     pub fn on_toggle_block(
         mut self,
         handler: impl Fn(usize, &mut Window, &mut App) + 'static,
@@ -1345,6 +1361,16 @@ impl SystemPromptModalComponent {
         handler: impl Fn(usize, &mut Window, &mut App) + 'static,
     ) -> Self {
         self.callbacks.delete_block = Some(Arc::new(handler));
+        self
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn on_focus_prompt_title(
+        mut self,
+        handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.callbacks.focus_prompt_title = Some(Arc::new(handler));
         self
     }
 
@@ -1390,8 +1416,8 @@ impl RenderOnce for SystemPromptModalComponent {
         let colors = &theme.colors;
         let labels = self.props.labels;
 
+        let composer_card = render_prompt_composer_card(&self.props, &self.callbacks);
         let cat_bar = render_prompt_category_bar(&self.props, &self.callbacks);
-        let add_prompt_row = render_manual_prompt_input_row(&self.props, &self.callbacks);
         let blocks_list = render_prompt_blocks_list(&self.props, &self.callbacks);
 
         let preview_text = if self.props.effective_prompt_text.is_empty() {
@@ -1403,9 +1429,9 @@ impl RenderOnce for SystemPromptModalComponent {
         let preview_box = div()
             .id("system-prompt-preview-scroll")
             .w_full()
-            .h(px(150.0))
+            .h(px(110.0))
             .overflow_y_scroll()
-            .p(px(theme.spacing.lg))
+            .p(px(theme.spacing.md))
             .rounded(px(theme.radius.md))
             .bg(colors.bg_app)
             .border_1()
@@ -1424,7 +1450,6 @@ impl RenderOnce for SystemPromptModalComponent {
             any_enabled,
             labels,
             theme,
-            self.callbacks.paste_custom.as_ref(),
             self.callbacks.copy_prompt.as_ref(),
             self.callbacks.reset_builtin.as_ref(),
             self.callbacks.close.as_ref(),
@@ -1469,7 +1494,7 @@ impl RenderOnce for SystemPromptModalComponent {
                 .border_color(colors.border_active)
                 .flex()
                 .flex_col()
-                .gap(px(theme.spacing.md))
+                .gap(px(theme.spacing.sm))
                 .child(
                     div()
                         .w_full()
@@ -1493,13 +1518,179 @@ impl RenderOnce for SystemPromptModalComponent {
                         .text_color(colors.text_secondary)
                         .child(labels.prompt_modal_subtitle),
                 )
+                .child(composer_card)
                 .child(cat_bar)
-                .child(add_prompt_row)
                 .child(blocks_list)
                 .child(preview_box)
                 .child(footer_row),
         )
     }
+}
+
+fn render_prompt_composer_card(
+    props: &SystemPromptModalProps,
+    callbacks: &PromptModalCallbacks,
+) -> impl IntoElement + use<> {
+    let theme = props.theme;
+    let colors = &theme.colors;
+    let cat_row = render_new_prompt_category_row(props, callbacks);
+    let title_row = render_new_prompt_title_row(props, callbacks);
+    let content_row = render_manual_prompt_input_row(props, callbacks);
+
+    div()
+        .w_full()
+        .p(px(theme.spacing.md))
+        .rounded(px(theme.radius.md))
+        .bg(colors.bg_elevated)
+        .border_1()
+        .border_color(colors.border)
+        .flex()
+        .flex_col()
+        .gap(px(theme.spacing.xs))
+        .child(cat_row)
+        .child(title_row)
+        .child(content_row)
+}
+
+fn render_new_prompt_category_row(
+    props: &SystemPromptModalProps,
+    callbacks: &PromptModalCallbacks,
+) -> impl IntoElement + use<> {
+    let theme = props.theme;
+    let colors = &theme.colors;
+    let labels = props.labels;
+
+    let categories: &[(&str, &str, PromptCategory)] = &[
+        ("new-p-cat-patcher", labels.prompt_cat_patcher, PromptCategory::Patcher),
+        ("new-p-cat-arch", labels.prompt_cat_arch, PromptCategory::Architecture),
+        ("new-p-cat-behavior", labels.prompt_cat_behavior, PromptCategory::Behavior),
+        ("new-p-cat-custom", labels.prompt_cat_custom, PromptCategory::Custom),
+    ];
+
+    let mut bar = div()
+        .flex_1()
+        .h(px(26.0))
+        .p(px(2.0))
+        .rounded(px(theme.radius.sm))
+        .bg(colors.bg_app)
+        .border_1()
+        .border_color(colors.border)
+        .flex()
+        .flex_row()
+        .items_center()
+        .gap(px(2.0));
+
+    for &(id, text, cat) in categories {
+        let is_active = props.new_prompt_category == cat;
+        let hover_bg = colors.bg_hover;
+        let mut pill = div()
+            .id(id)
+            .flex_1()
+            .h_full()
+            .rounded(px(theme.radius.sm))
+            .bg(if is_active { colors.bg_elevated } else { colors.bg_app })
+            .border_1()
+            .border_color(if is_active { colors.cyan } else { colors.bg_app })
+            .cursor_pointer()
+            .hover(move |s| s.bg(hover_bg))
+            .flex()
+            .items_center()
+            .justify_center()
+            .font_family(FONT_FAMILY_UI)
+            .text_xs()
+            .text_color(if is_active { colors.text_primary } else { colors.text_secondary })
+            .child(text);
+
+        if let Some(ref cb) = callbacks.select_new_category {
+            let cb_clone = Arc::clone(cb);
+            pill = pill.on_click(move |_ev, w, c| cb_clone(cat, w, c));
+        }
+        bar = bar.child(pill);
+    }
+
+    div()
+        .w_full()
+        .flex()
+        .flex_row()
+        .items_center()
+        .gap(px(theme.spacing.sm))
+        .child(
+            div()
+                .w(px(86.0))
+                .flex_shrink_0()
+                .font_family(FONT_FAMILY_UI)
+                .text_xs()
+                .text_color(colors.text_secondary)
+                .child(labels.prompt_field_category_label),
+        )
+        .child(bar)
+}
+
+fn render_new_prompt_title_row(
+    props: &SystemPromptModalProps,
+    callbacks: &PromptModalCallbacks,
+) -> impl IntoElement + use<> {
+    let theme = props.theme;
+    let colors = &theme.colors;
+    let labels = props.labels;
+    let has_title = !props.prompt_title_draft.is_empty();
+
+    let display_text = if props.prompt_title_focused && has_title {
+        SharedString::from(format!("{}▏", props.prompt_title_draft))
+    } else if has_title {
+        SharedString::from(props.prompt_title_draft.clone())
+    } else if props.prompt_title_focused {
+        SharedString::from(format!("▏{}", labels.prompt_field_title_placeholder))
+    } else {
+        SharedString::from(labels.prompt_field_title_placeholder)
+    };
+
+    let mut title_box = div()
+        .id("system-prompt-title-input")
+        .flex_1()
+        .min_w(px(0.0))
+        .h(px(28.0))
+        .px(px(theme.spacing.md))
+        .rounded(px(theme.radius.md))
+        .border_1()
+        .border_color(if props.prompt_title_focused { colors.cyan } else { colors.border })
+        .bg(colors.bg_app)
+        .cursor_pointer()
+        .flex()
+        .flex_row()
+        .items_center()
+        .overflow_hidden()
+        .whitespace_nowrap()
+        .font_family(FONT_FAMILY_UI)
+        .text_xs()
+        .text_color(if has_title || props.prompt_title_focused {
+            colors.text_primary
+        } else {
+            colors.text_muted
+        })
+        .child(display_text);
+
+    if let Some(ref cb) = callbacks.focus_prompt_title {
+        let cb_clone = Arc::clone(cb);
+        title_box = title_box.on_click(move |ev, w, c| cb_clone(ev, w, c));
+    }
+
+    div()
+        .w_full()
+        .flex()
+        .flex_row()
+        .items_center()
+        .gap(px(theme.spacing.sm))
+        .child(
+            div()
+                .w(px(86.0))
+                .flex_shrink_0()
+                .font_family(FONT_FAMILY_UI)
+                .text_xs()
+                .text_color(colors.text_secondary)
+                .child(labels.prompt_field_title_label),
+        )
+        .child(title_box)
 }
 
 fn render_prompt_category_bar(
@@ -1570,6 +1761,7 @@ fn render_manual_prompt_input_row(
     let colors = &theme.colors;
     let labels = props.labels;
     let has_draft = !props.prompt_input_draft.is_empty();
+    let can_submit = has_draft || !props.prompt_title_draft.is_empty();
 
     let display_text = if props.prompt_input_focused && has_draft {
         SharedString::from(format!("{}▏", props.prompt_input_draft))
@@ -1585,45 +1777,28 @@ fn render_manual_prompt_input_row(
         .id("system-prompt-modal-input")
         .flex_1()
         .min_w(px(0.0))
-        .h(px(28.0))
+        .min_h(px(46.0))
+        .max_h(px(76.0))
+        .overflow_y_scroll()
         .px(px(theme.spacing.md))
+        .py(px(theme.spacing.xs))
         .rounded(px(theme.radius.md))
         .border_1()
         .border_color(if props.prompt_input_focused { colors.cyan } else { colors.border })
         .bg(colors.bg_app)
         .cursor_pointer()
-        .flex()
-        .flex_row()
-        .items_center()
-        .gap(px(theme.spacing.sm))
-        .child(render_icon(UiIcon::FileText, 13.0, colors.text_muted))
-        .child(
-            div()
-                .flex_1()
-                .min_w(px(0.0))
-                .overflow_hidden()
-                .whitespace_nowrap()
-                .font_family(FONT_FAMILY_MONO)
-                .text_xs()
-                .text_color(if has_draft || props.prompt_input_focused {
-                    colors.text_primary
-                } else {
-                    colors.text_muted
-                })
-                .child(display_text),
-        );
+        .font_family(FONT_FAMILY_MONO)
+        .text_xs()
+        .text_color(if has_draft || props.prompt_input_focused {
+            colors.text_primary
+        } else {
+            colors.text_muted
+        })
+        .child(display_text);
 
     if let Some(ref cb) = callbacks.focus_prompt_input {
         let cb_clone = Arc::clone(cb);
         input_box = input_box.on_click(move |ev, w, c| cb_clone(ev, w, c));
-    }
-
-    let mut add_btn = UiButton::new("prompt-modal-submit-btn", labels.prompt_add_btn)
-        .variant(if has_draft { ButtonVariant::Primary } else { ButtonVariant::Secondary })
-        .with_theme(theme);
-    if let Some(ref cb) = callbacks.submit_prompt_input {
-        let cb_clone = Arc::clone(cb);
-        add_btn = add_btn.on_click(move |ev, w, c| cb_clone(ev, w, c));
     }
 
     let mut paste_btn = UiButton::icon_only("prompt-modal-inline-paste", UiIcon::ClipboardPaste)
@@ -1634,15 +1809,33 @@ fn render_manual_prompt_input_row(
         paste_btn = paste_btn.on_click(move |ev, w, c| cb_clone(ev, w, c));
     }
 
+    let mut add_btn = UiButton::new("prompt-modal-submit-btn", labels.prompt_add_btn)
+        .variant(if can_submit { ButtonVariant::Primary } else { ButtonVariant::Secondary })
+        .disabled(!can_submit)
+        .with_theme(theme);
+    if let Some(ref cb) = callbacks.submit_prompt_input {
+        let cb_clone = Arc::clone(cb);
+        add_btn = add_btn.on_click(move |ev, w, c| cb_clone(ev, w, c));
+    }
+
     div()
         .w_full()
         .flex()
         .flex_row()
-        .items_center()
-        .gap(px(theme.spacing.xs))
+        .items_start()
+        .gap(px(theme.spacing.sm))
+        .child(
+            div()
+                .w(px(86.0))
+                .pt(px(theme.spacing.xs))
+                .flex_shrink_0()
+                .font_family(FONT_FAMILY_UI)
+                .text_xs()
+                .text_color(colors.text_secondary)
+                .child(labels.prompt_field_content_label),
+        )
         .child(input_box)
-        .child(add_btn)
-        .child(paste_btn)
+        .child(div().flex().flex_col().gap(px(theme.spacing.xs)).child(add_btn).child(paste_btn))
 }
 
 fn render_prompt_blocks_list(
@@ -1657,7 +1850,7 @@ fn render_prompt_blocks_list(
     let mut list = div()
         .id("system-prompt-blocks-scroll")
         .w_full()
-        .max_h(px(176.0))
+        .max_h(px(148.0))
         .overflow_y_scroll()
         .p(px(theme.spacing.sm))
         .rounded(px(theme.radius.md))
@@ -1669,6 +1862,7 @@ fn render_prompt_blocks_list(
         .gap(px(theme.spacing.xs));
 
     let mut active_order_num = 0_usize;
+    let mut visible_count = 0_usize;
     for (idx, block) in props.blocks.iter().enumerate() {
         if block.enabled {
             active_order_num += 1;
@@ -1678,8 +1872,9 @@ fn render_prompt_blocks_list(
         {
             continue;
         }
+        visible_count += 1;
         let order_badge =
-            if block.enabled { format!("#{active_order_num}") } else { "—".to_owned() };
+            if block.enabled { format!("#{active_order_num}") } else { String::new() };
         let cat_label = match block.category {
             PromptCategory::Patcher => labels.prompt_cat_patcher,
             PromptCategory::Architecture => labels.prompt_cat_arch,
@@ -1695,6 +1890,21 @@ fn render_prompt_blocks_list(
             theme,
             callbacks,
         ));
+    }
+
+    if visible_count == 0 {
+        list = list.child(
+            div()
+                .w_full()
+                .h(px(36.0))
+                .flex()
+                .items_center()
+                .justify_center()
+                .font_family(FONT_FAMILY_UI)
+                .text_xs()
+                .text_color(colors.text_muted)
+                .child(labels.prompt_category_empty_hint),
+        );
     }
 
     list
@@ -1825,27 +2035,15 @@ fn render_prompt_block_row(
         .child(actions.child(up_btn).child(down_btn))
 }
 
-#[allow(clippy::too_many_arguments)]
 fn render_prompt_modal_footer(
     has_custom_override: bool,
     labels: &'static UiLabels,
     theme: &'static ThemeTokens,
-    on_paste_custom: Option<&FilterModalActionCallback>,
     on_copy_prompt: Option<&FilterModalActionCallback>,
     on_reset_builtin: Option<&FilterModalActionCallback>,
     on_close: Option<&FilterModalActionCallback>,
 ) -> impl IntoElement + use<> {
     let mut left_actions = div().flex().flex_row().items_center().gap(px(theme.spacing.xs));
-
-    let mut paste_btn = UiButton::new("prompt-modal-paste-btn", labels.prompt_paste_custom_btn)
-        .icon(UiIcon::ClipboardPaste)
-        .variant(ButtonVariant::Secondary)
-        .with_theme(theme);
-    if let Some(cb) = on_paste_custom {
-        let cb_clone = Arc::clone(cb);
-        paste_btn = paste_btn.on_click(move |ev, w, c| cb_clone(ev, w, c));
-    }
-    left_actions = left_actions.child(paste_btn);
 
     let mut copy_btn = UiButton::new("prompt-modal-copy-btn", labels.prompt_copy_template_btn)
         .icon(UiIcon::Copy)

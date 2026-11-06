@@ -9,10 +9,10 @@ use gpui::{
     Render, Rgba, SharedString, StatefulInteractiveElement as _, Styled as _, Window, div, px,
 };
 
-use crate::features::settings_modal::state::SettingsModalState;
+use crate::features::settings_modal::state::{SettingsCategory, SettingsModalState};
 use crate::locale::{AppLocale, UiLabels};
 use crate::shared::primitives::button::{ButtonVariant, UiButton};
-use crate::shared::primitives::icon::{UiIcon, render_vector_checkbox};
+use crate::shared::primitives::icon::{UiIcon, render_icon, render_vector_checkbox};
 use crate::theme::{
     FONT_FAMILY_MONO, FONT_FAMILY_UI, ThemeTokens, ThemeVariant, format_hotkey_for_current_os,
 };
@@ -52,16 +52,9 @@ impl SettingsModalView {
         }
     }
 
-    #[allow(clippy::too_many_lines)]
-    fn render_appearance_section(
-        &self,
-        theme: &'static ThemeTokens,
-        cx: &Context<Self>,
-    ) -> impl IntoElement + use<> {
+    fn render_appearance_section(&self, theme: &'static ThemeTokens) -> impl IntoElement + use<> {
         let labels = self.locale.labels();
-        let is_english = self.locale == AppLocale::En;
         let colors = &theme.colors;
-        let chrome = self.state.read(cx).global_config().ui_chrome.clone();
         let state_dark = self.state.clone();
         let state_light = self.state.clone();
         let state_ru = self.state.clone();
@@ -111,6 +104,37 @@ impl SettingsModalView {
             theme,
         );
 
+        div()
+            .w_full()
+            .p(px(theme.spacing.xl))
+            .rounded(px(theme.radius.md))
+            .bg(colors.bg_elevated)
+            .border_1()
+            .border_color(colors.border)
+            .flex()
+            .flex_col()
+            .gap(px(theme.spacing.sm))
+            .child(
+                div()
+                    .font_family(FONT_FAMILY_UI)
+                    .text_xs()
+                    .text_color(colors.text_muted)
+                    .child(labels.settings_section_appearance),
+            )
+            .child(render_setting_row(labels.settings_theme_label, theme_switcher, theme))
+            .child(render_setting_row(labels.settings_language_label, lang_switcher, theme))
+    }
+
+    fn render_panels_section(
+        &self,
+        theme: &'static ThemeTokens,
+        cx: &Context<Self>,
+    ) -> impl IntoElement + use<> {
+        let labels = self.locale.labels();
+        let is_english = self.locale == AppLocale::En;
+        let colors = &theme.colors;
+        let chrome = self.state.read(cx).global_config().ui_chrome.clone();
+
         let chrome_rows: &[(&str, &str, UiChromeSetting)] = &[
             (
                 "settings-toggle-bottom-bar",
@@ -136,15 +160,6 @@ impl SettingsModalView {
                 UiChromeSetting::LogsButton,
             ),
             (
-                "settings-toggle-metrics",
-                if is_english {
-                    "Show file metrics & hotkey in bottom bar"
-                } else {
-                    "Сводка файлов и хоткей в нижней панели"
-                },
-                UiChromeSetting::StatusMetrics,
-            ),
-            (
                 "settings-toggle-term-presets",
                 if is_english {
                     "Show quick command presets bar in terminal"
@@ -164,16 +179,14 @@ impl SettingsModalView {
             .border_color(colors.border)
             .flex()
             .flex_col()
-            .gap(px(theme.spacing.xs))
+            .gap(px(theme.spacing.sm))
             .child(
                 div()
                     .font_family(FONT_FAMILY_UI)
                     .text_xs()
                     .text_color(colors.text_muted)
-                    .child(labels.settings_section_appearance),
-            )
-            .child(render_setting_row(labels.settings_theme_label, theme_switcher, theme))
-            .child(render_setting_row(labels.settings_language_label, lang_switcher, theme));
+                    .child(labels.settings_cat_panels),
+            );
 
         for &(id, row_label, setting) in chrome_rows {
             let state_c = self.state.clone();
@@ -441,7 +454,7 @@ impl SettingsModalView {
             .child(render_setting_row(labels.settings_create_backups, bak_btn, theme))
     }
 
-    fn render_hotkeys_modal(
+    fn render_keymap_section(
         &self,
         theme: &'static ThemeTokens,
         cx: &Context<Self>,
@@ -465,7 +478,7 @@ impl SettingsModalView {
             let btn = UiButton::new(("hotkey-action-btn", idx), SharedString::from(badge_text))
                 .icon(UiIcon::Keyboard)
                 .variant(if is_rec { ButtonVariant::Primary } else { ButtonVariant::FilterPill })
-                .fixed_width(196.0)
+                .fixed_width(184.0)
                 .with_theme(theme)
                 .active(is_rec)
                 .on_click(move |_ev, _win, cx| {
@@ -478,66 +491,8 @@ impl SettingsModalView {
                 list_col.child(render_setting_row(action_label_for(action, labels), btn, theme));
         }
 
-        let header = self.render_hotkeys_modal_header(labels, theme);
-        let state_backdrop = self.state.clone();
-        let backdrop = Rgba { r: 0.02, g: 0.03, b: 0.05, a: 0.78 };
-
-        div()
-            .id("hotkeys-modal-backdrop")
-            .absolute()
-            .top_0()
-            .left_0()
-            .size_full()
-            .bg(backdrop)
-            .flex()
-            .items_center()
-            .justify_center()
-            .p(px(theme.spacing.xxl))
-            .on_click(move |_ev, _win, cx| {
-                cx.stop_propagation();
-                state_backdrop.update(cx, |s, cx| {
-                    s.close_hotkeys_modal();
-                    cx.notify();
-                });
-            })
-            .child(
-                div()
-                    .id("hotkeys-modal-dialog")
-                    .on_click(|_ev, _win, cx| {
-                        cx.stop_propagation();
-                    })
-                    .w(px(560.0))
-                    .p(px(theme.spacing.xxl))
-                    .rounded(px(theme.radius.lg))
-                    .bg(colors.bg_panel)
-                    .border_1()
-                    .border_color(colors.border_active)
-                    .flex()
-                    .flex_col()
-                    .gap(px(theme.spacing.lg))
-                    .child(header)
-                    .child(
-                        div()
-                            .w_full()
-                            .p(px(theme.spacing.xl))
-                            .rounded(px(theme.radius.md))
-                            .bg(colors.bg_elevated)
-                            .border_1()
-                            .border_color(colors.border)
-                            .child(list_col),
-                    ),
-            )
-    }
-
-    fn render_hotkeys_modal_header(
-        &self,
-        labels: &'static UiLabels,
-        theme: &'static ThemeTokens,
-    ) -> impl IntoElement + use<> {
         let state_reset = self.state.clone();
-        let state_close = self.state.clone();
-
-        div()
+        let header_row = div()
             .w_full()
             .flex()
             .flex_row()
@@ -546,40 +501,133 @@ impl SettingsModalView {
             .child(
                 div()
                     .font_family(FONT_FAMILY_UI)
-                    .text_sm()
-                    .text_color(theme.colors.text_primary)
+                    .text_xs()
+                    .text_color(colors.text_muted)
                     .child(labels.hotkeys_modal_title),
             )
             .child(
-                div()
-                    .flex()
-                    .flex_row()
-                    .items_center()
-                    .gap(px(theme.spacing.xs))
-                    .child(
-                        UiButton::new("hotkeys-reset-defaults-btn", labels.btn_reset_hotkeys)
-                            .icon(UiIcon::RotateCcw)
-                            .variant(ButtonVariant::Ghost)
-                            .with_theme(theme)
-                            .on_click(move |_ev, _win, cx| {
-                                state_reset.update(cx, |s, cx| {
-                                    s.reset_all_shortcuts_to_default();
-                                    cx.notify();
-                                });
-                            }),
-                    )
-                    .child(
-                        UiButton::icon_only("hotkeys-close-modal-btn", UiIcon::X)
-                            .variant(ButtonVariant::Ghost)
-                            .with_theme(theme)
-                            .on_click(move |_ev, _win, cx| {
-                                state_close.update(cx, |s, cx| {
-                                    s.close_hotkeys_modal();
-                                    cx.notify();
-                                });
-                            }),
-                    ),
-            )
+                UiButton::new("hotkeys-reset-defaults-btn", labels.btn_reset_hotkeys)
+                    .icon(UiIcon::RotateCcw)
+                    .variant(ButtonVariant::Ghost)
+                    .with_theme(theme)
+                    .on_click(move |_ev, _win, cx| {
+                        state_reset.update(cx, |s, cx| {
+                            s.reset_all_shortcuts_to_default();
+                            cx.notify();
+                        });
+                    }),
+            );
+
+        div()
+            .w_full()
+            .p(px(theme.spacing.xl))
+            .rounded(px(theme.radius.md))
+            .bg(colors.bg_elevated)
+            .border_1()
+            .border_color(colors.border)
+            .flex()
+            .flex_col()
+            .gap(px(theme.spacing.sm))
+            .child(header_row)
+            .child(list_col)
+    }
+
+    fn render_category_sidebar(
+        &self,
+        active_cat: SettingsCategory,
+        theme: &'static ThemeTokens,
+    ) -> impl IntoElement + use<> {
+        let colors = &theme.colors;
+        let labels = self.locale.labels();
+
+        let items: &[(&str, UiIcon, &str, SettingsCategory)] = &[
+            (
+                "settings-cat-appearance",
+                UiIcon::SlidersHorizontal,
+                labels.settings_cat_appearance,
+                SettingsCategory::Appearance,
+            ),
+            (
+                "settings-cat-panels",
+                UiIcon::Terminal,
+                labels.settings_cat_panels,
+                SettingsCategory::PanelsAndBar,
+            ),
+            (
+                "settings-cat-keymap",
+                UiIcon::Keyboard,
+                labels.settings_cat_keymap,
+                SettingsCategory::Keymap,
+            ),
+            (
+                "settings-cat-safety",
+                UiIcon::Lock,
+                labels.settings_cat_safety,
+                SettingsCategory::Safety,
+            ),
+            (
+                "settings-cat-system",
+                UiIcon::Package,
+                labels.settings_cat_system,
+                SettingsCategory::SystemAndUpdates,
+            ),
+        ];
+
+        let mut col = div()
+            .w(px(196.0))
+            .flex_shrink_0()
+            .pr(px(theme.spacing.md))
+            .border_r_1()
+            .border_color(colors.border)
+            .flex()
+            .flex_col()
+            .gap(px(theme.spacing.xs));
+
+        for &(id, icon, title, cat) in items {
+            let is_active = active_cat == cat;
+            let hover_bg = colors.bg_hover;
+            let state_cat = self.state.clone();
+            let item = div()
+                .id(id)
+                .w_full()
+                .h(px(32.0))
+                .px(px(theme.spacing.md))
+                .rounded(px(theme.radius.md))
+                .border_1()
+                .border_color(if is_active { colors.border_active } else { colors.bg_panel })
+                .bg(if is_active { colors.bg_elevated } else { colors.bg_panel })
+                .cursor_pointer()
+                .hover(move |s| s.bg(hover_bg))
+                .flex()
+                .flex_row()
+                .items_center()
+                .gap(px(theme.spacing.sm))
+                .on_click(move |_ev, _win, cx| {
+                    state_cat.update(cx, |s, cx| {
+                        s.set_active_category(cat);
+                        cx.notify();
+                    });
+                })
+                .child(render_icon(
+                    icon,
+                    14.0,
+                    if is_active { colors.cyan } else { colors.text_secondary },
+                ))
+                .child(
+                    div()
+                        .font_family(FONT_FAMILY_UI)
+                        .text_xs()
+                        .text_color(if is_active {
+                            colors.text_primary
+                        } else {
+                            colors.text_secondary
+                        })
+                        .child(title),
+                );
+            col = col.child(item);
+        }
+
+        col
     }
 }
 
@@ -835,11 +883,24 @@ impl Render for SettingsModalView {
         let theme = self.theme_variant.tokens();
         let colors = &theme.colors;
         let labels = self.locale.labels();
-        let hotkeys_modal_open = self.state.read(cx).is_hotkeys_modal_open();
+        let active_cat = self.state.read(cx).active_category();
         let state_close = self.state.clone();
-        let appearance_sec = self.render_appearance_section(theme, cx);
-        let system_sec = self.render_system_section(theme, cx);
-        let safety_sec = self.render_safety_section(theme, cx);
+        let sidebar = self.render_category_sidebar(active_cat, theme);
+
+        let active_section = match active_cat {
+            SettingsCategory::Appearance => {
+                self.render_appearance_section(theme).into_any_element()
+            }
+            SettingsCategory::PanelsAndBar => {
+                self.render_panels_section(theme, cx).into_any_element()
+            }
+            SettingsCategory::Keymap => self.render_keymap_section(theme, cx).into_any_element(),
+            SettingsCategory::Safety => self.render_safety_section(theme, cx).into_any_element(),
+            SettingsCategory::SystemAndUpdates => {
+                self.render_system_section(theme, cx).into_any_element()
+            }
+        };
+
         let backdrop = Rgba { r: 0.02, g: 0.03, b: 0.05, a: 0.72 };
         let state_close_backdrop = self.state.clone();
 
@@ -866,9 +927,8 @@ impl Render for SettingsModalView {
                     .on_click(|_ev, _win, cx| {
                         cx.stop_propagation();
                     })
-                    .w(px(600.0))
-                    .max_h(px(650.0))
-                    .overflow_y_scroll()
+                    .w(px(680.0))
+                    .h(px(460.0))
                     .p(px(theme.spacing.xxl))
                     .rounded(px(theme.radius.lg))
                     .bg(colors.bg_panel)
@@ -876,10 +936,13 @@ impl Render for SettingsModalView {
                     .border_color(colors.border_active)
                     .flex()
                     .flex_col()
-                    .gap(px(theme.spacing.md))
+                    .gap(px(theme.spacing.lg))
                     .child(
                         div()
                             .w_full()
+                            .pb(px(theme.spacing.sm))
+                            .border_b_1()
+                            .border_color(colors.border)
                             .flex()
                             .flex_row()
                             .items_center()
@@ -903,10 +966,26 @@ impl Render for SettingsModalView {
                                     }),
                             ),
                     )
-                    .child(appearance_sec)
-                    .child(system_sec)
-                    .child(safety_sec),
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_h(px(0.0))
+                            .w_full()
+                            .flex()
+                            .flex_row()
+                            .gap(px(theme.spacing.lg))
+                            .overflow_hidden()
+                            .child(sidebar)
+                            .child(
+                                div()
+                                    .id("settings-category-content-scroll")
+                                    .flex_1()
+                                    .min_w(px(0.0))
+                                    .h_full()
+                                    .overflow_y_scroll()
+                                    .child(active_section),
+                            ),
+                    ),
             )
-            .children(hotkeys_modal_open.then(|| self.render_hotkeys_modal(theme, cx)))
     }
 }

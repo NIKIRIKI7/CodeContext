@@ -13,6 +13,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.2.1] - 2026-11-06
+
+### Added
+- **Structured Prompt Composer (`crates/ui`)**: added explicit fields for prompt category (`Patcher`, `Architecture`, `AI Behavior`, `Custom`), prompt title (`Title`), and prompt body (`Content`) with clipboard paste (`Ctrl+V`) support in the System Prompt Modal.
+- **Interactive Mouse Drag Resizing for Panels (`crates/ui`)**: added smooth drag resizing for horizontal split panes (`SplitPane`) and vertical drag resizing for the bottom terminal/logs dock (removing the fixed height toggle button).
+- **Categorized Settings Modal in Zed / VS Code Style (`crates/ui`)**: organized settings into 5 sidebar categories (`Appearance`, `Panels & Bar`, `Keymap`, `Safety`, `System & Updates`) to keep the interface minimalist and reduce cognitive load.
+
+### Fixed
+- **Terminal & Search Input Focus Retention on `Space` Key (`crates/ui`)**: replaced root `.on_click` with mouse-down handling and stopped key propagation so pressing `Space` in the command line or search input never drops input focus.
+- **Bottom Bar & Modal Visual Cleanup (`crates/ui`)**: removed stray bottom border lines and empty list frames in the prompt modal and bottom status bar.
+
 ## [0.2.0] - 2026-11-04
 
 ### Added

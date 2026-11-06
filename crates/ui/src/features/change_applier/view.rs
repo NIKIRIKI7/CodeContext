@@ -137,6 +137,8 @@ impl Render for ChangeApplierView {
         let status_msg = snap.formatted_status_message(labels);
         let backups_enabled = snap.backups_enabled();
         let options_open = snap.is_options_open();
+        let split_ratio = snap.split_ratio();
+        let is_resizing_split = snap.is_resizing_split();
 
         let diff_meta = parsed_files.get(selected_idx).map_or_else(
             || DiffViewMeta {
@@ -258,6 +260,7 @@ impl Render for ChangeApplierView {
             .child(right_header_tabs)
             .child(div().flex_1().overflow_hidden().child(diff_view));
 
+        let state_start_resize = self.state.clone();
         let mut root = div()
             .relative()
             .size_full()
@@ -266,8 +269,15 @@ impl Render for ChangeApplierView {
             .bg(theme.colors.bg_app)
             .overflow_hidden()
             .child(
-                SplitPane::new(theme.layout.applier_split_ratio, left_editor, right_col)
-                    .with_theme(theme),
+                SplitPane::new(split_ratio, left_editor, right_col)
+                    .with_theme(theme)
+                    .with_resizing(is_resizing_split)
+                    .on_start_resize(move |_ev, _win, cx| {
+                        state_start_resize.update(cx, |s, cx| {
+                            s.set_resizing_split(true);
+                            cx.notify();
+                        });
+                    }),
             );
 
         if let (Some(notice), Some(msg)) = (status_notice_opt, status_msg) {

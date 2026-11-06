@@ -48,6 +48,7 @@ enum ModalInputFocus {
     RegexPattern,
     RegexTemplateName,
     CustomExtension,
+    PromptTitle,
     PromptDraft,
 }
 
@@ -68,6 +69,8 @@ pub struct ContextPackerState {
     extension_input_draft: String,
     regex_scope: RegexTargetScope,
     folder_input_draft: String,
+    new_prompt_category: PromptCategory,
+    prompt_title_draft: String,
     prompt_input_draft: String,
     regex_draft: String,
     regex_name_draft: String,
@@ -75,6 +78,8 @@ pub struct ContextPackerState {
     modal_input_focus: ModalInputFocus,
     prompt_modal_open: bool,
     prompt_category_filter: Option<PromptCategory>,
+    split_ratio: f32,
+    resizing_split: bool,
     pending_tree_scroll: Cell<Option<usize>>,
     pending_preview_scroll: Cell<Option<usize>>,
     collapsed_dirs: HashSet<String>,
@@ -106,6 +111,8 @@ impl ContextPackerState {
             extension_input_draft: String::new(),
             regex_scope: RegexTargetScope::default(),
             folder_input_draft: String::new(),
+            new_prompt_category: PromptCategory::Custom,
+            prompt_title_draft: String::new(),
             prompt_input_draft: String::new(),
             regex_draft: String::new(),
             regex_name_draft: String::new(),
@@ -113,6 +120,8 @@ impl ContextPackerState {
             modal_input_focus: ModalInputFocus::None,
             prompt_modal_open: false,
             prompt_category_filter: None,
+            split_ratio: crate::theme::DEFAULT_LAYOUT.packer_split_ratio,
+            resizing_split: false,
             pending_tree_scroll: Cell::new(None),
             pending_preview_scroll: Cell::new(None),
             collapsed_dirs: HashSet::new(),
@@ -140,6 +149,7 @@ impl ContextPackerState {
         self.discovered_top_folders.clear();
         self.folder_input_draft.clear();
         self.extension_input_draft.clear();
+        self.prompt_title_draft.clear();
         self.prompt_input_draft.clear();
         self.regex_name_draft.clear();
         self.modal_input_focus = ModalInputFocus::None;
@@ -467,6 +477,47 @@ impl ContextPackerState {
     #[inline]
     pub const fn set_prompt_category_filter(&mut self, category: Option<PromptCategory>) {
         self.prompt_category_filter = category;
+        if let Some(cat) = category {
+            self.new_prompt_category = cat;
+        }
+    }
+
+    #[inline]
+    pub const fn new_prompt_category(&self) -> PromptCategory {
+        self.new_prompt_category
+    }
+
+    #[inline]
+    pub const fn set_new_prompt_category(&mut self, category: PromptCategory) {
+        self.new_prompt_category = category;
+    }
+
+    #[inline]
+    pub const fn split_ratio(&self) -> f32 {
+        self.split_ratio
+    }
+
+    #[inline]
+    pub const fn set_split_ratio(&mut self, ratio: f32) {
+        let min = crate::theme::DEFAULT_LAYOUT.split_ratio_min;
+        let max = crate::theme::DEFAULT_LAYOUT.split_ratio_max;
+        self.split_ratio = if ratio < min {
+            min
+        } else if ratio > max {
+            max
+        } else {
+            ratio
+        };
+    }
+
+    #[inline]
+    pub const fn is_resizing_split(&self) -> bool {
+        self.resizing_split
+    }
+
+    #[inline]
+    pub const fn set_resizing_split(&mut self, resizing: bool) {
+        self.resizing_split = resizing;
     }
 
     pub fn select_system_prompt_mode(&mut self, mode: SystemPromptMode) {
@@ -543,19 +594,35 @@ impl ContextPackerState {
     }
 
     pub fn add_custom_prompt_block(&mut self, category: PromptCategory, text: &str) {
-        let trimmed = text.trim();
-        if trimmed.is_empty() {
+        self.add_custom_prompt_block_with_title(category, "", text);
+    }
+
+    pub fn add_custom_prompt_block_with_title(
+        &mut self,
+        category: PromptCategory,
+        custom_title: &str,
+        text: &str,
+    ) {
+        let trimmed_content = text.trim();
+        let trimmed_title = custom_title.trim();
+        if trimmed_content.is_empty() && trimmed_title.is_empty() {
             return;
         }
+        let effective_content =
+            if trimmed_content.is_empty() { trimmed_title } else { trimmed_content };
 
         let tpl = &mut self.resolved_config.effective_preset.template;
         let cat_count = tpl.prompt_blocks.iter().filter(|b| b.category == category).count() + 1;
-        let first_line = trimmed.lines().next().unwrap_or("Custom").trim();
-        let short_title = if first_line.chars().count() > 42 {
-            let prefix: String = first_line.chars().take(42).collect();
-            format!("{prefix}…")
+        let short_title = if trimmed_title.is_empty() {
+            let first_line = effective_content.lines().next().unwrap_or("Custom").trim();
+            if first_line.chars().count() > 48 {
+                let prefix: String = first_line.chars().take(48).collect();
+                format!("{prefix}…")
+            } else {
+                first_line.to_owned()
+            }
         } else {
-            first_line.to_owned()
+            trimmed_title.to_owned()
         };
 
         let cat_tag = match category {
@@ -570,18 +637,44 @@ impl ContextPackerState {
             id: unique_id,
             title: short_title,
             category,
-            content: trimmed.to_owned(),
+            content: effective_content.to_owned(),
             enabled: true,
         });
 
         tpl.sync_preamble_from_blocks();
         self.ui_status.copied_recently = false;
         self.repack_from_memory_cache();
+        let _ = self.save_current_preset_globally();
     }
 
     pub fn set_custom_system_prompt_text(&mut self, text: &str) {
-        let category = self.prompt_category_filter.unwrap_or(PromptCategory::Custom);
-        self.add_custom_prompt_block(category, text);
+        self.add_custom_prompt_block(self.new_prompt_category, text);
+    }
+
+    pub fn paste_into_prompt_composer(&mut self, clipboard_text: &str) {
+        let trimmed = clipboard_text.trim();
+        if trimmed.is_empty() {
+            return;
+        }
+        if self.is_prompt_title_focused() {
+            let first_line = trimmed.lines().next().unwrap_or(trimmed).trim();
+            self.prompt_title_draft.push_str(first_line);
+            return;
+        }
+        if self.prompt_title_draft.trim().is_empty() {
+            let first_line = trimmed.lines().next().unwrap_or(trimmed).trim();
+            if first_line.chars().count() > 48 {
+                let prefix: String = first_line.chars().take(48).collect();
+                self.prompt_title_draft = format!("{prefix}…");
+            } else {
+                first_line.clone_into(&mut self.prompt_title_draft);
+            }
+        }
+        if !self.prompt_input_draft.is_empty() && !self.prompt_input_draft.ends_with('\n') {
+            self.prompt_input_draft.push('\n');
+        }
+        self.prompt_input_draft.push_str(trimmed);
+        self.modal_input_focus = ModalInputFocus::PromptDraft;
     }
 
     pub fn delete_prompt_block(&mut self, index: usize) {
@@ -591,7 +684,28 @@ impl ContextPackerState {
             tpl.sync_preamble_from_blocks();
             self.ui_status.copied_recently = false;
             self.repack_from_memory_cache();
+            let _ = self.save_current_preset_globally();
         }
+    }
+
+    #[inline]
+    pub const fn set_prompt_title_focused(&mut self, focused: bool) {
+        self.modal_input_focus =
+            if focused { ModalInputFocus::PromptTitle } else { ModalInputFocus::None };
+    }
+
+    #[inline]
+    pub const fn is_prompt_title_focused(&self) -> bool {
+        matches!(self.modal_input_focus, ModalInputFocus::PromptTitle)
+    }
+
+    pub fn append_prompt_title_char(&mut self, ch: char) {
+        self.modal_input_focus = ModalInputFocus::PromptTitle;
+        self.prompt_title_draft.push(ch);
+    }
+
+    pub fn pop_prompt_title_char(&mut self) -> bool {
+        self.prompt_title_draft.pop().is_some()
     }
 
     #[inline]
@@ -615,13 +729,13 @@ impl ContextPackerState {
     }
 
     pub fn submit_manual_prompt_draft(&mut self) {
-        let draft = std::mem::take(&mut self.prompt_input_draft);
-        let trimmed = draft.trim();
-        if trimmed.is_empty() {
+        let title_draft = std::mem::take(&mut self.prompt_title_draft);
+        let content_draft = std::mem::take(&mut self.prompt_input_draft);
+        if title_draft.trim().is_empty() && content_draft.trim().is_empty() {
             return;
         }
-        let category = self.prompt_category_filter.unwrap_or(PromptCategory::Custom);
-        self.add_custom_prompt_block(category, trimmed);
+        let category = self.new_prompt_category;
+        self.add_custom_prompt_block_with_title(category, &title_draft, &content_draft);
     }
 
     pub fn reset_system_prompt_to_builtin(&mut self) {
@@ -631,6 +745,7 @@ impl ContextPackerState {
         tpl.preamble.clear();
         tpl.system_prompt_preset = SystemPromptMode::None;
         self.repack_from_memory_cache();
+        let _ = self.save_current_preset_globally();
     }
 
     pub fn build_system_prompt_modal_props(
@@ -641,6 +756,9 @@ impl ContextPackerState {
         let tpl = &self.resolved_config.effective_preset.template;
         SystemPromptModalProps {
             active_category: self.prompt_category_filter,
+            new_prompt_category: self.new_prompt_category,
+            prompt_title_draft: self.prompt_title_draft.clone(),
+            prompt_title_focused: self.is_prompt_title_focused(),
             prompt_input_draft: self.prompt_input_draft.clone(),
             prompt_input_focused: self.is_prompt_input_focused(),
             blocks: tpl.prompt_blocks.clone(),

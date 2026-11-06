@@ -9,7 +9,8 @@ use di::AppContainer;
 use crate::features::change_applier::state::ChangeApplierState;
 use crate::features::context_packer::state::ContextPackerState;
 use crate::features::main_window::components::diagnostics_dock::{
-    DockToolTab, TerminalCommandEntry,
+    DEFAULT_DOCK_HEIGHT_PX, DockToolTab, MAX_DOCK_HEIGHT_PX, MIN_DOCK_HEIGHT_PX,
+    TALL_DOCK_HEIGHT_PX, TerminalCommandEntry,
 };
 use crate::locale::AppLocale;
 use crate::theme::ThemeVariant;
@@ -36,10 +37,11 @@ pub struct StatusBarSummary {
     pub backups_enabled: bool,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct BottomDockState {
     pub is_open: bool,
-    pub is_tall: bool,
+    pub dock_height_px: f32,
+    pub resizing_dock: Option<(f32, f32)>,
     pub active_tab: DockToolTab,
     pub log_filter_mode: LogFilterMode,
     pub task_category: Option<TerminalTaskCategory>,
@@ -47,6 +49,23 @@ pub struct BottomDockState {
     pub terminal_focused: bool,
     pub terminal_running: bool,
     pub terminal_history: Vec<TerminalCommandEntry>,
+}
+
+impl Default for BottomDockState {
+    fn default() -> Self {
+        Self {
+            is_open: false,
+            dock_height_px: DEFAULT_DOCK_HEIGHT_PX,
+            resizing_dock: None,
+            active_tab: DockToolTab::default(),
+            log_filter_mode: LogFilterMode::default(),
+            task_category: None,
+            terminal_input: String::new(),
+            terminal_focused: false,
+            terminal_running: false,
+            terminal_history: Vec::new(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -123,8 +142,46 @@ impl MainWindowState {
     }
 
     #[inline]
-    pub const fn toggle_dock_tall_height(&mut self) {
-        self.bottom_dock.is_tall = !self.bottom_dock.is_tall;
+    pub fn toggle_dock_tall_height(&mut self) {
+        if (self.bottom_dock.dock_height_px - DEFAULT_DOCK_HEIGHT_PX).abs() < 20.0 {
+            self.bottom_dock.dock_height_px = TALL_DOCK_HEIGHT_PX;
+        } else {
+            self.bottom_dock.dock_height_px = DEFAULT_DOCK_HEIGHT_PX;
+        }
+    }
+
+    #[inline]
+    pub const fn start_dock_resize(&mut self, mouse_y: f32) {
+        self.bottom_dock.resizing_dock = Some((mouse_y, self.bottom_dock.dock_height_px));
+    }
+
+    #[inline]
+    pub const fn stop_dock_resize(&mut self) {
+        self.bottom_dock.resizing_dock = None;
+    }
+
+    #[inline]
+    pub const fn update_dock_resize(&mut self, current_mouse_y: f32, max_allowed_height: f32) {
+        if let Some((start_y, start_h)) = self.bottom_dock.resizing_dock {
+            let delta = start_y - current_mouse_y;
+            let raw = start_h + delta;
+            let max_h = if max_allowed_height > MIN_DOCK_HEIGHT_PX {
+                if max_allowed_height < MAX_DOCK_HEIGHT_PX {
+                    max_allowed_height
+                } else {
+                    MAX_DOCK_HEIGHT_PX
+                }
+            } else {
+                MIN_DOCK_HEIGHT_PX
+            };
+            self.bottom_dock.dock_height_px = if raw < MIN_DOCK_HEIGHT_PX {
+                MIN_DOCK_HEIGHT_PX
+            } else if raw > max_h {
+                max_h
+            } else {
+                raw
+            };
+        }
     }
 
     #[inline]

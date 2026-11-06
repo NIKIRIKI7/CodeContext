@@ -44,6 +44,8 @@ pub struct ChangeApplierState {
     autofix_flags: AutofixFlags,
     backups_enabled: bool,
     options_open: bool,
+    split_ratio: f32,
+    resizing_split: bool,
     last_backup_manifest: Option<BackupManifest>,
     status_notice: Option<ApplierStatusNotice>,
 }
@@ -66,6 +68,8 @@ impl ChangeApplierState {
             autofix_flags: AutofixFlags::default(),
             backups_enabled,
             options_open: false,
+            split_ratio: crate::theme::DEFAULT_LAYOUT.applier_split_ratio,
+            resizing_split: false,
             last_backup_manifest: None,
             status_notice: None,
         }
@@ -148,6 +152,34 @@ impl ChangeApplierState {
     #[inline]
     pub const fn is_options_open(&self) -> bool {
         self.options_open
+    }
+
+    #[inline]
+    pub const fn split_ratio(&self) -> f32 {
+        self.split_ratio
+    }
+
+    #[inline]
+    pub const fn set_split_ratio(&mut self, ratio: f32) {
+        let min = crate::theme::DEFAULT_LAYOUT.split_ratio_min;
+        let max = crate::theme::DEFAULT_LAYOUT.split_ratio_max;
+        self.split_ratio = if ratio < min {
+            min
+        } else if ratio > max {
+            max
+        } else {
+            ratio
+        };
+    }
+
+    #[inline]
+    pub const fn is_resizing_split(&self) -> bool {
+        self.resizing_split
+    }
+
+    #[inline]
+    pub const fn set_resizing_split(&mut self, resizing: bool) {
+        self.resizing_split = resizing;
     }
 
     pub fn apply_changes_to_disk(&mut self) -> Result<usize, String> {

@@ -12,7 +12,8 @@ use core::system::ports::updater::{SemanticVersion, UpdateChannel, UpdateStage, 
 use di::AppContainer;
 use gpui::{
     App, AppContext as _, ClipboardItem, Context, Entity, FocusHandle, InteractiveElement as _,
-    IntoElement, KeyDownEvent, ParentElement as _, PathPromptOptions, Render, Rgba, SharedString,
+    IntoElement, KeyDownEvent, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent,
+    ParentElement as _, PathPromptOptions, Render, Rgba, SharedString,
     StatefulInteractiveElement as _, Styled as _, Window, div, px,
 };
 
@@ -285,6 +286,7 @@ impl MainWindowView {
 
         if self.state.read(cx).is_settings_open() {
             if let Some(action) = self.settings_state.read(cx).recording_action() {
+                cx.stop_propagation();
                 if key.eq_ignore_ascii_case("escape") {
                     self.settings_state.update(cx, |s, cx| {
                         s.cancel_recording_hotkey();
@@ -303,6 +305,7 @@ impl MainWindowView {
             if key.eq_ignore_ascii_case("escape")
                 && self.settings_state.read(cx).is_hotkeys_modal_open()
             {
+                cx.stop_propagation();
                 self.settings_state.update(cx, |s, cx| {
                     s.close_hotkeys_modal();
                     cx.notify();
@@ -311,23 +314,20 @@ impl MainWindowView {
             }
         }
 
-        if let Some(pressed_shortcut) = build_recorded_hotkey_string(event)
-            && self.try_dispatch_custom_keymap(&pressed_shortcut, cx)
-        {
-            return;
-        }
-
         if self.try_handle_terminal_input_key(event, key, primary_mod, cx) {
+            cx.stop_propagation();
             return;
         }
 
         if self.try_handle_packer_modals_key(event, key, primary_mod, cx) {
+            cx.stop_propagation();
             return;
         }
 
         let is_search_focused = self.packer_state.read(cx).ui_status().search_focused;
         if is_search_focused {
             if key.eq_ignore_ascii_case("escape") || key.eq_ignore_ascii_case("enter") {
+                cx.stop_propagation();
                 self.packer_state.update(cx, |p, cx| {
                     p.set_search_focused(false);
                     cx.notify();
@@ -335,6 +335,7 @@ impl MainWindowView {
                 return;
             }
             if key.eq_ignore_ascii_case("backspace") {
+                cx.stop_propagation();
                 self.packer_state.update(cx, |p, cx| {
                     if p.pop_search_char() {
                         cx.notify();
@@ -342,7 +343,23 @@ impl MainWindowView {
                 });
                 return;
             }
+            if primary_mod && !mods.shift && is_key_v(key) {
+                cx.stop_propagation();
+                if let Some(clip) = cx.read_from_clipboard().and_then(|i| i.text()) {
+                    let first_line = clip.lines().next().unwrap_or("").trim().to_owned();
+                    if !first_line.is_empty() {
+                        self.packer_state.update(cx, |p, cx| {
+                            for ch in first_line.chars() {
+                                p.append_search_char(ch);
+                            }
+                            cx.notify();
+                        });
+                    }
+                }
+                return;
+            }
             if !primary_mod && !mods.alt && !key.eq_ignore_ascii_case("f5") {
+                cx.stop_propagation();
                 if let Some(ch) = extract_printable_search_char(event) {
                     self.packer_state.update(cx, |p, cx| {
                         p.append_search_char(ch);
@@ -355,6 +372,13 @@ impl MainWindowView {
                 p.set_search_focused(false);
                 cx.notify();
             });
+        }
+
+        if let Some(pressed_shortcut) = build_recorded_hotkey_string(event)
+            && self.try_dispatch_custom_keymap(&pressed_shortcut, cx)
+        {
+            cx.stop_propagation();
+            return;
         }
 
         if key.eq_ignore_ascii_case("escape") {
@@ -454,16 +478,19 @@ impl MainWindowView {
         primary_mod: bool,
         cx: &mut Context<Self>,
     ) -> bool {
-        let is_term_active = {
+        let (is_term_open, is_term_focused) = {
             let s = self.state.read(cx);
-            s.is_logs_dock_open() && s.dock_active_tab() == DockToolTab::Terminal
+            (
+                s.is_logs_dock_open() && s.dock_active_tab() == DockToolTab::Terminal,
+                s.bottom_dock().terminal_focused,
+            )
         };
-        if !is_term_active {
+        if !is_term_open || !is_term_focused {
             return false;
         }
         if key.eq_ignore_ascii_case("escape") {
             self.state.update(cx, |s, cx| {
-                s.set_logs_dock_open(false);
+                s.bottom_dock_mut().terminal_focused = false;
                 cx.notify();
             });
             return true;
@@ -471,6 +498,7 @@ impl MainWindowView {
         if key.eq_ignore_ascii_case("enter") {
             let cmd = self.state.update(cx, |s, cx| {
                 let d = s.bottom_dock_mut();
+                d.terminal_focused = true;
                 let taken = std::mem::take(&mut d.terminal_input);
                 cx.notify();
                 taken
@@ -480,32 +508,50 @@ impl MainWindowView {
         }
         if key.eq_ignore_ascii_case("backspace") {
             self.state.update(cx, |s, cx| {
-                if s.bottom_dock_mut().terminal_input.pop().is_some() {
+                let d = s.bottom_dock_mut();
+                d.terminal_focused = true;
+                if d.terminal_input.pop().is_some() {
                     cx.notify();
                 }
             });
             return true;
         }
         let mods = event.keystroke.modifiers;
+        if primary_mod && !mods.shift && is_key_v(key) {
+            if let Some(clip) = cx.read_from_clipboard().and_then(|i| i.text()) {
+                let single_line = clip.lines().next().unwrap_or("").trim().to_owned();
+                if !single_line.is_empty() {
+                    self.state.update(cx, |s, cx| {
+                        let d = s.bottom_dock_mut();
+                        d.terminal_input.push_str(&single_line);
+                        d.terminal_focused = true;
+                        cx.notify();
+                    });
+                }
+            }
+            return true;
+        }
         if !primary_mod && !mods.alt {
             if key == " " || key.eq_ignore_ascii_case("space") {
                 self.state.update(cx, |s, cx| {
-                    s.bottom_dock_mut().terminal_input.push(' ');
-                    s.bottom_dock_mut().terminal_focused = true;
+                    let d = s.bottom_dock_mut();
+                    d.terminal_input.push(' ');
+                    d.terminal_focused = true;
                     cx.notify();
                 });
                 return true;
             }
             if let Some(ch) = extract_printable_regex_char(event) {
                 self.state.update(cx, |s, cx| {
-                    s.bottom_dock_mut().terminal_input.push(ch);
-                    s.bottom_dock_mut().terminal_focused = true;
+                    let d = s.bottom_dock_mut();
+                    d.terminal_input.push(ch);
+                    d.terminal_focused = true;
                     cx.notify();
                 });
                 return true;
             }
         }
-        true
+        false
     }
 
     fn spawn_terminal_command(&self, raw_cmd: &str, cx: &mut App) {
@@ -582,6 +628,7 @@ impl MainWindowView {
             is_regex_focused,
             is_regex_name_focused,
             is_prompt_open,
+            is_prompt_title_focused,
             is_prompt_focused,
         ) = {
             let ps = self.packer_state.read(cx);
@@ -592,6 +639,7 @@ impl MainWindowView {
                 ps.is_regex_input_focused(),
                 ps.is_regex_name_input_focused(),
                 ps.is_prompt_modal_open(),
+                ps.is_prompt_title_focused(),
                 ps.is_prompt_input_focused(),
             )
         };
@@ -603,10 +651,63 @@ impl MainWindowView {
                 });
                 return true;
             }
+            let mods = event.keystroke.modifiers;
+            if primary_mod && !mods.shift && is_key_v(key) {
+                if let Some(clip) = cx.read_from_clipboard().and_then(|i| i.text()) {
+                    self.packer_state.update(cx, |p, cx| {
+                        p.paste_into_prompt_composer(&clip);
+                        cx.notify();
+                    });
+                }
+                return true;
+            }
+            if key.eq_ignore_ascii_case("tab") {
+                self.packer_state.update(cx, |p, cx| {
+                    if p.is_prompt_title_focused() {
+                        p.set_prompt_input_focused(true);
+                    } else {
+                        p.set_prompt_title_focused(true);
+                    }
+                    cx.notify();
+                });
+                return true;
+            }
+            if is_prompt_title_focused {
+                if key.eq_ignore_ascii_case("enter") {
+                    self.packer_state.update(cx, |p, cx| {
+                        p.set_prompt_input_focused(true);
+                        cx.notify();
+                    });
+                    return true;
+                }
+                if key.eq_ignore_ascii_case("backspace") {
+                    self.packer_state.update(cx, |p, cx| {
+                        if p.pop_prompt_title_char() {
+                            cx.notify();
+                        }
+                    });
+                    return true;
+                }
+                if !primary_mod
+                    && !mods.alt
+                    && let Some(ch) = extract_printable_regex_char(event)
+                {
+                    self.packer_state.update(cx, |p, cx| {
+                        p.append_prompt_title_char(ch);
+                        cx.notify();
+                    });
+                    return true;
+                }
+                return true;
+            }
             if is_prompt_focused {
                 if key.eq_ignore_ascii_case("enter") {
                     self.packer_state.update(cx, |p, cx| {
-                        p.submit_manual_prompt_draft();
+                        if mods.shift {
+                            p.append_prompt_input_char('\n');
+                        } else {
+                            p.submit_manual_prompt_draft();
+                        }
                         cx.notify();
                     });
                     return true;
@@ -619,10 +720,9 @@ impl MainWindowView {
                     });
                     return true;
                 }
-                let mods = event.keystroke.modifiers;
                 if !primary_mod
                     && !mods.alt
-                    && let Some(ch) = extract_printable_search_char(event)
+                    && let Some(ch) = extract_printable_regex_char(event)
                 {
                     self.packer_state.update(cx, |p, cx| {
                         p.append_prompt_input_char(ch);
@@ -630,6 +730,7 @@ impl MainWindowView {
                     });
                     return true;
                 }
+                return true;
             }
         }
         if !is_filter_open {
@@ -911,6 +1012,73 @@ impl MainWindowView {
             cx.notify();
             clamped
         });
+    }
+
+    fn handle_mouse_move(
+        &mut self,
+        event: &MouseMoveEvent,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.state.read(cx).bottom_dock().resizing_dock.is_some() {
+            let curr_y = event.position.y / px(1.0);
+            let viewport_h = window.viewport_size().height / px(1.0);
+            let max_h = (viewport_h - 140.0).max(140.0);
+            self.state.update(cx, |s, cx| {
+                s.update_dock_resize(curr_y, max_h);
+                cx.notify();
+            });
+            return;
+        }
+
+        if self.packer_state.read(cx).is_resizing_split() {
+            let rail_w = 48.0_f32;
+            let total_w = ((window.viewport_size().width / px(1.0)) - rail_w).max(400.0);
+            let rel_x = ((event.position.x / px(1.0)) - rail_w).max(0.0);
+            let ratio = rel_x / total_w;
+            self.packer_state.update(cx, |p, cx| {
+                p.set_split_ratio(ratio);
+                cx.notify();
+            });
+            return;
+        }
+
+        if self.applier_state.read(cx).is_resizing_split() {
+            let rail_w = 48.0_f32;
+            let total_w = ((window.viewport_size().width / px(1.0)) - rail_w).max(400.0);
+            let rel_x = ((event.position.x / px(1.0)) - rail_w).max(0.0);
+            let ratio = rel_x / total_w;
+            self.applier_state.update(cx, |a, cx| {
+                a.set_split_ratio(ratio);
+                cx.notify();
+            });
+        }
+    }
+
+    fn handle_mouse_up(
+        &mut self,
+        _event: &MouseUpEvent,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.state.read(cx).bottom_dock().resizing_dock.is_some() {
+            self.state.update(cx, |s, cx| {
+                s.stop_dock_resize();
+                cx.notify();
+            });
+        }
+        if self.packer_state.read(cx).is_resizing_split() {
+            self.packer_state.update(cx, |p, cx| {
+                p.set_resizing_split(false);
+                cx.notify();
+            });
+        }
+        if self.applier_state.read(cx).is_resizing_split() {
+            self.applier_state.update(cx, |a, cx| {
+                a.set_resizing_split(false);
+                cx.notify();
+            });
+        }
     }
 
     fn handle_escape_key(&self, cx: &mut Context<Self>) {
@@ -1459,7 +1627,7 @@ impl MainWindowView {
             .h(px(theme.layout.status_bar_height))
             .min_h(px(theme.layout.status_bar_height))
             .px(px(theme.spacing.lg))
-            .bg(colors.bg_status_bar)
+            .bg(colors.bg_panel)
             .border_t_1()
             .border_color(colors.border)
             .flex_shrink_0()
@@ -1498,7 +1666,8 @@ impl MainWindowView {
             terminal_input: dock_snap.terminal_input,
             terminal_focused: dock_snap.terminal_focused,
             terminal_running: dock_snap.terminal_running,
-            is_tall_dock: dock_snap.is_tall,
+            dock_height_px: dock_snap.dock_height_px,
+            is_resizing_dock: dock_snap.resizing_dock.is_some(),
             show_terminal_presets: chrome.show_terminal_presets,
             show_inline_categories,
             terminal_history: dock_snap.terminal_history,
@@ -1511,7 +1680,7 @@ impl MainWindowView {
         let state_save_preset = self.state.clone();
         let settings_save_preset = self.settings_state.clone();
         let settings_del_preset = self.settings_state.clone();
-        let state_height = self.state.clone();
+        let state_resize_start = self.state.clone();
         let state_focus_term = self.state.clone();
         let view_submit_term = cx.entity().clone();
         let view_preset_term = cx.entity().clone();
@@ -1569,9 +1738,10 @@ impl MainWindowView {
                         cx.notify();
                     });
                 },
-                move |_ev, _win, cx| {
-                    state_height.update(cx, |s, cx| {
-                        s.toggle_dock_tall_height();
+                move |ev, _win, cx| {
+                    let start_y = ev.position.y / px(1.0);
+                    state_resize_start.update(cx, |s, cx| {
+                        s.start_dock_resize(start_y);
                         cx.notify();
                     });
                 },
@@ -1948,7 +2118,7 @@ impl Render for MainWindowView {
             ));
         }
 
-        if chrome.show_bottom_bar {
+        if chrome.show_bottom_bar && (chrome.show_terminal_button || chrome.show_logs_button) {
             workspace_col = workspace_col.child(self.render_bottom_status_bar(
                 telemetry_summary,
                 &chrome,
@@ -1963,7 +2133,7 @@ impl Render for MainWindowView {
         let mut root = div()
             .id("main-window-root")
             .track_focus(&self.focus_handle)
-            .on_click(move |_ev, _win, cx: &mut App| {
+            .on_mouse_down(MouseButton::Left, move |_ev: &MouseDownEvent, _win, cx: &mut App| {
                 packer_unfocus_search.update(cx, |p, cx| {
                     if p.ui_status().search_focused {
                         p.set_search_focused(false);
@@ -1977,6 +2147,9 @@ impl Render for MainWindowView {
                     }
                 });
             })
+            .on_mouse_move(cx.listener(Self::handle_mouse_move))
+            .on_mouse_up(MouseButton::Left, cx.listener(Self::handle_mouse_up))
+            .on_mouse_up_out(MouseButton::Left, cx.listener(Self::handle_mouse_up))
             .on_key_down(cx.listener(Self::handle_key_down))
             .relative()
             .size_full()

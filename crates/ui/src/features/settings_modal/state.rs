@@ -20,6 +20,21 @@ use crate::theme::ThemeVariant;
 
 const HOTKEY_CYCLE_PRESETS: &[&str] = &["Ctrl+K", "Ctrl+Shift+C", "Ctrl+Alt+C"];
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum SettingsCategory {
+    #[default]
+    Appearance,
+    PanelsAndBar,
+    Keymap,
+    Safety,
+    SystemAndUpdates,
+}
+
+impl SettingsCategory {
+    pub const ALL: [Self; 5] =
+        [Self::Appearance, Self::PanelsAndBar, Self::Keymap, Self::Safety, Self::SystemAndUpdates];
+}
+
 #[derive(Debug, Clone)]
 pub struct SettingsModalState {
     container: AppContainer,
@@ -31,6 +46,7 @@ pub struct SettingsModalState {
     self_install_status: SelfInstallStatus,
     locale: AppLocale,
     theme_variant: ThemeVariant,
+    active_category: SettingsCategory,
     hotkeys_modal_open: bool,
     recording_action: Option<KeymapAction>,
     close_requested: bool,
@@ -62,10 +78,23 @@ impl SettingsModalState {
             self_install_status,
             locale: AppLocale::default(),
             theme_variant: ThemeVariant::default(),
+            active_category: SettingsCategory::default(),
             hotkeys_modal_open: false,
             recording_action: None,
             close_requested: false,
         }
+    }
+
+    #[inline]
+    pub const fn active_category(&self) -> SettingsCategory {
+        self.active_category
+    }
+
+    #[inline]
+    pub const fn set_active_category(&mut self, category: SettingsCategory) {
+        self.active_category = category;
+        self.recording_action = None;
+        self.hotkeys_modal_open = matches!(category, SettingsCategory::Keymap);
     }
 
     #[inline]
@@ -75,6 +104,7 @@ impl SettingsModalState {
 
     #[inline]
     pub const fn open_hotkeys_modal(&mut self) {
+        self.active_category = SettingsCategory::Keymap;
         self.hotkeys_modal_open = true;
         self.recording_action = None;
     }

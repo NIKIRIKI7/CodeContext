@@ -7,8 +7,9 @@ use core::shared_kernel::execution::telemetry::{
     TelemetrySummary,
 };
 use gpui::{
-    App, ClickEvent, InteractiveElement as _, IntoElement, ParentElement as _, RenderOnce,
-    SharedString, StatefulInteractiveElement as _, Styled as _, Window, div, px,
+    App, ClickEvent, InteractiveElement as _, IntoElement, MouseButton, MouseDownEvent,
+    ParentElement as _, RenderOnce, SharedString, StatefulInteractiveElement as _, Styled as _,
+    Window, div, px,
 };
 
 use crate::locale::UiLabels;
@@ -17,6 +18,8 @@ use crate::shared::primitives::icon::{UiIcon, render_icon};
 use crate::theme::{FONT_FAMILY_MONO, FONT_FAMILY_UI, ThemeTokens};
 
 pub const DEFAULT_DOCK_HEIGHT_PX: f32 = 300.0;
+pub const MIN_DOCK_HEIGHT_PX: f32 = 140.0;
+pub const MAX_DOCK_HEIGHT_PX: f32 = 620.0;
 pub const TALL_DOCK_HEIGHT_PX: f32 = 460.0;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -45,6 +48,7 @@ pub type SelectTaskCategoryCallback =
 pub type DockActionCallback = Arc<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>;
 pub type RunPresetCommandCallback = Arc<dyn Fn(&str, &mut Window, &mut App) + 'static>;
 pub type DeletePresetCallback = Arc<dyn Fn(usize, &mut Window, &mut App) + 'static>;
+pub type StartDockResizeCallback = Arc<dyn Fn(&MouseDownEvent, &mut Window, &mut App) + 'static>;
 
 #[derive(Debug, Clone)]
 pub struct DiagnosticsDockProps {
@@ -57,7 +61,8 @@ pub struct DiagnosticsDockProps {
     pub terminal_input: String,
     pub terminal_focused: bool,
     pub terminal_running: bool,
-    pub is_tall_dock: bool,
+    pub dock_height_px: f32,
+    pub is_resizing_dock: bool,
     pub show_terminal_presets: bool,
     pub show_inline_categories: bool,
     pub terminal_history: Vec<TerminalCommandEntry>,
@@ -75,7 +80,7 @@ struct DockCallbacks {
     save_terminal_preset: Option<DockActionCallback>,
     run_preset_cmd: Option<RunPresetCommandCallback>,
     delete_preset_idx: Option<DeletePresetCallback>,
-    toggle_height: Option<DockActionCallback>,
+    start_resize: Option<StartDockResizeCallback>,
     copy_active: Option<DockActionCallback>,
     clear_active: Option<DockActionCallback>,
     close: Option<DockActionCallback>,
@@ -128,11 +133,11 @@ impl DiagnosticsDockComponent {
         mut self,
         on_save_preset: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
         on_delete_preset: impl Fn(usize, &mut Window, &mut App) + 'static,
-        on_toggle_height: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
+        on_start_resize: impl Fn(&MouseDownEvent, &mut Window, &mut App) + 'static,
     ) -> Self {
         self.callbacks.save_terminal_preset = Some(Arc::new(on_save_preset));
         self.callbacks.delete_preset_idx = Some(Arc::new(on_delete_preset));
-        self.callbacks.toggle_height = Some(Arc::new(on_toggle_height));
+        self.callbacks.start_resize = Some(Arc::new(on_start_resize));
         self
     }
 
@@ -170,8 +175,29 @@ impl RenderOnce for DiagnosticsDockComponent {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
         let theme = self.props.theme;
         let colors = &theme.colors;
-        let dock_h =
-            if self.props.is_tall_dock { TALL_DOCK_HEIGHT_PX } else { DEFAULT_DOCK_HEIGHT_PX };
+        let dock_h = self.props.dock_height_px.clamp(MIN_DOCK_HEIGHT_PX, MAX_DOCK_HEIGHT_PX);
+        let hover_col = colors.cyan;
+        let top_border_col =
+            if self.props.is_resizing_dock { colors.cyan } else { colors.border_active };
+
+        let mut resize_handle = div()
+            .id("diagnostics-dock-resize-handle")
+            .w_full()
+            .h(px(5.0))
+            .flex_shrink_0()
+            .cursor_ns_resize()
+            .bg(if self.props.is_resizing_dock { colors.cyan } else { colors.bg_panel })
+            .border_t_1()
+            .border_color(top_border_col)
+            .hover(move |s| s.bg(hover_col).border_color(hover_col));
+
+        if let Some(ref cb) = self.callbacks.start_resize {
+            let cb_clone = Arc::clone(cb);
+            resize_handle = resize_handle.on_mouse_down(MouseButton::Left, move |ev, w, c| {
+                c.stop_propagation();
+                cb_clone(ev, w, c);
+            });
+        }
 
         let header = render_dock_header(&self.props, &self.callbacks);
         let body = match self.props.active_tab {
@@ -183,6 +209,9 @@ impl RenderOnce for DiagnosticsDockComponent {
 
         div()
             .id("diagnostics-dock-panel")
+            .on_mouse_down(MouseButton::Left, |_ev, _win, cx| {
+                cx.stop_propagation();
+            })
             .on_click(|_ev, _win, cx| {
                 cx.stop_propagation();
             })
@@ -190,12 +219,11 @@ impl RenderOnce for DiagnosticsDockComponent {
             .h(px(dock_h))
             .min_h(px(dock_h))
             .bg(colors.bg_app)
-            .border_t_1()
-            .border_color(colors.border_active)
             .flex_shrink_0()
             .flex()
             .flex_col()
             .overflow_hidden()
+            .child(resize_handle)
             .child(header)
             .child(div().flex_1().min_h(px(0.0)).w_full().overflow_hidden().child(body))
     }
@@ -240,19 +268,6 @@ fn render_dock_header(
             UiButton::icon_only("logs-dock-clear-btn", UiIcon::RotateCcw)
                 .variant(ButtonVariant::Ghost)
                 .with_theme(theme)
-                .on_click(move |ev, w, c| cb_clone(ev, w, c)),
-        );
-    }
-
-    if let Some(ref cb) = callbacks.toggle_height {
-        let cb_clone = Arc::clone(cb);
-        let h_icon =
-            if props.is_tall_dock { UiIcon::ChevronsDownUp } else { UiIcon::ChevronsUpDown };
-        right_actions = right_actions.child(
-            UiButton::icon_only("logs-dock-height-btn", h_icon)
-                .variant(ButtonVariant::Ghost)
-                .with_theme(theme)
-                .active(props.is_tall_dock)
                 .on_click(move |ev, w, c| cb_clone(ev, w, c)),
         );
     }
@@ -776,22 +791,26 @@ fn render_terminal_input_bar(
         run_btn = run_btn.on_click(move |ev, w, c| cb_clone(ev, w, c));
     }
 
-    div()
+    let mut row = div()
         .w_full()
         .h(px(38.0))
         .min_h(px(38.0))
         .flex_shrink_0()
         .px(px(theme.spacing.lg))
         .py(px(theme.spacing.xs))
-        .border_b_1()
-        .border_color(colors.border)
         .flex()
         .flex_row()
         .items_center()
         .gap(px(theme.spacing.xs))
         .child(input_box)
         .child(save_preset_btn)
-        .child(run_btn)
+        .child(run_btn);
+
+    if !props.terminal_history.is_empty() {
+        row = row.border_b_1().border_color(colors.border);
+    }
+
+    row
 }
 
 fn render_log_row(

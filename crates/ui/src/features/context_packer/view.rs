@@ -120,6 +120,8 @@ impl Render for ContextPackerView {
 
         let active_filters_count = snapshot.active_custom_filter_rules_count();
         let active_prompts_count = active_preset.template.active_prompt_blocks_count();
+        let split_ratio = snapshot.split_ratio();
+        let is_resizing_split = snapshot.is_resizing_split();
         let filter_modal_props_opt =
             ui_status.regex_filter_open.then(|| snapshot.build_filter_modal_props(labels, theme));
         let prompt_modal_props_opt = snapshot
@@ -151,6 +153,7 @@ impl Render for ContextPackerView {
             .child(div().flex_1().overflow_hidden().child(file_tree))
             .child(rules_editor);
 
+        let state_start_resize = self.state.clone();
         let mut root = div()
             .relative()
             .size_full()
@@ -160,8 +163,15 @@ impl Render for ContextPackerView {
             .overflow_hidden()
             .child(
                 div().flex_1().overflow_hidden().child(
-                    SplitPane::new(theme.layout.packer_split_ratio, left_column, live_preview)
-                        .with_theme(theme),
+                    SplitPane::new(split_ratio, left_column, live_preview)
+                        .with_theme(theme)
+                        .with_resizing(is_resizing_split)
+                        .on_start_resize(move |_ev, _win, cx| {
+                            state_start_resize.update(cx, |s, cx| {
+                                s.set_resizing_split(true);
+                                cx.notify();
+                            });
+                        }),
                 ),
             )
             .child(banner);
@@ -507,10 +517,12 @@ impl ContextPackerView {
         props: crate::features::context_packer::components::filter_modal::SystemPromptModalProps,
     ) -> SystemPromptModalComponent {
         let state_cat = self.state.clone();
+        let state_new_cat = self.state.clone();
         let state_toggle = self.state.clone();
         let state_up = self.state.clone();
         let state_down = self.state.clone();
         let state_del = self.state.clone();
+        let state_focus_title = self.state.clone();
         let state_focus_p = self.state.clone();
         let state_submit_p = self.state.clone();
         let state_paste = self.state.clone();
@@ -522,6 +534,12 @@ impl ContextPackerView {
             .on_select_category(move |cat_opt, _win, cx| {
                 state_cat.update(cx, |s, cx| {
                     s.set_prompt_category_filter(cat_opt);
+                    cx.notify();
+                });
+            })
+            .on_select_new_category(move |cat, _win, cx| {
+                state_new_cat.update(cx, |s, cx| {
+                    s.set_new_prompt_category(cat);
                     cx.notify();
                 });
             })
@@ -549,6 +567,12 @@ impl ContextPackerView {
                     cx.notify();
                 });
             })
+            .on_focus_prompt_title(move |_ev, _win, cx| {
+                state_focus_title.update(cx, |s, cx| {
+                    s.set_prompt_title_focused(true);
+                    cx.notify();
+                });
+            })
             .on_focus_prompt_input(move |_ev, _win, cx| {
                 state_focus_p.update(cx, |s, cx| {
                     s.set_prompt_input_focused(true);
@@ -566,10 +590,7 @@ impl ContextPackerView {
                     let clip_opt = cx.read_from_clipboard().and_then(|i| i.text());
                     if let Some(text) = clip_opt {
                         state_paste.update(cx, |s, cx| {
-                            let cat = s
-                                .prompt_category_filter()
-                                .unwrap_or(core::preset::models::template::PromptCategory::Custom);
-                            s.add_custom_prompt_block(cat, text.as_str());
+                            s.paste_into_prompt_composer(text.as_str());
                             cx.notify();
                         });
                     }
